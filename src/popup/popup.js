@@ -228,26 +228,42 @@ async function loadNotesForCurrentTab() {
       return;
     }
     
+    console.log('[Popup] Loading notes for tab:', tab.url);
+    
     // Get notes from storage
     const result = await chrome.storage.local.get(['notes']);
     const allNotes = result.notes || [];
     
-    // Filter notes for current URL
+    console.log('[Popup] Total notes in storage:', allNotes.length);
+    allNotes.forEach((note, i) => {
+      console.log(`[Popup] Note ${i}:`, { id: note.id, url: note.url, content: note.content?.substring(0, 50) });
+    });
+    
+    // Filter notes for current URL (origin + pathname only, ignoring query params)
     const currentUrl = new URL(tab.url);
+    const currentNormalized = currentUrl.origin + currentUrl.pathname;
+    
+    console.log('[Popup] Current normalized URL:', currentNormalized);
+    
     const pageNotes = allNotes.filter(note => {
       try {
         const noteUrl = new URL(note.url);
-        return noteUrl.origin + noteUrl.pathname === currentUrl.origin + currentUrl.pathname;
+        const noteNormalized = noteUrl.origin + noteUrl.pathname;
+        const matches = noteNormalized === currentNormalized;
+        console.log(`[Popup] Comparing: ${noteNormalized} === ${currentNormalized} ? ${matches}`);
+        return matches;
       } catch {
         return false;
       }
     });
     
+    console.log('[Popup] Filtered notes for this page:', pageNotes.length);
+    
     // Update UI
     renderNotesList(pageNotes);
     notesCount.textContent = pageNotes.length;
   } catch (error) {
-    console.error('Error loading notes:', error);
+    console.error('[Popup] Error loading notes:', error);
   }
 }
 
@@ -273,7 +289,7 @@ function renderNotesList(notes) {
     <div class="note-item" data-id="${note.id}">
       <div class="note-item-color" style="background: ${getThemeColor(note.theme)}"></div>
       <div class="note-item-content">
-        <div class="note-item-text">${escapeHtml(note.content) || 'Empty note'}</div>
+        <div class="note-item-text">${stripHtml(note.content) || 'Empty note'}</div>
         <div class="note-item-meta">
           <span class="note-item-selector">${escapeHtml(truncateSelector(note.selector))}</span>
         </div>
@@ -348,6 +364,18 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+/**
+ * Strip HTML tags and get plain text
+ * @param {string} html - HTML string
+ * @returns {string} Plain text
+ */
+function stripHtml(html) {
+  if (!html) return '';
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return div.textContent || div.innerText || '';
 }
 
 /**
