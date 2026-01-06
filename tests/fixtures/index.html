@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sticky Notes Test Page</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+    
+    header {
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    h1 {
+      color: #1f2937;
+      margin-bottom: 10px;
+    }
+    
+    .description {
+      color: #6b7280;
+    }
+    
+    section {
+      margin-bottom: 40px;
+    }
+    
+    h2 {
+      color: #374151;
+      margin-bottom: 16px;
+    }
+    
+    .card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    
+    .card h3 {
+      margin-top: 0;
+      color: #1f2937;
+    }
+    
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    button:hover {
+      background: #2563eb;
+    }
+    
+    .form-group {
+      margin-bottom: 16px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: 500;
+      color: #374151;
+    }
+    
+    input, textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    
+    .list-item {
+      padding: 12px 16px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    
+    footer {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 data-testid="page-title">Test Page for Sticky Notes</h1>
+    <p class="description">This page contains various elements for testing the sticky notes extension.</p>
+  </header>
+  
+  <main>
+    <section id="content-section">
+      <h2>Content Section</h2>
+      <div class="card" data-testid="card-1">
+        <h3>Card Title 1</h3>
+        <p>This is the first card with some content that you might want to annotate.</p>
+        <button id="action-btn-1">Action Button</button>
+      </div>
+      
+      <div class="card" data-testid="card-2">
+        <h3>Card Title 2</h3>
+        <p>Another card with different content for testing purposes.</p>
+        <button id="action-btn-2">Another Action</button>
+      </div>
+    </section>
+    
+    <section id="form-section">
+      <h2>Form Section</h2>
+      <form>
+        <div class="form-group">
+          <label for="name-input">Name</label>
+          <input type="text" id="name-input" name="name" placeholder="Enter your name">
+        </div>
+        <div class="form-group">
+          <label for="email-input">Email</label>
+          <input type="email" id="email-input" name="email" placeholder="Enter your email">
+        </div>
+        <div class="form-group">
+          <label for="message-input">Message</label>
+          <textarea id="message-input" name="message" rows="4" placeholder="Enter your message"></textarea>
+        </div>
+        <button type="submit" data-testid="submit-btn">Submit Form</button>
+      </form>
+    </section>
+    
+    <section id="list-section">
+      <h2>List Section</h2>
+      <div class="list-item" data-id="item-1">
+        <strong>List Item 1</strong> - First item in the list
+      </div>
+      <div class="list-item" data-id="item-2">
+        <strong>List Item 2</strong> - Second item in the list
+      </div>
+      <div class="list-item" data-id="item-3">
+        <strong>List Item 3</strong> - Third item in the list
+      </div>
+    </section>
+    
+    <section id="dynamic-section">
+      <h2>Dynamic Content Section</h2>
+      <p>This section is for testing with dynamically generated IDs.</p>
+      <div id="ember123" class="dynamic-element">
+        Element with dynamic ember ID
+      </div>
+      <div id="react-root-456" class="dynamic-element">
+        Element with dynamic react ID
+      </div>
+    </section>
+  </main>
+  
+  <footer>
+    <p>&copy; 2025 Sticky Notes Extension Test Page</p>
+  </footer>
+</body>
+</html>

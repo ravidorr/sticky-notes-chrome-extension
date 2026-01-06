@@ -1,0 +1,674 @@
+/**
+ * StickyNote Component
+ * Vanilla JS class-based component for displaying sticky notes
+ */
+
+import { RichEditor } from './RichEditor.js';
+
+export class StickyNote {
+  /**
+   * Create a new sticky note
+   * @param {Object} options - Note options
+   * @param {string} options.id - Note ID
+   * @param {Element} options.anchor - Anchor element
+   * @param {string} options.selector - CSS selector for anchor
+   * @param {string} options.content - Note content
+   * @param {string} options.theme - Color theme (yellow, blue, green, pink)
+   * @param {Object} options.position - Position config
+   * @param {Function} options.onSave - Save callback
+   * @param {Function} options.onDelete - Delete callback
+   */
+  constructor(options) {
+    this.id = options.id;
+    this.anchor = options.anchor;
+    this.selector = options.selector;
+    this.content = options.content || '';
+    this.theme = options.theme || 'yellow';
+    this.position = options.position || { anchor: 'top-right' };
+    this.onSave = options.onSave || (() => {});
+    this.onDelete = options.onDelete || (() => {});
+    
+    this.element = null;
+    this.textarea = null;
+    this.isVisible = false;
+    this.isDragging = false;
+    this.dragOffset = { x: 0, y: 0 };
+    this.customPosition = null;
+    this.saveTimeout = null;
+    
+    this.render();
+    this.setupEventListeners();
+    this.updatePosition();
+  }
+  
+  /**
+   * Render the note element
+   */
+  render() {
+    this.element = document.createElement('div');
+    this.element.className = `sn-note sn-theme-${this.theme} sn-hidden`;
+    this.element.dataset.noteId = this.id;
+    
+    this.element.innerHTML = `
+      <div class="sn-note-header">
+        <span class="sn-note-header-title">Note</span>
+        <div class="sn-note-header-actions">
+          <button class="sn-note-btn sn-theme-btn" title="Change color">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="3" fill="currentColor"/>
+            </svg>
+          </button>
+          <button class="sn-note-btn sn-position-btn" title="Change position">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l3 3 3-3M19 9l3 3-3 3"/>
+              <path d="M2 12h20M12 2v20"/>
+            </svg>
+          </button>
+          <button class="sn-note-btn sn-share-btn" title="Share">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="5" r="3"/>
+              <circle cx="6" cy="12" r="3"/>
+              <circle cx="18" cy="19" r="3"/>
+              <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/>
+            </svg>
+          </button>
+          <button class="sn-note-btn sn-delete-btn" title="Delete">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="sn-note-content">
+        <div class="sn-note-editor-container"></div>
+      </div>
+    `;
+    
+    // Create rich editor
+    const editorContainer = this.element.querySelector('.sn-note-editor-container');
+    this.richEditor = new RichEditor({
+      content: this.content,
+      placeholder: 'Write your note here...',
+      onChange: (html) => this.handleEditorChange(html)
+    });
+    editorContainer.appendChild(this.richEditor.element);
+    
+    // Keep textarea reference for backward compatibility
+    this.textarea = this.richEditor.editor;
+  }
+  
+  /**
+   * Setup event listeners
+   */
+  setupEventListeners() {
+    // Header drag
+    const header = this.element.querySelector('.sn-note-header');
+    header.addEventListener('mousedown', this.handleDragStart.bind(this));
+    
+    // Delete button
+    const deleteBtn = this.element.querySelector('.sn-delete-btn');
+    deleteBtn.addEventListener('click', this.handleDelete.bind(this));
+    
+    // Share button
+    const shareBtn = this.element.querySelector('.sn-share-btn');
+    shareBtn.addEventListener('click', this.handleShare.bind(this));
+    
+    // Theme button
+    const themeBtn = this.element.querySelector('.sn-theme-btn');
+    themeBtn.addEventListener('click', this.handleThemeClick.bind(this));
+    
+    // Position button
+    const positionBtn = this.element.querySelector('.sn-position-btn');
+    positionBtn.addEventListener('click', this.handlePositionClick.bind(this));
+    
+    // Global mouse events for dragging
+    document.addEventListener('mousemove', this.handleDragMove.bind(this));
+    document.addEventListener('mouseup', this.handleDragEnd.bind(this));
+    
+    // Window resize
+    window.addEventListener('resize', this.handleWindowResize.bind(this));
+    
+    // Keyboard shortcuts
+    this.element.addEventListener('keydown', this.handleKeyDown.bind(this));
+  }
+  
+  /**
+   * Handle editor content change
+   * @param {string} html - New HTML content
+   */
+  handleEditorChange(html) {
+    this.content = html;
+    
+    // Debounced auto-save
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+    
+    this.saveTimeout = setTimeout(() => {
+      this.onSave(this.content);
+    }, 1000);
+  }
+  
+  /**
+   * Handle theme button click
+   */
+  handleThemeClick(e) {
+    e.stopPropagation();
+    this.showThemePicker();
+  }
+  
+  /**
+   * Handle position button click
+   */
+  handlePositionClick(e) {
+    e.stopPropagation();
+    this.showPositionPicker();
+  }
+  
+  /**
+   * Handle keyboard shortcuts
+   * @param {KeyboardEvent} e - Keyboard event
+   */
+  handleKeyDown(e) {
+    // Escape to unfocus
+    if (e.key === 'Escape') {
+      this.element.blur();
+      document.activeElement?.blur();
+    }
+  }
+  
+  /**
+   * Show theme picker popup
+   */
+  showThemePicker() {
+    const themes = ['yellow', 'blue', 'green', 'pink'];
+    const themeColors = {
+      yellow: '#facc15',
+      blue: '#3b82f6',
+      green: '#22c55e',
+      pink: '#ec4899'
+    };
+    
+    // Create picker
+    const picker = document.createElement('div');
+    picker.className = 'sn-theme-picker';
+    picker.style.cssText = `
+      position: absolute;
+      top: 40px;
+      right: 8px;
+      background: white;
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: flex;
+      gap: 6px;
+      z-index: 10;
+    `;
+    
+    themes.forEach(theme => {
+      const btn = document.createElement('button');
+      btn.style.cssText = `
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid ${this.theme === theme ? '#1f2937' : 'transparent'};
+        background: ${themeColors[theme]};
+        cursor: pointer;
+        transition: transform 0.15s ease;
+      `;
+      btn.title = theme.charAt(0).toUpperCase() + theme.slice(1);
+      
+      btn.addEventListener('click', () => {
+        this.setTheme(theme);
+        this.onSave(this.content); // Save theme change
+        picker.remove();
+      });
+      
+      btn.addEventListener('mouseenter', () => {
+        btn.style.transform = 'scale(1.1)';
+      });
+      
+      btn.addEventListener('mouseleave', () => {
+        btn.style.transform = 'scale(1)';
+      });
+      
+      picker.appendChild(btn);
+    });
+    
+    this.element.appendChild(picker);
+    
+    // Close on click outside
+    const closeHandler = (e) => {
+      if (!picker.contains(e.target)) {
+        picker.remove();
+        document.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 0);
+  }
+  
+  /**
+   * Show position picker popup
+   */
+  showPositionPicker() {
+    const positions = [
+      { value: 'top-left', label: 'Top Left', icon: '↖' },
+      { value: 'top-right', label: 'Top Right', icon: '↗' },
+      { value: 'bottom-left', label: 'Bottom Left', icon: '↙' },
+      { value: 'bottom-right', label: 'Bottom Right', icon: '↘' }
+    ];
+    
+    const picker = document.createElement('div');
+    picker.className = 'sn-position-picker';
+    picker.style.cssText = `
+      position: absolute;
+      top: 40px;
+      right: 36px;
+      background: white;
+      border-radius: 8px;
+      padding: 4px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 10;
+    `;
+    
+    positions.forEach(pos => {
+      const btn = document.createElement('button');
+      btn.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 8px 12px;
+        border: none;
+        background: ${this.position.anchor === pos.value ? '#f3f4f6' : 'transparent'};
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        color: #374151;
+        text-align: left;
+      `;
+      btn.innerHTML = `<span>${pos.icon}</span><span>${pos.label}</span>`;
+      
+      btn.addEventListener('click', () => {
+        this.position.anchor = pos.value;
+        this.customPosition = null; // Reset custom position
+        this.updatePosition();
+        this.onSave(this.content); // Save position change
+        picker.remove();
+      });
+      
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = '#f3f4f6';
+      });
+      
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = this.position.anchor === pos.value ? '#f3f4f6' : 'transparent';
+      });
+      
+      picker.appendChild(btn);
+    });
+    
+    this.element.appendChild(picker);
+    
+    // Close on click outside
+    const closeHandler = (e) => {
+      if (!picker.contains(e.target)) {
+        picker.remove();
+        document.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 0);
+  }
+  
+  /**
+   * Update note position relative to anchor element
+   */
+  updatePosition() {
+    if (!this.anchor || !this.element) return;
+    
+    if (this.customPosition) {
+      this.element.style.left = `${this.customPosition.x}px`;
+      this.element.style.top = `${this.customPosition.y}px`;
+      return;
+    }
+    
+    const anchorRect = this.anchor.getBoundingClientRect();
+    const noteRect = this.element.getBoundingClientRect();
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    
+    let x, y;
+    
+    // Calculate position based on anchor position setting
+    switch (this.position.anchor) {
+      case 'top-left':
+        x = anchorRect.left + scrollX - noteRect.width - 10;
+        y = anchorRect.top + scrollY;
+        break;
+      case 'bottom-right':
+        x = anchorRect.right + scrollX + 10;
+        y = anchorRect.bottom + scrollY - noteRect.height;
+        break;
+      case 'bottom-left':
+        x = anchorRect.left + scrollX - noteRect.width - 10;
+        y = anchorRect.bottom + scrollY - noteRect.height;
+        break;
+      case 'top-right':
+      default:
+        x = anchorRect.right + scrollX + 10;
+        y = anchorRect.top + scrollY;
+        break;
+    }
+    
+    // Collision detection - keep note in viewport
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Adjust horizontal position
+    if (x + noteRect.width > scrollX + viewportWidth) {
+      x = anchorRect.left + scrollX - noteRect.width - 10;
+    }
+    if (x < scrollX) {
+      x = scrollX + 10;
+    }
+    
+    // Adjust vertical position
+    if (y + noteRect.height > scrollY + viewportHeight) {
+      y = scrollY + viewportHeight - noteRect.height - 10;
+    }
+    if (y < scrollY) {
+      y = scrollY + 10;
+    }
+    
+    this.element.style.left = `${x}px`;
+    this.element.style.top = `${y}px`;
+  }
+  
+  /**
+   * Handle drag start
+   * @param {MouseEvent} e - Mouse event
+   */
+  handleDragStart(e) {
+    // Don't start drag if clicking buttons
+    if (e.target.closest('.sn-note-btn')) return;
+    
+    this.isDragging = true;
+    this.dragOffset = {
+      x: e.clientX - this.element.getBoundingClientRect().left,
+      y: e.clientY - this.element.getBoundingClientRect().top
+    };
+    
+    this.element.style.cursor = 'grabbing';
+    e.preventDefault();
+  }
+  
+  /**
+   * Handle drag move
+   * @param {MouseEvent} e - Mouse event
+   */
+  handleDragMove(e) {
+    if (!this.isDragging) return;
+    
+    const x = e.clientX - this.dragOffset.x + window.scrollX;
+    const y = e.clientY - this.dragOffset.y + window.scrollY;
+    
+    this.customPosition = { x, y };
+    this.element.style.left = `${x}px`;
+    this.element.style.top = `${y}px`;
+  }
+  
+  /**
+   * Handle drag end
+   */
+  handleDragEnd() {
+    if (!this.isDragging) return;
+    
+    this.isDragging = false;
+    this.element.style.cursor = '';
+  }
+  
+  
+  /**
+   * Handle delete button click
+   */
+  handleDelete() {
+    if (confirm('Delete this note?')) {
+      this.onDelete();
+    }
+  }
+  
+  /**
+   * Handle share button click
+   */
+  handleShare() {
+    this.showShareModal();
+  }
+  
+  /**
+   * Show share modal
+   */
+  showShareModal() {
+    // Create modal overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'sn-modal-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2147483647;
+    `;
+    
+    // Create modal content
+    const modal = document.createElement('div');
+    modal.className = 'sn-modal';
+    modal.style.cssText = `
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      width: 320px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+    
+    modal.innerHTML = `
+      <h3 style="margin: 0 0 16px; font-size: 18px; color: #1f2937;">Share Note</h3>
+      <p style="margin: 0 0 16px; font-size: 14px; color: #6b7280;">
+        Enter the email address of the person you want to share this note with.
+      </p>
+      <input type="email" placeholder="colleague@example.com" 
+        style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; margin-bottom: 16px; box-sizing: border-box;">
+      <div style="display: flex; gap: 8px; justify-content: flex-end;">
+        <button class="sn-modal-cancel" style="padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #374151; cursor: pointer; font-size: 14px;">Cancel</button>
+        <button class="sn-modal-share" style="padding: 8px 16px; border: none; border-radius: 6px; background: #facc15; color: #713f12; cursor: pointer; font-size: 14px; font-weight: 500;">Share</button>
+      </div>
+    `;
+    
+    overlay.appendChild(modal);
+    
+    // Get parent container (shadow root)
+    const container = this.element.parentNode;
+    container.appendChild(overlay);
+    
+    // Focus email input
+    const emailInput = modal.querySelector('input');
+    emailInput.focus();
+    
+    // Handle cancel
+    modal.querySelector('.sn-modal-cancel').addEventListener('click', () => {
+      container.removeChild(overlay);
+    });
+    
+    // Handle share
+    modal.querySelector('.sn-modal-share').addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      if (!email) return;
+      
+      try {
+        const response = await chrome.runtime.sendMessage({
+          action: 'shareNote',
+          noteId: this.id,
+          email: email
+        });
+        
+        if (response.success) {
+          container.removeChild(overlay);
+          this.showToast('Note shared successfully!');
+        } else {
+          this.showToast(response.error || 'Failed to share note', 'error');
+        }
+      } catch (error) {
+        this.showToast('Failed to share note', 'error');
+      }
+    });
+    
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        container.removeChild(overlay);
+      }
+    });
+    
+    // Close on escape
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        container.removeChild(overlay);
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+  }
+  
+  /**
+   * Show toast notification
+   * @param {string} message - Toast message
+   * @param {string} type - Toast type ('success' or 'error')
+   */
+  showToast(message, type = 'success') {
+    const container = this.element.parentNode;
+    
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      background: ${type === 'error' ? '#ef4444' : '#22c55e'};
+      color: white;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 2147483647;
+      animation: slideUp 0.3s ease;
+    `;
+    toast.textContent = message;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => container.removeChild(toast), 300);
+    }, 3000);
+  }
+  
+  /**
+   * Handle window resize
+   */
+  handleWindowResize() {
+    if (!this.customPosition) {
+      this.updatePosition();
+    }
+  }
+  
+  /**
+   * Show the note
+   */
+  show() {
+    this.isVisible = true;
+    this.element.classList.remove('sn-hidden');
+    this.element.classList.add('sn-visible');
+    this.updatePosition();
+  }
+  
+  /**
+   * Hide the note
+   */
+  hide() {
+    this.isVisible = false;
+    this.element.classList.remove('sn-visible');
+    this.element.classList.add('sn-hidden');
+  }
+  
+  /**
+   * Highlight the note (visual feedback)
+   */
+  highlight() {
+    this.element.style.transform = 'scale(1.05)';
+    this.element.style.boxShadow = '0 0 0 3px #3b82f6, 0 4px 12px rgba(0,0,0,0.15)';
+    
+    setTimeout(() => {
+      this.element.style.transform = '';
+      this.element.style.boxShadow = '';
+    }, 1000);
+  }
+  
+  /**
+   * Update anchor element
+   * @param {Element} newAnchor - New anchor element
+   */
+  updateAnchor(newAnchor) {
+    this.anchor = newAnchor;
+    this.customPosition = null;
+    this.updatePosition();
+  }
+  
+  /**
+   * Set note theme
+   * @param {string} theme - Theme name
+   */
+  setTheme(theme) {
+    this.element.classList.remove(`sn-theme-${this.theme}`);
+    this.theme = theme;
+    this.element.classList.add(`sn-theme-${this.theme}`);
+  }
+  
+  /**
+   * Escape HTML to prevent XSS
+   * @param {string} str - String to escape
+   * @returns {string} Escaped string
+   */
+  escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+  
+  /**
+   * Destroy the note and cleanup
+   */
+  destroy() {
+    // Clear save timeout
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+    
+    // Remove event listeners
+    document.removeEventListener('mousemove', this.handleDragMove.bind(this));
+    document.removeEventListener('mouseup', this.handleDragEnd.bind(this));
+    window.removeEventListener('resize', this.handleWindowResize.bind(this));
+    
+    // Remove element
+    if (this.element && this.element.parentNode) {
+      this.element.parentNode.removeChild(this.element);
+    }
+  }
+}
