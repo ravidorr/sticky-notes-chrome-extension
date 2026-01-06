@@ -50,11 +50,6 @@ body {
   letter-spacing: -0.5px;
 }
 
-.header-actions {
-  display: flex;
-  gap: 8px;
-}
-
 /* Buttons */
 .icon-btn {
   display: flex;

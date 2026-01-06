@@ -6,8 +6,7 @@
 import { 
   signInWithCredential, 
   GoogleAuthProvider,
-  signOut as firebaseSignOut,
-  onAuthStateChanged
+  signOut as firebaseSignOut
 } from 'firebase/auth';
 import { auth, isFirebaseConfigured, initializeFirebase } from './config.js';
 
@@ -143,60 +142,3 @@ export async function getCurrentUser() {
   return result.user || null;
 }
 
-/**
- * Subscribe to auth state changes
- * @param {Function} callback - Callback function(user)
- * @returns {Function} Unsubscribe function
- */
-export function subscribeToAuthState(callback) {
-  if (isAuthConfigured() && auth) {
-    return onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        const user = {
-          uid: firebaseUser.uid,
-          displayName: firebaseUser.displayName,
-          email: firebaseUser.email,
-          photoURL: firebaseUser.photoURL
-        };
-        callback(user);
-      } else {
-        callback(null);
-      }
-    });
-  }
-  
-  // For local development, check storage
-  const checkStorage = async () => {
-    const user = await getCurrentUser();
-    callback(user);
-  };
-  
-  checkStorage();
-  
-  // Listen to storage changes
-  const listener = (changes, area) => {
-    if (area === 'local' && changes.user) {
-      callback(changes.user.newValue || null);
-    }
-  };
-  
-  chrome.storage.onChanged.addListener(listener);
-  
-  return () => {
-    chrome.storage.onChanged.removeListener(listener);
-  };
-}
-
-/**
- * Lookup user by email
- * This is a placeholder - in production, you'd need a backend API
- * or Cloud Functions to lookup users by email
- * @param {string} email - Email to lookup
- * @returns {Promise<Object|null>} User info or null
- */
-export async function lookupUserByEmail(email) {
-  // In production, this would call a Cloud Function
-  // For now, we'll store and lookup from a users collection
-  console.warn('lookupUserByEmail requires Cloud Functions for production use');
-  return null;
-}

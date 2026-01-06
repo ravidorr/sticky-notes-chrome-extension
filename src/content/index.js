@@ -8,7 +8,6 @@ import { SelectionOverlay } from './components/SelectionOverlay.js';
 import { SelectorEngine } from './selectors/SelectorEngine.js';
 import { VisibilityManager } from './observers/VisibilityManager.js';
 import { RichEditor } from './components/RichEditor.js';
-import { storage } from '../shared/storage.js';
 
 /**
  * Main application class for the content script
@@ -32,19 +31,33 @@ class StickyNotesApp {
    * Initialize the application
    */
   async init() {
-    // Create shadow DOM container
-    this.createShadowContainer();
-    
-    // Load existing notes for this page
-    await this.loadNotes();
-    
-    // Setup message listeners
-    this.setupMessageListeners();
-    
-    // Setup mutation observer for dynamic content
-    this.setupMutationObserver();
-    
-    console.log('Sticky Notes content script initialized');
+    console.log('[StickyNotes] init() started');
+    try {
+      // Setup message listeners FIRST so we can receive messages immediately
+      console.log('[StickyNotes] Setting up message listeners...');
+      this.setupMessageListeners();
+      console.log('[StickyNotes] Message listeners ready');
+      
+      // Create shadow DOM container
+      console.log('[StickyNotes] Creating shadow container...');
+      this.createShadowContainer();
+      console.log('[StickyNotes] Shadow container created');
+      
+      // Setup mutation observer for dynamic content
+      console.log('[StickyNotes] Setting up mutation observer...');
+      this.setupMutationObserver();
+      console.log('[StickyNotes] Mutation observer ready');
+      
+      console.log('[StickyNotes] ✅ Content script fully initialized and ready to receive messages');
+      
+      // Load existing notes for this page (async, non-blocking)
+      console.log('[StickyNotes] Loading notes for this page...');
+      this.loadNotes().catch(err => {
+        console.warn('[StickyNotes] Failed to load notes:', err);
+      });
+    } catch (error) {
+      console.error('[StickyNotes] ❌ Failed to initialize:', error);
+    }
   }
   
   /**
@@ -67,10 +80,13 @@ class StickyNotesApp {
     // Create shadow root
     this.shadowRoot = host.attachShadow({ mode: 'closed' });
     
-    // Inject styles
+    // Inject styles into shadow DOM
     const style = document.createElement('style');
     style.textContent = this.getStyles();
     this.shadowRoot.appendChild(style);
+    
+    // Inject selection styles into main document (these need to apply to page elements)
+    this.injectMainDocumentStyles();
     
     // Create container for notes
     this.container = document.createElement('div');
@@ -83,13 +99,20 @@ class StickyNotesApp {
   }
   
   /**
-   * Get CSS styles for shadow DOM
+   * Inject styles that need to apply to main document elements
    */
-  getStyles() {
-    // Return inline styles since we can't easily import CSS into shadow DOM
-    return `
+  injectMainDocumentStyles() {
+    const styleId = 'sticky-notes-main-styles';
+    
+    // Don't inject twice
+    if (document.getElementById(styleId)) return;
+    
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
       /* Selection mode cursor */
-      .sn-selection-mode {
+      .sn-selection-mode,
+      .sn-selection-mode * {
         cursor: crosshair !important;
       }
 
@@ -98,8 +121,17 @@ class StickyNotesApp {
         outline: 2px solid #3b82f6 !important;
         outline-offset: 2px !important;
         background-color: rgba(59, 130, 246, 0.1) !important;
+        transition: outline 0.1s ease, background-color 0.1s ease !important;
       }
-
+    `;
+    document.head.appendChild(style);
+  }
+  
+  /**
+   * Get CSS styles for shadow DOM
+   */
+  getStyles() {
+    return `
       /* Sticky note container */
       .sn-note {
         position: absolute;
@@ -350,12 +382,21 @@ class StickyNotesApp {
    * Setup message listeners for popup communication
    */
   setupMessageListeners() {
+    console.log('[StickyNotes] Adding chrome.runtime.onMessage listener');
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      console.log('[StickyNotes] 📨 Message received:', message);
       this.handleMessage(message)
-        .then(sendResponse)
-        .catch(error => sendResponse({ success: false, error: error.message }));
+        .then(response => {
+          console.log('[StickyNotes] 📤 Sending response:', response);
+          sendResponse(response);
+        })
+        .catch(error => {
+          console.error('[StickyNotes] ❌ Message handler error:', error);
+          sendResponse({ success: false, error: error.message });
+        });
       return true;
     });
+    console.log('[StickyNotes] Message listener registered');
   }
   
   /**
@@ -363,25 +404,37 @@ class StickyNotesApp {
    * @param {Object} message - Message object
    */
   async handleMessage(message) {
+    console.log('[StickyNotes] Handling action:', message.action);
+    
     switch (message.action) {
+      case 'ping':
+        console.log('[StickyNotes] Ping received, responding with ready');
+        return { success: true, ready: true };
+      
       case 'enableSelectionMode':
+        console.log('[StickyNotes] Enabling selection mode...');
         this.enableSelectionMode();
+        console.log('[StickyNotes] Selection mode enabled');
         return { success: true };
       
       case 'disableSelectionMode':
+        console.log('[StickyNotes] Disabling selection mode...');
         this.disableSelectionMode();
         return { success: true };
       
       case 'highlightNote':
+        console.log('[StickyNotes] Highlighting note:', message.noteId);
         this.highlightNote(message.noteId);
         return { success: true };
       
       case 'pageLoaded':
       case 'urlChanged':
+        console.log('[StickyNotes] URL changed:', message.url);
         await this.handleUrlChange(message.url);
         return { success: true };
       
       default:
+        console.warn('[StickyNotes] Unknown action:', message.action);
         return { success: false, error: 'Unknown action' };
     }
   }
@@ -390,20 +443,30 @@ class StickyNotesApp {
    * Enable element selection mode
    */
   enableSelectionMode() {
-    if (this.isSelectionMode) return;
+    console.log('[StickyNotes] enableSelectionMode() called, current state:', this.isSelectionMode);
+    
+    if (this.isSelectionMode) {
+      console.log('[StickyNotes] Already in selection mode, skipping');
+      return;
+    }
     
     this.isSelectionMode = true;
+    console.log('[StickyNotes] Set isSelectionMode to true');
     
     // Add selection mode class to document
+    console.log('[StickyNotes] Adding sn-selection-mode class to body');
     document.body.classList.add('sn-selection-mode');
     
     // Create selection overlay
+    console.log('[StickyNotes] Creating SelectionOverlay...');
     this.selectionOverlay = new SelectionOverlay({
       onSelect: (element) => this.handleElementSelect(element),
       onCancel: () => this.disableSelectionMode()
     });
     
+    console.log('[StickyNotes] Appending overlay to container');
     this.container.appendChild(this.selectionOverlay.element);
+    console.log('[StickyNotes] ✅ Selection mode fully enabled - click an element to add a note');
   }
   
   /**
@@ -841,8 +904,29 @@ class StickyNotesApp {
 }
 
 // Initialize the app when the document is ready
+function initStickyNotes() {
+  console.log('[StickyNotes] initStickyNotes called, readyState:', document.readyState);
+  try {
+    // Check if already initialized (for manual injection)
+    if (window.__stickyNotesInitialized) {
+      console.log('[StickyNotes] Already initialized, skipping');
+      return;
+    }
+    window.__stickyNotesInitialized = true;
+    console.log('[StickyNotes] Creating StickyNotesApp instance...');
+    
+    new StickyNotesApp();
+  } catch (error) {
+    console.error('[StickyNotes] Failed to initialize:', error);
+  }
+}
+
+console.log('[StickyNotes] Content script loaded, readyState:', document.readyState);
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => new StickyNotesApp());
+  console.log('[StickyNotes] Document still loading, adding DOMContentLoaded listener');
+  document.addEventListener('DOMContentLoaded', initStickyNotes);
 } else {
-  new StickyNotesApp();
+  console.log('[StickyNotes] Document ready, initializing immediately');
+  initStickyNotes();
 }

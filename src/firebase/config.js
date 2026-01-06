@@ -60,4 +60,4 @@ export function initializeFirebase() {
   return { app, auth, db };
 }
 
-export { app, auth, db };
+export { auth, db };

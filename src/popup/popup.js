@@ -14,7 +14,6 @@ const userEmail = document.getElementById('userEmail');
 const addNoteBtn = document.getElementById('addNoteBtn');
 const notesList = document.getElementById('notesList');
 const notesCount = document.getElementById('notesCount');
-const settingsBtn = document.getElementById('settingsBtn');
 
 /**
  * Initialize the popup
@@ -103,22 +102,118 @@ async function handleLogout() {
  * Handle add note button click
  */
 async function handleAddNote() {
+  console.log('[Popup] Add Note button clicked');
+  
   try {
     // Get current active tab
+    console.log('[Popup] Querying active tab...');
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     
     if (!tab) {
-      console.error('No active tab found');
+      console.error('[Popup] No active tab found');
       return;
     }
     
-    // Send message to content script to enable selection mode
-    await chrome.tabs.sendMessage(tab.id, { action: 'enableSelectionMode' });
+    console.log('[Popup] Active tab:', { id: tab.id, url: tab.url });
+    
+    // Check if it's a restricted page
+    if (isRestrictedUrl(tab.url)) {
+      console.log('[Popup] URL is restricted, cannot inject content script');
+      alert('Cannot add notes to this page. Chrome system pages and extension pages are not supported.');
+      return;
+    }
+    
+    // Try to send message to content script
+    console.log('[Popup] Sending enableSelectionMode message to tab', tab.id);
+    try {
+      const response = await chrome.tabs.sendMessage(tab.id, { action: 'enableSelectionMode' });
+      console.log('[Popup] Content script responded:', response);
+    } catch (error) {
+      console.log('[Popup] First message failed:', error.message);
+      
+      // Content script not loaded - inject it first
+      if (error.message.includes('Receiving end does not exist') || 
+          error.message.includes('Could not establish connection')) {
+        console.log('[Popup] Content script not found, injecting...');
+        await injectContentScript(tab.id);
+        
+        // Wait for the script to initialize with retry
+        let retries = 5;
+        let lastError = null;
+        
+        while (retries > 0) {
+          console.log(`[Popup] Waiting 200ms before retry ${6 - retries}/5...`);
+          await new Promise(resolve => setTimeout(resolve, 200));
+          try {
+            console.log('[Popup] Retrying message...');
+            const response = await chrome.tabs.sendMessage(tab.id, { action: 'enableSelectionMode' });
+            console.log('[Popup] Retry successful! Response:', response);
+            window.close();
+            return; // Success!
+          } catch (retryError) {
+            console.log(`[Popup] Retry failed:`, retryError.message);
+            lastError = retryError;
+            retries--;
+          }
+        }
+        
+        throw lastError || new Error('Content script failed to respond after injection');
+      } else {
+        throw error;
+      }
+    }
     
     // Close the popup
+    console.log('[Popup] Success! Closing popup...');
     window.close();
   } catch (error) {
-    console.error('Error enabling selection mode:', error);
+    console.error('[Popup] Error enabling selection mode:', error);
+    alert('Could not enable selection mode. Please refresh the page and try again.');
+  }
+}
+
+/**
+ * Check if URL is restricted (can't inject content scripts)
+ * @param {string} url - URL to check
+ * @returns {boolean} True if restricted
+ */
+function isRestrictedUrl(url) {
+  if (!url) return true;
+  
+  const restrictedPatterns = [
+    /^chrome:\/\//,
+    /^chrome-extension:\/\//,
+    /^about:/,
+    /^edge:\/\//,
+    /^brave:\/\//,
+    /^opera:\/\//,
+    /^vivaldi:\/\//,
+    /^file:\/\//,
+    /^view-source:/,
+    /^devtools:\/\//,
+    /^data:/,
+    /^blob:/,
+    /^javascript:/
+  ];
+  
+  return restrictedPatterns.some(pattern => pattern.test(url));
+}
+
+/**
+ * Inject content script into tab
+ * @param {number} tabId - Tab ID
+ */
+async function injectContentScript(tabId) {
+  console.log('[Popup] Attempting to inject content script into tab', tabId);
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['src/content/content.js']
+    });
+    console.log('[Popup] Content script injection successful. Results:', results);
+  } catch (error) {
+    console.error('[Popup] Failed to inject content script:', error);
+    throw new Error(`Could not inject content script: ${error.message}`);
   }
 }
 
@@ -262,10 +357,6 @@ function setupEventListeners() {
   loginBtn.addEventListener('click', handleLogin);
   logoutBtn.addEventListener('click', handleLogout);
   addNoteBtn.addEventListener('click', handleAddNote);
-  settingsBtn.addEventListener('click', () => {
-    // TODO: Open settings page
-    console.log('Settings clicked');
-  });
 }
 
 // Initialize popup when DOM is ready

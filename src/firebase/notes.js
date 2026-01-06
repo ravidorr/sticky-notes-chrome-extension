@@ -14,7 +14,6 @@ import {
   query, 
   where, 
   orderBy,
-  onSnapshot,
   serverTimestamp 
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './config.js';
@@ -52,29 +51,6 @@ export async function createNote(noteData, userId) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
-}
-
-/**
- * Get a note by ID
- * @param {string} noteId - Note ID
- * @returns {Promise<Object|null>} Note data or null
- */
-export async function getNote(noteId) {
-  if (!isFirebaseConfigured() || !db) {
-    throw new Error('Firebase is not configured');
-  }
-  
-  const docRef = doc(db, NOTES_COLLECTION, noteId);
-  const docSnap = await getDoc(docRef);
-  
-  if (docSnap.exists()) {
-    return {
-      id: docSnap.id,
-      ...docSnap.data()
-    };
-  }
-  
-  return null;
 }
 
 /**
@@ -239,99 +215,6 @@ export async function shareNote(noteId, shareWithUserId, ownerId) {
 }
 
 /**
- * Remove sharing from a note
- * @param {string} noteId - Note ID
- * @param {string} removeUserId - User ID to remove
- * @param {string} ownerId - Current owner's user ID
- * @returns {Promise<void>}
- */
-export async function unshareNote(noteId, removeUserId, ownerId) {
-  if (!isFirebaseConfigured() || !db) {
-    throw new Error('Firebase is not configured');
-  }
-  
-  const docRef = doc(db, NOTES_COLLECTION, noteId);
-  const docSnap = await getDoc(docRef);
-  
-  if (!docSnap.exists()) {
-    throw new Error('Note not found');
-  }
-  
-  const noteData = docSnap.data();
-  
-  // Only owner can modify sharing
-  if (noteData.ownerId !== ownerId) {
-    throw new Error('Only the owner can modify sharing');
-  }
-  
-  const sharedWith = (noteData.sharedWith || []).filter(id => id !== removeUserId);
-  await updateDoc(docRef, { 
-    sharedWith,
-    updatedAt: serverTimestamp()
-  });
-}
-
-/**
- * Subscribe to real-time updates for notes on a URL
- * @param {string} url - Page URL
- * @param {string} userId - Current user ID
- * @param {Function} callback - Callback function(notes)
- * @returns {Function} Unsubscribe function
- */
-export function subscribeToNotes(url, userId, callback) {
-  if (!isFirebaseConfigured() || !db) {
-    console.warn('Firebase is not configured');
-    return () => {};
-  }
-  
-  const normalizedUrl = normalizeUrl(url);
-  
-  // Subscribe to owned notes
-  const ownedQuery = query(
-    collection(db, NOTES_COLLECTION),
-    where('url', '==', normalizedUrl),
-    where('ownerId', '==', userId)
-  );
-  
-  // Subscribe to shared notes
-  const sharedQuery = query(
-    collection(db, NOTES_COLLECTION),
-    where('url', '==', normalizedUrl),
-    where('sharedWith', 'array-contains', userId)
-  );
-  
-  const notes = new Map();
-  
-  const unsubOwned = onSnapshot(ownedQuery, (snapshot) => {
-    snapshot.docChanges().forEach(change => {
-      if (change.type === 'removed') {
-        notes.delete(change.doc.id);
-      } else {
-        notes.set(change.doc.id, { id: change.doc.id, ...change.doc.data() });
-      }
-    });
-    callback(Array.from(notes.values()));
-  });
-  
-  const unsubShared = onSnapshot(sharedQuery, (snapshot) => {
-    snapshot.docChanges().forEach(change => {
-      if (change.type === 'removed') {
-        notes.delete(change.doc.id);
-      } else {
-        notes.set(change.doc.id, { id: change.doc.id, ...change.doc.data(), isShared: true });
-      }
-    });
-    callback(Array.from(notes.values()));
-  });
-  
-  // Return combined unsubscribe function
-  return () => {
-    unsubOwned();
-    unsubShared();
-  };
-}
-
-/**
  * Normalize URL to origin + pathname
  * @param {string} url - URL to normalize
  * @returns {string} Normalized URL
@@ -343,29 +226,4 @@ function normalizeUrl(url) {
   } catch {
     return url;
   }
-}
-
-/**
- * Migrate local notes to Firestore
- * @param {Array} localNotes - Array of local notes
- * @param {string} userId - User ID
- * @returns {Promise<Array>} Array of created notes
- */
-export async function migrateLocalNotes(localNotes, userId) {
-  if (!isFirebaseConfigured() || !db) {
-    throw new Error('Firebase is not configured');
-  }
-  
-  const createdNotes = [];
-  
-  for (const note of localNotes) {
-    try {
-      const created = await createNote(note, userId);
-      createdNotes.push(created);
-    } catch (error) {
-      console.error('Failed to migrate note:', error);
-    }
-  }
-  
-  return createdNotes;
 }

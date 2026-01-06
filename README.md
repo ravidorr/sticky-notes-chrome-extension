@@ -38,8 +38,7 @@ sticky-notes-chrome-extension/
 │   │   ├── selectors/      # CSS selector generation (SelectorEngine)
 │   │   └── observers/      # Visibility management (VisibilityManager)
 │   ├── background/         # Service worker
-│   ├── shared/             # Shared utilities
-│   └── firebase/           # Firebase services (auth, notes)
+│   └── firebase/           # Firebase services (auth, notes, config)
 ├── public/
 │   └── manifest.json       # Chrome Extension Manifest V3
 ├── tests/
