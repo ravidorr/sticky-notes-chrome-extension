@@ -57,10 +57,6 @@ sticky-notes-chrome-extension/
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/ravidorr/sticky-notes-chrome-extension.git
-cd sticky-notes-chrome-extension
-
 # Install dependencies
 npm install
 
@@ -152,7 +148,7 @@ service cloud.firestore {
 ## Tech Stack
 
 - **Build Tool**: Vite
-- **Styling**: Tailwind CSS
+- **Styling**: Vanilla CSS (Shadow DOM isolated)
 - **Backend**: Firebase (Firestore, Authentication)
 - **Testing**: Jest (unit), Playwright (E2E)
 - **Extension**: Chrome Manifest V3
