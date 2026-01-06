@@ -39,12 +39,4 @@
       "run_at": "document_idle"
     }
   ],
-  "oauth2": {
-    "client_id": "YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com",
-    "scopes": [
-      "https://www.googleapis.com/auth/userinfo.email",
-      "https://www.googleapis.com/auth/userinfo.profile"
-    ]
-  },
-  "key": "YOUR_EXTENSION_KEY"
 }
