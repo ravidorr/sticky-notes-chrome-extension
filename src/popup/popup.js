@@ -230,34 +230,23 @@ async function loadNotesForCurrentTab() {
     
     console.log('[Popup] Loading notes for tab:', tab.url);
     
-    // Get notes from storage
-    const result = await chrome.storage.local.get(['notes']);
-    const allNotes = result.notes || [];
+    // Get notes from background script (which uses Firestore if configured)
+    const response = await chrome.runtime.sendMessage({
+      action: 'getNotes',
+      url: tab.url
+    });
     
-    console.log('[Popup] Total notes in storage:', allNotes.length);
-    allNotes.forEach((note, i) => {
+    if (!response.success) {
+      console.error('[Popup] Failed to get notes:', response.error);
+      return;
+    }
+    
+    const pageNotes = response.notes || [];
+    
+    console.log('[Popup] Notes received from background:', pageNotes.length);
+    pageNotes.forEach((note, i) => {
       console.log(`[Popup] Note ${i}:`, { id: note.id, url: note.url, content: note.content?.substring(0, 50) });
     });
-    
-    // Filter notes for current URL (origin + pathname only, ignoring query params)
-    const currentUrl = new URL(tab.url);
-    const currentNormalized = currentUrl.origin + currentUrl.pathname;
-    
-    console.log('[Popup] Current normalized URL:', currentNormalized);
-    
-    const pageNotes = allNotes.filter(note => {
-      try {
-        const noteUrl = new URL(note.url);
-        const noteNormalized = noteUrl.origin + noteUrl.pathname;
-        const matches = noteNormalized === currentNormalized;
-        console.log(`[Popup] Comparing: ${noteNormalized} === ${currentNormalized} ? ${matches}`);
-        return matches;
-      } catch {
-        return false;
-      }
-    });
-    
-    console.log('[Popup] Filtered notes for this page:', pageNotes.length);
     
     // Update UI
     renderNotesList(pageNotes);

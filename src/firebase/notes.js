@@ -32,7 +32,7 @@ export async function createNote(noteData, userId) {
   }
   
   const note = {
-    url: noteData.url,
+    url: normalizeUrl(noteData.url),
     selector: noteData.selector,
     content: noteData.content || '',
     theme: noteData.theme || 'yellow',
@@ -66,6 +66,10 @@ export async function getNotesForUrl(url, userId) {
   
   // Normalize URL to origin + pathname
   const normalizedUrl = normalizeUrl(url);
+  console.log('[Firestore] getNotesForUrl called');
+  console.log('[Firestore] Original URL:', url);
+  console.log('[Firestore] Normalized URL:', normalizedUrl);
+  console.log('[Firestore] User ID:', userId);
   
   // Query for owned notes
   const ownedQuery = query(
@@ -88,23 +92,31 @@ export async function getNotesForUrl(url, userId) {
     getDocs(sharedQuery)
   ]);
   
+  console.log('[Firestore] Owned query returned:', ownedSnap.size, 'docs');
+  console.log('[Firestore] Shared query returned:', sharedSnap.size, 'docs');
+  
   const notes = [];
   const seenIds = new Set();
   
   ownedSnap.forEach(doc => {
+    const data = doc.data();
+    console.log('[Firestore] Owned note:', doc.id, 'URL:', data.url);
     if (!seenIds.has(doc.id)) {
       seenIds.add(doc.id);
-      notes.push({ id: doc.id, ...doc.data() });
+      notes.push({ id: doc.id, ...data });
     }
   });
   
   sharedSnap.forEach(doc => {
+    const data = doc.data();
+    console.log('[Firestore] Shared note:', doc.id, 'URL:', data.url);
     if (!seenIds.has(doc.id)) {
       seenIds.add(doc.id);
-      notes.push({ id: doc.id, ...doc.data(), isShared: true });
+      notes.push({ id: doc.id, ...data, isShared: true });
     }
   });
   
+  console.log('[Firestore] Total notes to return:', notes.length);
   return notes;
 }
 

@@ -116,14 +116,19 @@ async function getUser() {
 async function getNotes(url) {
   try {
     const user = await getCurrentUser();
+    console.log('[Background] getNotes called with URL:', url);
+    console.log('[Background] Current user:', user ? { uid: user.uid, email: user.email } : 'null');
+    console.log('[Background] Firebase configured:', isFirebaseConfigured());
     
     // Try Firestore first if configured and user is logged in
     if (isFirebaseConfigured() && user) {
       try {
+        console.log('[Background] Querying Firestore for notes...');
         const notes = await getNotesForUrl(url, user.uid);
+        console.log('[Background] Firestore returned', notes.length, 'notes:', notes);
         return { success: true, notes };
       } catch (error) {
-        console.warn('Firestore query failed, falling back to local storage:', error);
+        console.warn('[Background] Firestore query failed, falling back to local storage:', error);
       }
     }
     
