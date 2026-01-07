@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sticky Notes for your staging environment. Click, annotate, share. Bug reports that actually make sense.">
+    <meta name="keywords" content="chrome extension, bug reporting, QA testing, developer tools, annotation, sticky notes">
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Sticky Notes - Visual Bug Reporting for Dev Teams">
+    <meta property="og:description" content="Click, annotate, share. Bug reports that actually make sense.">
+    <meta property="og:image" content="images/og-image.png">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sticky Notes - Visual Bug Reporting for Dev Teams">
+    <meta name="twitter:description" content="Click, annotate, share. Bug reports that actually make sense.">
+    
+    <title>Sticky Notes - Visual Bug Reporting for Dev Teams</title>
+    
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Google Fonts -->
+    <!-- Using system fonts to match extension -->
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">
+                <span class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="3" width="18" height="18" rx="2" fill="#facc15"/>
+                        <path d="M7 8h10M7 12h10M7 16h6" stroke="#713f12" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </span>
+                <span class="logo-text">Sticky Notes</span>
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#pricing">Pricing</a>
+                <a href="https://github.com/user/sticky-notes-chrome-extension" target="_blank" rel="noopener">GitHub</a>
+            </div>
+            <a href="#" class="btn btn-primary nav-cta">Add to Chrome</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+        <div class="container">
+            <div class="hero-badge">Built for Dev Teams & QA</div>
+            <h1 class="hero-title">
+                Bug reports that<br>
+                <span class="highlight">actually make sense</span>
+            </h1>
+            <p class="hero-subtitle">
+                Sticky notes for your staging environment. Click on any element, 
+                add a note, and share with your team. No more "which button?" ping-pong.
+            </p>
+            <div class="hero-cta">
+                <a href="#" class="btn btn-primary btn-lg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2.4c5.302 0 9.6 4.298 9.6 9.6s-4.298 9.6-9.6 9.6-9.6-4.298-9.6-9.6S6.698 2.4 12 2.4z"/>
+                        <path d="M12 5.4L8.4 12h2.4v6.6l3.6-6.6h-2.4z"/>
+                    </svg>
+                    Add to Chrome — It's Free
+                </a>
+                <a href="#how-it-works" class="btn btn-secondary btn-lg">See How It Works</a>
+            </div>
+            <p class="hero-note">Free for personal use • No account required</p>
+        </div>
+        <div class="hero-visual">
+            <div class="browser-mockup">
+                <div class="browser-header">
+                    <div class="browser-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <div class="browser-url">staging.yourapp.com/dashboard</div>
+                </div>
+                <div class="browser-content">
+                    <div class="mockup-ui">
+                        <div class="mockup-sidebar"></div>
+                        <div class="mockup-main">
+                            <div class="mockup-header"></div>
+                            <div class="mockup-cards">
+                                <div class="mockup-card"></div>
+                                <div class="mockup-card highlighted">
+                                    <div class="sticky-note-demo">
+                                        <div class="sticky-header">
+                                            <span class="sticky-dot"></span>
+                                            Bug Report
+                                        </div>
+                                        <div class="sticky-body">
+                                            This card shows wrong total. Should be $1,234 not $1,324.
+                                        </div>
+                                        <div class="sticky-footer">
+                                            @jane • 2 min ago
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mockup-card"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Pain Points Section -->
+    <section class="pain-points">
+        <div class="container">
+            <h2 class="section-title">Sound familiar?</h2>
+            <div class="pain-grid">
+                <div class="pain-card">
+                    <div class="pain-icon">😤</div>
+                    <h3>"The button is broken"</h3>
+                    <p>Bug reports with zero context. Which button? Which page? What browser?</p>
+                </div>
+                <div class="pain-card">
+                    <div class="pain-icon">🏓</div>
+                    <h3>Screenshot ping-pong</h3>
+                    <p>Back and forth in Slack asking "which element?" and "can you highlight it?"</p>
+                </div>
+                <div class="pain-card">
+                    <div class="pain-icon">🔄</div>
+                    <h3>Staging changes daily</h3>
+                    <p>By the time you look at the bug, the page has changed and you can't reproduce it.</p>
+                </div>
+                <div class="pain-card">
+                    <div class="pain-icon">🎨</div>
+                    <h3>Designer handoff friction</h3>
+                    <p>"This margin looks off" — which margin? Where exactly? On what screen size?</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Everything you need,<br>nothing you don't</h2>
+                <p class="section-subtitle">Lightweight, fast, and built specifically for dev workflows.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Click-to-annotate</h3>
+                    <p>Click any element on the page. The note anchors to it automatically, even after page changes.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔗</div>
+                    <h3>Smart anchoring</h3>
+                    <p>Robust CSS selector engine with fuzzy matching. Notes re-attach even when the DOM changes.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✨</div>
+                    <h3>Rich text editor</h3>
+                    <p>Bold, italic, bullet lists, and links. Format your notes the way you want.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">☁️</div>
+                    <h3>Cloud sync</h3>
+                    <p>Sign in with Google. Your notes sync across devices and persist in the cloud.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">👥</div>
+                    <h3>Team sharing</h3>
+                    <p>Share notes with teammates by email. Everyone sees the same annotations.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <h3>Color themes</h3>
+                    <p>Categorize notes by color. Yellow for bugs, red for critical, green for approved.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Style isolation</h3>
+                    <p>Shadow DOM keeps notes styled correctly, no matter what CSS the page uses.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⌨️</div>
+                    <h3>Keyboard friendly</h3>
+                    <p>Notes don't interfere with your app's keyboard shortcuts. Full isolation.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Three clicks to clarity</h2>
+                <p class="section-subtitle">From confusion to actionable bug report in seconds.</p>
+            </div>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Click an element</h3>
+                        <p>Activate the extension and click on any element that needs feedback. A smart selector anchors your note to it.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Write your note</h3>
+                        <p>Describe the issue, suggestion, or question. Use rich text formatting to be clear.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Share with your team</h3>
+                        <p>Notes sync to the cloud. Share by email. Everyone sees notes anchored to the exact same elements.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section class="comparison">
+        <div class="container">
+            <h2 class="section-title">Why Sticky Notes?</h2>
+            <div class="comparison-table-wrapper">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th class="highlight-col">Sticky Notes</th>
+                            <th>Marker.io</th>
+                            <th>BugHerd</th>
+                            <th>Screenshots + Slack</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Element anchoring</td>
+                            <td class="highlight-col">✅ Smart selectors</td>
+                            <td>✅</td>
+                            <td>✅</td>
+                            <td>❌</td>
+                        </tr>
+                        <tr>
+                            <td>Works on SPAs</td>
+                            <td class="highlight-col">✅ Re-anchoring</td>
+                            <td>⚠️ Limited</td>
+                            <td>⚠️ Limited</td>
+                            <td>❌</td>
+                        </tr>
+                        <tr>
+                            <td>Free tier</td>
+                            <td class="highlight-col">✅ Generous</td>
+                            <td>❌ $39+/mo</td>
+                            <td>❌ $39+/mo</td>
+                            <td>✅</td>
+                        </tr>
+                        <tr>
+                            <td>Setup time</td>
+                            <td class="highlight-col">✅ 1 minute</td>
+                            <td>⚠️ 10+ min</td>
+                            <td>⚠️ 10+ min</td>
+                            <td>✅</td>
+                        </tr>
+                        <tr>
+                            <td>No code snippet</td>
+                            <td class="highlight-col">✅</td>
+                            <td>❌ Requires embed</td>
+                            <td>❌ Requires embed</td>
+                            <td>✅</td>
+                        </tr>
+                        <tr>
+                            <td>Lightweight</td>
+                            <td class="highlight-col">✅ ~50KB</td>
+                            <td>❌ Heavy</td>
+                            <td>❌ Heavy</td>
+                            <td>✅</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="pricing">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Simple, fair pricing</h2>
+                <p class="section-subtitle">Start free. Upgrade when your team grows.</p>
+            </div>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="pricing-header">
+                        <h3>Free</h3>
+                        <div class="price">$0</div>
+                        <p class="price-note">Forever free</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✓ Unlimited local notes</li>
+                        <li>✓ All note features</li>
+                        <li>✓ Rich text editor</li>
+                        <li>✓ Color themes</li>
+                        <li class="muted">✗ Cloud sync</li>
+                        <li class="muted">✗ Team sharing</li>
+                    </ul>
+                    <a href="#" class="btn btn-secondary btn-block">Get Started</a>
+                </div>
+                <div class="pricing-card featured">
+                    <div class="pricing-badge">Most Popular</div>
+                    <div class="pricing-header">
+                        <h3>Team</h3>
+                        <div class="price">$5<span>/user/mo</span></div>
+                        <p class="price-note">Billed annually</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✓ Everything in Free</li>
+                        <li>✓ Cloud sync</li>
+                        <li>✓ Share notes by email</li>
+                        <li>✓ Threaded comments</li>
+                        <li>✓ Offline support</li>
+                        <li>✓ Priority support</li>
+                    </ul>
+                    <a href="#" class="btn btn-primary btn-block">Start Free Trial</a>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-header">
+                        <h3>Pro</h3>
+                        <div class="price">$12<span>/user/mo</span></div>
+                        <p class="price-note">Billed annually</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✓ Everything in Team</li>
+                        <li>✓ Jira integration</li>
+                        <li>✓ GitHub Issues integration</li>
+                        <li>✓ Screenshot capture</li>
+                        <li>✓ Metadata capture</li>
+                        <li>✓ Custom branding</li>
+                    </ul>
+                    <a href="#" class="btn btn-secondary btn-block">Contact Sales</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <h2>Ready to fix your bug reporting?</h2>
+            <p>Join hundreds of dev teams who've ditched screenshot chaos for clarity.</p>
+            <a href="#" class="btn btn-primary btn-lg">Add to Chrome — It's Free</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="#" class="nav-logo">
+                        <span class="logo-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="3" y="3" width="18" height="18" rx="2" fill="#facc15"/>
+                                <path d="M7 8h10M7 12h10M7 16h6" stroke="#713f12" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                        <span class="logo-text">Sticky Notes</span>
+                    </a>
+                    <p>Visual bug reporting for dev teams. Built with care for developers.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <a href="#features">Features</a>
+                    <a href="#pricing">Pricing</a>
+                    <a href="#how-it-works">How It Works</a>
+                </div>
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <a href="#">Documentation</a>
+                    <a href="#">Changelog</a>
+                    <a href="https://github.com/user/sticky-notes-chrome-extension" target="_blank" rel="noopener">GitHub</a>
+                </div>
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Sticky Notes. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Add navbar background on scroll
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('.nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('scrolled');
+            } else {
+                nav.classList.remove('scrolled');
+            }
+        });
+    </script>
+</body>
+</html>
