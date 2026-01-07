@@ -5,6 +5,7 @@
 
 import { RichEditor } from './RichEditor.js';
 import { isValidEmail, THEME_COLORS, TIMEOUTS, VALID_THEMES } from '../../shared/utils.js';
+import { contentLogger as log } from '../../shared/logger.js';
 
 export class StickyNote {
   /**
@@ -161,26 +162,26 @@ export class StickyNote {
   /**
    * Handle theme button click
    */
-  handleThemeClick(e) {
-    e.stopPropagation();
+  handleThemeClick(event) {
+    event.stopPropagation();
     this.showThemePicker();
   }
   
   /**
    * Handle position button click
    */
-  handlePositionClick(e) {
-    e.stopPropagation();
+  handlePositionClick(event) {
+    event.stopPropagation();
     this.showPositionPicker();
   }
   
   /**
    * Handle keyboard shortcuts
-   * @param {KeyboardEvent} e - Keyboard event
+   * @param {KeyboardEvent} event - Keyboard event
    */
-  handleKeyDown(e) {
+  handleKeyDown(event) {
     // Escape to unfocus
-    if (e.key === 'Escape') {
+    if (event.key === 'Escape') {
       this.element.blur();
       document.activeElement?.blur();
     }
@@ -242,8 +243,8 @@ export class StickyNote {
     this.element.appendChild(picker);
     
     // Close on click outside
-    const closeHandler = (e) => {
-      if (!picker.contains(e.target)) {
+    const closeHandler = (clickEvent) => {
+      if (!picker.contains(clickEvent.target)) {
         picker.remove();
         document.removeEventListener('click', closeHandler);
       }
@@ -315,8 +316,8 @@ export class StickyNote {
     this.element.appendChild(picker);
     
     // Close on click outside
-    const closeHandler = (e) => {
-      if (!picker.contains(e.target)) {
+    const closeHandler = (clickEvent) => {
+      if (!picker.contains(clickEvent.target)) {
         picker.remove();
         document.removeEventListener('click', closeHandler);
       }
@@ -390,35 +391,35 @@ export class StickyNote {
   
   /**
    * Handle drag start
-   * @param {MouseEvent} e - Mouse event
+   * @param {MouseEvent} event - Mouse event
    */
-  handleDragStart(e) {
+  handleDragStart(event) {
     // Don't start drag if clicking buttons
-    if (e.target.closest('.sn-note-btn')) return;
+    if (event.target.closest('.sn-note-btn')) return;
     
     this.isDragging = true;
     this.dragOffset = {
-      x: e.clientX - this.element.getBoundingClientRect().left,
-      y: e.clientY - this.element.getBoundingClientRect().top
+      x: event.clientX - this.element.getBoundingClientRect().left,
+      y: event.clientY - this.element.getBoundingClientRect().top
     };
     
     this.element.style.cursor = 'grabbing';
-    e.preventDefault();
+    event.preventDefault();
   }
   
   /**
    * Handle drag move
-   * @param {MouseEvent} e - Mouse event
+   * @param {MouseEvent} event - Mouse event
    */
-  handleDragMove(e) {
+  handleDragMove(event) {
     if (!this.isDragging) return;
     
-    const x = e.clientX - this.dragOffset.x + window.scrollX;
-    const y = e.clientY - this.dragOffset.y + window.scrollY;
+    const posX = event.clientX - this.dragOffset.x + window.scrollX;
+    const posY = event.clientY - this.dragOffset.y + window.scrollY;
     
-    this.customPosition = { x, y };
-    this.element.style.left = `${x}px`;
-    this.element.style.top = `${y}px`;
+    this.customPosition = { x: posX, y: posY };
+    this.element.style.left = `${posX}px`;
+    this.element.style.top = `${posY}px`;
   }
   
   /**
@@ -533,21 +534,22 @@ export class StickyNote {
         } else {
           this.showToast(response.error || 'Failed to share note', 'error');
         }
-      } catch (_error) {
+      } catch (error) {
+        log.error('Failed to share note:', error);
         this.showToast('Failed to share note', 'error');
       }
     });
     
     // Close on overlay click
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
+    overlay.addEventListener('click', (clickEvent) => {
+      if (clickEvent.target === overlay) {
         container.removeChild(overlay);
       }
     });
     
     // Close on escape
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') {
+    const handleEscape = (keyEvent) => {
+      if (keyEvent.key === 'Escape') {
         container.removeChild(overlay);
         document.removeEventListener('keydown', handleEscape);
       }

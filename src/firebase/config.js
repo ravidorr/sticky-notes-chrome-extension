@@ -20,6 +20,7 @@ import {
   persistentLocalCache, 
   persistentSingleTabManager 
 } from 'firebase/firestore';
+import { firestoreLogger as log } from '../shared/logger.js';
 
 // Firebase configuration - loaded from environment variables
 // See .env.example for setup instructions
@@ -44,7 +45,7 @@ let db = null;
 
 export function initializeFirebase() {
   if (!isFirebaseConfigured()) {
-    console.warn('Firebase is not configured. Please update src/firebase/config.js with your Firebase project credentials.');
+    log.warn('Firebase is not configured. Please update src/firebase/config.js with your Firebase project credentials.');
     return { app: null, auth: null, db: null };
   }
   
@@ -65,10 +66,10 @@ export function initializeFirebase() {
     } catch (err) {
       // If Firestore was already initialized (e.g., in another tab), fall back to default
       if (err.code === 'failed-precondition') {
-        console.warn('Firestore persistence: Using existing instance');
+        log.warn('Firestore persistence: Using existing instance');
         db = getFirestore(app);
       } else {
-        console.warn('Firestore initialization error:', err);
+        log.warn('Firestore initialization error:', err);
         db = getFirestore(app);
       }
     }

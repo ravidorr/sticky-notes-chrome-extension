@@ -97,11 +97,11 @@ export class RichEditor {
    */
   setupEventListeners() {
     // Toolbar button clicks
-    this.toolbar.addEventListener('click', (e) => {
-      const btn = e.target.closest('.sn-toolbar-btn');
+    this.toolbar.addEventListener('click', (event) => {
+      const btn = event.target.closest('.sn-toolbar-btn');
       if (!btn) return;
       
-      e.preventDefault();
+      event.preventDefault();
       const command = btn.dataset.command;
       
       if (command === 'createLink') {
@@ -122,22 +122,22 @@ export class RichEditor {
     });
     
     // Keyboard shortcuts - stop propagation to prevent page shortcuts from interfering
-    this.editor.addEventListener('keydown', (e) => {
+    this.editor.addEventListener('keydown', (event) => {
       // Stop all keyboard events from reaching the page
-      e.stopPropagation();
+      event.stopPropagation();
       
-      if (e.ctrlKey || e.metaKey) {
-        switch (e.key.toLowerCase()) {
+      if (event.ctrlKey || event.metaKey) {
+        switch (event.key.toLowerCase()) {
           case 'b':
-            e.preventDefault();
+            event.preventDefault();
             document.execCommand('bold', false, null);
             break;
           case 'i':
-            e.preventDefault();
+            event.preventDefault();
             document.execCommand('italic', false, null);
             break;
           case 'k':
-            e.preventDefault();
+            event.preventDefault();
             this.handleCreateLink();
             break;
         }
@@ -146,8 +146,8 @@ export class RichEditor {
     });
     
     // Stop keyup and keypress from propagating to page handlers
-    this.editor.addEventListener('keyup', (e) => e.stopPropagation());
-    this.editor.addEventListener('keypress', (e) => e.stopPropagation());
+    this.editor.addEventListener('keyup', (event) => event.stopPropagation());
+    this.editor.addEventListener('keypress', (event) => event.stopPropagation());
     
     // Selection change
     document.addEventListener('selectionchange', () => {
@@ -161,12 +161,12 @@ export class RichEditor {
     this.editor.addEventListener('blur', () => this.updatePlaceholder());
     
     // Paste handling - clean up pasted content
-    this.editor.addEventListener('paste', (e) => {
-      e.preventDefault();
+    this.editor.addEventListener('paste', (event) => {
+      event.preventDefault();
       
       // Get plain text or HTML from clipboard
-      const html = e.clipboardData.getData('text/html');
-      const text = e.clipboardData.getData('text/plain');
+      const html = event.clipboardData.getData('text/html');
+      const text = event.clipboardData.getData('text/plain');
       
       if (html) {
         // Clean the HTML

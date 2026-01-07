@@ -5,7 +5,10 @@
 
 // Check if debug mode is enabled
 // In production, set VITE_DEBUG_MODE=false in .env
-const DEBUG_MODE = import.meta.env.VITE_DEBUG_MODE !== 'false';
+// Handle case where import.meta.env is undefined (e.g., in test environment)
+const DEBUG_MODE = typeof import.meta !== 'undefined' && import.meta.env 
+  ? import.meta.env.VITE_DEBUG_MODE !== 'false' 
+  : true;
 
 // Log levels
 const LOG_LEVELS = {

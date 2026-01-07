@@ -219,7 +219,7 @@ async function updateNote(note) {
     const result = await chrome.storage.local.get(['notes']);
     const notes = result.notes || [];
     
-    const index = notes.findIndex(n => n.id === note.id);
+    const index = notes.findIndex(item => item.id === note.id);
     if (index === -1) {
       return { success: false, error: 'Note not found' };
     }
@@ -261,7 +261,7 @@ async function deleteNote(noteId) {
     const result = await chrome.storage.local.get(['notes']);
     const notes = result.notes || [];
     
-    const filteredNotes = notes.filter(n => n.id !== noteId);
+    const filteredNotes = notes.filter(item => item.id !== noteId);
     
     if (filteredNotes.length === notes.length) {
       return { success: false, error: 'Note not found' };

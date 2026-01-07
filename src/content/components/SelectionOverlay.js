@@ -73,12 +73,12 @@ export class SelectionOverlay {
   
   /**
    * Handle mouse over
-   * @param {MouseEvent} e - Mouse event
+   * @param {MouseEvent} event - Mouse event
    */
-  handleMouseOver(e) {
+  handleMouseOver(event) {
     if (!this.isActive) return;
     
-    const target = e.target;
+    const target = event.target;
     
     // Ignore our own elements
     if (this.isOwnElement(target)) return;
@@ -99,54 +99,54 @@ export class SelectionOverlay {
   
   /**
    * Handle mouse out
-   * @param {MouseEvent} e - Mouse event
+   * @param {MouseEvent} event - Mouse event
    */
-  handleMouseOut(e) {
+  handleMouseOut(event) {
     if (!this.isActive) return;
     
     // Hide tooltip when leaving elements
-    if (this.shouldIgnoreElement(e.relatedTarget)) {
+    if (this.shouldIgnoreElement(event.relatedTarget)) {
       this.tooltip.style.display = 'none';
     }
   }
   
   /**
    * Handle mouse move (for tooltip positioning)
-   * @param {MouseEvent} e - Mouse event
+   * @param {MouseEvent} event - Mouse event
    */
-  handleMouseMove(e) {
+  handleMouseMove(event) {
     if (!this.isActive || this.tooltip.style.display === 'none') return;
     
     // Position tooltip near cursor
     const offset = 15;
-    let x = e.clientX + offset;
-    let y = e.clientY + offset;
+    let posX = event.clientX + offset;
+    let posY = event.clientY + offset;
     
     // Keep tooltip in viewport
     const tooltipRect = this.tooltip.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     
-    if (x + tooltipRect.width > viewportWidth) {
-      x = e.clientX - tooltipRect.width - offset;
+    if (posX + tooltipRect.width > viewportWidth) {
+      posX = event.clientX - tooltipRect.width - offset;
     }
     
-    if (y + tooltipRect.height > viewportHeight) {
-      y = e.clientY - tooltipRect.height - offset;
+    if (posY + tooltipRect.height > viewportHeight) {
+      posY = event.clientY - tooltipRect.height - offset;
     }
     
-    this.tooltip.style.left = `${x}px`;
-    this.tooltip.style.top = `${y}px`;
+    this.tooltip.style.left = `${posX}px`;
+    this.tooltip.style.top = `${posY}px`;
   }
   
   /**
    * Handle click
-   * @param {MouseEvent} e - Mouse event
+   * @param {MouseEvent} event - Mouse event
    */
-  handleClick(e) {
+  handleClick(event) {
     if (!this.isActive) return;
     
-    const target = e.target;
+    const target = event.target;
     
     // Ignore our own elements
     if (this.isOwnElement(target)) return;
@@ -155,8 +155,8 @@ export class SelectionOverlay {
     if (this.shouldIgnoreElement(target)) return;
     
     // Prevent default click behavior
-    e.preventDefault();
-    e.stopPropagation();
+    event.preventDefault();
+    event.stopPropagation();
     
     // Remove highlight
     this.removeHighlight();
@@ -167,14 +167,14 @@ export class SelectionOverlay {
   
   /**
    * Handle keydown
-   * @param {KeyboardEvent} e - Keyboard event
+   * @param {KeyboardEvent} event - Keyboard event
    */
-  handleKeyDown(e) {
+  handleKeyDown(event) {
     if (!this.isActive) return;
     
     // Cancel on Escape
-    if (e.key === 'Escape') {
-      e.preventDefault();
+    if (event.key === 'Escape') {
+      event.preventDefault();
       this.removeHighlight();
       this.onCancel();
     }

@@ -44,7 +44,7 @@ async function checkAuthState() {
       showAuthSection();
     }
   } catch (error) {
-    console.error('Error checking auth state:', error);
+    log.error('Error checking auth state:', error);
     showAuthSection();
   }
 }
@@ -80,10 +80,10 @@ async function handleLogin() {
     if (response.success) {
       showUserSection(response.user);
     } else {
-      console.error('Login failed:', response.error);
+      log.error('Login failed:', response.error);
     }
   } catch (error) {
-    console.error('Login error:', error);
+    log.error('Login error:', error);
   }
 }
 
@@ -97,7 +97,7 @@ async function handleLogout() {
       showAuthSection();
     }
   } catch (error) {
-    console.error('Logout error:', error);
+    log.error('Logout error:', error);
   }
 }
 
@@ -113,7 +113,7 @@ async function handleAddNote() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     
     if (!tab) {
-      console.error('[Popup] No active tab found');
+      log.error('No active tab found');
       return;
     }
     
@@ -145,7 +145,7 @@ async function handleAddNote() {
         let lastError = null;
         
         while (retries > 0) {
-          console.log(`[Popup] Waiting 200ms before retry ${6 - retries}/5...`);
+          log.debug(`Waiting 200ms before retry ${6 - retries}/5...`);
           await new Promise(resolve => setTimeout(resolve, 200));
           try {
             log.debug(' Retrying message...');
@@ -170,7 +170,7 @@ async function handleAddNote() {
     log.debug(' Success! Closing popup...');
     window.close();
   } catch (error) {
-    console.error('[Popup] Error enabling selection mode:', error);
+    log.error('Error enabling selection mode:', error);
     alert('Could not enable selection mode. Please refresh the page and try again.');
   }
 }
@@ -190,7 +190,7 @@ async function injectContentScript(tabId) {
     });
     log.debug(' Content script injection successful. Results:', results);
   } catch (error) {
-    console.error('[Popup] Failed to inject content script:', error);
+    log.error('Failed to inject content script:', error);
     throw new Error(`Could not inject content script: ${error.message}`);
   }
 }
@@ -215,7 +215,7 @@ async function loadNotesForCurrentTab() {
     });
     
     if (!response.success) {
-      console.error('[Popup] Failed to get notes:', response.error);
+      log.error('Failed to get notes:', response.error);
       return;
     }
     
@@ -223,14 +223,14 @@ async function loadNotesForCurrentTab() {
     
     log.debug(' Notes received from background:', pageNotes.length);
     pageNotes.forEach((note, i) => {
-      console.log(`[Popup] Note ${i}:`, { id: note.id, url: note.url, content: note.content?.substring(0, 50) });
+      log.debug(`Note ${i}:`, { id: note.id, url: note.url, content: note.content?.substring(0, 50) });
     });
     
     // Update UI
     renderNotesList(pageNotes);
     notesCount.textContent = pageNotes.length;
   } catch (error) {
-    console.error('[Popup] Error loading notes:', error);
+    log.error('Error loading notes:', error);
   }
 }
 
@@ -291,7 +291,7 @@ async function handleNoteClick(noteId) {
     // Close popup
     window.close();
   } catch (error) {
-    console.error('Error highlighting note:', error);
+    log.error('Error highlighting note:', error);
   }
 }
 

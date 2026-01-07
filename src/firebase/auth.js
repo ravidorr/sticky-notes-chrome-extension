@@ -9,6 +9,7 @@ import {
   signOut as firebaseSignOut
 } from 'firebase/auth';
 import { auth, isFirebaseConfigured, initializeFirebase } from './config.js';
+import { firestoreLogger as log } from '../shared/logger.js';
 
 // OAuth client ID from Google Cloud Console
 // Must be configured in manifest.json oauth2 section AND in .env file
@@ -67,7 +68,7 @@ export async function signInWithGoogle() {
     
     return user;
   } catch (error) {
-    console.error('Sign in error:', error);
+    log.error('Sign in error:', error);
     throw error;
   }
 }
@@ -108,7 +109,7 @@ export async function signOut() {
     // Clear local storage
     await chrome.storage.local.remove(['user']);
   } catch (error) {
-    console.error('Sign out error:', error);
+    log.error('Sign out error:', error);
     throw error;
   }
 }

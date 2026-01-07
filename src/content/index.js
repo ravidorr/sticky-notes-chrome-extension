@@ -9,6 +9,7 @@ import { SelectorEngine } from './selectors/SelectorEngine.js';
 import { VisibilityManager } from './observers/VisibilityManager.js';
 import { RichEditor } from './components/RichEditor.js';
 import { escapeHtml } from '../shared/utils.js';
+import { contentLogger as log } from '../shared/logger.js';
 
 /**
  * Main application class for the content script
@@ -70,7 +71,7 @@ class StickyNotesApp {
     if (this.contextInvalidated) return; // Only show once
     
     this.contextInvalidated = true;
-    console.warn('[StickyNotes] Extension context invalidated - extension was updated or reloaded');
+    log.warn(' Extension context invalidated - extension was updated or reloaded');
     
     this.showRefreshNotification();
   }
@@ -166,32 +167,32 @@ class StickyNotesApp {
    * Initialize the application
    */
   async init() {
-    console.log('[StickyNotes] init() started');
+    log.debug(' init() started');
     try {
       // Setup message listeners FIRST so we can receive messages immediately
-      console.log('[StickyNotes] Setting up message listeners...');
+      log.debug(' Setting up message listeners...');
       this.setupMessageListeners();
-      console.log('[StickyNotes] Message listeners ready');
+      log.debug(' Message listeners ready');
       
       // Create shadow DOM container
-      console.log('[StickyNotes] Creating shadow container...');
+      log.debug(' Creating shadow container...');
       this.createShadowContainer();
-      console.log('[StickyNotes] Shadow container created');
+      log.debug(' Shadow container created');
       
       // Setup mutation observer for dynamic content
-      console.log('[StickyNotes] Setting up mutation observer...');
+      log.debug(' Setting up mutation observer...');
       this.setupMutationObserver();
-      console.log('[StickyNotes] Mutation observer ready');
+      log.debug(' Mutation observer ready');
       
-      console.log('[StickyNotes] ✅ Content script fully initialized and ready to receive messages');
+      log.debug(' ✅ Content script fully initialized and ready to receive messages');
       
       // Load existing notes for this page (async, non-blocking)
-      console.log('[StickyNotes] Loading notes for this page...');
+      log.debug(' Loading notes for this page...');
       this.loadNotes().catch(err => {
-        console.warn('[StickyNotes] Failed to load notes:', err);
+        log.warn(' Failed to load notes:', err);
       });
     } catch (error) {
-      console.error('[StickyNotes] ❌ Failed to initialize:', error);
+      log.error(' ❌ Failed to initialize:', error);
     }
   }
   
@@ -462,7 +463,7 @@ class StickyNotesApp {
       }
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
-        console.error('Error loading notes:', error);
+        log.error('Error loading notes:', error);
       }
     }
   }
@@ -477,7 +478,7 @@ class StickyNotesApp {
     
     // If not found, try fuzzy matching
     if (!anchorElement) {
-      console.warn(`Anchor element not found for selector: ${noteData.selector}`);
+      log.warn(`Anchor element not found for selector: ${noteData.selector}`);
       
       // Try fuzzy matching
       anchorElement = this.selectorEngine.findBestMatch(noteData.selector, {
@@ -485,7 +486,7 @@ class StickyNotesApp {
       });
       
       if (anchorElement) {
-        console.log('Found element using fuzzy matching');
+        log.debug('Found element using fuzzy matching');
         // Update the selector
         this.handleReanchor(noteData.id, anchorElement);
       } else {
@@ -519,21 +520,21 @@ class StickyNotesApp {
    * Setup message listeners for popup communication
    */
   setupMessageListeners() {
-    console.log('[StickyNotes] Adding chrome.runtime.onMessage listener');
+    log.debug(' Adding chrome.runtime.onMessage listener');
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      console.log('[StickyNotes] 📨 Message received:', message);
+      log.debug(' 📨 Message received:', message);
       this.handleMessage(message)
         .then(response => {
-          console.log('[StickyNotes] 📤 Sending response:', response);
+          log.debug(' 📤 Sending response:', response);
           sendResponse(response);
         })
         .catch(error => {
-          console.error('[StickyNotes] ❌ Message handler error:', error);
+          log.error(' ❌ Message handler error:', error);
           sendResponse({ success: false, error: error.message });
         });
       return true;
     });
-    console.log('[StickyNotes] Message listener registered');
+    log.debug(' Message listener registered');
   }
   
   /**
@@ -541,37 +542,37 @@ class StickyNotesApp {
    * @param {Object} message - Message object
    */
   async handleMessage(message) {
-    console.log('[StickyNotes] Handling action:', message.action);
+    log.debug(' Handling action:', message.action);
     
     switch (message.action) {
       case 'ping':
-        console.log('[StickyNotes] Ping received, responding with ready');
+        log.debug(' Ping received, responding with ready');
         return { success: true, ready: true };
       
       case 'enableSelectionMode':
-        console.log('[StickyNotes] Enabling selection mode...');
+        log.debug(' Enabling selection mode...');
         this.enableSelectionMode();
-        console.log('[StickyNotes] Selection mode enabled');
+        log.debug(' Selection mode enabled');
         return { success: true };
       
       case 'disableSelectionMode':
-        console.log('[StickyNotes] Disabling selection mode...');
+        log.debug(' Disabling selection mode...');
         this.disableSelectionMode();
         return { success: true };
       
       case 'highlightNote':
-        console.log('[StickyNotes] Highlighting note:', message.noteId);
+        log.debug(' Highlighting note:', message.noteId);
         this.highlightNote(message.noteId);
         return { success: true };
       
       case 'pageLoaded':
       case 'urlChanged':
-        console.log('[StickyNotes] URL changed:', message.url);
+        log.debug(' URL changed:', message.url);
         await this.handleUrlChange(message.url);
         return { success: true };
       
       default:
-        console.warn('[StickyNotes] Unknown action:', message.action);
+        log.warn(' Unknown action:', message.action);
         return { success: false, error: 'Unknown action' };
     }
   }
@@ -580,30 +581,30 @@ class StickyNotesApp {
    * Enable element selection mode
    */
   enableSelectionMode() {
-    console.log('[StickyNotes] enableSelectionMode() called, current state:', this.isSelectionMode);
+    log.debug(' enableSelectionMode() called, current state:', this.isSelectionMode);
     
     if (this.isSelectionMode) {
-      console.log('[StickyNotes] Already in selection mode, skipping');
+      log.debug(' Already in selection mode, skipping');
       return;
     }
     
     this.isSelectionMode = true;
-    console.log('[StickyNotes] Set isSelectionMode to true');
+    log.debug(' Set isSelectionMode to true');
     
     // Add selection mode class to document
-    console.log('[StickyNotes] Adding sn-selection-mode class to body');
+    log.debug(' Adding sn-selection-mode class to body');
     document.body.classList.add('sn-selection-mode');
     
     // Create selection overlay
-    console.log('[StickyNotes] Creating SelectionOverlay...');
+    log.debug(' Creating SelectionOverlay...');
     this.selectionOverlay = new SelectionOverlay({
       onSelect: (element) => this.handleElementSelect(element),
       onCancel: () => this.disableSelectionMode()
     });
     
-    console.log('[StickyNotes] Appending overlay to container');
+    log.debug(' Appending overlay to container');
     this.container.appendChild(this.selectionOverlay.element);
-    console.log('[StickyNotes] ✅ Selection mode fully enabled - click an element to add a note');
+    log.debug(' ✅ Selection mode fully enabled - click an element to add a note');
   }
   
   /**
@@ -638,7 +639,7 @@ class StickyNotesApp {
       });
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
-        console.error('Error saving note:', error);
+        log.error('Error saving note:', error);
       }
     }
   }
@@ -664,7 +665,7 @@ class StickyNotesApp {
       }
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
-        console.error('Error deleting note:', error);
+        log.error('Error deleting note:', error);
       }
     }
   }
@@ -721,7 +722,7 @@ class StickyNotesApp {
   handleRealtimeUpdate(updatedNotes) {
     // Create a set of current note IDs
     const currentIds = new Set(this.notes.keys());
-    const updatedIds = new Set(updatedNotes.map(n => n.id));
+    const updatedIds = new Set(updatedNotes.map(note => note.id));
     
     // Remove notes that are no longer present
     currentIds.forEach(id => {
@@ -936,7 +937,7 @@ class StickyNotesApp {
     const selector = this.selectorEngine.generate(element);
     
     if (!selector) {
-      console.error('Could not generate selector for element');
+      log.error('Could not generate selector for element');
       return;
     }
     
@@ -961,11 +962,11 @@ class StickyNotesApp {
         // Create the note UI
         this.createNoteFromData(response.note);
       } else {
-        console.error('Failed to save note:', response.error);
+        log.error('Failed to save note:', response.error);
       }
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
-        console.error('Failed to save note:', error);
+        log.error('Failed to save note:', error);
       }
     }
   }
@@ -979,7 +980,7 @@ class StickyNotesApp {
     const newSelector = this.selectorEngine.generate(newAnchor);
     
     if (!newSelector) {
-      console.error('Could not generate selector for new anchor');
+      log.error('Could not generate selector for new anchor');
       return;
     }
     
@@ -993,10 +994,10 @@ class StickyNotesApp {
         }
       });
       
-      console.log('Note re-anchored successfully');
+      log.debug('Note re-anchored successfully');
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
-        console.error('Failed to re-anchor note:', error);
+        log.error('Failed to re-anchor note:', error);
       }
     }
   }
@@ -1006,28 +1007,28 @@ class StickyNotesApp {
 
 // Initialize the app when the document is ready
 function initStickyNotes() {
-  console.log('[StickyNotes] initStickyNotes called, readyState:', document.readyState);
+  log.debug(' initStickyNotes called, readyState:', document.readyState);
   try {
     // Check if already initialized (for manual injection)
     if (window.__stickyNotesInitialized) {
-      console.log('[StickyNotes] Already initialized, skipping');
+      log.debug(' Already initialized, skipping');
       return;
     }
     window.__stickyNotesInitialized = true;
-    console.log('[StickyNotes] Creating StickyNotesApp instance...');
+    log.debug(' Creating StickyNotesApp instance...');
     
     new StickyNotesApp();
   } catch (error) {
-    console.error('[StickyNotes] Failed to initialize:', error);
+    log.error(' Failed to initialize:', error);
   }
 }
 
-console.log('[StickyNotes] Content script loaded, readyState:', document.readyState);
+log.debug(' Content script loaded, readyState:', document.readyState);
 
 if (document.readyState === 'loading') {
-  console.log('[StickyNotes] Document still loading, adding DOMContentLoaded listener');
+  log.debug(' Document still loading, adding DOMContentLoaded listener');
   document.addEventListener('DOMContentLoaded', initStickyNotes);
 } else {
-  console.log('[StickyNotes] Document ready, initializing immediately');
+  log.debug(' Document ready, initializing immediately');
   initStickyNotes();
 }

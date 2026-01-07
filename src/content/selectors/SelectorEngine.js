@@ -145,7 +145,7 @@ export class SelectorEngine {
     
     // Try combination of classes
     if (stableClasses.length >= 2) {
-      const classStr = stableClasses.slice(0, 3).map(c => `.${CSS.escape(c)}`).join('');
+      const classStr = stableClasses.slice(0, 3).map(cls => `.${CSS.escape(cls)}`).join('');
       const selector = `${tagName}${classStr}`;
       if (this.isUnique(selector)) {
         return selector;
@@ -379,7 +379,7 @@ export class SelectorEngine {
     }));
     
     // Sort by score descending
-    scoredCandidates.sort((a, b) => b.score - a.score);
+    scoredCandidates.sort((itemA, itemB) => itemB.score - itemA.score);
     
     // Return best match if score is above threshold
     const bestMatch = scoredCandidates[0];
@@ -457,7 +457,7 @@ export class SelectorEngine {
     if (candidates.length > 100) {
       // Prioritize elements with similar classes
       if (selectorParts.classes.length > 0) {
-        const classSelector = selectorParts.classes.map(c => `.${CSS.escape(c)}`).join('');
+        const classSelector = selectorParts.classes.map(cls => `.${CSS.escape(cls)}`).join('');
         const classMatches = document.querySelectorAll(classSelector);
         if (classMatches.length > 0 && classMatches.length < 100) {
           candidates = Array.from(classMatches);
@@ -509,7 +509,7 @@ export class SelectorEngine {
     if (selectorParts.classes.length > 0) {
       maxScore += 25;
       const elementClasses = Array.from(element.classList);
-      const matchingClasses = selectorParts.classes.filter(c => elementClasses.includes(c));
+      const matchingClasses = selectorParts.classes.filter(cls => elementClasses.includes(cls));
       score += Math.round((matchingClasses.length / selectorParts.classes.length) * 25);
     }
     
@@ -600,7 +600,7 @@ export class SelectorEngine {
       this.getAttributeSelector(element),
       this.getClassSelector(element),
       this.buildPathSelector(element)
-    ].filter(s => s && !selectors.includes(s));
+    ].filter(sel => sel && !selectors.includes(sel));
     
     selectors.push(...alternatives);
     
