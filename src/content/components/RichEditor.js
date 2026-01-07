@@ -119,8 +119,11 @@ export class RichEditor {
       this.updatePlaceholder();
     });
     
-    // Keyboard shortcuts
+    // Keyboard shortcuts - stop propagation to prevent page shortcuts from interfering
     this.editor.addEventListener('keydown', (e) => {
+      // Stop all keyboard events from reaching the page
+      e.stopPropagation();
+      
       if (e.ctrlKey || e.metaKey) {
         switch (e.key.toLowerCase()) {
           case 'b':
@@ -139,6 +142,10 @@ export class RichEditor {
         this.updateToolbarState();
       }
     });
+    
+    // Stop keyup and keypress from propagating to page handlers
+    this.editor.addEventListener('keyup', (e) => e.stopPropagation());
+    this.editor.addEventListener('keypress', (e) => e.stopPropagation());
     
     // Selection change
     document.addEventListener('selectionchange', () => {
