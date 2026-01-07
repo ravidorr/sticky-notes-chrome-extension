@@ -14,7 +14,12 @@
 
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { 
+  getFirestore,
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentSingleTabManager 
+} from 'firebase/firestore';
 
 // Firebase configuration - loaded from environment variables
 // See .env.example for setup instructions
@@ -46,16 +51,27 @@ export function initializeFirebase() {
   if (!app) {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
-    db = getFirestore(app);
     
-    // Enable offline persistence
-    enableIndexedDbPersistence(db).catch((err) => {
+    // Initialize Firestore with persistent cache (new recommended API)
+    // This replaces the deprecated enableIndexedDbPersistence()
+    try {
+      db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentSingleTabManager({
+            forceOwnership: false
+          })
+        })
+      });
+    } catch (err) {
+      // If Firestore was already initialized (e.g., in another tab), fall back to default
       if (err.code === 'failed-precondition') {
-        console.warn('Firestore persistence failed: Multiple tabs open');
-      } else if (err.code === 'unimplemented') {
-        console.warn('Firestore persistence not available in this browser');
+        console.warn('Firestore persistence: Using existing instance');
+        db = getFirestore(app);
+      } else {
+        console.warn('Firestore initialization error:', err);
+        db = getFirestore(app);
       }
-    });
+    }
   }
   
   return { app, auth, db };

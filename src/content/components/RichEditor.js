@@ -4,6 +4,8 @@
  * Supports: Bold, Italic, Lists, Links
  */
 
+import { escapeHtml } from '../../shared/utils.js';
+
 export class RichEditor {
   /**
    * Create rich editor
@@ -207,7 +209,7 @@ export class RichEditor {
         document.execCommand('createLink', false, url);
       } else {
         // Insert link with URL as text
-        const link = `<a href="${this.escapeHtml(url)}" target="_blank">${this.escapeHtml(url)}</a>`;
+        const link = `<a href="${escapeHtml(url)}" target="_blank">${escapeHtml(url)}</a>`;
         document.execCommand('insertHTML', false, link);
       }
     }
@@ -282,16 +284,7 @@ export class RichEditor {
     return temp.innerHTML;
   }
   
-  /**
-   * Escape HTML
-   * @param {string} str - String to escape
-   * @returns {string} Escaped string
-   */
-  escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
+  // escapeHtml is now imported from shared/utils.js
   
   /**
    * Get HTML content

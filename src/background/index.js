@@ -17,6 +17,7 @@ import {
   shareNote as shareNoteInFirestore
 } from '../firebase/notes.js';
 import { initializeFirebase, isFirebaseConfigured } from '../firebase/config.js';
+import { generateId, isValidEmail, normalizeUrl } from '../shared/utils.js';
 
 // Initialize Firebase if configured
 if (isFirebaseConfigured()) {
@@ -179,7 +180,7 @@ async function saveNote(note) {
     // Add note with generated ID and timestamps
     const newNote = {
       ...note,
-      id: generateId(),
+      id: generateId('note'),
       ownerId: user?.uid || 'local',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -290,9 +291,28 @@ async function shareNote(noteId, email) {
       return { success: false, error: 'Sharing requires Firebase to be configured' };
     }
     
-    // For now, we use email as the user ID
-    // In production, you'd lookup the user by email using Cloud Functions
-    await shareNoteInFirestore(noteId, email, user.uid);
+    // Validate noteId format
+    if (!noteId || typeof noteId !== 'string' || noteId.length === 0) {
+      return { success: false, error: 'Invalid note ID' };
+    }
+    
+    // Validate email format (server-side validation)
+    if (!isValidEmail(email)) {
+      return { success: false, error: 'Invalid email address' };
+    }
+    
+    // Prevent sharing with yourself
+    if (email.toLowerCase() === user.email?.toLowerCase()) {
+      return { success: false, error: 'You cannot share a note with yourself' };
+    }
+    
+    // SECURITY NOTE: Currently storing email in sharedWith array.
+    // For production, implement a Cloud Function to:
+    // 1. Look up the target user by email
+    // 2. Verify they exist in the system
+    // 3. Store their Firebase UID instead of email
+    // 4. Send notification to the target user
+    await shareNoteInFirestore(noteId, email.toLowerCase(), user.uid);
     
     return { success: true };
   } catch (error) {
@@ -301,13 +321,7 @@ async function shareNote(noteId, email) {
   }
 }
 
-/**
- * Generate unique ID
- * @returns {string} Unique ID
- */
-function generateId() {
-  return 'note_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
+// generateId is now imported from shared/utils.js
 
 // Listen for tab updates to inject content scripts
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {

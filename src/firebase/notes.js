@@ -21,6 +21,36 @@ import { db, isFirebaseConfigured } from './config.js';
 const NOTES_COLLECTION = 'notes';
 
 /**
+ * Validate a CSS selector for safety
+ * @param {string} selector - CSS selector to validate
+ * @returns {Object} { valid: boolean, error?: string }
+ */
+function validateSelector(selector) {
+  if (!selector || typeof selector !== 'string') {
+    return { valid: false, error: 'Selector must be a non-empty string' };
+  }
+  
+  const trimmed = selector.trim();
+  if (trimmed.length === 0 || trimmed.length > 1000) {
+    return { valid: false, error: 'Selector length invalid' };
+  }
+  
+  // Check for dangerous patterns
+  const dangerousPatterns = [
+    /<script/i, /javascript:/i, /on\w+\s*=/i,
+    /expression\s*\(/i, /behavior\s*:/i, /@import/i
+  ];
+  
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(trimmed)) {
+      return { valid: false, error: 'Selector contains unsafe patterns' };
+    }
+  }
+  
+  return { valid: true };
+}
+
+/**
  * Create a new note in Firestore
  * @param {Object} noteData - Note data
  * @param {string} userId - Owner's user ID
@@ -31,11 +61,30 @@ export async function createNote(noteData, userId) {
     throw new Error('Firebase is not configured');
   }
   
+  // Validate required fields
+  if (!noteData.url || typeof noteData.url !== 'string') {
+    throw new Error('Invalid URL');
+  }
+  
+  if (!noteData.selector) {
+    throw new Error('Selector is required');
+  }
+  
+  // Validate selector for security
+  const selectorValidation = validateSelector(noteData.selector);
+  if (!selectorValidation.valid) {
+    throw new Error(`Invalid selector: ${selectorValidation.error}`);
+  }
+  
+  // Validate theme
+  const validThemes = ['yellow', 'blue', 'green', 'pink'];
+  const theme = validThemes.includes(noteData.theme) ? noteData.theme : 'yellow';
+  
   const note = {
     url: normalizeUrl(noteData.url),
-    selector: noteData.selector,
+    selector: noteData.selector.trim(),
     content: noteData.content || '',
-    theme: noteData.theme || 'yellow',
+    theme: theme,
     position: noteData.position || { anchor: 'top-right' },
     ownerId: userId,
     sharedWith: [],
@@ -191,14 +240,42 @@ export async function deleteNote(noteId, userId) {
 
 /**
  * Share a note with another user
+ * 
+ * SECURITY NOTE: This function currently accepts email addresses as the shareWithUserId.
+ * For production use, implement a Cloud Function that:
+ * 1. Validates the target user exists
+ * 2. Converts email to Firebase UID
+ * 3. Handles user lookup securely server-side
+ * 
  * @param {string} noteId - Note ID
- * @param {string} shareWithUserId - User ID to share with
+ * @param {string} shareWithUserId - User ID or email to share with
  * @param {string} ownerId - Current owner's user ID
  * @returns {Promise<void>}
  */
 export async function shareNote(noteId, shareWithUserId, ownerId) {
   if (!isFirebaseConfigured() || !db) {
     throw new Error('Firebase is not configured');
+  }
+  
+  // Validate inputs
+  if (!noteId || typeof noteId !== 'string') {
+    throw new Error('Invalid note ID');
+  }
+  
+  if (!shareWithUserId || typeof shareWithUserId !== 'string') {
+    throw new Error('Invalid user identifier');
+  }
+  
+  if (!ownerId || typeof ownerId !== 'string') {
+    throw new Error('Invalid owner ID');
+  }
+  
+  // Sanitize the shareWithUserId (trim and lowercase for email comparison)
+  const sanitizedShareWith = shareWithUserId.trim().toLowerCase();
+  
+  // Prevent empty values after sanitization
+  if (sanitizedShareWith.length === 0) {
+    throw new Error('User identifier cannot be empty');
   }
   
   const docRef = doc(db, NOTES_COLLECTION, noteId);
@@ -217,8 +294,14 @@ export async function shareNote(noteId, shareWithUserId, ownerId) {
   
   // Add user to sharedWith array if not already there
   const sharedWith = noteData.sharedWith || [];
-  if (!sharedWith.includes(shareWithUserId)) {
-    sharedWith.push(shareWithUserId);
+  if (!sharedWith.includes(sanitizedShareWith)) {
+    // Limit the number of users a note can be shared with
+    const MAX_SHARES = 50;
+    if (sharedWith.length >= MAX_SHARES) {
+      throw new Error(`Cannot share with more than ${MAX_SHARES} users`);
+    }
+    
+    sharedWith.push(sanitizedShareWith);
     await updateDoc(docRef, { 
       sharedWith,
       updatedAt: serverTimestamp()

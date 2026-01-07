@@ -3,6 +3,8 @@
  * Handles the extension popup UI and interactions
  */
 
+import { escapeHtml, stripHtml, truncate, isRestrictedUrl, THEME_COLORS } from '../shared/utils.js';
+
 // DOM Elements
 const authSection = document.getElementById('authSection');
 const userSection = document.getElementById('userSection');
@@ -172,32 +174,7 @@ async function handleAddNote() {
   }
 }
 
-/**
- * Check if URL is restricted (can't inject content scripts)
- * @param {string} url - URL to check
- * @returns {boolean} True if restricted
- */
-function isRestrictedUrl(url) {
-  if (!url) return true;
-  
-  const restrictedPatterns = [
-    /^chrome:\/\//,
-    /^chrome-extension:\/\//,
-    /^about:/,
-    /^edge:\/\//,
-    /^brave:\/\//,
-    /^opera:\/\//,
-    /^vivaldi:\/\//,
-    /^file:\/\//,
-    /^view-source:/,
-    /^devtools:\/\//,
-    /^data:/,
-    /^blob:/,
-    /^javascript:/
-  ];
-  
-  return restrictedPatterns.some(pattern => pattern.test(url));
-}
+// isRestrictedUrl is now imported from shared/utils.js
 
 /**
  * Inject content script into tab
@@ -323,13 +300,7 @@ async function handleNoteClick(noteId) {
  * @returns {string} Color hex
  */
 function getThemeColor(theme) {
-  const colors = {
-    yellow: '#facc15',
-    blue: '#3b82f6',
-    green: '#22c55e',
-    pink: '#ec4899'
-  };
-  return colors[theme] || colors.yellow;
+  return THEME_COLORS[theme] || THEME_COLORS.yellow;
 }
 
 /**
@@ -338,34 +309,10 @@ function getThemeColor(theme) {
  * @returns {string} Truncated selector
  */
 function truncateSelector(selector) {
-  if (!selector) return '';
-  if (selector.length <= 30) return selector;
-  return selector.substring(0, 30) + '...';
+  return truncate(selector, 30);
 }
 
-/**
- * Escape HTML to prevent XSS
- * @param {string} str - String to escape
- * @returns {string} Escaped string
- */
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-/**
- * Strip HTML tags and get plain text
- * @param {string} html - HTML string
- * @returns {string} Plain text
- */
-function stripHtml(html) {
-  if (!html) return '';
-  const div = document.createElement('div');
-  div.innerHTML = html;
-  return div.textContent || div.innerText || '';
-}
+// escapeHtml and stripHtml are now imported from shared/utils.js
 
 /**
  * Setup event listeners

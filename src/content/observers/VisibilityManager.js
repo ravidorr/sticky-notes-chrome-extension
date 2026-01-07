@@ -20,6 +20,10 @@ export class VisibilityManager {
     // Map of notes to their visibility callbacks
     this.noteCallbacks = new Map();
     
+    // Store bound event handlers for cleanup
+    this.boundScrollHandler = null;
+    this.boundResizeHandler = null;
+    
     // Create the IntersectionObserver
     this.observer = new IntersectionObserver(
       this.handleIntersection.bind(this),
@@ -104,25 +108,29 @@ export class VisibilityManager {
       ticking = false;
     };
     
-    const onScroll = () => {
+    // Store bound scroll handler for cleanup
+    this.boundScrollHandler = () => {
       if (!ticking) {
         requestAnimationFrame(updatePositions);
         ticking = true;
       }
     };
     
-    // Listen to scroll on window and document
-    window.addEventListener('scroll', onScroll, { passive: true });
-    document.addEventListener('scroll', onScroll, { passive: true, capture: true });
-    
-    // Also listen to resize
-    window.addEventListener('resize', () => {
+    // Store bound resize handler for cleanup
+    this.boundResizeHandler = () => {
       this.anchorToNote.forEach((note, anchor) => {
         if (note.isVisible) {
           note.updatePosition();
         }
       });
-    });
+    };
+    
+    // Listen to scroll on window and document
+    window.addEventListener('scroll', this.boundScrollHandler, { passive: true });
+    document.addEventListener('scroll', this.boundScrollHandler, { passive: true, capture: true });
+    
+    // Also listen to resize
+    window.addEventListener('resize', this.boundResizeHandler);
   }
   
   /**
@@ -196,5 +204,17 @@ export class VisibilityManager {
     
     // Disconnect observer
     this.observer.disconnect();
+    
+    // Remove scroll and resize listeners
+    if (this.boundScrollHandler) {
+      window.removeEventListener('scroll', this.boundScrollHandler, { passive: true });
+      document.removeEventListener('scroll', this.boundScrollHandler, { passive: true, capture: true });
+      this.boundScrollHandler = null;
+    }
+    
+    if (this.boundResizeHandler) {
+      window.removeEventListener('resize', this.boundResizeHandler);
+      this.boundResizeHandler = null;
+    }
   }
 }

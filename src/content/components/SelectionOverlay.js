@@ -19,6 +19,13 @@ export class SelectionOverlay {
     this.highlightedElement = null;
     this.isActive = true;
     
+    // Store bound event handlers to allow proper removal
+    this.boundHandleMouseOver = this.handleMouseOver.bind(this);
+    this.boundHandleMouseOut = this.handleMouseOut.bind(this);
+    this.boundHandleClick = this.handleClick.bind(this);
+    this.boundHandleKeyDown = this.handleKeyDown.bind(this);
+    this.boundHandleMouseMove = this.handleMouseMove.bind(this);
+    
     this.render();
     this.setupEventListeners();
   }
@@ -44,22 +51,24 @@ export class SelectionOverlay {
    */
   setupEventListeners() {
     // Use capture phase to intercept events before page handlers
-    document.addEventListener('mouseover', this.handleMouseOver.bind(this), true);
-    document.addEventListener('mouseout', this.handleMouseOut.bind(this), true);
-    document.addEventListener('click', this.handleClick.bind(this), true);
-    document.addEventListener('keydown', this.handleKeyDown.bind(this), true);
-    document.addEventListener('mousemove', this.handleMouseMove.bind(this), true);
+    // Use stored bound handlers for proper removal
+    document.addEventListener('mouseover', this.boundHandleMouseOver, true);
+    document.addEventListener('mouseout', this.boundHandleMouseOut, true);
+    document.addEventListener('click', this.boundHandleClick, true);
+    document.addEventListener('keydown', this.boundHandleKeyDown, true);
+    document.addEventListener('mousemove', this.boundHandleMouseMove, true);
   }
   
   /**
    * Remove event listeners
    */
   removeEventListeners() {
-    document.removeEventListener('mouseover', this.handleMouseOver.bind(this), true);
-    document.removeEventListener('mouseout', this.handleMouseOut.bind(this), true);
-    document.removeEventListener('click', this.handleClick.bind(this), true);
-    document.removeEventListener('keydown', this.handleKeyDown.bind(this), true);
-    document.removeEventListener('mousemove', this.handleMouseMove.bind(this), true);
+    // Use stored bound handlers to ensure proper removal
+    document.removeEventListener('mouseover', this.boundHandleMouseOver, true);
+    document.removeEventListener('mouseout', this.boundHandleMouseOut, true);
+    document.removeEventListener('click', this.boundHandleClick, true);
+    document.removeEventListener('keydown', this.boundHandleKeyDown, true);
+    document.removeEventListener('mousemove', this.boundHandleMouseMove, true);
   }
   
   /**

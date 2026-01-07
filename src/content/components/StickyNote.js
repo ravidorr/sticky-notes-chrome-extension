@@ -4,6 +4,7 @@
  */
 
 import { RichEditor } from './RichEditor.js';
+import { escapeHtml, isValidEmail, THEME_COLORS, TIMEOUTS } from '../../shared/utils.js';
 
 export class StickyNote {
   /**
@@ -35,6 +36,11 @@ export class StickyNote {
     this.dragOffset = { x: 0, y: 0 };
     this.customPosition = null;
     this.saveTimeout = null;
+    
+    // Store bound event handlers to allow proper removal
+    this.boundHandleDragMove = this.handleDragMove.bind(this);
+    this.boundHandleDragEnd = this.handleDragEnd.bind(this);
+    this.boundHandleWindowResize = this.handleWindowResize.bind(this);
     
     this.render();
     this.setupEventListeners();
@@ -124,12 +130,12 @@ export class StickyNote {
     const positionBtn = this.element.querySelector('.sn-position-btn');
     positionBtn.addEventListener('click', this.handlePositionClick.bind(this));
     
-    // Global mouse events for dragging
-    document.addEventListener('mousemove', this.handleDragMove.bind(this));
-    document.addEventListener('mouseup', this.handleDragEnd.bind(this));
+    // Global mouse events for dragging (use stored bound handlers for proper removal)
+    document.addEventListener('mousemove', this.boundHandleDragMove);
+    document.addEventListener('mouseup', this.boundHandleDragEnd);
     
     // Window resize
-    window.addEventListener('resize', this.handleWindowResize.bind(this));
+    window.addEventListener('resize', this.boundHandleWindowResize);
     
     // Keyboard shortcuts
     this.element.addEventListener('keydown', this.handleKeyDown.bind(this));
@@ -149,7 +155,7 @@ export class StickyNote {
     
     this.saveTimeout = setTimeout(() => {
       this.onSave(this.content);
-    }, 1000);
+    }, TIMEOUTS.DEBOUNCE_SAVE);
   }
   
   /**
@@ -185,12 +191,7 @@ export class StickyNote {
    */
   showThemePicker() {
     const themes = ['yellow', 'blue', 'green', 'pink'];
-    const themeColors = {
-      yellow: '#facc15',
-      blue: '#3b82f6',
-      green: '#22c55e',
-      pink: '#ec4899'
-    };
+    const themeColors = THEME_COLORS;
     
     // Create picker
     const picker = document.createElement('div');
@@ -512,6 +513,13 @@ export class StickyNote {
       const email = emailInput.value.trim();
       if (!email) return;
       
+      // Validate email format
+      if (!isValidEmail(email)) {
+        this.showToast('Please enter a valid email address', 'error');
+        emailInput.focus();
+        return;
+      }
+      
       try {
         const response = await chrome.runtime.sendMessage({
           action: 'shareNote',
@@ -579,7 +587,7 @@ export class StickyNote {
       toast.style.opacity = '0';
       toast.style.transition = 'opacity 0.3s ease';
       setTimeout(() => container.removeChild(toast), 300);
-    }, 3000);
+    }, TIMEOUTS.TOAST_DISPLAY);
   }
   
   /**
@@ -643,16 +651,7 @@ export class StickyNote {
     this.element.classList.add(`sn-theme-${this.theme}`);
   }
   
-  /**
-   * Escape HTML to prevent XSS
-   * @param {string} str - String to escape
-   * @returns {string} Escaped string
-   */
-  escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
+  // isValidEmail and escapeHtml are now imported from shared/utils.js
   
   /**
    * Destroy the note and cleanup
@@ -663,10 +662,10 @@ export class StickyNote {
       clearTimeout(this.saveTimeout);
     }
     
-    // Remove event listeners
-    document.removeEventListener('mousemove', this.handleDragMove.bind(this));
-    document.removeEventListener('mouseup', this.handleDragEnd.bind(this));
-    window.removeEventListener('resize', this.handleWindowResize.bind(this));
+    // Remove event listeners (use stored bound handlers)
+    document.removeEventListener('mousemove', this.boundHandleDragMove);
+    document.removeEventListener('mouseup', this.boundHandleDragEnd);
+    window.removeEventListener('resize', this.boundHandleWindowResize);
     
     // Remove element
     if (this.element && this.element.parentNode) {

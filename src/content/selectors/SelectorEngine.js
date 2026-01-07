@@ -604,4 +604,69 @@ export class SelectorEngine {
     
     return selectors;
   }
+  
+  /**
+   * Validate that a selector is safe and well-formed
+   * Prevents potentially malicious or invalid selectors from being stored
+   * @param {string} selector - CSS selector to validate
+   * @returns {Object} { valid: boolean, error?: string }
+   */
+  validateSelector(selector) {
+    // Check for null/undefined/empty
+    if (!selector || typeof selector !== 'string') {
+      return { valid: false, error: 'Selector must be a non-empty string' };
+    }
+    
+    // Trim and check length
+    const trimmed = selector.trim();
+    if (trimmed.length === 0) {
+      return { valid: false, error: 'Selector cannot be empty' };
+    }
+    
+    // Check maximum length to prevent DoS
+    const MAX_SELECTOR_LENGTH = 1000;
+    if (trimmed.length > MAX_SELECTOR_LENGTH) {
+      return { valid: false, error: `Selector exceeds maximum length of ${MAX_SELECTOR_LENGTH} characters` };
+    }
+    
+    // Check for potentially dangerous patterns
+    const dangerousPatterns = [
+      /<script/i,           // Script injection attempt
+      /javascript:/i,       // JavaScript protocol
+      /on\w+\s*=/i,         // Event handlers (onclick=, etc.)
+      /expression\s*\(/i,   // CSS expression (IE)
+      /url\s*\([^)]*\)/i,   // url() that's not safe
+      /behavior\s*:/i,      // IE behavior
+      /@import/i,           // CSS import
+      /\\[0-9a-f]/i,        // Unicode escape sequences that might bypass filters
+    ];
+    
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(trimmed)) {
+        return { valid: false, error: 'Selector contains potentially unsafe patterns' };
+      }
+    }
+    
+    // Try to use the selector to verify it's valid CSS
+    try {
+      document.querySelector(trimmed);
+    } catch (e) {
+      return { valid: false, error: 'Invalid CSS selector syntax' };
+    }
+    
+    return { valid: true };
+  }
+  
+  /**
+   * Sanitize a selector by removing potentially dangerous parts
+   * @param {string} selector - CSS selector to sanitize
+   * @returns {string|null} Sanitized selector or null if cannot be sanitized
+   */
+  sanitizeSelector(selector) {
+    const validation = this.validateSelector(selector);
+    if (validation.valid) {
+      return selector.trim();
+    }
+    return null;
+  }
 }
