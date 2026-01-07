@@ -11,8 +11,8 @@ import {
 import { auth, isFirebaseConfigured, initializeFirebase } from './config.js';
 
 // OAuth client ID from Google Cloud Console
-// Must be configured in manifest.json oauth2 section
-const OAUTH_CLIENT_ID = 'YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com';
+// Must be configured in manifest.json oauth2 section AND in .env file
+const OAUTH_CLIENT_ID = import.meta.env.VITE_OAUTH_CLIENT_ID || 'YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com';
 
 /**
  * Check if auth is configured
