@@ -176,24 +176,7 @@ export class SelectionOverlay {
    * @param {Element} element - Target element
    */
   updateTooltip(element) {
-    // Generate a short description of the element
-    const tagName = element.tagName.toLowerCase();
-    const id = element.id ? `#${element.id}` : '';
-    const classes = element.className && typeof element.className === 'string' 
-      ? '.' + element.className.split(' ').slice(0, 2).join('.')
-      : '';
-    
-    let description = `<${tagName}${id}${classes}>`;
-    
-    // Truncate if too long
-    if (description.length > 50) {
-      description = description.substring(0, 47) + '...';
-    }
-    
-    this.tooltip.innerHTML = `
-      <div style="margin-bottom: 4px; font-weight: 600;">Click to add note</div>
-      <div style="font-family: monospace; font-size: 11px; opacity: 0.8;">${this.escapeHtml(description)}</div>
-    `;
+    this.tooltip.textContent = 'Click to add note';
     this.tooltip.style.display = 'block';
   }
   
@@ -230,17 +213,6 @@ export class SelectionOverlay {
     
     const ignoredTags = ['HTML', 'BODY', 'HEAD', 'SCRIPT', 'STYLE', 'NOSCRIPT', 'META', 'LINK'];
     return ignoredTags.includes(element.tagName);
-  }
-  
-  /**
-   * Escape HTML
-   * @param {string} str - String to escape
-   * @returns {string} Escaped string
-   */
-  escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
   }
   
   /**
