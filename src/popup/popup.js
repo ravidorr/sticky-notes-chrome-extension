@@ -9,7 +9,7 @@ import { createPopupHandlers } from './handlers.js';
 const handlers = createPopupHandlers();
 
 // DOM Elements (will be populated after DOMContentLoaded)
-let authSection, userSection, loginBtn, logoutBtn;
+let authSection, userSection, loginBtn, logoutBtn, closeBtn;
 let userAvatar, userName, userEmail;
 let addNoteBtn, notesList, notesCount;
 
@@ -21,6 +21,7 @@ function initDOMElements() {
   userSection = document.getElementById('userSection');
   loginBtn = document.getElementById('loginBtn');
   logoutBtn = document.getElementById('logoutBtn');
+  closeBtn = document.getElementById('closeBtn');
   userAvatar = document.getElementById('userAvatar');
   userName = document.getElementById('userName');
   userEmail = document.getElementById('userEmail');
@@ -111,6 +112,7 @@ async function init() {
   loginBtn.addEventListener('click', onLogin);
   logoutBtn.addEventListener('click', onLogout);
   addNoteBtn.addEventListener('click', () => handlers.handleAddNote());
+  closeBtn.addEventListener('click', () => window.close());
 }
 
 // Initialize popup when DOM is ready

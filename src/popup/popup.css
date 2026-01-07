@@ -50,6 +50,16 @@ body {
   letter-spacing: -0.5px;
 }
 
+.popup-header .icon-btn {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.popup-header .icon-btn:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
 /* Buttons */
 .icon-btn {
   display: flex;

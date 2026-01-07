@@ -141,6 +141,13 @@ async function buildPopup() {
       }
     }
   });
+  
+  // Copy popup.css (Vite doesn't process linked CSS in HTML correctly with this config)
+  copyFileSync(
+    resolve(rootDir, 'src/popup/popup.css'),
+    resolve(distDir, 'src/popup/popup.css')
+  );
+  
   console.log('Popup built');
 }
 
