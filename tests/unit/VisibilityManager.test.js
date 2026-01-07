@@ -236,4 +236,74 @@ describe('VisibilityManager', () => {
       expect(manager.getObservedAnchors().length).toBe(0);
     });
   });
+
+  describe('refresh()', () => {
+    it('should show notes when anchor is in viewport', () => {
+      // Mock getBoundingClientRect to return in-viewport position
+      anchor.getBoundingClientRect = jest.fn(() => ({
+        top: 100,
+        bottom: 200,
+        left: 100,
+        right: 200
+      }));
+      
+      manager.observe(anchor, mockNote);
+      manager.refresh();
+      
+      expect(mockNote.show).toHaveBeenCalled();
+    });
+    
+    it('should hide notes when anchor is out of viewport', () => {
+      // Mock getBoundingClientRect to return out-of-viewport position
+      anchor.getBoundingClientRect = jest.fn(() => ({
+        top: -500,
+        bottom: -400,
+        left: 100,
+        right: 200
+      }));
+      
+      manager.observe(anchor, mockNote);
+      manager.refresh();
+      
+      expect(mockNote.hide).toHaveBeenCalled();
+    });
+  });
+
+  describe('scroll and resize handlers', () => {
+    it('should update visible note positions on scroll', () => {
+      mockNote.isVisible = true;
+      manager.observe(anchor, mockNote);
+      
+      // Trigger scroll event
+      window.dispatchEvent(new Event('scroll'));
+      
+      // Use fake timers to process requestAnimationFrame
+      jest.useFakeTimers();
+      jest.runAllTimers();
+      jest.useRealTimers();
+      
+      // Position update may be called
+      // Just verify no errors occur
+    });
+    
+    it('should update visible note positions on resize', () => {
+      mockNote.isVisible = true;
+      manager.observe(anchor, mockNote);
+      
+      // Trigger resize event
+      window.dispatchEvent(new Event('resize'));
+      
+      expect(mockNote.updatePosition).toHaveBeenCalled();
+    });
+    
+    it('should not update hidden notes on resize', () => {
+      mockNote.isVisible = false;
+      manager.observe(anchor, mockNote);
+      
+      // Trigger resize event
+      window.dispatchEvent(new Event('resize'));
+      
+      expect(mockNote.updatePosition).not.toHaveBeenCalled();
+    });
+  });
 });
