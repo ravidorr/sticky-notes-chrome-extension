@@ -61,19 +61,25 @@ const firebaseConfig = {
 
 ## Step 3: Update Firebase Config in Code
 
-1. Open `src/firebase/config.js`
-2. Replace the placeholder values with your Firebase config:
+The extension uses environment variables for sensitive config (recommended for public repos).
 
-```javascript
-const firebaseConfig = {
-  apiKey: "YOUR_ACTUAL_API_KEY",           // From step 2
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abc123"
-};
-```
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Update `.env` with your Firebase config values:
+   ```
+   VITE_FIREBASE_API_KEY=AIzaSy...
+   VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your-project
+   VITE_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+   VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+   VITE_FIREBASE_APP_ID=1:123456789:web:abc123
+   VITE_OAUTH_CLIENT_ID=YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com
+   ```
+
+> **Note:** The `.env` file is gitignored. Only `.env.example` (with placeholder values) should be committed.
 
 ---
 
@@ -137,29 +143,43 @@ service cloud.firestore {
 
 ---
 
-## Step 7: Create Firestore Indexes
+## Step 7: Create Firestore Indexes (IMPORTANT!)
 
-The extension uses compound queries that require indexes.
+The extension uses compound queries that **require composite indexes**. Without these, notes will save but won't load!
 
-1. In Firestore, click the **"Indexes"** tab
+### Option A: Auto-Create via Error Links (Easiest)
+
+1. Complete the setup and try to use the extension
+2. Open the service worker console: `chrome://extensions/` → click "service worker"
+3. Look for errors like:
+   ```
+   FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/...
+   ```
+4. **Click the link** in the error message
+5. Click **"Create"** in Firebase Console
+6. Wait 1-2 minutes for status to change from "Building..." to "Enabled"
+
+### Option B: Manual Creation
+
+1. Go to [Firestore → Indexes](https://console.firebase.google.com/project/YOUR_PROJECT/firestore/indexes)
 2. Click **"Create index"**
 3. Create these indexes:
 
-### Index 1: Owned Notes Query
+**Index 1: Owned Notes Query**
 | Field | Order |
 |-------|-------|
-| `url` | Ascending |
 | `ownerId` | Ascending |
+| `url` | Ascending |
 | `createdAt` | Descending |
 
-### Index 2: Shared Notes Query
+**Index 2: Shared Notes Query**
 | Field | Order |
 |-------|-------|
 | `url` | Ascending |
 | `sharedWith` | Arrays |
 | `createdAt` | Descending |
 
-> **Tip:** Alternatively, the first time you run the extension with Firebase enabled, you'll see errors in the console with links to auto-create the required indexes.
+> ⚠️ **Field order matters!** The fields must be in the exact order shown above.
 
 ---
 
@@ -225,12 +245,14 @@ Open `public/manifest.json` and update the `oauth2` section:
 }
 ```
 
-### 9.2: Update auth.js
+> **Note:** The OAuth client ID in `manifest.json` is safe to commit — it's tied to your specific extension ID.
 
-Open `src/firebase/auth.js` and update the OAuth client ID:
+### 9.2: Update .env
 
-```javascript
-const OAUTH_CLIENT_ID = '123456789-abc123.apps.googleusercontent.com';
+Add the OAuth client ID to your `.env` file:
+
+```
+VITE_OAUTH_CLIENT_ID=123456789-abc123.apps.googleusercontent.com
 ```
 
 ---
@@ -285,6 +307,15 @@ const OAUTH_CLIENT_ID = '123456789-abc123.apps.googleusercontent.com';
 - Check that the user is properly authenticated
 - Verify the `ownerId` field matches `request.auth.uid`
 
+### Notes not appearing in popup (but visible on page)
+This usually means **Firestore indexes are missing**:
+1. Notes save to Firestore successfully
+2. But the query to load them fails, falling back to local storage
+3. Open service worker console: `chrome://extensions/` → "service worker"
+4. Look for: `FirebaseError: The query requires an index`
+5. **Click the link** in the error to auto-create the index
+6. Wait for index status to show "Enabled" (1-2 minutes)
+
 ### Notes not appearing after page refresh
 - Check browser console for Firestore errors
 - Verify indexes are created (check "Indexes" tab in Firestore)
@@ -298,15 +329,15 @@ const OAUTH_CLIENT_ID = '123456789-abc123.apps.googleusercontent.com';
 
 ## Configuration Checklist
 
-| Item | File | Status |
-|------|------|--------|
-| Firebase config | `src/firebase/config.js` | ⬜ |
-| OAuth client ID | `src/firebase/auth.js` | ⬜ |
+| Item | Location | Status |
+|------|----------|--------|
+| Firebase config | `.env` file | ⬜ |
+| OAuth client ID | `.env` file | ⬜ |
 | OAuth client ID | `public/manifest.json` | ⬜ |
 | Extension ID in Google Cloud | OAuth credentials | ⬜ |
 | Extension domain in Firebase Auth | Authorized domains | ⬜ |
 | Firestore security rules | Firebase Console | ⬜ |
-| Firestore indexes | Firebase Console | ⬜ |
+| Firestore indexes (2 required) | Firebase Console | ⬜ |
 
 ---
 
