@@ -20,7 +20,11 @@ export default [
   {
     rules: {
       // Error prevention
-      "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+      "no-unused-vars": ["warn", { 
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }],
       "no-console": "off", // We use console for debugging
       "no-debugger": "warn",
       

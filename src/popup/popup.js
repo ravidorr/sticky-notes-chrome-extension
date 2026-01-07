@@ -4,6 +4,7 @@
  */
 
 import { escapeHtml, stripHtml, truncate, isRestrictedUrl, THEME_COLORS } from '../shared/utils.js';
+import { popupLogger as log } from '../shared/logger.js';
 
 // DOM Elements
 const authSection = document.getElementById('authSection');
@@ -104,11 +105,11 @@ async function handleLogout() {
  * Handle add note button click
  */
 async function handleAddNote() {
-  console.log('[Popup] Add Note button clicked');
+  log.debug(' Add Note button clicked');
   
   try {
     // Get current active tab
-    console.log('[Popup] Querying active tab...');
+    log.debug(' Querying active tab...');
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     
     if (!tab) {
@@ -116,27 +117,27 @@ async function handleAddNote() {
       return;
     }
     
-    console.log('[Popup] Active tab:', { id: tab.id, url: tab.url });
+    log.debug(' Active tab:', { id: tab.id, url: tab.url });
     
     // Check if it's a restricted page
     if (isRestrictedUrl(tab.url)) {
-      console.log('[Popup] URL is restricted, cannot inject content script');
+      log.debug(' URL is restricted, cannot inject content script');
       alert('Cannot add notes to this page. Chrome system pages and extension pages are not supported.');
       return;
     }
     
     // Try to send message to content script
-    console.log('[Popup] Sending enableSelectionMode message to tab', tab.id);
+    log.debug(' Sending enableSelectionMode message to tab', tab.id);
     try {
       const response = await chrome.tabs.sendMessage(tab.id, { action: 'enableSelectionMode' });
-      console.log('[Popup] Content script responded:', response);
+      log.debug(' Content script responded:', response);
     } catch (error) {
-      console.log('[Popup] First message failed:', error.message);
+      log.debug(' First message failed:', error.message);
       
       // Content script not loaded - inject it first
       if (error.message.includes('Receiving end does not exist') || 
           error.message.includes('Could not establish connection')) {
-        console.log('[Popup] Content script not found, injecting...');
+        log.debug(' Content script not found, injecting...');
         await injectContentScript(tab.id);
         
         // Wait for the script to initialize with retry
@@ -147,13 +148,13 @@ async function handleAddNote() {
           console.log(`[Popup] Waiting 200ms before retry ${6 - retries}/5...`);
           await new Promise(resolve => setTimeout(resolve, 200));
           try {
-            console.log('[Popup] Retrying message...');
+            log.debug(' Retrying message...');
             const response = await chrome.tabs.sendMessage(tab.id, { action: 'enableSelectionMode' });
-            console.log('[Popup] Retry successful! Response:', response);
+            log.debug(' Retry successful! Response:', response);
             window.close();
             return; // Success!
           } catch (retryError) {
-            console.log(`[Popup] Retry failed:`, retryError.message);
+            log.debug(' Retry failed:', retryError.message);
             lastError = retryError;
             retries--;
           }
@@ -166,7 +167,7 @@ async function handleAddNote() {
     }
     
     // Close the popup
-    console.log('[Popup] Success! Closing popup...');
+    log.debug(' Success! Closing popup...');
     window.close();
   } catch (error) {
     console.error('[Popup] Error enabling selection mode:', error);
@@ -181,13 +182,13 @@ async function handleAddNote() {
  * @param {number} tabId - Tab ID
  */
 async function injectContentScript(tabId) {
-  console.log('[Popup] Attempting to inject content script into tab', tabId);
+  log.debug(' Attempting to inject content script into tab', tabId);
   try {
     const results = await chrome.scripting.executeScript({
       target: { tabId },
       files: ['src/content/content.js']
     });
-    console.log('[Popup] Content script injection successful. Results:', results);
+    log.debug(' Content script injection successful. Results:', results);
   } catch (error) {
     console.error('[Popup] Failed to inject content script:', error);
     throw new Error(`Could not inject content script: ${error.message}`);
@@ -205,7 +206,7 @@ async function loadNotesForCurrentTab() {
       return;
     }
     
-    console.log('[Popup] Loading notes for tab:', tab.url);
+    log.debug(' Loading notes for tab:', tab.url);
     
     // Get notes from background script (which uses Firestore if configured)
     const response = await chrome.runtime.sendMessage({
@@ -220,7 +221,7 @@ async function loadNotesForCurrentTab() {
     
     const pageNotes = response.notes || [];
     
-    console.log('[Popup] Notes received from background:', pageNotes.length);
+    log.debug(' Notes received from background:', pageNotes.length);
     pageNotes.forEach((note, i) => {
       console.log(`[Popup] Note ${i}:`, { id: note.id, url: note.url, content: note.content?.substring(0, 50) });
     });

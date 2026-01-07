@@ -17,38 +17,11 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './config.js';
+import { VALID_THEMES, normalizeUrl, validateSelectorPattern } from '../shared/utils.js';
 
 const NOTES_COLLECTION = 'notes';
 
-/**
- * Validate a CSS selector for safety
- * @param {string} selector - CSS selector to validate
- * @returns {Object} { valid: boolean, error?: string }
- */
-function validateSelector(selector) {
-  if (!selector || typeof selector !== 'string') {
-    return { valid: false, error: 'Selector must be a non-empty string' };
-  }
-  
-  const trimmed = selector.trim();
-  if (trimmed.length === 0 || trimmed.length > 1000) {
-    return { valid: false, error: 'Selector length invalid' };
-  }
-  
-  // Check for dangerous patterns
-  const dangerousPatterns = [
-    /<script/i, /javascript:/i, /on\w+\s*=/i,
-    /expression\s*\(/i, /behavior\s*:/i, /@import/i
-  ];
-  
-  for (const pattern of dangerousPatterns) {
-    if (pattern.test(trimmed)) {
-      return { valid: false, error: 'Selector contains unsafe patterns' };
-    }
-  }
-  
-  return { valid: true };
-}
+// validateSelectorPattern is imported from shared/utils.js
 
 /**
  * Create a new note in Firestore
@@ -71,14 +44,13 @@ export async function createNote(noteData, userId) {
   }
   
   // Validate selector for security
-  const selectorValidation = validateSelector(noteData.selector);
+  const selectorValidation = validateSelectorPattern(noteData.selector);
   if (!selectorValidation.valid) {
     throw new Error(`Invalid selector: ${selectorValidation.error}`);
   }
   
   // Validate theme
-  const validThemes = ['yellow', 'blue', 'green', 'pink'];
-  const theme = validThemes.includes(noteData.theme) ? noteData.theme : 'yellow';
+  const theme = VALID_THEMES.includes(noteData.theme) ? noteData.theme : 'yellow';
   
   const note = {
     url: normalizeUrl(noteData.url),
@@ -309,16 +281,4 @@ export async function shareNote(noteId, shareWithUserId, ownerId) {
   }
 }
 
-/**
- * Normalize URL to origin + pathname
- * @param {string} url - URL to normalize
- * @returns {string} Normalized URL
- */
-function normalizeUrl(url) {
-  try {
-    const parsed = new URL(url);
-    return parsed.origin + parsed.pathname;
-  } catch {
-    return url;
-  }
-}
+// normalizeUrl is imported from shared/utils.js

@@ -29,6 +29,14 @@
 - [x] Re-anchor UI when elements not found
 - [x] Extension context invalidation handling
 
+### Code Quality ✅
+- [x] ESLint configuration with pre-commit hooks
+- [x] Unit test coverage (325 tests, ~32% coverage)
+- [x] Shared utility functions for testability
+- [x] Conditional debug logging (configurable via env)
+- [x] XSS prevention with HTML escaping
+- [x] CSS selector validation for security
+
 ---
 
 ## Phase 1: Authentication & Cloud Sync ✅
@@ -37,13 +45,16 @@
 - [x] Cloud sync with Firestore
 - [x] Note sharing between users (by email)
 - [x] Offline persistence (Firestore cache)
-- [ ] Real-time collaborative updates (live sync)
 
 ---
 
-## Phase 2: Threaded Discussions
+## Phase 2: Threaded Discussions & Real-time Sync
 
 Add comment threads to notes for Q&A and discussions.
+
+### Real-time Features
+- [ ] Real-time collaborative updates (live sync for notes)
+- [ ] Real-time sync for comments
 
 ### Data Model
 ```javascript
@@ -70,6 +81,7 @@ Add comment threads to notes for Q&A and discussions.
 - Depth limit for nested replies (recommend: 1 level)
 - Permissions: who can comment?
 - UI expansion for thread display
+- **Firestore Index**: Composite index on `parentId` + `createdAt` for efficient threaded queries
 
 ---
 

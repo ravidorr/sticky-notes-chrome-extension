@@ -79,25 +79,48 @@ npm run build
 # Build with watch mode
 npm run dev
 
+# Run linting
+npm run lint
+
+# Run linting with auto-fix
+npm run lint:fix
+
 # Run unit tests
 npm test
 
 # Run unit tests in watch mode
 npm run test:watch
 
+# Run unit tests with coverage
+npm test -- --coverage
+
 # Run E2E tests
 npm run test:e2e
 ```
 
+### Pre-commit Hooks
+
+This project uses Husky and lint-staged to ensure code quality before commits:
+
+- **Lint**: ESLint runs on staged files and auto-fixes issues
+- **Tests**: All unit tests must pass
+
+To skip hooks (not recommended):
+```bash
+git commit --no-verify -m "your message"
+```
+
 ## Firebase Setup (Optional)
 
-To enable cloud sync and sharing features:
+To enable cloud sync and sharing features, see [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md) for detailed instructions.
 
+Quick overview:
 1. Create a Firebase project at https://console.firebase.google.com/
 2. Enable Authentication > Google Sign-In provider
 3. Enable Cloud Firestore
-4. Copy your Firebase config to `src/firebase/config.js`
+4. Copy your Firebase config to `.env` file (see `.env.example`)
 5. Add your extension ID to authorized domains in Firebase Console
+6. Create required Firestore indexes (see setup guide)
 
 ### Firestore Security Rules
 
@@ -150,12 +173,20 @@ service cloud.firestore {
 - **Styling**: Vanilla CSS (Shadow DOM isolated)
 - **Backend**: Firebase (Firestore, Authentication)
 - **Testing**: Jest (unit), Playwright (E2E)
+- **Linting**: ESLint with pre-commit hooks (Husky + lint-staged)
 - **Extension**: Chrome Manifest V3
 
 ## Browser Compatibility
 
 - Chrome 88+ (Manifest V3 support)
 - Edge 88+ (Chromium-based)
+
+## Roadmap
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the development roadmap including:
+- Threaded discussions
+- Dev/QA power features (metadata capture, Jira integration)
+- Team & billing features
 
 ## License
 

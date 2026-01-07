@@ -4,7 +4,7 @@
  */
 
 import { RichEditor } from './RichEditor.js';
-import { escapeHtml, isValidEmail, THEME_COLORS, TIMEOUTS } from '../../shared/utils.js';
+import { isValidEmail, THEME_COLORS, TIMEOUTS, VALID_THEMES } from '../../shared/utils.js';
 
 export class StickyNote {
   /**
@@ -190,7 +190,7 @@ export class StickyNote {
    * Show theme picker popup
    */
   showThemePicker() {
-    const themes = ['yellow', 'blue', 'green', 'pink'];
+    const themes = VALID_THEMES;
     const themeColors = THEME_COLORS;
     
     // Create picker
@@ -533,7 +533,7 @@ export class StickyNote {
         } else {
           this.showToast(response.error || 'Failed to share note', 'error');
         }
-      } catch (error) {
+      } catch (_error) {
         this.showToast('Failed to share note', 'error');
       }
     });

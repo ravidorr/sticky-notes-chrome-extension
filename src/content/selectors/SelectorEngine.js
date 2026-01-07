@@ -4,6 +4,8 @@
  * Prioritizes stable attributes over dynamic IDs
  */
 
+import { validateSelectorPattern } from '../../shared/utils.js';
+
 export class SelectorEngine {
   constructor() {
     // Patterns for dynamic/unstable IDs to avoid
@@ -19,7 +21,7 @@ export class SelectorEngine {
       /^_/,
       /^yui_/i,
       /^ext-gen/i,
-      /^gwt-/i,
+      /^gwt-/i
     ];
     
     // Preferred attributes for selection (in priority order)
@@ -38,7 +40,7 @@ export class SelectorEngine {
       'type',
       'placeholder',
       'title',
-      'alt',
+      'alt'
     ];
   }
   
@@ -57,7 +59,7 @@ export class SelectorEngine {
       () => this.getIdSelector(element),
       () => this.getAttributeSelector(element),
       () => this.getClassSelector(element),
-      () => this.getNthChildSelector(element),
+      () => this.getNthChildSelector(element)
     ];
     
     for (const strategy of strategies) {
@@ -409,13 +411,13 @@ export class SelectorEngine {
     }
     
     // Extract ID
-    const idMatch = selector.match(/#([^\s.#\[:]+)/);
+    const idMatch = selector.match(/#([^\s.#[:]+)/);
     if (idMatch) {
       parts.id = idMatch[1];
     }
     
     // Extract classes
-    const classMatches = selector.matchAll(/\.([^\s.#\[:]+)/g);
+    const classMatches = selector.matchAll(/\.([^\s.#[:]+)/g);
     for (const match of classMatches) {
       parts.classes.push(match[1]);
     }
@@ -441,7 +443,7 @@ export class SelectorEngine {
    * @param {Object} metadata - Additional metadata
    * @returns {Element[]} Array of candidate elements
    */
-  findCandidates(selectorParts, metadata) {
+  findCandidates(selectorParts, _metadata) {
     let candidates = [];
     
     // Try to find by tag name first
@@ -612,45 +614,30 @@ export class SelectorEngine {
    * @returns {Object} { valid: boolean, error?: string }
    */
   validateSelector(selector) {
-    // Check for null/undefined/empty
-    if (!selector || typeof selector !== 'string') {
-      return { valid: false, error: 'Selector must be a non-empty string' };
+    // Use shared validation for basic pattern checks
+    const patternValidation = validateSelectorPattern(selector);
+    if (!patternValidation.valid) {
+      return patternValidation;
     }
     
-    // Trim and check length
     const trimmed = selector.trim();
-    if (trimmed.length === 0) {
-      return { valid: false, error: 'Selector cannot be empty' };
-    }
     
-    // Check maximum length to prevent DoS
-    const MAX_SELECTOR_LENGTH = 1000;
-    if (trimmed.length > MAX_SELECTOR_LENGTH) {
-      return { valid: false, error: `Selector exceeds maximum length of ${MAX_SELECTOR_LENGTH} characters` };
-    }
-    
-    // Check for potentially dangerous patterns
-    const dangerousPatterns = [
-      /<script/i,           // Script injection attempt
-      /javascript:/i,       // JavaScript protocol
-      /on\w+\s*=/i,         // Event handlers (onclick=, etc.)
-      /expression\s*\(/i,   // CSS expression (IE)
+    // Additional patterns not in shared (more strict for client-side)
+    const additionalDangerousPatterns = [
       /url\s*\([^)]*\)/i,   // url() that's not safe
-      /behavior\s*:/i,      // IE behavior
-      /@import/i,           // CSS import
-      /\\[0-9a-f]/i,        // Unicode escape sequences that might bypass filters
+      /\\[0-9a-f]/i         // Unicode escape sequences that might bypass filters
     ];
     
-    for (const pattern of dangerousPatterns) {
+    for (const pattern of additionalDangerousPatterns) {
       if (pattern.test(trimmed)) {
         return { valid: false, error: 'Selector contains potentially unsafe patterns' };
       }
     }
     
-    // Try to use the selector to verify it's valid CSS
+    // Try to use the selector to verify it's valid CSS (DOM check)
     try {
       document.querySelector(trimmed);
-    } catch (e) {
+    } catch (_e) {
       return { valid: false, error: 'Invalid CSS selector syntax' };
     }
     

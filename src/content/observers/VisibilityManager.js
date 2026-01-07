@@ -100,7 +100,7 @@ export class VisibilityManager {
     let ticking = false;
     
     const updatePositions = () => {
-      this.anchorToNote.forEach((note, anchor) => {
+      this.anchorToNote.forEach((note, _anchor) => {
         if (note.isVisible) {
           note.updatePosition();
         }
@@ -118,7 +118,7 @@ export class VisibilityManager {
     
     // Store bound resize handler for cleanup
     this.boundResizeHandler = () => {
-      this.anchorToNote.forEach((note, anchor) => {
+      this.anchorToNote.forEach((note, _anchor) => {
         if (note.isVisible) {
           note.updatePosition();
         }
@@ -194,7 +194,7 @@ export class VisibilityManager {
    */
   disconnect() {
     // Hide all notes
-    this.anchorToNote.forEach((note, anchor) => {
+    this.anchorToNote.forEach((note, _anchor) => {
       note.hide();
     });
     

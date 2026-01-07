@@ -120,12 +120,50 @@ export function isRestrictedUrl(url) {
 }
 
 /**
- * Sleep for specified milliseconds
- * @param {number} ms - Milliseconds to sleep
- * @returns {Promise<void>}
+ * Dangerous patterns that should not be in CSS selectors
+ * Used for XSS prevention
  */
-export function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+export const DANGEROUS_SELECTOR_PATTERNS = [
+  /<script/i,
+  /javascript:/i,
+  /on\w+\s*=/i,
+  /expression\s*\(/i,
+  /behavior\s*:/i,
+  /@import/i
+];
+
+/**
+ * Maximum allowed length for CSS selectors
+ */
+export const MAX_SELECTOR_LENGTH = 1000;
+
+/**
+ * Validate a CSS selector string for safety (without DOM check)
+ * @param {string} selector - CSS selector to validate
+ * @returns {Object} { valid: boolean, error?: string }
+ */
+export function validateSelectorPattern(selector) {
+  if (!selector || typeof selector !== 'string') {
+    return { valid: false, error: 'Selector must be a non-empty string' };
+  }
+  
+  const trimmed = selector.trim();
+  if (trimmed.length === 0) {
+    return { valid: false, error: 'Selector cannot be empty' };
+  }
+  
+  if (trimmed.length > MAX_SELECTOR_LENGTH) {
+    return { valid: false, error: `Selector exceeds maximum length of ${MAX_SELECTOR_LENGTH} characters` };
+  }
+  
+  // Check for dangerous patterns
+  for (const pattern of DANGEROUS_SELECTOR_PATTERNS) {
+    if (pattern.test(trimmed)) {
+      return { valid: false, error: 'Selector contains potentially unsafe patterns' };
+    }
+  }
+  
+  return { valid: true };
 }
 
 // Constants for timeout values

@@ -17,7 +17,8 @@ import {
   shareNote as shareNoteInFirestore
 } from '../firebase/notes.js';
 import { initializeFirebase, isFirebaseConfigured } from '../firebase/config.js';
-import { generateId, isValidEmail, normalizeUrl } from '../shared/utils.js';
+import { generateId, isValidEmail } from '../shared/utils.js';
+import { backgroundLogger as log } from '../shared/logger.js';
 
 // Initialize Firebase if configured
 if (isFirebaseConfigured()) {
@@ -40,7 +41,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * @param {Object} sender - Sender info
  * @returns {Promise<Object>} Response
  */
-async function handleMessage(message, sender) {
+async function handleMessage(message, _sender) {
   switch (message.action) {
     case 'login':
       return handleLogin();
@@ -79,7 +80,7 @@ async function handleLogin() {
     const user = await signInWithGoogle();
     return { success: true, user };
   } catch (error) {
-    console.error('Login error:', error);
+    log.error('Login error:', error);
     return { success: false, error: error.message };
   }
 }
@@ -92,7 +93,7 @@ async function handleLogout() {
     await signOut();
     return { success: true };
   } catch (error) {
-    console.error('Logout error:', error);
+    log.error('Logout error:', error);
     return { success: false, error: error.message };
   }
 }
@@ -117,19 +118,19 @@ async function getUser() {
 async function getNotes(url) {
   try {
     const user = await getCurrentUser();
-    console.log('[Background] getNotes called with URL:', url);
-    console.log('[Background] Current user:', user ? { uid: user.uid, email: user.email } : 'null');
-    console.log('[Background] Firebase configured:', isFirebaseConfigured());
+    log.debug(' getNotes called with URL:', url);
+    log.debug(' Current user:', user ? { uid: user.uid, email: user.email } : 'null');
+    log.debug(' Firebase configured:', isFirebaseConfigured());
     
     // Try Firestore first if configured and user is logged in
     if (isFirebaseConfigured() && user) {
       try {
-        console.log('[Background] Querying Firestore for notes...');
+        log.debug(' Querying Firestore for notes...');
         const notes = await getNotesForUrl(url, user.uid);
-        console.log('[Background] Firestore returned', notes.length, 'notes:', notes);
+        log.debug(' Firestore returned', notes.length, 'notes:', notes);
         return { success: true, notes };
       } catch (error) {
-        console.warn('[Background] Firestore query failed, falling back to local storage:', error);
+        log.warn(' Firestore query failed, falling back to local storage:', error);
       }
     }
     
@@ -169,7 +170,7 @@ async function saveNote(note) {
         const newNote = await createNote(note, user.uid);
         return { success: true, note: newNote };
       } catch (error) {
-        console.warn('Firestore save failed, falling back to local storage:', error);
+        log.warn('Firestore save failed, falling back to local storage:', error);
       }
     }
     
@@ -210,7 +211,7 @@ async function updateNote(note) {
         await updateNoteInFirestore(note.id, note, user.uid);
         return { success: true, note };
       } catch (error) {
-        console.warn('Firestore update failed, falling back to local storage:', error);
+        log.warn('Firestore update failed, falling back to local storage:', error);
       }
     }
     
@@ -252,7 +253,7 @@ async function deleteNote(noteId) {
         await deleteNoteFromFirestore(noteId, user.uid);
         return { success: true };
       } catch (error) {
-        console.warn('Firestore delete failed, falling back to local storage:', error);
+        log.warn('Firestore delete failed, falling back to local storage:', error);
       }
     }
     
@@ -316,7 +317,7 @@ async function shareNote(noteId, email) {
     
     return { success: true };
   } catch (error) {
-    console.error('Share note error:', error);
+    log.error('Share note error:', error);
     return { success: false, error: error.message };
   }
 }
@@ -345,6 +346,6 @@ chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
 });
 
 // Log when service worker starts
-console.log('Sticky Notes background service worker started');
-console.log('Firebase configured:', isFirebaseConfigured());
-console.log('Auth configured:', isAuthConfigured());
+log.info('Sticky Notes background service worker started');
+log.info('Firebase configured:', isFirebaseConfigured());
+log.info('Auth configured:', isAuthConfigured());

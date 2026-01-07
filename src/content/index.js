@@ -8,6 +8,7 @@ import { SelectionOverlay } from './components/SelectionOverlay.js';
 import { SelectorEngine } from './selectors/SelectorEngine.js';
 import { VisibilityManager } from './observers/VisibilityManager.js';
 import { RichEditor } from './components/RichEditor.js';
+import { escapeHtml } from '../shared/utils.js';
 
 /**
  * Main application class for the content script
@@ -700,7 +701,7 @@ class StickyNotesApp {
     }
     
     // Clear existing notes
-    this.notes.forEach((note, id) => {
+    this.notes.forEach((note, _id) => {
       this.visibilityManager.unobserve(note.anchor);
       note.destroy();
     });
@@ -755,9 +756,9 @@ class StickyNotesApp {
    * Setup mutation observer for dynamic content
    */
   setupMutationObserver() {
-    const observer = new MutationObserver((mutations) => {
+    const observer = new MutationObserver((_mutations) => {
       // Check if any anchor elements were removed
-      this.notes.forEach((note, id) => {
+      this.notes.forEach((note, _id) => {
         if (!document.contains(note.anchor)) {
           // Anchor element was removed, try to find it again
           const newAnchor = document.querySelector(note.selector);
@@ -811,7 +812,7 @@ class StickyNotesApp {
         <div style="flex: 1; min-width: 0;">
           <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">Note Anchor Not Found</div>
           <div style="font-size: 13px; color: #6b7280; margin-bottom: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            "${this.escapeHtml((noteData.content || '').substring(0, 50))}${noteData.content?.length > 50 ? '...' : ''}"
+            "${escapeHtml((noteData.content || '').substring(0, 50))}${noteData.content?.length > 50 ? '...' : ''}"
           </div>
           <div style="display: flex; gap: 8px;">
             <button class="sn-reanchor-btn" style="flex: 1; padding: 8px 12px; background: #facc15; color: #713f12; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;">
@@ -1000,17 +1001,7 @@ class StickyNotesApp {
     }
   }
   
-  /**
-   * Escape HTML to prevent XSS
-   * @param {string} str - String to escape
-   * @returns {string} Escaped string
-   */
-  escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
+  // escapeHtml is imported from shared/utils.js
 }
 
 // Initialize the app when the document is ready

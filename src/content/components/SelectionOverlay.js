@@ -184,7 +184,7 @@ export class SelectionOverlay {
    * Update tooltip content
    * @param {Element} element - Target element
    */
-  updateTooltip(element) {
+  updateTooltip(_element) {
     this.tooltip.textContent = 'Click to add note';
     this.tooltip.style.display = 'block';
   }
