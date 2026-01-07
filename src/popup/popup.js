@@ -3,50 +3,30 @@
  * Handles the extension popup UI and interactions
  */
 
-import { escapeHtml, stripHtml, truncate, isRestrictedUrl, THEME_COLORS } from '../shared/utils.js';
-import { popupLogger as log } from '../shared/logger.js';
+import { createPopupHandlers } from './handlers.js';
 
-// DOM Elements
-const authSection = document.getElementById('authSection');
-const userSection = document.getElementById('userSection');
-const loginBtn = document.getElementById('loginBtn');
-const logoutBtn = document.getElementById('logoutBtn');
-const userAvatar = document.getElementById('userAvatar');
-const userName = document.getElementById('userName');
-const userEmail = document.getElementById('userEmail');
-const addNoteBtn = document.getElementById('addNoteBtn');
-const notesList = document.getElementById('notesList');
-const notesCount = document.getElementById('notesCount');
+// Create handlers with default dependencies
+const handlers = createPopupHandlers();
+
+// DOM Elements (will be populated after DOMContentLoaded)
+let authSection, userSection, loginBtn, logoutBtn;
+let userAvatar, userName, userEmail;
+let addNoteBtn, notesList, notesCount;
 
 /**
- * Initialize the popup
+ * Initialize DOM elements
  */
-async function init() {
-  // Check auth state
-  await checkAuthState();
-  
-  // Load notes for current tab
-  await loadNotesForCurrentTab();
-  
-  // Setup event listeners
-  setupEventListeners();
-}
-
-/**
- * Check authentication state
- */
-async function checkAuthState() {
-  try {
-    const result = await chrome.storage.local.get(['user']);
-    if (result.user) {
-      showUserSection(result.user);
-    } else {
-      showAuthSection();
-    }
-  } catch (error) {
-    log.error('Error checking auth state:', error);
-    showAuthSection();
-  }
+function initDOMElements() {
+  authSection = document.getElementById('authSection');
+  userSection = document.getElementById('userSection');
+  loginBtn = document.getElementById('loginBtn');
+  logoutBtn = document.getElementById('logoutBtn');
+  userAvatar = document.getElementById('userAvatar');
+  userName = document.getElementById('userName');
+  userEmail = document.getElementById('userEmail');
+  addNoteBtn = document.getElementById('addNoteBtn');
+  notesList = document.getElementById('notesList');
+  notesCount = document.getElementById('notesCount');
 }
 
 /**
@@ -71,258 +51,80 @@ function showUserSection(user) {
 }
 
 /**
+ * Render notes list
+ * @param {Array} notes - Array of note objects
+ */
+function renderNotesList(notes) {
+  if (notes.length === 0) {
+    notesList.innerHTML = handlers.renderEmptyNotes();
+    return;
+  }
+  
+  notesList.innerHTML = notes.map(note => handlers.renderNoteItem(note)).join('');
+  
+  // Add click handlers
+  notesList.querySelectorAll('.note-item').forEach(item => {
+    item.addEventListener('click', () => handlers.handleNoteClick(item.dataset.id));
+  });
+}
+
+/**
  * Handle login button click
  */
-async function handleLogin() {
-  try {
-    // Send message to background script to initiate login
-    const response = await chrome.runtime.sendMessage({ action: 'login' });
-    if (response.success) {
-      showUserSection(response.user);
-    } else {
-      log.error('Login failed:', response.error);
-    }
-  } catch (error) {
-    log.error('Login error:', error);
+async function onLogin() {
+  const result = await handlers.handleLogin();
+  if (result.success) {
+    showUserSection(result.user);
   }
 }
 
 /**
  * Handle logout button click
  */
-async function handleLogout() {
-  try {
-    const response = await chrome.runtime.sendMessage({ action: 'logout' });
-    if (response.success) {
-      showAuthSection();
-    }
-  } catch (error) {
-    log.error('Logout error:', error);
+async function onLogout() {
+  const result = await handlers.handleLogout();
+  if (result.success) {
+    showAuthSection();
   }
 }
 
 /**
- * Handle add note button click
+ * Initialize the popup
  */
-async function handleAddNote() {
-  log.debug(' Add Note button clicked');
+async function init() {
+  initDOMElements();
   
-  try {
-    // Get current active tab
-    log.debug(' Querying active tab...');
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (!tab) {
-      log.error('No active tab found');
-      return;
-    }
-    
-    log.debug(' Active tab:', { id: tab.id, url: tab.url });
-    
-    // Check if it's a restricted page
-    if (isRestrictedUrl(tab.url)) {
-      log.debug(' URL is restricted, cannot inject content script');
-      alert('Cannot add notes to this page. Chrome system pages and extension pages are not supported.');
-      return;
-    }
-    
-    // Try to send message to content script
-    log.debug(' Sending enableSelectionMode message to tab', tab.id);
-    try {
-      const response = await chrome.tabs.sendMessage(tab.id, { action: 'enableSelectionMode' });
-      log.debug(' Content script responded:', response);
-    } catch (error) {
-      log.debug(' First message failed:', error.message);
-      
-      // Content script not loaded - inject it first
-      if (error.message.includes('Receiving end does not exist') || 
-          error.message.includes('Could not establish connection')) {
-        log.debug(' Content script not found, injecting...');
-        await injectContentScript(tab.id);
-        
-        // Wait for the script to initialize with retry
-        let retries = 5;
-        let lastError = null;
-        
-        while (retries > 0) {
-          log.debug(`Waiting 200ms before retry ${6 - retries}/5...`);
-          await new Promise(resolve => setTimeout(resolve, 200));
-          try {
-            log.debug(' Retrying message...');
-            const response = await chrome.tabs.sendMessage(tab.id, { action: 'enableSelectionMode' });
-            log.debug(' Retry successful! Response:', response);
-            window.close();
-            return; // Success!
-          } catch (retryError) {
-            log.debug(' Retry failed:', retryError.message);
-            lastError = retryError;
-            retries--;
-          }
-        }
-        
-        throw lastError || new Error('Content script failed to respond after injection');
-      } else {
-        throw error;
-      }
-    }
-    
-    // Close the popup
-    log.debug(' Success! Closing popup...');
-    window.close();
-  } catch (error) {
-    log.error('Error enabling selection mode:', error);
-    alert('Could not enable selection mode. Please refresh the page and try again.');
-  }
-}
-
-// isRestrictedUrl is now imported from shared/utils.js
-
-/**
- * Inject content script into tab
- * @param {number} tabId - Tab ID
- */
-async function injectContentScript(tabId) {
-  log.debug(' Attempting to inject content script into tab', tabId);
-  try {
-    const results = await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['src/content/content.js']
-    });
-    log.debug(' Content script injection successful. Results:', results);
-  } catch (error) {
-    log.error('Failed to inject content script:', error);
-    throw new Error(`Could not inject content script: ${error.message}`);
-  }
-}
-
-/**
- * Load notes for the current tab
- */
-async function loadNotesForCurrentTab() {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (!tab) {
-      return;
-    }
-    
-    log.debug(' Loading notes for tab:', tab.url);
-    
-    // Get notes from background script (which uses Firestore if configured)
-    const response = await chrome.runtime.sendMessage({
-      action: 'getNotes',
-      url: tab.url
-    });
-    
-    if (!response.success) {
-      log.error('Failed to get notes:', response.error);
-      return;
-    }
-    
-    const pageNotes = response.notes || [];
-    
-    log.debug(' Notes received from background:', pageNotes.length);
-    pageNotes.forEach((note, i) => {
-      log.debug(`Note ${i}:`, { id: note.id, url: note.url, content: note.content?.substring(0, 50) });
-    });
-    
-    // Update UI
-    renderNotesList(pageNotes);
-    notesCount.textContent = pageNotes.length;
-  } catch (error) {
-    log.error('Error loading notes:', error);
-  }
-}
-
-/**
- * Render notes list
- * @param {Array} notes - Array of note objects
- */
-function renderNotesList(notes) {
-  if (notes.length === 0) {
-    notesList.innerHTML = `
-      <div class="notes-empty">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5">
-          <rect x="3" y="3" width="18" height="18" rx="2"/>
-          <path d="M7 8h10M7 12h10M7 16h6"/>
-        </svg>
-        <p>No notes on this page yet</p>
-      </div>
-    `;
-    return;
+  // Check auth state
+  const user = await handlers.checkAuthState();
+  if (user) {
+    showUserSection(user);
+  } else {
+    showAuthSection();
   }
   
-  notesList.innerHTML = notes.map(note => `
-    <div class="note-item" data-id="${note.id}">
-      <div class="note-item-color" style="background: ${getThemeColor(note.theme)}"></div>
-      <div class="note-item-content">
-        <div class="note-item-text">${stripHtml(note.content) || 'Empty note'}</div>
-        <div class="note-item-meta">
-          <span class="note-item-selector">${escapeHtml(truncateSelector(note.selector))}</span>
-        </div>
-      </div>
-    </div>
-  `).join('');
+  // Load notes for current tab
+  const notesResult = await handlers.loadNotesForCurrentTab();
+  renderNotesList(notesResult.notes);
+  notesCount.textContent = notesResult.notes.length;
   
-  // Add click handlers
-  notesList.querySelectorAll('.note-item').forEach(item => {
-    item.addEventListener('click', () => handleNoteClick(item.dataset.id));
-  });
-}
-
-/**
- * Handle note item click - scroll to element and highlight note
- * @param {string} noteId - Note ID
- */
-async function handleNoteClick(noteId) {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (!tab) {
-      return;
-    }
-    
-    // Send message to content script to highlight note
-    await chrome.tabs.sendMessage(tab.id, { 
-      action: 'highlightNote', 
-      noteId 
-    });
-    
-    // Close popup
-    window.close();
-  } catch (error) {
-    log.error('Error highlighting note:', error);
-  }
-}
-
-/**
- * Get theme color
- * @param {string} theme - Theme name
- * @returns {string} Color hex
- */
-function getThemeColor(theme) {
-  return THEME_COLORS[theme] || THEME_COLORS.yellow;
-}
-
-/**
- * Truncate selector for display
- * @param {string} selector - CSS selector
- * @returns {string} Truncated selector
- */
-function truncateSelector(selector) {
-  return truncate(selector, 30);
-}
-
-// escapeHtml and stripHtml are now imported from shared/utils.js
-
-/**
- * Setup event listeners
- */
-function setupEventListeners() {
-  loginBtn.addEventListener('click', handleLogin);
-  logoutBtn.addEventListener('click', handleLogout);
-  addNoteBtn.addEventListener('click', handleAddNote);
+  // Setup event listeners
+  loginBtn.addEventListener('click', onLogin);
+  logoutBtn.addEventListener('click', onLogout);
+  addNoteBtn.addEventListener('click', () => handlers.handleAddNote());
 }
 
 // Initialize popup when DOM is ready
-document.addEventListener('DOMContentLoaded', init);
+// Guard with test environment check
+if (typeof globalThis.__JEST__ === 'undefined') {
+  document.addEventListener('DOMContentLoaded', init);
+}
+
+// Export for testing
+export { 
+  init, 
+  showAuthSection, 
+  showUserSection, 
+  renderNotesList,
+  initDOMElements 
+};
+export { createPopupHandlers } from './handlers.js';

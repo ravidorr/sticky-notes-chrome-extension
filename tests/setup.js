@@ -5,6 +5,9 @@
 
 import { jest } from '@jest/globals';
 
+// Mark test environment to prevent auto-initialization in modules
+globalThis.__JEST__ = true;
+
 // Mock Chrome Extension APIs
 global.chrome = {
   runtime: {

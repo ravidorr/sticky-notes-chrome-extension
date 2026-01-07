@@ -218,6 +218,12 @@ describe('StickyNote', () => {
     it('should not throw when called', () => {
       expect(() => note.showThemePicker()).not.toThrow();
     });
+    
+    it('should create theme picker element', () => {
+      note.showThemePicker();
+      const picker = note.element.querySelector('.sn-theme-picker');
+      expect(picker).not.toBeNull();
+    });
   });
   
   describe('showPositionPicker', () => {
@@ -228,12 +234,16 @@ describe('StickyNote', () => {
     it('should not throw when called', () => {
       expect(() => note.showPositionPicker()).not.toThrow();
     });
+    
+    it('should create position picker element', () => {
+      note.showPositionPicker();
+      const picker = note.element.querySelector('.sn-position-picker');
+      expect(picker).not.toBeNull();
+    });
   });
   
   describe('showShareModal', () => {
     it('should call share modal method', () => {
-      // showShareModal creates elements in the shadow DOM container
-      // which may not be accessible in tests, so just verify method exists
       expect(typeof note.showShareModal).toBe('function');
     });
   });
@@ -241,6 +251,16 @@ describe('StickyNote', () => {
   describe('showToast', () => {
     it('should have showToast method', () => {
       expect(typeof note.showToast).toBe('function');
+    });
+  });
+  
+  describe('highlight', () => {
+    it('should have highlight method', () => {
+      expect(typeof note.highlight).toBe('function');
+    });
+    
+    it('should not throw when called', () => {
+      expect(() => note.highlight()).not.toThrow();
     });
   });
   

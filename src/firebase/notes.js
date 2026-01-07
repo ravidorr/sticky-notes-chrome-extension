@@ -21,16 +21,36 @@ import { VALID_THEMES, normalizeUrl, validateSelectorPattern } from '../shared/u
 
 const NOTES_COLLECTION = 'notes';
 
-// validateSelectorPattern is imported from shared/utils.js
+/**
+ * Default Firestore dependencies - can be overridden for testing
+ */
+const defaultFirestoreDeps = {
+  collection,
+  doc,
+  addDoc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  serverTimestamp
+};
 
 /**
  * Create a new note in Firestore
  * @param {Object} noteData - Note data
  * @param {string} userId - Owner's user ID
+ * @param {Object} deps - Optional dependencies for testing
  * @returns {Promise<Object>} Created note with ID
  */
-export async function createNote(noteData, userId) {
-  if (!isFirebaseConfigured() || !db) {
+export async function createNote(noteData, userId, deps = {}) {
+  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const dbInstance = deps.db !== undefined ? deps.db : db;
+  const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
+  
+  if (!isConfigured || !dbInstance) {
     throw new Error('Firebase is not configured');
   }
   
@@ -60,11 +80,11 @@ export async function createNote(noteData, userId) {
     position: noteData.position || { anchor: 'top-right' },
     ownerId: userId,
     sharedWith: [],
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    createdAt: firebaseDeps.serverTimestamp(),
+    updatedAt: firebaseDeps.serverTimestamp()
   };
   
-  const docRef = await addDoc(collection(db, NOTES_COLLECTION), note);
+  const docRef = await firebaseDeps.addDoc(firebaseDeps.collection(dbInstance, NOTES_COLLECTION), note);
   
   return {
     id: docRef.id,
@@ -78,50 +98,47 @@ export async function createNote(noteData, userId) {
  * Get notes for a URL (owned or shared with user)
  * @param {string} url - Page URL
  * @param {string} userId - Current user ID
+ * @param {Object} deps - Optional dependencies for testing
  * @returns {Promise<Array>} Array of notes
  */
-export async function getNotesForUrl(url, userId) {
-  if (!isFirebaseConfigured() || !db) {
+export async function getNotesForUrl(url, userId, deps = {}) {
+  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const dbInstance = deps.db !== undefined ? deps.db : db;
+  const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
+  
+  if (!isConfigured || !dbInstance) {
     throw new Error('Firebase is not configured');
   }
   
   // Normalize URL to origin + pathname
   const normalizedUrl = normalizeUrl(url);
-  console.log('[Firestore] getNotesForUrl called');
-  console.log('[Firestore] Original URL:', url);
-  console.log('[Firestore] Normalized URL:', normalizedUrl);
-  console.log('[Firestore] User ID:', userId);
   
   // Query for owned notes
-  const ownedQuery = query(
-    collection(db, NOTES_COLLECTION),
-    where('url', '==', normalizedUrl),
-    where('ownerId', '==', userId),
-    orderBy('createdAt', 'desc')
+  const ownedQuery = firebaseDeps.query(
+    firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
+    firebaseDeps.where('url', '==', normalizedUrl),
+    firebaseDeps.where('ownerId', '==', userId),
+    firebaseDeps.orderBy('createdAt', 'desc')
   );
   
   // Query for shared notes
-  const sharedQuery = query(
-    collection(db, NOTES_COLLECTION),
-    where('url', '==', normalizedUrl),
-    where('sharedWith', 'array-contains', userId),
-    orderBy('createdAt', 'desc')
+  const sharedQuery = firebaseDeps.query(
+    firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
+    firebaseDeps.where('url', '==', normalizedUrl),
+    firebaseDeps.where('sharedWith', 'array-contains', userId),
+    firebaseDeps.orderBy('createdAt', 'desc')
   );
   
   const [ownedSnap, sharedSnap] = await Promise.all([
-    getDocs(ownedQuery),
-    getDocs(sharedQuery)
+    firebaseDeps.getDocs(ownedQuery),
+    firebaseDeps.getDocs(sharedQuery)
   ]);
-  
-  console.log('[Firestore] Owned query returned:', ownedSnap.size, 'docs');
-  console.log('[Firestore] Shared query returned:', sharedSnap.size, 'docs');
   
   const notes = [];
   const seenIds = new Set();
   
   ownedSnap.forEach(doc => {
     const data = doc.data();
-    console.log('[Firestore] Owned note:', doc.id, 'URL:', data.url);
     if (!seenIds.has(doc.id)) {
       seenIds.add(doc.id);
       notes.push({ id: doc.id, ...data });
@@ -130,14 +147,12 @@ export async function getNotesForUrl(url, userId) {
   
   sharedSnap.forEach(doc => {
     const data = doc.data();
-    console.log('[Firestore] Shared note:', doc.id, 'URL:', data.url);
     if (!seenIds.has(doc.id)) {
       seenIds.add(doc.id);
       notes.push({ id: doc.id, ...data, isShared: true });
     }
   });
   
-  console.log('[Firestore] Total notes to return:', notes.length);
   return notes;
 }
 
@@ -146,15 +161,20 @@ export async function getNotesForUrl(url, userId) {
  * @param {string} noteId - Note ID
  * @param {Object} updates - Fields to update
  * @param {string} userId - Current user ID (for permission check)
+ * @param {Object} deps - Optional dependencies for testing
  * @returns {Promise<void>}
  */
-export async function updateNote(noteId, updates, userId) {
-  if (!isFirebaseConfigured() || !db) {
+export async function updateNote(noteId, updates, userId, deps = {}) {
+  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const dbInstance = deps.db !== undefined ? deps.db : db;
+  const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
+  
+  if (!isConfigured || !dbInstance) {
     throw new Error('Firebase is not configured');
   }
   
-  const docRef = doc(db, NOTES_COLLECTION, noteId);
-  const docSnap = await getDoc(docRef);
+  const docRef = firebaseDeps.doc(dbInstance, NOTES_COLLECTION, noteId);
+  const docSnap = await firebaseDeps.getDoc(docRef);
   
   if (!docSnap.exists()) {
     throw new Error('Note not found');
@@ -177,24 +197,29 @@ export async function updateNote(noteId, updates, userId) {
     }
   }
   
-  filteredUpdates.updatedAt = serverTimestamp();
+  filteredUpdates.updatedAt = firebaseDeps.serverTimestamp();
   
-  await updateDoc(docRef, filteredUpdates);
+  await firebaseDeps.updateDoc(docRef, filteredUpdates);
 }
 
 /**
  * Delete a note
  * @param {string} noteId - Note ID
  * @param {string} userId - Current user ID (must be owner)
+ * @param {Object} deps - Optional dependencies for testing
  * @returns {Promise<void>}
  */
-export async function deleteNote(noteId, userId) {
-  if (!isFirebaseConfigured() || !db) {
+export async function deleteNote(noteId, userId, deps = {}) {
+  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const dbInstance = deps.db !== undefined ? deps.db : db;
+  const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
+  
+  if (!isConfigured || !dbInstance) {
     throw new Error('Firebase is not configured');
   }
   
-  const docRef = doc(db, NOTES_COLLECTION, noteId);
-  const docSnap = await getDoc(docRef);
+  const docRef = firebaseDeps.doc(dbInstance, NOTES_COLLECTION, noteId);
+  const docSnap = await firebaseDeps.getDoc(docRef);
   
   if (!docSnap.exists()) {
     throw new Error('Note not found');
@@ -207,25 +232,24 @@ export async function deleteNote(noteId, userId) {
     throw new Error('Only the owner can delete this note');
   }
   
-  await deleteDoc(docRef);
+  await firebaseDeps.deleteDoc(docRef);
 }
 
 /**
  * Share a note with another user
  * 
- * SECURITY NOTE: This function currently accepts email addresses as the shareWithUserId.
- * For production use, implement a Cloud Function that:
- * 1. Validates the target user exists
- * 2. Converts email to Firebase UID
- * 3. Handles user lookup securely server-side
- * 
  * @param {string} noteId - Note ID
  * @param {string} shareWithUserId - User ID or email to share with
  * @param {string} ownerId - Current owner's user ID
+ * @param {Object} deps - Optional dependencies for testing
  * @returns {Promise<void>}
  */
-export async function shareNote(noteId, shareWithUserId, ownerId) {
-  if (!isFirebaseConfigured() || !db) {
+export async function shareNote(noteId, shareWithUserId, ownerId, deps = {}) {
+  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const dbInstance = deps.db !== undefined ? deps.db : db;
+  const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
+  
+  if (!isConfigured || !dbInstance) {
     throw new Error('Firebase is not configured');
   }
   
@@ -250,8 +274,8 @@ export async function shareNote(noteId, shareWithUserId, ownerId) {
     throw new Error('User identifier cannot be empty');
   }
   
-  const docRef = doc(db, NOTES_COLLECTION, noteId);
-  const docSnap = await getDoc(docRef);
+  const docRef = firebaseDeps.doc(dbInstance, NOTES_COLLECTION, noteId);
+  const docSnap = await firebaseDeps.getDoc(docRef);
   
   if (!docSnap.exists()) {
     throw new Error('Note not found');
@@ -274,11 +298,9 @@ export async function shareNote(noteId, shareWithUserId, ownerId) {
     }
     
     sharedWith.push(sanitizedShareWith);
-    await updateDoc(docRef, { 
+    await firebaseDeps.updateDoc(docRef, { 
       sharedWith,
-      updatedAt: serverTimestamp()
+      updatedAt: firebaseDeps.serverTimestamp()
     });
   }
 }
-
-// normalizeUrl is imported from shared/utils.js

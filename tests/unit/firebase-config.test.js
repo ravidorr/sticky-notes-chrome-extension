@@ -1,216 +1,257 @@
 /**
- * Firebase Config Module Unit Tests
+ * Firebase Config Unit Tests
+ * 
+ * Tests the configuration validation and initialization logic.
+ * Firebase SDK is mocked to allow testing without actual Firebase.
  */
 
-import { jest, describe, it, expect } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
-describe('Firebase Config Logic', () => {
-  describe('isFirebaseConfigured', () => {
-    it('should return true when all required fields are present', () => {
-      function isFirebaseConfigured(config) {
-        return !!(
-          config.apiKey &&
-          config.authDomain &&
-          config.projectId
-        );
-      }
-      
-      const validConfig = {
-        apiKey: 'test-api-key',
-        authDomain: 'test.firebaseapp.com',
-        projectId: 'test-project'
-      };
-      
-      expect(isFirebaseConfigured(validConfig)).toBe(true);
+// Mock Firebase SDK modules before importing config
+jest.unstable_mockModule('firebase/app', () => ({
+  initializeApp: jest.fn(() => ({ name: 'mock-app' }))
+}));
+
+jest.unstable_mockModule('firebase/auth', () => ({
+  getAuth: jest.fn(() => ({ name: 'mock-auth' }))
+}));
+
+jest.unstable_mockModule('firebase/firestore', () => ({
+  getFirestore: jest.fn(() => ({ name: 'mock-db' })),
+  initializeFirestore: jest.fn(() => ({ name: 'mock-db-initialized' })),
+  persistentLocalCache: jest.fn((config) => ({ type: 'localCache', ...config })),
+  persistentSingleTabManager: jest.fn((config) => ({ type: 'tabManager', ...config }))
+}));
+
+// Import after mocking
+const { 
+  isFirebaseConfigured, 
+  isConfigValid, 
+  getFirebaseConfig,
+  initializeFirebase,
+  resetFirebase
+} = await import('../../src/firebase/config.js');
+
+describe('Firebase Config', () => {
+  const localThis = {};
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Reset Firebase state before each test
+    resetFirebase();
+  });
+
+  describe('getFirebaseConfig', () => {
+    it('should return config object', () => {
+      const config = getFirebaseConfig();
+      expect(config).toBeDefined();
+      expect(config).toHaveProperty('apiKey');
+      expect(config).toHaveProperty('authDomain');
+      expect(config).toHaveProperty('projectId');
+      expect(config).toHaveProperty('storageBucket');
+      expect(config).toHaveProperty('messagingSenderId');
+      expect(config).toHaveProperty('appId');
     });
-    
+  });
+
+  describe('isConfigValid', () => {
+    it('should return true when all required fields are present', () => {
+      const config = {
+        apiKey: 'real-api-key',
+        authDomain: 'project.firebaseapp.com',
+        projectId: 'my-project'
+      };
+      expect(isConfigValid(config)).toBe(true);
+    });
+
     it('should return false when apiKey is missing', () => {
-      function isFirebaseConfigured(config) {
-        return !!(config.apiKey && config.authDomain && config.projectId);
-      }
+      const config = {
+        authDomain: 'project.firebaseapp.com',
+        projectId: 'my-project'
+      };
+      expect(isConfigValid(config)).toBe(false);
+    });
+
+    it('should return false for null config', () => {
+      expect(isConfigValid(null)).toBe(false);
+    });
+
+    it('should return false for undefined config', () => {
+      expect(isConfigValid(undefined)).toBe(false);
+    });
+
+    it('should return false for placeholder values with your_', () => {
+      const config = {
+        apiKey: 'your_api_key_here',
+        authDomain: 'project.firebaseapp.com'
+      };
+      expect(isConfigValid(config)).toBe(false);
+    });
+
+    it('should return false for YOUR_API_KEY placeholder', () => {
+      const config = {
+        apiKey: 'YOUR_API_KEY',
+        authDomain: 'project.firebaseapp.com'
+      };
+      expect(isConfigValid(config)).toBe(false);
+    });
+
+    it('should return false for empty apiKey', () => {
+      const config = {
+        apiKey: '',
+        authDomain: 'project.firebaseapp.com'
+      };
+      expect(isConfigValid(config)).toBe(false);
+    });
+  });
+
+  describe('isFirebaseConfigured', () => {
+    it('should return boolean', () => {
+      const result = isFirebaseConfigured();
+      expect(typeof result).toBe('boolean');
+    });
+  });
+
+  describe('initializeFirebase', () => {
+    it('should return null values when not configured', () => {
+      const result = initializeFirebase({ config: {} });
+      expect(result.app).toBeNull();
+      expect(result.auth).toBeNull();
+      expect(result.db).toBeNull();
+    });
+
+    it('should initialize Firebase when configured', () => {
+      localThis.mockApp = { name: 'test-app' };
+      localThis.mockAuth = { name: 'test-auth' };
+      localThis.mockDb = { name: 'test-db' };
+      
+      const mockDeps = {
+        initializeApp: jest.fn(() => localThis.mockApp),
+        getAuth: jest.fn(() => localThis.mockAuth),
+        initializeFirestore: jest.fn(() => localThis.mockDb),
+        getFirestore: jest.fn(() => localThis.mockDb),
+        persistentLocalCache: jest.fn(() => ({})),
+        persistentSingleTabManager: jest.fn(() => ({}))
+      };
       
       const config = {
-        authDomain: 'test.firebaseapp.com',
-        projectId: 'test-project'
+        apiKey: 'real-api-key',
+        authDomain: 'project.firebaseapp.com',
+        projectId: 'my-project'
       };
       
-      expect(isFirebaseConfigured(config)).toBe(false);
+      const result = initializeFirebase({ config, deps: mockDeps });
+      
+      expect(result.app).toBe(localThis.mockApp);
+      expect(result.auth).toBe(localThis.mockAuth);
+      expect(result.db).toBe(localThis.mockDb);
+      expect(mockDeps.initializeApp).toHaveBeenCalledWith(config);
+      expect(mockDeps.getAuth).toHaveBeenCalledWith(localThis.mockApp);
     });
-    
-    it('should return false for empty config', () => {
-      function isFirebaseConfigured(config) {
-        return !!(config.apiKey && config.authDomain && config.projectId);
-      }
-      
-      expect(isFirebaseConfigured({})).toBe(false);
-    });
-    
-    it('should return false for placeholder values', () => {
-      function isFirebaseConfigured(config) {
-        const placeholders = ['your_api_key', 'your-project', 'your_project'];
-        const hasPlaceholder = [config.apiKey, config.projectId].some(
-          val => placeholders.some(placeholder => val?.includes(placeholder))
-        );
-        return !!(config.apiKey && config.projectId && !hasPlaceholder);
-      }
-      
-      const configWithPlaceholder = {
-        apiKey: 'your_api_key',
-        authDomain: 'your-project.firebaseapp.com',
-        projectId: 'your-project'
-      };
-      
-      expect(isFirebaseConfigured(configWithPlaceholder)).toBe(false);
-    });
-  });
-  
-  describe('config from environment', () => {
-    it('should build config object from env vars', () => {
-      function buildConfig(env) {
-        return {
-          apiKey: env.VITE_FIREBASE_API_KEY || '',
-          authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || '',
-          projectId: env.VITE_FIREBASE_PROJECT_ID || '',
-          storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || '',
-          messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-          appId: env.VITE_FIREBASE_APP_ID || ''
-        };
-      }
-      
-      const env = {
-        VITE_FIREBASE_API_KEY: 'api-key-123',
-        VITE_FIREBASE_AUTH_DOMAIN: 'test.firebaseapp.com',
-        VITE_FIREBASE_PROJECT_ID: 'test-project'
-      };
-      
-      const config = buildConfig(env);
-      
-      expect(config.apiKey).toBe('api-key-123');
-      expect(config.authDomain).toBe('test.firebaseapp.com');
-      expect(config.projectId).toBe('test-project');
-    });
-    
-    it('should use empty strings for missing env vars', () => {
-      function buildConfig(env) {
-        return {
-          apiKey: env.VITE_FIREBASE_API_KEY || '',
-          authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || ''
-        };
-      }
-      
-      const config = buildConfig({});
-      
-      expect(config.apiKey).toBe('');
-      expect(config.authDomain).toBe('');
-    });
-  });
-  
-  describe('Firestore initialization pattern', () => {
-    it('should initialize with persistent cache settings', () => {
-      function createFirestoreSettings(enablePersistence) {
-        if (enablePersistence) {
-          return {
-            localCache: {
-              type: 'persistent',
-              tabManager: { forceOwnership: false }
-            }
-          };
-        }
-        return {};
-      }
-      
-      const settings = createFirestoreSettings(true);
-      
-      expect(settings.localCache).toBeDefined();
-      expect(settings.localCache.type).toBe('persistent');
-    });
-    
-    it('should handle initialization errors', () => {
-      function handleFirestoreError(error) {
-        if (error.code === 'failed-precondition') {
-          return { fallback: true, reason: 'multiple-tabs' };
-        }
-        return { fallback: true, reason: 'unknown', error: error.message };
-      }
-      
-      const error = { code: 'failed-precondition', message: 'Multiple tabs open' };
-      const result = handleFirestoreError(error);
-      
-      expect(result.fallback).toBe(true);
-      expect(result.reason).toBe('multiple-tabs');
-    });
-  });
-  
-  describe('singleton pattern', () => {
-    it('should initialize only once', () => {
-      let initCount = 0;
-      let instance = null;
-      
-      function initializeFirebase() {
-        if (!instance) {
-          initCount++;
-          instance = { app: {}, auth: {}, db: {} };
-        }
-        return instance;
-      }
-      
-      const first = initializeFirebase();
-      const second = initializeFirebase();
-      
-      expect(first).toBe(second);
-      expect(initCount).toBe(1);
-    });
-  });
-  
-  describe('module exports', () => {
-    it('should export required functions and objects', () => {
-      // Test that the expected exports exist
-      const mockModule = {
-        initializeFirebase: jest.fn(),
-        isFirebaseConfigured: jest.fn(),
-        auth: null,
-        db: null
-      };
-      
-      expect(typeof mockModule.initializeFirebase).toBe('function');
-      expect(typeof mockModule.isFirebaseConfigured).toBe('function');
-    });
-  });
-});
 
-describe('Firebase Persistence Settings', () => {
-  it('should create persistent local cache config', () => {
-    function createPersistentCacheConfig(singleTab = true) {
-      return {
-        localCache: {
-          kind: 'persistentSingleTab' + (singleTab ? '' : 'MultiTab'),
-          settings: {
-            cacheSizeBytes: 100 * 1024 * 1024 // 100MB
-          }
-        }
+    it('should initialize only once (singleton pattern)', () => {
+      const mockDeps = {
+        initializeApp: jest.fn(() => ({ name: 'app' })),
+        getAuth: jest.fn(() => ({ name: 'auth' })),
+        initializeFirestore: jest.fn(() => ({ name: 'db' })),
+        getFirestore: jest.fn(() => ({ name: 'db' })),
+        persistentLocalCache: jest.fn(() => ({})),
+        persistentSingleTabManager: jest.fn(() => ({}))
       };
-    }
-    
-    const config = createPersistentCacheConfig(true);
-    expect(config.localCache.kind).toBe('persistentSingleTab');
+      
+      const config = { apiKey: 'real-api-key' };
+      
+      // First call
+      initializeFirebase({ config, deps: mockDeps });
+      // Second call
+      initializeFirebase({ config, deps: mockDeps });
+      
+      // Should only initialize once
+      expect(mockDeps.initializeApp).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle Firestore initialization error with failed-precondition', () => {
+      const mockError = new Error('Firestore already initialized');
+      mockError.code = 'failed-precondition';
+      
+      const mockDeps = {
+        initializeApp: jest.fn(() => ({ name: 'app' })),
+        getAuth: jest.fn(() => ({ name: 'auth' })),
+        initializeFirestore: jest.fn(() => { throw mockError; }),
+        getFirestore: jest.fn(() => ({ name: 'fallback-db' })),
+        persistentLocalCache: jest.fn(() => ({})),
+        persistentSingleTabManager: jest.fn(() => ({}))
+      };
+      
+      const config = { apiKey: 'real-api-key' };
+      const result = initializeFirebase({ config, deps: mockDeps });
+      
+      expect(result.db).toEqual({ name: 'fallback-db' });
+      expect(mockDeps.getFirestore).toHaveBeenCalled();
+    });
+
+    it('should handle Firestore initialization with other errors', () => {
+      const mockError = new Error('Some other error');
+      mockError.code = 'other-error';
+      
+      const mockDeps = {
+        initializeApp: jest.fn(() => ({ name: 'app' })),
+        getAuth: jest.fn(() => ({ name: 'auth' })),
+        initializeFirestore: jest.fn(() => { throw mockError; }),
+        getFirestore: jest.fn(() => ({ name: 'fallback-db' })),
+        persistentLocalCache: jest.fn(() => ({})),
+        persistentSingleTabManager: jest.fn(() => ({}))
+      };
+      
+      const config = { apiKey: 'real-api-key' };
+      const result = initializeFirebase({ config, deps: mockDeps });
+      
+      expect(result.db).toEqual({ name: 'fallback-db' });
+    });
+
+    it('should configure persistent cache correctly', () => {
+      const mockDeps = {
+        initializeApp: jest.fn(() => ({ name: 'app' })),
+        getAuth: jest.fn(() => ({ name: 'auth' })),
+        initializeFirestore: jest.fn(() => ({ name: 'db' })),
+        getFirestore: jest.fn(),
+        persistentLocalCache: jest.fn((config) => ({ type: 'cache', ...config })),
+        persistentSingleTabManager: jest.fn((config) => ({ type: 'tabManager', ...config }))
+      };
+      
+      const config = { apiKey: 'real-api-key' };
+      initializeFirebase({ config, deps: mockDeps });
+      
+      expect(mockDeps.persistentSingleTabManager).toHaveBeenCalledWith({
+        forceOwnership: false
+      });
+      expect(mockDeps.persistentLocalCache).toHaveBeenCalled();
+    });
   });
-  
-  it('should handle IndexedDB unavailability', () => {
-    function checkPersistenceSupport(hasIndexedDB) {
-      try {
-        if (!hasIndexedDB) {
-          return { supported: false, reason: 'IndexedDB not available' };
-        }
-        return { supported: true };
-      } catch (err) {
-        return { supported: false, reason: err.message };
-      }
-    }
-    
-    // Test with IndexedDB available
-    expect(checkPersistenceSupport(true).supported).toBe(true);
-    
-    // Test without IndexedDB
-    expect(checkPersistenceSupport(false).supported).toBe(false);
+
+  describe('resetFirebase', () => {
+    it('should reset all Firebase instances', () => {
+      const mockDeps = {
+        initializeApp: jest.fn(() => ({ name: 'app' })),
+        getAuth: jest.fn(() => ({ name: 'auth' })),
+        initializeFirestore: jest.fn(() => ({ name: 'db' })),
+        getFirestore: jest.fn(),
+        persistentLocalCache: jest.fn(() => ({})),
+        persistentSingleTabManager: jest.fn(() => ({}))
+      };
+      
+      const config = { apiKey: 'real-api-key' };
+      
+      // Initialize
+      initializeFirebase({ config, deps: mockDeps });
+      expect(mockDeps.initializeApp).toHaveBeenCalledTimes(1);
+      
+      // Reset
+      resetFirebase();
+      
+      // Initialize again - should create new instance
+      initializeFirebase({ config, deps: mockDeps });
+      expect(mockDeps.initializeApp).toHaveBeenCalledTimes(2);
+    });
   });
 });

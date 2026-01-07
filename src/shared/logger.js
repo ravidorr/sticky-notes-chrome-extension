@@ -3,13 +3,6 @@
  * Conditional logging that can be disabled in production
  */
 
-// Check if debug mode is enabled
-// In production, set VITE_DEBUG_MODE=false in .env
-// Handle case where import.meta.env is undefined (e.g., in test environment)
-const DEBUG_MODE = typeof import.meta !== 'undefined' && import.meta.env 
-  ? import.meta.env.VITE_DEBUG_MODE !== 'false' 
-  : true;
-
 // Log levels
 const LOG_LEVELS = {
   DEBUG: 0,
@@ -19,16 +12,51 @@ const LOG_LEVELS = {
   NONE: 4
 };
 
-// Current log level (can be configured via environment variable)
-const currentLevel = DEBUG_MODE ? LOG_LEVELS.DEBUG : LOG_LEVELS.WARN;
+/**
+ * Detect if debug mode is enabled from environment
+ * @returns {boolean} True if debug mode is enabled
+ */
+export function detectDebugMode() {
+  // Check if debug mode is enabled
+  // In production, set VITE_DEBUG_MODE=false in .env
+  // Handle case where import.meta.env is undefined (e.g., in test environment)
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    return import.meta.env.VITE_DEBUG_MODE !== 'false';
+  }
+  return true;
+}
+
+// Module-level debug mode (can be overridden for testing)
+let _debugMode = detectDebugMode();
+
+/**
+ * Set debug mode (primarily for testing)
+ * @param {boolean} enabled - Whether debug mode is enabled
+ */
+export function setDebugMode(enabled) {
+  _debugMode = enabled;
+}
+
+/**
+ * Get current log level based on debug mode
+ * @param {boolean} debugMode - Debug mode flag
+ * @returns {number} Current log level
+ */
+export function getLogLevel(debugMode = _debugMode) {
+  return debugMode ? LOG_LEVELS.DEBUG : LOG_LEVELS.WARN;
+}
 
 /**
  * Create a namespaced logger
  * @param {string} namespace - Logger namespace (e.g., 'StickyNotes', 'Firestore')
+ * @param {Object} options - Optional configuration
+ * @param {boolean} options.debugMode - Override debug mode for this logger
  * @returns {Object} Logger instance with log methods
  */
-export function createLogger(namespace) {
+export function createLogger(namespace, options = {}) {
   const prefix = `[${namespace}]`;
+  const useDebugMode = options.debugMode !== undefined ? options.debugMode : _debugMode;
+  const currentLevel = getLogLevel(useDebugMode);
   
   return {
     /**
@@ -136,7 +164,7 @@ export const firestoreLogger = createLogger('Firestore');
 export const popupLogger = createLogger('Popup');
 
 // Export debug mode flag for external checks
-export const isDebugMode = () => DEBUG_MODE;
+export const isDebugMode = () => _debugMode;
 
 // Export log levels for external configuration
 export { LOG_LEVELS };

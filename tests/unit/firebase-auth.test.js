@@ -1,226 +1,341 @@
 /**
- * Firebase Auth Module Unit Tests
- * Tests the authentication logic patterns
+ * Firebase Auth Unit Tests
+ * 
+ * Tests authentication functions with mocked dependencies.
+ * Since auth.js uses dependency injection, we can test it directly.
  */
 
-import { jest, describe, it, expect } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
-describe('Firebase Auth Logic', () => {
-  // Test the auth logic patterns without importing actual Firebase
-  
-  describe('isAuthConfigured', () => {
-    it('should check for OAuth client ID', () => {
-      // Test the configuration check pattern
-      function isAuthConfigured(env) {
-        return !!(env?.VITE_OAUTH_CLIENT_ID);
+// Mock all Firebase modules before import
+jest.unstable_mockModule('firebase/auth', () => ({
+  signInWithCredential: jest.fn(),
+  GoogleAuthProvider: {
+    credential: jest.fn()
+  },
+  signOut: jest.fn(),
+  getAuth: jest.fn(() => ({ name: 'mock-auth' }))
+}));
+
+jest.unstable_mockModule('firebase/app', () => ({
+  initializeApp: jest.fn()
+}));
+
+jest.unstable_mockModule('firebase/firestore', () => ({
+  getFirestore: jest.fn(),
+  initializeFirestore: jest.fn(),
+  persistentLocalCache: jest.fn(),
+  persistentSingleTabManager: jest.fn()
+}));
+
+// Import after mocking
+const {
+  isAuthConfigured,
+  getOAuthClientId,
+  getOAuthToken,
+  signInWithGoogle,
+  signOut,
+  revokeOAuthToken,
+  getCurrentUser
+} = await import('../../src/firebase/auth.js');
+
+describe('Firebase Auth', () => {
+  const localThis = {};
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    
+    localThis.mockLog = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn()
+    };
+    
+    localThis.mockChromeStorage = {
+      local: {
+        get: jest.fn(),
+        set: jest.fn(),
+        remove: jest.fn()
       }
-      
-      expect(isAuthConfigured({ VITE_OAUTH_CLIENT_ID: 'client-id' })).toBe(true);
-      expect(isAuthConfigured({ VITE_OAUTH_CLIENT_ID: '' })).toBe(false);
-      expect(isAuthConfigured({})).toBe(false);
-      expect(isAuthConfigured(null)).toBe(false);
+    };
+    
+    localThis.mockChromeIdentity = {
+      getAuthToken: jest.fn(),
+      removeCachedAuthToken: jest.fn()
+    };
+    
+    localThis.mockChromeRuntime = {
+      lastError: null
+    };
+  });
+
+  describe('getOAuthClientId', () => {
+    it('should return default placeholder when import.meta.env is undefined', () => {
+      const clientId = getOAuthClientId();
+      expect(typeof clientId).toBe('string');
     });
   });
-  
-  describe('OAuth token handling', () => {
-    it('should get auth token from chrome.identity', async () => {
-      chrome.identity.getAuthToken.mockImplementation((options, callback) => {
-        callback('mock-token');
-      });
-      
-      const token = await new Promise((resolve) => {
-        chrome.identity.getAuthToken({ interactive: true }, resolve);
-      });
-      
-      expect(token).toBe('mock-token');
+
+  describe('isAuthConfigured', () => {
+    it('should return false when using placeholder client ID', () => {
+      const deps = {
+        getOAuthClientId: () => 'YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com',
+        isFirebaseConfigured: () => true
+      };
+      expect(isAuthConfigured(deps)).toBe(false);
     });
-    
-    it('should handle token retrieval failure', async () => {
-      chrome.identity.getAuthToken.mockImplementation((options, callback) => {
-        callback(undefined);
-      });
-      
-      const token = await new Promise((resolve) => {
-        chrome.identity.getAuthToken({ interactive: true }, resolve);
-      });
-      
-      expect(token).toBeUndefined();
+
+    it('should return false when Firebase is not configured', () => {
+      const deps = {
+        getOAuthClientId: () => 'real-client-id.apps.googleusercontent.com',
+        isFirebaseConfigured: () => false
+      };
+      expect(isAuthConfigured(deps)).toBe(false);
     });
-    
-    it('should remove cached auth token', async () => {
-      chrome.identity.removeCachedAuthToken.mockImplementation((options, callback) => {
-        callback();
+
+    it('should return true when both are configured', () => {
+      const deps = {
+        getOAuthClientId: () => 'real-client-id.apps.googleusercontent.com',
+        isFirebaseConfigured: () => true
+      };
+      expect(isAuthConfigured(deps)).toBe(true);
+    });
+  });
+
+  describe('getOAuthToken', () => {
+    it('should resolve with token on success', async () => {
+      localThis.mockChromeIdentity.getAuthToken.mockImplementation((opts, callback) => {
+        callback('mock-oauth-token');
       });
       
-      await new Promise((resolve) => {
-        chrome.identity.removeCachedAuthToken({ token: 'old-token' }, resolve);
+      const token = await getOAuthToken({
+        chromeIdentity: localThis.mockChromeIdentity,
+        chromeRuntime: localThis.mockChromeRuntime
       });
       
-      expect(chrome.identity.removeCachedAuthToken).toHaveBeenCalledWith(
-        { token: 'old-token' },
+      expect(token).toBe('mock-oauth-token');
+      expect(localThis.mockChromeIdentity.getAuthToken).toHaveBeenCalledWith(
+        { interactive: true },
         expect.any(Function)
       );
     });
-  });
-  
-  describe('getCurrentUser pattern', () => {
-    it('should return user if authenticated', async () => {
-      const mockUser = { uid: 'user-123', email: 'test@example.com' };
-      
-      async function getCurrentUser(auth) {
-        return auth.currentUser;
-      }
-      
-      const user = await getCurrentUser({ currentUser: mockUser });
-      expect(user).toEqual(mockUser);
-    });
-    
-    it('should return null if not authenticated', async () => {
-      async function getCurrentUser(auth) {
-        return auth.currentUser;
-      }
-      
-      const user = await getCurrentUser({ currentUser: null });
-      expect(user).toBeNull();
-    });
-  });
-  
-  describe('signOut pattern', () => {
-    it('should sign out and revoke token', async () => {
-      const mockSignOut = jest.fn(() => Promise.resolve());
-      const mockRevokeToken = jest.fn(() => Promise.resolve());
-      
-      async function signOut(auth, revokeToken) {
-        await auth.signOut();
-        await revokeToken();
-      }
-      
-      await signOut({ signOut: mockSignOut }, mockRevokeToken);
-      
-      expect(mockSignOut).toHaveBeenCalled();
-      expect(mockRevokeToken).toHaveBeenCalled();
-    });
-  });
-  
-  describe('Google Sign-In flow', () => {
-    it('should handle successful sign in', async () => {
-      const mockToken = 'google-oauth-token';
-      const mockUser = { uid: 'user-123', email: 'test@gmail.com' };
-      
-      async function signInWithGoogle(getToken, signInWithCredential) {
-        const token = await getToken();
-        if (!token) {
-          throw new Error('Failed to get OAuth token');
-        }
-        
-        const user = await signInWithCredential(token);
-        return user;
-      }
-      
-      const result = await signInWithGoogle(
-        () => Promise.resolve(mockToken),
-        () => Promise.resolve(mockUser)
-      );
-      
-      expect(result).toEqual(mockUser);
-    });
-    
-    it('should throw error if token fails', async () => {
-      async function signInWithGoogle(getToken) {
-        const token = await getToken();
-        if (!token) {
-          throw new Error('Failed to get OAuth token');
-        }
-        return token;
-      }
-      
-      await expect(
-        signInWithGoogle(() => Promise.resolve(null))
-      ).rejects.toThrow('Failed to get OAuth token');
-    });
-  });
-  
-  describe('credential creation pattern', () => {
-    it('should create Google credential', () => {
-      function createGoogleCredential(idToken, accessToken) {
-        return {
-          providerId: 'google.com',
-          idToken,
-          accessToken
-        };
-      }
-      
-      const credential = createGoogleCredential('id-token', 'access-token');
-      
-      expect(credential.providerId).toBe('google.com');
-      expect(credential.idToken).toBe('id-token');
-      expect(credential.accessToken).toBe('access-token');
-    });
-  });
-  
-  describe('auth state observer pattern', () => {
-    it('should notify on auth state change', () => {
-      const listeners = [];
-      
-      function onAuthStateChanged(callback) {
-        listeners.push(callback);
-        return () => {
-          const index = listeners.indexOf(callback);
-          if (index > -1) listeners.splice(index, 1);
-        };
-      }
-      
-      function notifyListeners(user) {
-        listeners.forEach(cb => cb(user));
-      }
-      
-      const callback = jest.fn();
-      const unsubscribe = onAuthStateChanged(callback);
-      
-      notifyListeners({ uid: 'user-1' });
-      expect(callback).toHaveBeenCalledWith({ uid: 'user-1' });
-      
-      unsubscribe();
-      callback.mockClear();
-      
-      notifyListeners({ uid: 'user-2' });
-      expect(callback).not.toHaveBeenCalled();
-    });
-  });
-  
-  describe('error handling', () => {
-    it('should handle auth errors gracefully', async () => {
-      async function handleAuthError(operation) {
-        try {
-          await operation();
-          return { success: true };
-        } catch (error) {
-          return { success: false, error: error.message };
-        }
-      }
-      
-      const result = await handleAuthError(() => {
-        throw new Error('Auth failed');
+
+    it('should reject on error', async () => {
+      localThis.mockChromeRuntime.lastError = { message: 'User cancelled' };
+      localThis.mockChromeIdentity.getAuthToken.mockImplementation((opts, callback) => {
+        callback(null);
       });
       
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Auth failed');
+      await expect(getOAuthToken({
+        chromeIdentity: localThis.mockChromeIdentity,
+        chromeRuntime: localThis.mockChromeRuntime
+      })).rejects.toThrow('User cancelled');
     });
-    
-    it('should identify specific auth errors', () => {
-      function getAuthErrorMessage(code) {
-        const messages = {
-          'auth/popup-closed-by-user': 'Sign in was cancelled',
-          'auth/network-request-failed': 'Network error. Please check your connection.',
-          'auth/invalid-credential': 'Invalid credentials. Please try again.',
-          'default': 'An error occurred during sign in'
-        };
-        return messages[code] || messages['default'];
-      }
+  });
+
+  describe('signInWithGoogle', () => {
+    it('should return mock user when not configured', async () => {
+      localThis.mockChromeStorage.local.set.mockResolvedValue();
       
-      expect(getAuthErrorMessage('auth/popup-closed-by-user')).toBe('Sign in was cancelled');
-      expect(getAuthErrorMessage('auth/network-request-failed')).toContain('Network error');
-      expect(getAuthErrorMessage('unknown-code')).toContain('error occurred');
+      const user = await signInWithGoogle({
+        isAuthConfigured: false,
+        chromeStorage: localThis.mockChromeStorage,
+        log: localThis.mockLog
+      });
+      
+      expect(user.email).toBe('local@example.com');
+      expect(user.displayName).toBe('Local User');
+      expect(user.uid).toContain('local-user-');
+      expect(localThis.mockChromeStorage.local.set).toHaveBeenCalled();
+    });
+
+    it('should sign in with Firebase when configured', async () => {
+      const mockUserCredential = {
+        user: {
+          uid: 'firebase-user-123',
+          displayName: 'Test User',
+          email: 'test@example.com',
+          photoURL: 'https://example.com/photo.jpg'
+        }
+      };
+      
+      const mockCredential = { type: 'oauth' };
+      const mockGoogleProvider = {
+        credential: jest.fn(() => mockCredential)
+      };
+      
+      localThis.mockChromeStorage.local.set.mockResolvedValue();
+      
+      const user = await signInWithGoogle({
+        isAuthConfigured: true,
+        chromeStorage: localThis.mockChromeStorage,
+        log: localThis.mockLog,
+        initializeFirebase: jest.fn(),
+        getOAuthToken: jest.fn().mockResolvedValue('mock-token'),
+        GoogleAuthProvider: mockGoogleProvider,
+        signInWithCredential: jest.fn().mockResolvedValue(mockUserCredential),
+        auth: { name: 'test-auth' }
+      });
+      
+      expect(user.uid).toBe('firebase-user-123');
+      expect(user.email).toBe('test@example.com');
+      expect(user.displayName).toBe('Test User');
+      expect(mockGoogleProvider.credential).toHaveBeenCalledWith(null, 'mock-token');
+    });
+
+    it('should throw error when token retrieval fails', async () => {
+      await expect(signInWithGoogle({
+        isAuthConfigured: true,
+        chromeStorage: localThis.mockChromeStorage,
+        log: localThis.mockLog,
+        initializeFirebase: jest.fn(),
+        getOAuthToken: jest.fn().mockResolvedValue(null)
+      })).rejects.toThrow('Failed to get OAuth token');
+      
+      expect(localThis.mockLog.error).toHaveBeenCalled();
+    });
+
+    it('should throw error on sign in failure', async () => {
+      await expect(signInWithGoogle({
+        isAuthConfigured: true,
+        chromeStorage: localThis.mockChromeStorage,
+        log: localThis.mockLog,
+        initializeFirebase: jest.fn(),
+        getOAuthToken: jest.fn().mockResolvedValue('token'),
+        GoogleAuthProvider: { credential: jest.fn() },
+        signInWithCredential: jest.fn().mockRejectedValue(new Error('Auth error')),
+        auth: {}
+      })).rejects.toThrow('Auth error');
+      
+      expect(localThis.mockLog.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('revokeOAuthToken', () => {
+    it('should revoke token when it exists', async () => {
+      localThis.mockChromeIdentity.getAuthToken.mockImplementation((opts, callback) => {
+        callback('existing-token');
+      });
+      localThis.mockChromeIdentity.removeCachedAuthToken.mockImplementation((opts, callback) => {
+        callback();
+      });
+      
+      const mockFetch = jest.fn().mockResolvedValue({ ok: true });
+      
+      await revokeOAuthToken({
+        chromeIdentity: localThis.mockChromeIdentity,
+        fetch: mockFetch
+      });
+      
+      expect(localThis.mockChromeIdentity.removeCachedAuthToken).toHaveBeenCalledWith(
+        { token: 'existing-token' },
+        expect.any(Function)
+      );
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://accounts.google.com/o/oauth2/revoke?token=existing-token'
+      );
+    });
+
+    it('should resolve when no token exists', async () => {
+      localThis.mockChromeIdentity.getAuthToken.mockImplementation((opts, callback) => {
+        callback(null);
+      });
+      
+      await expect(revokeOAuthToken({
+        chromeIdentity: localThis.mockChromeIdentity,
+        fetch: jest.fn()
+      })).resolves.toBeUndefined();
+    });
+  });
+
+  describe('signOut', () => {
+    it('should sign out from Firebase and revoke token when configured', async () => {
+      const mockFirebaseSignOut = jest.fn().mockResolvedValue();
+      const mockRevokeToken = jest.fn().mockResolvedValue();
+      localThis.mockChromeStorage.local.remove.mockResolvedValue();
+      
+      await signOut({
+        isAuthConfigured: true,
+        auth: { name: 'auth' },
+        firebaseSignOut: mockFirebaseSignOut,
+        revokeOAuthToken: mockRevokeToken,
+        chromeStorage: localThis.mockChromeStorage,
+        log: localThis.mockLog
+      });
+      
+      expect(mockFirebaseSignOut).toHaveBeenCalled();
+      expect(mockRevokeToken).toHaveBeenCalled();
+      expect(localThis.mockChromeStorage.local.remove).toHaveBeenCalledWith(['user']);
+    });
+
+    it('should only clear storage when not configured', async () => {
+      const mockFirebaseSignOut = jest.fn();
+      const mockRevokeToken = jest.fn();
+      localThis.mockChromeStorage.local.remove.mockResolvedValue();
+      
+      await signOut({
+        isAuthConfigured: false,
+        firebaseSignOut: mockFirebaseSignOut,
+        revokeOAuthToken: mockRevokeToken,
+        chromeStorage: localThis.mockChromeStorage,
+        log: localThis.mockLog
+      });
+      
+      expect(mockFirebaseSignOut).not.toHaveBeenCalled();
+      expect(mockRevokeToken).not.toHaveBeenCalled();
+      expect(localThis.mockChromeStorage.local.remove).toHaveBeenCalledWith(['user']);
+    });
+
+    it('should throw error on failure', async () => {
+      localThis.mockChromeStorage.local.remove.mockRejectedValue(new Error('Storage error'));
+      
+      await expect(signOut({
+        isAuthConfigured: false,
+        chromeStorage: localThis.mockChromeStorage,
+        log: localThis.mockLog
+      })).rejects.toThrow('Storage error');
+      
+      expect(localThis.mockLog.error).toHaveBeenCalled();
+    });
+
+    it('should skip Firebase sign out when auth is null', async () => {
+      const mockFirebaseSignOut = jest.fn();
+      localThis.mockChromeStorage.local.remove.mockResolvedValue();
+      
+      await signOut({
+        isAuthConfigured: true,
+        auth: null,
+        firebaseSignOut: mockFirebaseSignOut,
+        revokeOAuthToken: jest.fn().mockResolvedValue(),
+        chromeStorage: localThis.mockChromeStorage,
+        log: localThis.mockLog
+      });
+      
+      expect(mockFirebaseSignOut).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getCurrentUser', () => {
+    it('should return user from storage', async () => {
+      const mockUser = { uid: 'user-123', email: 'test@example.com' };
+      localThis.mockChromeStorage.local.get.mockResolvedValue({ user: mockUser });
+      
+      const user = await getCurrentUser({
+        chromeStorage: localThis.mockChromeStorage
+      });
+      
+      expect(user).toEqual(mockUser);
+    });
+
+    it('should return null when no user in storage', async () => {
+      localThis.mockChromeStorage.local.get.mockResolvedValue({});
+      
+      const user = await getCurrentUser({
+        chromeStorage: localThis.mockChromeStorage
+      });
+      
+      expect(user).toBeNull();
     });
   });
 });
