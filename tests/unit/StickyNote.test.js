@@ -204,8 +204,6 @@ describe('StickyNote', () => {
       note.isDragging = true;
       note.dragOffset = { x: 10, y: 10 };
       
-      const initialLeft = note.element.style.left;
-      
       note.handleDragMove({ clientX: 200, clientY: 200 });
       
       expect(note.customPosition).not.toBeNull();

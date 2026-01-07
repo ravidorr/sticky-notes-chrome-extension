@@ -2,7 +2,7 @@
  * SelectorEngine Unit Tests
  */
 
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 
 // We need to import the module dynamically due to ES modules
 let SelectorEngine;

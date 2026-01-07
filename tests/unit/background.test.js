@@ -86,12 +86,8 @@ describe('Background Script Logic', () => {
     
     it('should handle logout action pattern', async () => {
       async function handleLogout() {
-        try {
-          // Simulate logout
-          return { success: true };
-        } catch (error) {
-          return { success: false, error: error.message };
-        }
+        // Simulate logout - in production this would call signOut()
+        return { success: true };
       }
       
       const result = await handleLogout();
@@ -138,7 +134,7 @@ describe('Background Script Logic', () => {
     });
     
     it('should handle saveNote action pattern', async () => {
-      async function handleSaveNote(noteData, userId, isFirebaseConfigured) {
+      async function handleSaveNote(noteData, userId, _isFirebaseConfigured) {
         try {
           const newNote = {
             ...noteData,
@@ -164,13 +160,9 @@ describe('Background Script Logic', () => {
     });
     
     it('should handle updateNote action pattern', async () => {
-      async function handleUpdateNote(noteId, updates) {
-        try {
-          // Would update in Firestore or local storage
-          return { success: true };
-        } catch (error) {
-          return { success: false, error: error.message };
-        }
+      async function handleUpdateNote(_noteId, _updates) {
+        // Would update in Firestore or local storage
+        return { success: true };
       }
       
       const result = await handleUpdateNote('note-123', { content: 'Updated' });
@@ -178,13 +170,9 @@ describe('Background Script Logic', () => {
     });
     
     it('should handle deleteNote action pattern', async () => {
-      async function handleDeleteNote(noteId) {
-        try {
-          // Would delete from Firestore or local storage
-          return { success: true };
-        } catch (error) {
-          return { success: false, error: error.message };
-        }
+      async function handleDeleteNote(_noteId) {
+        // Would delete from Firestore or local storage
+        return { success: true };
       }
       
       const result = await handleDeleteNote('note-123');
@@ -332,8 +320,8 @@ describe('Background Script Logic', () => {
       
       const filtered = filterNotesByUrl(notes, 'https://example.com/page');
       expect(filtered).toHaveLength(2);
-      expect(filtered.map(n => n.id)).toContain('1');
-      expect(filtered.map(n => n.id)).toContain('3');
+      expect(filtered.map(note => note.id)).toContain('1');
+      expect(filtered.map(note => note.id)).toContain('3');
     });
   });
 });

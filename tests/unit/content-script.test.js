@@ -376,7 +376,7 @@ describe('Content Script Logic', () => {
         loadAttempts.push(url);
         
         try {
-          await new Promise(r => setTimeout(r, 100)); // Simulate async
+          await new Promise(resolve => setTimeout(resolve, 100)); // Simulate async
           return { loaded: true };
         } finally {
           isLoading = false;
@@ -390,8 +390,8 @@ describe('Content Script Logic', () => {
       ]);
       
       // One should be loaded, one should be skipped
-      const loaded = results.filter(r => r.loaded);
-      const skipped = results.filter(r => r.skipped);
+      const loaded = results.filter(result => result.loaded);
+      const skipped = results.filter(result => result.skipped);
       
       expect(loaded.length).toBe(1);
       expect(skipped.length).toBe(1);

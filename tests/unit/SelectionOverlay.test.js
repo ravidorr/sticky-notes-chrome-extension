@@ -118,8 +118,8 @@ describe('SelectionOverlay', () => {
     });
     
     it('should not ignore P elements', () => {
-      const p = document.createElement('p');
-      expect(overlay.shouldIgnoreElement(p)).toBe(false);
+      const paragraph = document.createElement('p');
+      expect(overlay.shouldIgnoreElement(paragraph)).toBe(false);
     });
   });
   

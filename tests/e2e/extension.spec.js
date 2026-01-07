@@ -16,8 +16,8 @@ async function createBrowserWithExtension() {
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
-      '--no-sandbox',
-    ],
+      '--no-sandbox'
+    ]
   });
   
   // Wait for extension to load

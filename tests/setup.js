@@ -128,7 +128,7 @@ global.matchMedia = jest.fn().mockImplementation(query => ({
   removeListener: jest.fn(),
   addEventListener: jest.fn(),
   removeEventListener: jest.fn(),
-  dispatchEvent: jest.fn(),
+  dispatchEvent: jest.fn()
 }));
 
 // Mock requestAnimationFrame

@@ -49,7 +49,7 @@ describe('Firebase Config Logic', () => {
       function isFirebaseConfigured(config) {
         const placeholders = ['your_api_key', 'your-project', 'your_project'];
         const hasPlaceholder = [config.apiKey, config.projectId].some(
-          val => placeholders.some(p => val?.includes(p))
+          val => placeholders.some(placeholder => val?.includes(placeholder))
         );
         return !!(config.apiKey && config.projectId && !hasPlaceholder);
       }
@@ -202,8 +202,8 @@ describe('Firebase Persistence Settings', () => {
           return { supported: false, reason: 'IndexedDB not available' };
         }
         return { supported: true };
-      } catch (e) {
-        return { supported: false, reason: e.message };
+      } catch (err) {
+        return { supported: false, reason: err.message };
       }
     }
     

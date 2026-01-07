@@ -2,7 +2,7 @@
  * Popup Script Unit Tests
  */
 
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { 
   escapeHtml, 
   stripHtml, 
@@ -179,7 +179,7 @@ describe('Popup Script Logic', () => {
     it('should inject content script', async () => {
       chrome.scripting.executeScript.mockResolvedValue([{ result: true }]);
       
-      const result = await chrome.scripting.executeScript({
+      await chrome.scripting.executeScript({
         target: { tabId: 1 },
         files: ['src/content/content.js']
       });

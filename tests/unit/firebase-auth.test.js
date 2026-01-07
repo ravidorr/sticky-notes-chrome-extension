@@ -3,7 +3,7 @@
  * Tests the authentication logic patterns
  */
 
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { jest, describe, it, expect } from '@jest/globals';
 
 describe('Firebase Auth Logic', () => {
   // Test the auth logic patterns without importing actual Firebase

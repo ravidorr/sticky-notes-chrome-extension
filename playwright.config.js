@@ -16,7 +16,7 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: 'retain-on-failure'
   },
 
   projects: [
@@ -28,11 +28,11 @@ export default defineConfig({
         launchOptions: {
           args: [
             `--disable-extensions-except=${process.cwd()}/dist`,
-            `--load-extension=${process.cwd()}/dist`,
-          ],
-        },
-      },
-    },
+            `--load-extension=${process.cwd()}/dist`
+          ]
+        }
+      }
+    }
   ],
 
   // Web server for testing pages
@@ -40,6 +40,6 @@ export default defineConfig({
     command: 'npx serve tests/fixtures -l 3000',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 30000,
-  },
+    timeout: 30000
+  }
 });

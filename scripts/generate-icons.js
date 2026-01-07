@@ -23,11 +23,11 @@ function getCrcTable() {
   
   crcTable = new Uint32Array(256);
   for (let i = 0; i < 256; i++) {
-    let c = i;
+    let crc = i;
     for (let j = 0; j < 8; j++) {
-      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      crc = (crc & 1) ? (0xEDB88320 ^ (crc >>> 1)) : (crc >>> 1);
     }
-    crcTable[i] = c;
+    crcTable[i] = crc;
   }
   return crcTable;
 }

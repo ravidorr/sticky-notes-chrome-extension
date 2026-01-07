@@ -55,6 +55,7 @@ export default [
     files: ['tests/**/*.js'],
     languageOptions: {
       globals: {
+        ...globals.node,
         ...globals.jest,
         describe: 'readonly',
         it: 'readonly',
@@ -64,6 +65,15 @@ export default [
         beforeAll: 'readonly',
         afterAll: 'readonly',
         jest: 'readonly'
+      }
+    }
+  },
+  {
+    // Node.js configuration files
+    files: ['*.config.js', 'scripts/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node
       }
     }
   },
