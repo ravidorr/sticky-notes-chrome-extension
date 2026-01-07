@@ -23,8 +23,142 @@ class StickyNotesApp {
     this.isSelectionMode = false;
     this.currentUrl = window.location.href;
     this.unsubscribeRealtime = null;
+    this.contextInvalidated = false;
     
     this.init();
+  }
+  
+  /**
+   * Check if an error is an extension context invalidated error
+   * @param {Error} error - Error object
+   * @returns {boolean} True if context is invalidated
+   */
+  isContextInvalidatedError(error) {
+    const message = error?.message || String(error);
+    return message.includes('Extension context invalidated') ||
+           message.includes('Extension context was invalidated') ||
+           message.includes('context invalidated');
+  }
+  
+  /**
+   * Send a message to the background script with context invalidation handling
+   * @param {Object} message - Message to send
+   * @returns {Promise<Object>} Response from background script
+   */
+  async sendMessage(message) {
+    if (this.contextInvalidated) {
+      throw new Error('Extension context invalidated');
+    }
+    
+    try {
+      return await chrome.runtime.sendMessage(message);
+    } catch (error) {
+      if (this.isContextInvalidatedError(error)) {
+        this.handleContextInvalidated();
+        throw error;
+      }
+      throw error;
+    }
+  }
+  
+  /**
+   * Handle extension context invalidation
+   * Shows a user-friendly notification to refresh the page
+   */
+  handleContextInvalidated() {
+    if (this.contextInvalidated) return; // Only show once
+    
+    this.contextInvalidated = true;
+    console.warn('[StickyNotes] Extension context invalidated - extension was updated or reloaded');
+    
+    this.showRefreshNotification();
+  }
+  
+  /**
+   * Show notification to refresh the page
+   */
+  showRefreshNotification() {
+    // Create notification in main document (shadow DOM might be broken too)
+    const notificationId = 'sticky-notes-refresh-notification';
+    
+    // Don't show twice
+    if (document.getElementById(notificationId)) return;
+    
+    const notification = document.createElement('div');
+    notification.id = notificationId;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      width: 320px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      z-index: 2147483647;
+      border-left: 4px solid #3b82f6;
+      animation: sn-slide-in 0.3s ease;
+    `;
+    
+    notification.innerHTML = `
+      <style>
+        @keyframes sn-slide-in {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      </style>
+      <div style="display: flex; align-items: start; gap: 12px;">
+        <div style="flex-shrink: 0; width: 36px; height: 36px; background: #dbeafe; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 2v6h-6"/>
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+            <path d="M3 22v-6h6"/>
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+          </svg>
+        </div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 14px;">
+            Extension Updated
+          </div>
+          <div style="font-size: 13px; color: #6b7280; margin-bottom: 12px; line-height: 1.4;">
+            The Sticky Notes extension was updated. Please refresh this page to continue using it.
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button id="sn-refresh-btn" style="flex: 1; padding: 10px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s;">
+              Refresh Page
+            </button>
+            <button id="sn-dismiss-refresh-btn" style="padding: 10px 12px; background: #f3f4f6; color: #6b7280; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; transition: background 0.15s;">
+              Dismiss
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Handle refresh button
+    document.getElementById('sn-refresh-btn').addEventListener('click', () => {
+      window.location.reload();
+    });
+    
+    // Handle dismiss button
+    document.getElementById('sn-dismiss-refresh-btn').addEventListener('click', () => {
+      notification.style.opacity = '0';
+      notification.style.transform = 'translateX(100%)';
+      notification.style.transition = 'all 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    });
+    
+    // Add hover effects
+    const refreshBtn = document.getElementById('sn-refresh-btn');
+    refreshBtn.addEventListener('mouseenter', () => refreshBtn.style.background = '#2563eb');
+    refreshBtn.addEventListener('mouseleave', () => refreshBtn.style.background = '#3b82f6');
+    
+    const dismissBtn = document.getElementById('sn-dismiss-refresh-btn');
+    dismissBtn.addEventListener('mouseenter', () => dismissBtn.style.background = '#e5e7eb');
+    dismissBtn.addEventListener('mouseleave', () => dismissBtn.style.background = '#f3f4f6');
   }
   
   /**
@@ -315,7 +449,7 @@ class StickyNotesApp {
    */
   async loadNotes() {
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await this.sendMessage({
         action: 'getNotes',
         url: this.currentUrl
       });
@@ -326,7 +460,9 @@ class StickyNotesApp {
         });
       }
     } catch (error) {
-      console.error('Error loading notes:', error);
+      if (!this.isContextInvalidatedError(error)) {
+        console.error('Error loading notes:', error);
+      }
     }
   }
   
@@ -487,44 +623,6 @@ class StickyNotesApp {
     }
   }
   
-  /**
-   * Handle element selection
-   * @param {Element} element - Selected element
-   */
-  async handleElementSelect(element) {
-    // Disable selection mode
-    this.disableSelectionMode();
-    
-    // Generate selector for the element
-    const selector = this.selectorEngine.generate(element);
-    
-    if (!selector) {
-      console.error('Could not generate selector for element');
-      return;
-    }
-    
-    // Create new note
-    const noteData = {
-      url: this.currentUrl,
-      selector: selector,
-      content: '',
-      theme: 'yellow',
-      position: { anchor: 'top-right' }
-    };
-    
-    // Save to storage
-    const response = await chrome.runtime.sendMessage({
-      action: 'saveNote',
-      note: noteData
-    });
-    
-    if (response.success) {
-      // Create the note UI
-      this.createNoteFromData(response.note);
-    } else {
-      console.error('Failed to save note:', response.error);
-    }
-  }
   
   /**
    * Handle note save
@@ -533,12 +631,14 @@ class StickyNotesApp {
    */
   async handleNoteSave(noteId, content) {
     try {
-      await chrome.runtime.sendMessage({
+      await this.sendMessage({
         action: 'updateNote',
         note: { id: noteId, content }
       });
     } catch (error) {
-      console.error('Error saving note:', error);
+      if (!this.isContextInvalidatedError(error)) {
+        console.error('Error saving note:', error);
+      }
     }
   }
   
@@ -548,7 +648,7 @@ class StickyNotesApp {
    */
   async handleNoteDelete(noteId) {
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await this.sendMessage({
         action: 'deleteNote',
         noteId
       });
@@ -562,7 +662,9 @@ class StickyNotesApp {
         }
       }
     } catch (error) {
-      console.error('Error deleting note:', error);
+      if (!this.isContextInvalidatedError(error)) {
+        console.error('Error deleting note:', error);
+      }
     }
   }
   
@@ -800,7 +902,7 @@ class StickyNotesApp {
   }
   
   /**
-   * Handle element selection during re-anchor mode
+   * Handle element selection (for new notes and re-anchor mode)
    * @param {Element} element - Selected element
    */
   async handleElementSelect(element) {
@@ -847,17 +949,23 @@ class StickyNotesApp {
       anchorText: element.textContent?.trim().substring(0, 100) || ''
     };
     
-    // Save to storage
-    const response = await chrome.runtime.sendMessage({
-      action: 'saveNote',
-      note: noteData
-    });
-    
-    if (response.success) {
-      // Create the note UI
-      this.createNoteFromData(response.note);
-    } else {
-      console.error('Failed to save note:', response.error);
+    try {
+      // Save to storage
+      const response = await this.sendMessage({
+        action: 'saveNote',
+        note: noteData
+      });
+      
+      if (response.success) {
+        // Create the note UI
+        this.createNoteFromData(response.note);
+      } else {
+        console.error('Failed to save note:', response.error);
+      }
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        console.error('Failed to save note:', error);
+      }
     }
   }
   
@@ -875,7 +983,7 @@ class StickyNotesApp {
     }
     
     try {
-      await chrome.runtime.sendMessage({
+      await this.sendMessage({
         action: 'updateNote',
         note: { 
           id: noteId, 
@@ -886,7 +994,9 @@ class StickyNotesApp {
       
       console.log('Note re-anchored successfully');
     } catch (error) {
-      console.error('Failed to re-anchor note:', error);
+      if (!this.isContextInvalidatedError(error)) {
+        console.error('Failed to re-anchor note:', error);
+      }
     }
   }
   

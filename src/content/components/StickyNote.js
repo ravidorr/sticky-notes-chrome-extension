@@ -51,12 +51,14 @@ export class StickyNote {
     
     this.element.innerHTML = `
       <div class="sn-note-header">
-        <span class="sn-note-header-title">Note</span>
+        <span class="sn-note-header-title"></span>
         <div class="sn-note-header-actions">
           <button class="sn-note-btn sn-theme-btn" title="Change color">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <circle cx="12" cy="12" r="3" fill="currentColor"/>
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.14-.74-.39-1.04-.23-.28-.37-.61-.37-.96 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.5-9-10-9z"/>
+              <circle cx="7.5" cy="11.5" r="1.5" fill="currentColor"/>
+              <circle cx="12" cy="7.5" r="1.5" fill="currentColor"/>
+              <circle cx="16.5" cy="11.5" r="1.5" fill="currentColor"/>
             </svg>
           </button>
           <button class="sn-note-btn sn-position-btn" title="Change position">
