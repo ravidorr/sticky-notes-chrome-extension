@@ -197,5 +197,230 @@ describe('SelectorEngine', () => {
       
       expect(noNth).toBeGreaterThan(withNth);
     });
+    
+    it('should give bonus for aria attributes', () => {
+      const score = engine.getConfidenceScore('[aria-label="close"]');
+      expect(score).toBeGreaterThan(60);
+    });
+    
+    it('should give bonus for data attributes', () => {
+      const score = engine.getConfidenceScore('[data-component="header"]');
+      expect(score).toBeGreaterThan(60);
+    });
+    
+    it('should clamp score between 0 and 100', () => {
+      // Very deep selector should still be >= 0
+      const deepSelector = 'div > div > div > div > div > div > div > div > div > div > div > span';
+      const score = engine.getConfidenceScore(deepSelector);
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(100);
+    });
+  });
+  
+  describe('parseSelector()', () => {
+    it('should extract tag name', () => {
+      const parts = engine.parseSelector('div.class');
+      expect(parts.tagName).toBe('div');
+    });
+    
+    it('should extract ID', () => {
+      const parts = engine.parseSelector('#my-id');
+      expect(parts.id).toBe('my-id');
+    });
+    
+    it('should extract multiple classes', () => {
+      const parts = engine.parseSelector('.class1.class2.class3');
+      expect(parts.classes).toContain('class1');
+      expect(parts.classes).toContain('class2');
+      expect(parts.classes).toContain('class3');
+    });
+    
+    it('should extract attributes', () => {
+      const parts = engine.parseSelector('[data-testid="component"]');
+      expect(parts.attributes['data-testid']).toBe('component');
+    });
+    
+    it('should extract nth-child', () => {
+      const parts = engine.parseSelector('li:nth-child(3)');
+      expect(parts.nthChild).toBe(3);
+    });
+    
+    it('should extract nth-of-type', () => {
+      const parts = engine.parseSelector('div:nth-of-type(2)');
+      expect(parts.nthChild).toBe(2);
+    });
+    
+    it('should handle complex selectors', () => {
+      const parts = engine.parseSelector('div#main.container.wide[data-page="home"]:nth-child(1)');
+      expect(parts.tagName).toBe('div');
+      expect(parts.id).toBe('main');
+      expect(parts.classes).toContain('container');
+      expect(parts.classes).toContain('wide');
+      expect(parts.attributes['data-page']).toBe('home');
+      expect(parts.nthChild).toBe(1);
+    });
+    
+    it('should handle attribute without value', () => {
+      const parts = engine.parseSelector('[disabled]');
+      expect(parts.attributes['disabled']).toBe(true);
+    });
+  });
+  
+  describe('findCandidates()', () => {
+    it('should find elements by tag name', () => {
+      document.body.innerHTML = `
+        <div>Div 1</div>
+        <div>Div 2</div>
+        <span>Span</span>
+      `;
+      
+      const parts = { tagName: 'div', classes: [], attributes: {} };
+      const candidates = engine.findCandidates(parts, {});
+      
+      expect(candidates.length).toBe(2);
+    });
+    
+    it('should find elements by class', () => {
+      document.body.innerHTML = `
+        <div class="target">Target 1</div>
+        <div class="target">Target 2</div>
+        <div class="other">Other</div>
+      `;
+      
+      const parts = { tagName: null, classes: ['target'], attributes: {} };
+      const candidates = engine.findCandidates(parts, {});
+      
+      expect(candidates.length).toBeGreaterThanOrEqual(2);
+    });
+    
+    it('should limit results to 100', () => {
+      // Create 150 elements
+      const elements = Array(150).fill('<div></div>').join('');
+      document.body.innerHTML = elements;
+      
+      const parts = { tagName: 'div', classes: [], attributes: {} };
+      const candidates = engine.findCandidates(parts, {});
+      
+      expect(candidates.length).toBeLessThanOrEqual(100);
+    });
+  });
+  
+  describe('findBestMatch()', () => {
+    it('should return null when no candidates found', () => {
+      document.body.innerHTML = '<div></div>';
+      
+      const result = engine.findBestMatch('.non-existent', {});
+      
+      expect(result).toBeNull();
+    });
+    
+    it('should find element by matching classes', () => {
+      document.body.innerHTML = `
+        <div class="target-class">Target</div>
+        <div class="other-class">Other</div>
+      `;
+      
+      const result = engine.findBestMatch('.target-class', {});
+      
+      // Should find the element
+      expect(result).not.toBeNull();
+      if (result) {
+        expect(result.classList.contains('target-class')).toBe(true);
+      }
+    });
+    
+    it('should find element by matching ID', () => {
+      document.body.innerHTML = `
+        <div id="target-id">Target</div>
+        <div id="other-id">Other</div>
+      `;
+      
+      const result = engine.findBestMatch('#target-id', {});
+      
+      expect(result).not.toBeNull();
+      if (result) {
+        expect(result.id).toBe('target-id');
+      }
+    });
+  });
+  
+  describe('scoreCandidate()', () => {
+    it('should score tag name match', () => {
+      document.body.innerHTML = '<div></div><span></span>';
+      const div = document.querySelector('div');
+      
+      const parts = { tagName: 'div', classes: [], attributes: {}, id: null, nthChild: null };
+      const score = engine.scoreCandidate(div, parts, {});
+      
+      expect(score).toBeGreaterThan(0);
+    });
+    
+    it('should score class matches', () => {
+      document.body.innerHTML = '<div class="a b c"></div>';
+      const element = document.querySelector('.a');
+      
+      const parts = { tagName: null, classes: ['a', 'b'], attributes: {}, id: null, nthChild: null };
+      const score = engine.scoreCandidate(element, parts, {});
+      
+      expect(score).toBeGreaterThan(0);
+    });
+  });
+  
+  describe('validateSelector()', () => {
+    it('should accept valid selectors', () => {
+      const result = engine.validateSelector('#valid-id');
+      expect(result.valid).toBe(true);
+    });
+    
+    it('should reject null/undefined', () => {
+      expect(engine.validateSelector(null).valid).toBe(false);
+      expect(engine.validateSelector(undefined).valid).toBe(false);
+    });
+    
+    it('should reject empty strings', () => {
+      expect(engine.validateSelector('').valid).toBe(false);
+      expect(engine.validateSelector('   ').valid).toBe(false);
+    });
+    
+    it('should reject selectors that are too long', () => {
+      const longSelector = 'a'.repeat(1001);
+      expect(engine.validateSelector(longSelector).valid).toBe(false);
+    });
+    
+    it('should reject selectors with script tags', () => {
+      expect(engine.validateSelector('<script>alert(1)</script>').valid).toBe(false);
+    });
+    
+    it('should reject selectors with javascript: protocol', () => {
+      expect(engine.validateSelector('javascript:alert(1)').valid).toBe(false);
+    });
+    
+    it('should reject selectors with event handlers', () => {
+      expect(engine.validateSelector('onclick=alert(1)').valid).toBe(false);
+    });
+    
+    it('should reject CSS expression', () => {
+      expect(engine.validateSelector('expression(alert(1))').valid).toBe(false);
+    });
+    
+    it('should reject behavior property', () => {
+      expect(engine.validateSelector('behavior:url()').valid).toBe(false);
+    });
+    
+    it('should reject @import', () => {
+      expect(engine.validateSelector('@import url()').valid).toBe(false);
+    });
+  });
+  
+  describe('sanitizeSelector()', () => {
+    it('should return trimmed valid selector', () => {
+      const result = engine.sanitizeSelector('  #valid-id  ');
+      expect(result).toBe('#valid-id');
+    });
+    
+    it('should return null for invalid selector', () => {
+      const result = engine.sanitizeSelector('<script>');
+      expect(result).toBeNull();
+    });
   });
 });

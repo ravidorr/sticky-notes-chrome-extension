@@ -1,112 +1,179 @@
 /**
  * Jest Test Setup
- * Mocks Chrome extension APIs and browser APIs for testing
+ * Global mocks and configuration
  */
 
 import { jest } from '@jest/globals';
 
-// Polyfill CSS.escape for jsdom
-if (typeof CSS === 'undefined') {
-  globalThis.CSS = {};
-}
-
-if (typeof CSS.escape !== 'function') {
-  // CSS.escape polyfill
-  CSS.escape = function(value) {
-    if (arguments.length === 0) {
-      throw new TypeError('`CSS.escape` requires an argument.');
-    }
-    const string = String(value);
-    const length = string.length;
-    let result = '';
-    let index = -1;
-    
-    while (++index < length) {
-      const codeUnit = string.charCodeAt(index);
-      
-      // If the character is NULL (U+0000), use REPLACEMENT CHARACTER (U+FFFD)
-      if (codeUnit === 0x0000) {
-        result += '\uFFFD';
-        continue;
-      }
-      
-      if (
-        // If the character is in the range [\1-\1F] (U+0001 to U+001F) or is
-        // U+007F, escape as code point
-        (codeUnit >= 0x0001 && codeUnit <= 0x001F) || codeUnit === 0x007F ||
-        // If the character is the first, and is in the range [0-9]
-        (index === 0 && codeUnit >= 0x0030 && codeUnit <= 0x0039) ||
-        // If the character is the second, is in the range [0-9], and the first
-        // character is a `-`
-        (index === 1 && codeUnit >= 0x0030 && codeUnit <= 0x0039 && string.charCodeAt(0) === 0x002D)
-      ) {
-        result += '\\' + codeUnit.toString(16) + ' ';
-        continue;
-      }
-      
-      // If the character is not handled by one of the above rules and is
-      // greater than or equal to U+0080, is `-` (U+002D) or `_` (U+005F), or
-      // is in one of the ranges [0-9], [A-Z], or [a-z], use the character itself
-      if (
-        codeUnit >= 0x0080 ||
-        codeUnit === 0x002D ||
-        codeUnit === 0x005F ||
-        (codeUnit >= 0x0030 && codeUnit <= 0x0039) ||
-        (codeUnit >= 0x0041 && codeUnit <= 0x005A) ||
-        (codeUnit >= 0x0061 && codeUnit <= 0x007A)
-      ) {
-        result += string.charAt(index);
-        continue;
-      }
-      
-      // Otherwise, the escaped character
-      result += '\\' + string.charAt(index);
-    }
-    
-    return result;
-  };
-}
-
-// Mock chrome API
-const chromeMock = {
-  storage: {
-    local: {
-      get: jest.fn().mockResolvedValue({}),
-      set: jest.fn().mockResolvedValue(undefined),
-      remove: jest.fn().mockResolvedValue(undefined)
-    },
-    session: {
-      get: jest.fn().mockResolvedValue({}),
-      set: jest.fn().mockResolvedValue(undefined),
-      remove: jest.fn().mockResolvedValue(undefined)
-    }
-  },
+// Mock Chrome Extension APIs
+global.chrome = {
   runtime: {
-    sendMessage: jest.fn().mockResolvedValue({ success: true }),
+    sendMessage: jest.fn((message, callback) => {
+      if (callback) callback({ success: true });
+      return Promise.resolve({ success: true });
+    }),
     onMessage: {
       addListener: jest.fn(),
       removeListener: jest.fn()
     },
-    getURL: jest.fn((path) => `chrome-extension://test-id/${path}`)
+    getURL: jest.fn((path) => `chrome-extension://mock-id/${path}`),
+    id: 'mock-extension-id'
+  },
+  storage: {
+    local: {
+      get: jest.fn((keys, callback) => {
+        if (callback) callback({});
+        return Promise.resolve({});
+      }),
+      set: jest.fn((data, callback) => {
+        if (callback) callback();
+        return Promise.resolve();
+      }),
+      remove: jest.fn((keys, callback) => {
+        if (callback) callback();
+        return Promise.resolve();
+      })
+    },
+    sync: {
+      get: jest.fn((keys, callback) => {
+        if (callback) callback({});
+        return Promise.resolve({});
+      }),
+      set: jest.fn((data, callback) => {
+        if (callback) callback();
+        return Promise.resolve();
+      })
+    }
   },
   tabs: {
-    query: jest.fn().mockResolvedValue([{ id: 1, url: 'https://example.com' }]),
-    sendMessage: jest.fn().mockResolvedValue({ success: true })
+    query: jest.fn(() => Promise.resolve([{ id: 1, url: 'https://example.com' }])),
+    sendMessage: jest.fn(() => Promise.resolve({ success: true })),
+    onUpdated: {
+      addListener: jest.fn()
+    }
+  },
+  scripting: {
+    executeScript: jest.fn(() => Promise.resolve([{ result: true }]))
+  },
+  identity: {
+    getAuthToken: jest.fn((options, callback) => {
+      if (callback) callback('mock-token');
+      return Promise.resolve('mock-token');
+    }),
+    removeCachedAuthToken: jest.fn((options, callback) => {
+      if (callback) callback();
+      return Promise.resolve();
+    }),
+    launchWebAuthFlow: jest.fn(() => Promise.resolve('https://example.com#access_token=mock'))
   },
   webNavigation: {
     onHistoryStateUpdated: {
-      addListener: jest.fn(),
-      removeListener: jest.fn()
+      addListener: jest.fn()
     }
-  },
-  identity: {
-    getAuthToken: jest.fn(),
-    launchWebAuthFlow: jest.fn()
   }
 };
 
-// Set up global chrome object
-globalThis.chrome = chromeMock;
+// Mock IntersectionObserver
+global.IntersectionObserver = class IntersectionObserver {
+  constructor(callback, options) {
+    this.callback = callback;
+    this.options = options;
+    this.observedElements = new Set();
+  }
+  
+  observe(element) {
+    this.observedElements.add(element);
+  }
+  
+  unobserve(element) {
+    this.observedElements.delete(element);
+  }
+  
+  disconnect() {
+    this.observedElements.clear();
+  }
+  
+  // Helper to simulate intersection
+  simulateIntersection(entries) {
+    this.callback(entries, this);
+  }
+};
 
-// Export for direct access in tests
-export { chromeMock };
+// Mock ResizeObserver
+global.ResizeObserver = class ResizeObserver {
+  constructor(callback) {
+    this.callback = callback;
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
+// Mock MutationObserver
+global.MutationObserver = class MutationObserver {
+  constructor(callback) {
+    this.callback = callback;
+  }
+  observe() {}
+  disconnect() {}
+  takeRecords() { return []; }
+};
+
+// Mock matchMedia
+global.matchMedia = jest.fn().mockImplementation(query => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addListener: jest.fn(),
+  removeListener: jest.fn(),
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+  dispatchEvent: jest.fn(),
+}));
+
+// Mock requestAnimationFrame
+global.requestAnimationFrame = jest.fn(cb => setTimeout(cb, 0));
+global.cancelAnimationFrame = jest.fn(id => clearTimeout(id));
+
+// Mock document.execCommand (deprecated but still used)
+document.execCommand = jest.fn(() => true);
+
+// Mock window.getSelection
+window.getSelection = jest.fn(() => ({
+  rangeCount: 0,
+  getRangeAt: jest.fn(),
+  removeAllRanges: jest.fn(),
+  addRange: jest.fn(),
+  toString: jest.fn(() => '')
+}));
+
+// Mock scrollTo
+window.scrollTo = jest.fn();
+Element.prototype.scrollTo = jest.fn();
+Element.prototype.scrollIntoView = jest.fn();
+
+// Mock getBoundingClientRect
+Element.prototype.getBoundingClientRect = jest.fn(() => ({
+  top: 0,
+  left: 0,
+  bottom: 100,
+  right: 100,
+  width: 100,
+  height: 100,
+  x: 0,
+  y: 0,
+  toJSON: () => {}
+}));
+
+// Mock CSS.escape (not available in JSDOM)
+global.CSS = {
+  escape: jest.fn((str) => {
+    // Simple escape implementation for tests
+    return str.replace(/([!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, '\\$1');
+  })
+};
+
+// Mock indexedDB for persistence tests
+global.indexedDB = {
+  open: jest.fn()
+};

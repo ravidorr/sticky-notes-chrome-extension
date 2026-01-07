@@ -1,0 +1,70 @@
+import globals from "globals";
+import pluginJs from "@eslint/js";
+
+/** @type {import('eslint').Linter.Config[]} */
+export default [
+  {
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        ...globals.browser,
+        ...globals.es2021,
+        chrome: "readonly",
+        // Vite environment
+        "import.meta": "readonly"
+      }
+    }
+  },
+  pluginJs.configs.recommended,
+  {
+    rules: {
+      // Error prevention
+      "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+      "no-console": "off", // We use console for debugging
+      "no-debugger": "warn",
+      
+      // Code quality
+      "eqeqeq": ["error", "always"],
+      "curly": ["error", "multi-line"],
+      "no-var": "error",
+      "prefer-const": "warn",
+      "prefer-arrow-callback": "warn",
+      
+      // Style (minimal - let Prettier handle formatting if needed)
+      "semi": ["warn", "always"],
+      "quotes": ["warn", "single", { "avoidEscape": true }],
+      "comma-dangle": ["warn", "never"],
+      
+      // Chrome Extension specific
+      "no-eval": "error",
+      "no-implied-eval": "error"
+    }
+  },
+  {
+    // Test files
+    files: ["tests/**/*.js"],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+        describe: "readonly",
+        it: "readonly",
+        expect: "readonly",
+        beforeEach: "readonly",
+        afterEach: "readonly",
+        beforeAll: "readonly",
+        afterAll: "readonly",
+        jest: "readonly"
+      }
+    }
+  },
+  {
+    // Ignore patterns
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "coverage/**",
+      "*.min.js"
+    ]
+  }
+];

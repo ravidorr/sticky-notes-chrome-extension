@@ -31,12 +31,13 @@
 
 ---
 
-## Phase 1: Authentication & Cloud Sync
+## Phase 1: Authentication & Cloud Sync ✅
 
-- [ ] Firebase Authentication (Google Sign-In)
-- [ ] Cloud sync with Firestore
-- [ ] Note sharing between users
-- [ ] Real-time collaborative updates
+- [x] Firebase Authentication (Google Sign-In)
+- [x] Cloud sync with Firestore
+- [x] Note sharing between users (by email)
+- [x] Offline persistence (Firestore cache)
+- [ ] Real-time collaborative updates (live sync)
 
 ---
 
