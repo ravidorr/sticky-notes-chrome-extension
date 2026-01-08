@@ -20,118 +20,256 @@
     <title>Sticky Notes - Visual Bug Reporting for Dev Teams</title>
     
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="stylesheet" href="styles.css">
     
     <!-- Google Fonts -->
-    <!-- Using system fonts to match extension -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
     <!-- Navigation -->
-    <nav class="nav">
-        <div class="nav-container">
-            <a href="#" class="nav-logo">
-                <span class="logo-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="3" y="3" width="18" height="18" rx="2" fill="#facc15"/>
-                        <path d="M7 8h10M7 12h10M7 16h6" stroke="#713f12" stroke-width="1.5" stroke-linecap="round"/>
+    <nav id="navbar" class="navbar">
+        <div class="container flex justify-between items-center">
+            <!-- Logo -->
+            <a href="#" class="flex items-center gap-2">
+                <div class="nav-logo-box">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="1" y="1" width="14" height="14" rx="2" fill="#facc15"/>
+                        <path d="M4 5h8M4 8h8M4 11h5" stroke="#713f12" stroke-width="1.5" stroke-linecap="round"/>
                     </svg>
-                </span>
+                </div>
                 <span class="logo-text">Sticky Notes</span>
             </a>
-            <div class="nav-links">
-                <a href="#features">Features</a>
-                <a href="#how-it-works">How It Works</a>
-                <a href="#pricing">Pricing</a>
-                <a href="https://github.com/user/sticky-notes-chrome-extension" target="_blank" rel="noopener">GitHub</a>
+
+            <!-- Desktop Menu -->
+            <div class="desktop-menu items-center gap-8">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#demo" class="nav-link">Live Demo</a>
+                <a href="#how-it-works" class="nav-link">How it Works</a>
+                <a href="#pricing" class="nav-link">Pricing</a>
+                <a href="https://github.com/ravidorr/sticky-notes-chrome-extension" target="_blank" rel="noopener" class="nav-link">GitHub</a>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+                    <!-- Sun icon (shown in dark mode) -->
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <!-- Moon icon (shown in light mode) -->
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <button class="btn btn-primary gap-2">
+                    <img src="chrome-logo.svg" width="16" height="16" alt="" aria-hidden="true">
+                    Add to Chrome
+                </button>
             </div>
-            <a href="#" class="btn btn-primary nav-cta">Add to Chrome</a>
+
+            <!-- Mobile Menu Button -->
+            <div class="flex items-center gap-2">
+                <button id="theme-toggle-mobile" class="theme-toggle mobile-theme-toggle" aria-label="Toggle dark mode">
+                    <!-- Sun icon (shown in dark mode) -->
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <!-- Moon icon (shown in light mode) -->
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Toggle menu">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Dropdown -->
+        <div id="mobile-menu" class="mobile-dropdown hidden flex">
+            <a href="#features" class="nav-link">Features</a>
+            <a href="#demo" class="nav-link">Live Demo</a>
+            <a href="#how-it-works" class="nav-link">How it Works</a>
+            <a href="#pricing" class="nav-link">Pricing</a>
+            <a href="https://github.com/ravidorr/sticky-notes-chrome-extension" target="_blank" rel="noopener" class="nav-link">GitHub</a>
+            <button class="btn btn-primary gap-2 w-full">
+                <img src="chrome-logo.svg" width="16" height="16" alt="" aria-hidden="true">
+                Add to Chrome
+            </button>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <header class="hero">
-        <div class="container">
-            <div class="hero-badge">Built for Dev Teams & QA</div>
-            <h1 class="hero-title">
-                Bug reports that<br>
-                <span class="highlight">actually make sense</span>
-            </h1>
-            <p class="hero-subtitle">
-                Sticky notes for your staging environment. Click on any element, 
-                add a note, and share with your team. No more "which button?" ping-pong.
-            </p>
-            <div class="hero-cta">
-                <a href="#" class="btn btn-primary btn-lg">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2.4c5.302 0 9.6 4.298 9.6 9.6s-4.298 9.6-9.6 9.6-9.6-4.298-9.6-9.6S6.698 2.4 12 2.4z"/>
-                        <path d="M12 5.4L8.4 12h2.4v6.6l3.6-6.6h-2.4z"/>
-                    </svg>
-                    Add to Chrome — It's Free
-                </a>
-                <a href="#how-it-works" class="btn btn-secondary btn-lg">See How It Works</a>
-            </div>
-            <p class="hero-note">Free for personal use • No account required</p>
-        </div>
-        <div class="hero-visual">
-            <div class="browser-mockup">
-                <div class="browser-header">
-                    <div class="browser-dots">
-                        <span></span><span></span><span></span>
-                    </div>
-                    <div class="browser-url">staging.yourapp.com/dashboard</div>
+    <section class="hero-section">
+        <div class="hero-bg-shape"></div>
+        
+        <div class="container hero-grid">
+            <div class="hero-content">
+                <h1 class="h1-hero">
+                    Bug reports that<br>
+                    <span class="text-highlight">
+                        actually make sense.
+                        <svg class="highlight-svg" viewBox="0 0 100 10" preserveAspectRatio="none">
+                            <path d="M0 5 Q 50 10 100 5" stroke="currentColor" stroke-width="8" fill="none" />
+                        </svg>
+                    </span>
+                </h1>
+                <p class="text-body text-lg mb-8">
+                    Sticky notes for your staging environment. Click on any element, 
+                    add a note, and share with your team. No more "which button?" ping-pong.
+                </p>
+                <div class="flex flex-col gap-4 mb-8">
+                    <button class="btn btn-primary btn-lg gap-2">
+                        <img src="chrome-logo.svg" width="20" height="20" alt="" aria-hidden="true">
+                        Add to Chrome — It's Free
+                    </button>
+                    <a href="#demo" class="btn btn-secondary btn-lg gap-2">
+                        Try the Demo
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                    </a>
                 </div>
-                <div class="browser-content">
-                    <div class="mockup-ui">
-                        <div class="mockup-sidebar"></div>
-                        <div class="mockup-main">
-                            <div class="mockup-header"></div>
-                            <div class="mockup-cards">
-                                <div class="mockup-card"></div>
-                                <div class="mockup-card highlighted">
-                                    <div class="sticky-note-demo">
-                                        <div class="sticky-header">
-                                            <span class="sticky-dot"></span>
-                                            Bug Report
-                                        </div>
-                                        <div class="sticky-body">
-                                            This card shows wrong total. Should be $1,234 not $1,324.
-                                        </div>
-                                        <div class="sticky-footer">
-                                            @jane • 2 min ago
-                                        </div>
-                                    </div>
+                <p class="text-sm text-subtle">Free for personal use • No account required</p>
+            </div>
+
+            <!-- Hero Visual -->
+            <div class="relative">
+                <div class="browser-window">
+                    <!-- Browser Header -->
+                    <div class="browser-header">
+                        <div class="flex gap-2">
+                            <div class="dot dot-r"></div>
+                            <div class="dot dot-y"></div>
+                            <div class="dot dot-g"></div>
+                        </div>
+                        <div class="url-bar">staging.yourapp.com/dashboard</div>
+                    </div>
+                    
+                    <!-- Fake Content -->
+                    <div class="browser-content">
+                        <div class="skeleton-hero">Hero Banner</div>
+                        <div class="grid-split">
+                            <div class="p-2">
+                                <div class="skeleton-line w-75"></div>
+                                <div class="skeleton-line w-50"></div>
+                                <div class="skeleton-box"></div>
+                            </div>
+                            <div>
+                                <div class="skeleton-line w-66"></div>
+                                <div class="skeleton-line w-100"></div>
+                                <div class="skeleton-box"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Static Hero Note (mimics real extension) -->
+                        <div class="static-note-real">
+                            <!-- Header bar with icons -->
+                            <div class="note-toolbar">
+                                <div class="note-toolbar-left">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/><circle cx="5" cy="5" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="19" r="1"/></svg>
                                 </div>
-                                <div class="mockup-card"></div>
+                                <div class="note-toolbar-right">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="3"/><path d="M5 10a7 7 0 0 1 14 0"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/></svg>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </div>
+                            </div>
+                            <!-- Rich text toolbar -->
+                            <div class="note-editor-toolbar">
+                                <span class="editor-btn"><b>B</b></span>
+                                <span class="editor-btn"><i>I</i></span>
+                                <span class="toolbar-divider"></span>
+                                <svg class="editor-btn" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/></svg>
+                                <svg class="editor-btn" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M3 6h2M3 12h2M3 18h2" stroke-width="1.5"/></svg>
+                                <svg class="editor-btn" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            </div>
+                            <!-- Note content -->
+                            <div class="note-content">
+                                <div class="note-placeholder">Write your note here...</div>
+                            </div>
+                            <!-- Footer -->
+                            <div class="note-footer">
+                                <span>just now</span>
                             </div>
                         </div>
                     </div>
                 </div>
+                
+                <!-- Background Glows -->
+                <div class="hero-glow hero-glow-blue"></div>
+                <div class="hero-glow hero-glow-yellow"></div>
             </div>
         </div>
-    </header>
+    </section>
 
     <!-- Pain Points Section -->
     <section class="pain-points">
         <div class="container">
-            <h2 class="section-title">Sound familiar?</h2>
+            <h2 class="h2-title text-center">Sound familiar?</h2>
             <div class="pain-grid">
                 <div class="pain-card">
-                    <div class="pain-icon">😤</div>
+                    <div class="pain-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 8v4"></path>
+                            <path d="M12 16h.01"></path>
+                        </svg>
+                    </div>
                     <h3>"The button is broken"</h3>
                     <p>Bug reports with zero context. Which button? Which page? What browser?</p>
                 </div>
                 <div class="pain-card">
-                    <div class="pain-icon">🏓</div>
+                    <div class="pain-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 1l4 4-4 4"></path>
+                            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                            <path d="M7 23l-4-4 4-4"></path>
+                            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                        </svg>
+                    </div>
                     <h3>Screenshot ping-pong</h3>
                     <p>Back and forth in Slack asking "which element?" and "can you highlight it?"</p>
                 </div>
                 <div class="pain-card">
-                    <div class="pain-icon">🔄</div>
+                    <div class="pain-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+                            <path d="M21 3v5h-5"></path>
+                        </svg>
+                    </div>
                     <h3>Staging changes daily</h3>
                     <p>By the time you look at the bug, the page has changed and you can't reproduce it.</p>
                 </div>
                 <div class="pain-card">
-                    <div class="pain-icon">🎨</div>
+                    <div class="pain-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 20h9"></path>
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                    </div>
                     <h3>Designer handoff friction</h3>
                     <p>"This margin looks off" — which margin? Where exactly? On what screen size?</p>
                 </div>
@@ -139,95 +277,202 @@
         </div>
     </section>
 
+    <!-- Interactive Demo Section -->
+    <section id="demo" class="section-dark">
+        <div class="container">
+            <div class="demo-header">
+                <h2 class="h2-title">Experience Element Anchoring</h2>
+                <p class="text-subtle demo-subtitle">
+                    Click the "Activate Selection" button below, then click any highlighted box to attach a note. 
+                    See how the note stays attached to that specific element.
+                </p>
+            </div>
+
+            <!-- Demo Container -->
+            <div class="demo-container">
+                <!-- Toolbar -->
+                <div class="demo-toolbar">
+                    <div class="flex items-center gap-2">
+                        <div class="flex gap-2 mr-4">
+                            <div class="dot dot-r opacity-50"></div>
+                            <div class="dot dot-y opacity-50"></div>
+                            <div class="dot dot-g opacity-50"></div>
+                        </div>
+                        <span class="browser-title">Simulated Web Page</span>
+                    </div>
+                    <button id="demo-activate-btn" class="btn-demo-toggle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
+                            <path d="M13 13l6 6"></path>
+                        </svg>
+                        <span id="demo-btn-text">Activate Selection Mode</span>
+                    </button>
+                </div>
+
+                <!-- Canvas -->
+                <div id="demo-canvas" class="demo-canvas">
+                    <!-- Element 1: Image -->
+                    <div class="demo-target demo-box-1" data-id="1">
+                        <span class="target-label">img</span>
+                        Product Image
+                    </div>
+
+                    <!-- Element 2: Headline -->
+                    <div class="demo-target demo-box-2" data-id="2">
+                        <span class="target-label">h2</span>
+                        Main Headline
+                    </div>
+
+                    <!-- Element 3: Text -->
+                    <div class="demo-target demo-box-3" data-id="3">
+                        <span class="target-label">p</span>
+                        Description Text
+                    </div>
+
+                    <!-- Element 4: Button -->
+                    <div class="demo-target demo-box-4" data-id="4">
+                        <span class="target-label">button</span>
+                        Submit Button
+                    </div>
+
+                    <!-- Empty State Message -->
+                    <div id="demo-empty-state" class="empty-state">
+                        <div class="empty-msg">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="19" x2="12" y2="5"></line>
+                                <polyline points="5 12 12 5 19 12"></polyline>
+                            </svg>
+                            Click "Activate Selection Mode" to start
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Features Section -->
-    <section id="features" class="features">
+    <section id="features" class="section-light">
         <div class="container">
             <div class="section-header">
-                <h2 class="section-title">Everything you need,<br>nothing you don't</h2>
-                <p class="section-subtitle">Lightweight, fast, and built specifically for dev workflows.</p>
+                <h2 class="h2-title">Context is everything.</h2>
+                <p class="text-body text-lg">
+                    Traditional sticky note apps float on top of your screen. Sticky Notes floats on top of your <em>content</em>, respecting the layout and scrolling with the page.
+                </p>
             </div>
+
             <div class="features-grid">
+                <!-- Feature 1 -->
                 <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3>Click-to-annotate</h3>
-                    <p>Click any element on the page. The note anchors to it automatically, even after page changes.</p>
+                    <div class="icon-box">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
+                            <path d="M13 13l6 6"></path>
+                        </svg>
+                    </div>
+                    <h3>Element Anchoring</h3>
+                    <p class="text-body">Our smart selector engine binds notes to specific DOM elements, so they survive page reloads and layout shifts.</p>
                 </div>
+                <!-- Feature 2 -->
                 <div class="feature-card">
-                    <div class="feature-icon">🔗</div>
-                    <h3>Smart anchoring</h3>
-                    <p>Robust CSS selector engine with fuzzy matching. Notes re-attach even when the DOM changes.</p>
+                    <div class="icon-box">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </div>
+                    <h3>Visibility Intelligence</h3>
+                    <p class="text-body">Notes only appear when the anchored element enters your viewport. No screen clutter.</p>
                 </div>
+                <!-- Feature 3 -->
                 <div class="feature-card">
-                    <div class="feature-icon">✨</div>
-                    <h3>Rich text editor</h3>
-                    <p>Bold, italic, bullet lists, and links. Format your notes the way you want.</p>
+                    <div class="icon-box">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <h3>Team Collaboration</h3>
+                    <p class="text-body">Share notes via email or create team groups. See updates in real-time as your colleagues edit comments.</p>
                 </div>
+                <!-- Feature 4 -->
                 <div class="feature-card">
-                    <div class="feature-icon">☁️</div>
-                    <h3>Cloud sync</h3>
-                    <p>Sign in with Google. Your notes sync across devices and persist in the cloud.</p>
+                    <div class="icon-box">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                    </div>
+                    <h3>Responsive Aware</h3>
+                    <p class="text-body">Notes adjust their position intelligently to prevent going off-screen, even when you resize the browser.</p>
                 </div>
+                <!-- Feature 5 -->
                 <div class="feature-card">
-                    <div class="feature-icon">👥</div>
-                    <h3>Team sharing</h3>
-                    <p>Share notes with teammates by email. Everyone sees the same annotations.</p>
+                    <div class="icon-box">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                    </div>
+                    <h3>Private by Default</h3>
+                    <p class="text-body">Your notes are private to you until you choose to share them. Built on secure Firebase Authentication.</p>
                 </div>
+                <!-- Feature 6 -->
                 <div class="feature-card">
-                    <div class="feature-icon">🎨</div>
-                    <h3>Color themes</h3>
-                    <p>Categorize notes by color. Yellow for bugs, red for critical, green for approved.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔒</div>
-                    <h3>Style isolation</h3>
-                    <p>Shadow DOM keeps notes styled correctly, no matter what CSS the page uses.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">⌨️</div>
-                    <h3>Keyboard friendly</h3>
-                    <p>Notes don't interfere with your app's keyboard shortcuts. Full isolation.</p>
+                    <div class="icon-box">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                    </div>
+                    <h3>Instant Sync</h3>
+                    <p class="text-body">Notes are saved to the cloud instantly. Switch devices or refresh the page, and your context is right there.</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- How It Works Section -->
-    <section id="how-it-works" class="how-it-works">
+    <section id="how-it-works" class="section-steps">
         <div class="container">
             <div class="section-header">
-                <h2 class="section-title">Three clicks to clarity</h2>
-                <p class="section-subtitle">From confusion to actionable bug report in seconds.</p>
+                <h2 class="h2-title">Three clicks to clarity</h2>
+                <p class="text-body text-lg">From confusion to actionable bug report in seconds.</p>
             </div>
-            <div class="steps">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <div class="step-content">
-                        <h3>Click an element</h3>
-                        <p>Activate the extension and click on any element that needs feedback. A smart selector anchors your note to it.</p>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-icon">
+                        <span>01</span>
                     </div>
+                    <h3>Activate Selection</h3>
+                    <p>Click the extension icon or use the hotkey to enter 'Target Mode'. The page elements will highlight as you hover.</p>
                 </div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <div class="step-content">
-                        <h3>Write your note</h3>
-                        <p>Describe the issue, suggestion, or question. Use rich text formatting to be clear.</p>
+                <div class="step-card">
+                    <div class="step-icon">
+                        <span>02</span>
                     </div>
+                    <h3>Click to Anchor</h3>
+                    <p>Select the specific image, paragraph, or button you want to annotate. The note snaps to the top-right corner.</p>
                 </div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <div class="step-content">
-                        <h3>Share with your team</h3>
-                        <p>Notes sync to the cloud. Share by email. Everyone sees notes anchored to the exact same elements.</p>
+                <div class="step-card">
+                    <div class="step-icon">
+                        <span>03</span>
                     </div>
+                    <h3>Collaborate</h3>
+                    <p>Type your note and mention teammates. They'll see the note exactly where you placed it on their screen.</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Comparison Section -->
-    <section class="comparison">
+    <section class="section-comparison">
         <div class="container">
-            <h2 class="section-title">Why Sticky Notes?</h2>
+            <div class="section-header">
+                <h2 class="h2-title">Why Sticky Notes?</h2>
+                <p class="text-body text-lg">See how we compare to other feedback tools.</p>
+            </div>
             <div class="comparison-table-wrapper">
                 <table class="comparison-table">
                     <thead>
@@ -242,45 +487,45 @@
                     <tbody>
                         <tr>
                             <td>Element anchoring</td>
-                            <td class="highlight-col">✅ Smart selectors</td>
-                            <td>✅</td>
-                            <td>✅</td>
-                            <td>❌</td>
+                            <td class="highlight-col"><span class="icon-yes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span> Smart selectors</td>
+                            <td><span class="icon-yes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span></td>
+                            <td><span class="icon-yes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span></td>
+                            <td><span class="icon-no"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></span></td>
                         </tr>
                         <tr>
                             <td>Works on SPAs</td>
-                            <td class="highlight-col">✅ Re-anchoring</td>
-                            <td>⚠️ Limited</td>
-                            <td>⚠️ Limited</td>
-                            <td>❌</td>
+                            <td class="highlight-col"><span class="icon-yes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span> Re-anchoring</td>
+                            <td><span class="icon-partial"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg></span> Limited</td>
+                            <td><span class="icon-partial"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg></span> Limited</td>
+                            <td><span class="icon-no"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></span></td>
                         </tr>
                         <tr>
                             <td>Free tier</td>
-                            <td class="highlight-col">✅ Generous</td>
-                            <td>❌ $39+/mo</td>
-                            <td>❌ $39+/mo</td>
-                            <td>✅</td>
+                            <td class="highlight-col"><span class="icon-yes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span> Generous</td>
+                            <td><span class="icon-no"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></span> $39+/mo</td>
+                            <td><span class="icon-no"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></span> $39+/mo</td>
+                            <td><span class="icon-yes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span></td>
                         </tr>
                         <tr>
                             <td>Setup time</td>
-                            <td class="highlight-col">✅ 1 minute</td>
-                            <td>⚠️ 10+ min</td>
-                            <td>⚠️ 10+ min</td>
-                            <td>✅</td>
+                            <td class="highlight-col"><span class="icon-yes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span> 1 minute</td>
+                            <td><span class="icon-partial"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg></span> 10+ min</td>
+                            <td><span class="icon-partial"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg></span> 10+ min</td>
+                            <td><span class="icon-yes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span></td>
                         </tr>
                         <tr>
                             <td>No code snippet</td>
-                            <td class="highlight-col">✅</td>
-                            <td>❌ Requires embed</td>
-                            <td>❌ Requires embed</td>
-                            <td>✅</td>
+                            <td class="highlight-col"><span class="icon-yes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span></td>
+                            <td><span class="icon-no"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></span> Requires embed</td>
+                            <td><span class="icon-no"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></span> Requires embed</td>
+                            <td><span class="icon-yes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span></td>
                         </tr>
                         <tr>
                             <td>Lightweight</td>
-                            <td class="highlight-col">✅ ~50KB</td>
-                            <td>❌ Heavy</td>
-                            <td>❌ Heavy</td>
-                            <td>✅</td>
+                            <td class="highlight-col"><span class="icon-yes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span> ~50KB</td>
+                            <td><span class="icon-no"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></span> Heavy</td>
+                            <td><span class="icon-no"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></span> Heavy</td>
+                            <td><span class="icon-yes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -289,11 +534,11 @@
     </section>
 
     <!-- Pricing Section -->
-    <section id="pricing" class="pricing">
+    <section id="pricing" class="section-pricing">
         <div class="container">
             <div class="section-header">
-                <h2 class="section-title">Simple, fair pricing</h2>
-                <p class="section-subtitle">Start free. Upgrade when your team grows.</p>
+                <h2 class="h2-title">Simple, fair pricing</h2>
+                <p class="text-body text-lg">Start free. Upgrade when your team grows.</p>
             </div>
             <div class="pricing-grid">
                 <div class="pricing-card">
@@ -350,11 +595,25 @@
     </section>
 
     <!-- CTA Section -->
-    <section class="cta">
-        <div class="container">
-            <h2>Ready to fix your bug reporting?</h2>
-            <p>Join hundreds of dev teams who've ditched screenshot chaos for clarity.</p>
-            <a href="#" class="btn btn-primary btn-lg">Add to Chrome — It's Free</a>
+    <section class="section-cta">
+        <div class="container text-center">
+            <h2 class="h2-title cta-title">Start annotating the web today.</h2>
+            <p class="text-lg cta-text">
+                Join dev teams who have switched from disconnected screenshots to context-aware anchoring.
+            </p>
+            <button class="btn btn-cta gap-3">
+                <img src="chrome-logo.svg" width="24" height="24" alt="" aria-hidden="true">
+                Add to Chrome for Free
+            </button>
+            <p class="cta-note">
+                Version 1.0 • Privacy Focused • Uninstalls in seconds
+            </p>
+        </div>
+        
+        <!-- Abstract BG -->
+        <div class="cta-bg">
+            <div class="cta-glow-1"></div>
+            <div class="cta-glow-2"></div>
         </div>
     </section>
 
@@ -363,13 +622,13 @@
         <div class="container">
             <div class="footer-grid">
                 <div class="footer-brand">
-                    <a href="#" class="nav-logo">
-                        <span class="logo-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect x="3" y="3" width="18" height="18" rx="2" fill="#facc15"/>
-                                <path d="M7 8h10M7 12h10M7 16h6" stroke="#713f12" stroke-width="1.5" stroke-linecap="round"/>
+                    <a href="#" class="flex items-center gap-2">
+                        <div class="nav-logo-box">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="1" y="1" width="14" height="14" rx="2" fill="#facc15"/>
+                                <path d="M4 5h8M4 8h8M4 11h5" stroke="#713f12" stroke-width="1.5" stroke-linecap="round"/>
                             </svg>
-                        </span>
+                        </div>
                         <span class="logo-text">Sticky Notes</span>
                     </a>
                     <p>Visual bug reporting for dev teams. Built with care for developers.</p>
@@ -382,14 +641,14 @@
                 </div>
                 <div class="footer-links">
                     <h4>Resources</h4>
-                    <a href="#">Documentation</a>
-                    <a href="#">Changelog</a>
-                    <a href="https://github.com/user/sticky-notes-chrome-extension" target="_blank" rel="noopener">GitHub</a>
+                    <a href="https://github.com/ravidorr/sticky-notes-chrome-extension#readme" target="_blank" rel="noopener">Documentation</a>
+                    <a href="https://github.com/ravidorr/sticky-notes-chrome-extension/releases" target="_blank" rel="noopener">Changelog</a>
+                    <a href="https://github.com/ravidorr/sticky-notes-chrome-extension" target="_blank" rel="noopener">GitHub</a>
                 </div>
                 <div class="footer-links">
                     <h4>Legal</h4>
-                    <a href="#">Privacy Policy</a>
-                    <a href="#">Terms of Service</a>
+                    <a href="privacy.html">Privacy Policy</a>
+                    <a href="terms.html">Terms of Service</a>
                 </div>
             </div>
             <div class="footer-bottom">
@@ -398,27 +657,7 @@
         </div>
     </footer>
 
-    <script>
-        // Smooth scroll for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
-        });
-
-        // Add navbar background on scroll
-        window.addEventListener('scroll', () => {
-            const nav = document.querySelector('.nav');
-            if (window.scrollY > 50) {
-                nav.classList.add('scrolled');
-            } else {
-                nav.classList.remove('scrolled');
-            }
-        });
-    </script>
+    <!-- Scripts -->
+    <script type="module" src="scripts.js"></script>
 </body>
 </html>

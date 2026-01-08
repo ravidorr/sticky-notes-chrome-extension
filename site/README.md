@@ -84,6 +84,7 @@ jobs:
 site/
 ├── index.html      # Main landing page
 ├── styles.css      # All styles
+├── scripts.js      # Interactive functionality (navbar, demo, etc.)
 ├── favicon.svg     # Site favicon
 └── README.md       # This file
 ```
@@ -106,10 +107,24 @@ Edit CSS variables in `styles.css`:
 
 Update these sections in `index.html`:
 - **Hero**: Main headline and value proposition
-- **Pain Points**: Target audience problems
+- **Pain Points**: Target audience problems ("Sound familiar?")
+- **Interactive Demo**: Try the element anchoring feature
 - **Features**: Product capabilities
+- **How It Works**: 3-step process
+- **Comparison**: Compare with alternatives
 - **Pricing**: Pricing tiers
 - **Footer**: Links and legal pages
+
+### Interactive Demo
+
+The landing page includes an interactive demo that lets visitors try the element anchoring feature without installing the extension. The demo logic is in `scripts.js` and includes:
+
+- Selection mode activation
+- Note creation on clicked elements
+- Note deletion
+- State management
+
+Unit tests for the demo are in `tests/unit/site-scripts.test.js`.
 
 ### Adding Analytics
 
@@ -133,3 +148,4 @@ Add before `</head>`:
 - [ ] Create Privacy Policy page
 - [ ] Create Terms of Service page
 - [ ] Add actual social meta images (`og-image.png`)
+- [ ] Update GitHub repository URL in nav and footer links
