@@ -387,7 +387,7 @@ function initDemo(selectors = {}) {
             if (!id || demoState.notes.has(id)) return;
 
             createNote(target, id, demoState, () => {
-                if (demoState.notes.size === 0 && !demoState.activeMode) {
+                if (demoState.notes.size === 0 && !demoState.activeMode && emptyState) {
                     emptyState.classList.remove('hidden');
                 }
             });
