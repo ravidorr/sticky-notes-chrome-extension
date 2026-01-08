@@ -10,6 +10,7 @@ export default [
       sourceType: 'module',
       globals: {
         ...globals.browser,
+        ...globals.serviceworker,
         ...globals.es2021,
         chrome: 'readonly',
         // Vite environment

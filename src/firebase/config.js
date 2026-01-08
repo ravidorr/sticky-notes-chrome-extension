@@ -18,7 +18,8 @@ import {
   getFirestore,
   initializeFirestore, 
   persistentLocalCache, 
-  persistentSingleTabManager 
+  persistentSingleTabManager,
+  memoryLocalCache
 } from 'firebase/firestore';
 import { firestoreLogger as log } from '../shared/logger.js';
 
@@ -83,6 +84,16 @@ let auth = null;
 let db = null;
 
 /**
+ * Detect if running in a service worker context
+ * Service workers don't have access to localStorage, which Firestore persistence requires
+ * @returns {boolean} True if running in a service worker
+ */
+function isServiceWorker() {
+  return typeof ServiceWorkerGlobalScope !== 'undefined' && 
+         self instanceof ServiceWorkerGlobalScope;
+}
+
+/**
  * Initialize Firebase services
  * @param {Object} options - Optional configuration
  * @param {Object} options.config - Override Firebase config (for testing)
@@ -91,7 +102,15 @@ let db = null;
  */
 export function initializeFirebase(options = {}) {
   const config = options.config || firebaseConfig;
-  const deps = options.deps || { initializeApp, getAuth, initializeFirestore, getFirestore, persistentLocalCache, persistentSingleTabManager };
+  const deps = options.deps || { 
+    initializeApp, 
+    getAuth, 
+    initializeFirestore, 
+    getFirestore, 
+    persistentLocalCache, 
+    persistentSingleTabManager,
+    memoryLocalCache
+  };
   
   if (!isConfigValid(config)) {
     log.warn('Firebase is not configured. Please update src/firebase/config.js with your Firebase project credentials.');
@@ -102,16 +121,27 @@ export function initializeFirebase(options = {}) {
     app = deps.initializeApp(config);
     auth = deps.getAuth(app);
     
-    // Initialize Firestore with persistent cache (new recommended API)
-    // This replaces the deprecated enableIndexedDbPersistence()
+    // Initialize Firestore with appropriate cache based on environment
+    // Service workers don't have localStorage, so we use memory cache there
     try {
-      db = deps.initializeFirestore(app, {
-        localCache: deps.persistentLocalCache({
-          tabManager: deps.persistentSingleTabManager({
-            forceOwnership: false
+      const inServiceWorker = isServiceWorker();
+      
+      if (inServiceWorker) {
+        // Use memory cache for service workers (no localStorage available)
+        log.info('Running in service worker - using memory cache for Firestore');
+        db = deps.initializeFirestore(app, {
+          localCache: deps.memoryLocalCache()
+        });
+      } else {
+        // Use persistent cache for regular contexts (popup, content scripts)
+        db = deps.initializeFirestore(app, {
+          localCache: deps.persistentLocalCache({
+            tabManager: deps.persistentSingleTabManager({
+              forceOwnership: false
+            })
           })
-        })
-      });
+        });
+      }
     } catch (err) {
       // If Firestore was already initialized (e.g., in another tab), fall back to default
       if (err.code === 'failed-precondition') {

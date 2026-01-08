@@ -22,7 +22,8 @@ jest.unstable_mockModule('firebase/firestore', () => ({
   getFirestore: jest.fn(() => ({ name: 'mock-db' })),
   initializeFirestore: jest.fn(() => ({ name: 'mock-db' })),
   persistentLocalCache: jest.fn(),
-  persistentSingleTabManager: jest.fn()
+  persistentSingleTabManager: jest.fn(),
+  memoryLocalCache: jest.fn()
 }));
 
 jest.unstable_mockModule('firebase/app', () => ({

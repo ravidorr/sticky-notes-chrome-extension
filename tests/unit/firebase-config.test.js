@@ -20,7 +20,8 @@ jest.unstable_mockModule('firebase/firestore', () => ({
   getFirestore: jest.fn(() => ({ name: 'mock-db' })),
   initializeFirestore: jest.fn(() => ({ name: 'mock-db-initialized' })),
   persistentLocalCache: jest.fn((config) => ({ type: 'localCache', ...config })),
-  persistentSingleTabManager: jest.fn((config) => ({ type: 'tabManager', ...config }))
+  persistentSingleTabManager: jest.fn((config) => ({ type: 'tabManager', ...config })),
+  memoryLocalCache: jest.fn(() => ({ type: 'memoryCache' }))
 }));
 
 // Import after mocking
@@ -131,7 +132,8 @@ describe('Firebase Config', () => {
         initializeFirestore: jest.fn(() => localThis.mockDb),
         getFirestore: jest.fn(() => localThis.mockDb),
         persistentLocalCache: jest.fn(() => ({})),
-        persistentSingleTabManager: jest.fn(() => ({}))
+        persistentSingleTabManager: jest.fn(() => ({})),
+        memoryLocalCache: jest.fn(() => ({}))
       };
       
       const config = {
@@ -156,7 +158,8 @@ describe('Firebase Config', () => {
         initializeFirestore: jest.fn(() => ({ name: 'db' })),
         getFirestore: jest.fn(() => ({ name: 'db' })),
         persistentLocalCache: jest.fn(() => ({})),
-        persistentSingleTabManager: jest.fn(() => ({}))
+        persistentSingleTabManager: jest.fn(() => ({})),
+        memoryLocalCache: jest.fn(() => ({}))
       };
       
       const config = { apiKey: 'real-api-key' };
@@ -180,7 +183,8 @@ describe('Firebase Config', () => {
         initializeFirestore: jest.fn(() => { throw mockError; }),
         getFirestore: jest.fn(() => ({ name: 'fallback-db' })),
         persistentLocalCache: jest.fn(() => ({})),
-        persistentSingleTabManager: jest.fn(() => ({}))
+        persistentSingleTabManager: jest.fn(() => ({})),
+        memoryLocalCache: jest.fn(() => ({}))
       };
       
       const config = { apiKey: 'real-api-key' };
@@ -200,7 +204,8 @@ describe('Firebase Config', () => {
         initializeFirestore: jest.fn(() => { throw mockError; }),
         getFirestore: jest.fn(() => ({ name: 'fallback-db' })),
         persistentLocalCache: jest.fn(() => ({})),
-        persistentSingleTabManager: jest.fn(() => ({}))
+        persistentSingleTabManager: jest.fn(() => ({})),
+        memoryLocalCache: jest.fn(() => ({}))
       };
       
       const config = { apiKey: 'real-api-key' };
@@ -209,14 +214,15 @@ describe('Firebase Config', () => {
       expect(result.db).toEqual({ name: 'fallback-db' });
     });
 
-    it('should configure persistent cache correctly', () => {
+    it('should configure persistent cache correctly in non-service-worker context', () => {
       const mockDeps = {
         initializeApp: jest.fn(() => ({ name: 'app' })),
         getAuth: jest.fn(() => ({ name: 'auth' })),
         initializeFirestore: jest.fn(() => ({ name: 'db' })),
         getFirestore: jest.fn(),
         persistentLocalCache: jest.fn((config) => ({ type: 'cache', ...config })),
-        persistentSingleTabManager: jest.fn((config) => ({ type: 'tabManager', ...config }))
+        persistentSingleTabManager: jest.fn((config) => ({ type: 'tabManager', ...config })),
+        memoryLocalCache: jest.fn(() => ({ type: 'memoryCache' }))
       };
       
       const config = { apiKey: 'real-api-key' };
@@ -237,7 +243,8 @@ describe('Firebase Config', () => {
         initializeFirestore: jest.fn(() => ({ name: 'db' })),
         getFirestore: jest.fn(),
         persistentLocalCache: jest.fn(() => ({})),
-        persistentSingleTabManager: jest.fn(() => ({}))
+        persistentSingleTabManager: jest.fn(() => ({})),
+        memoryLocalCache: jest.fn(() => ({}))
       };
       
       const config = { apiKey: 'real-api-key' };
