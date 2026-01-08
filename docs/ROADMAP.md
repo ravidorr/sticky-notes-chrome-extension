@@ -119,12 +119,52 @@ Features that differentiate for developer and QA workflows:
 - [] Role-based permissions
 - [] Usage analytics dashboard
 
-### Pricing Model (Proposed)
+### Pricing Model
 | Tier | Price | Features |
 |------|-------|----------|
-| **Free** | $0 | Local notes, no sync |
-| **Team** | $5/user/mo | Cloud sync, sharing, threads |
-| **Pro** | $12/user/mo | Integrations, screenshots, metadata |
+| **Free** | $0 | Up to 10 cloud notes, all features, no sharing |
+| **Basic** | $1/user/mo or $10/user/year | Unlimited notes, sharing, threads, offline |
+| **Pro** | $2/user/mo or $20/user/year | Integrations, screenshots, metadata, branding |
+
+---
+
+## Phase 5: Backoffice & Admin
+
+Internal tools for managing users, subscriptions, and analytics.
+
+### User Management
+- [] User list with search/filter
+- [] View user details (notes count, usage, tier)
+- [] Manually upgrade/downgrade user tier
+- [] Suspend/unsuspend users
+- [] Delete user and associated data (GDPR)
+
+### Subscription Management
+- [] View all subscriptions
+- [] Stripe integration for billing
+- [] Trial management (start, extend, end)
+- [] Invoice history per user
+- [] Refund processing
+
+### Analytics Dashboard
+- [] Active users (DAU/MAU)
+- [] Notes created per day/week/month
+- [] Conversion rates (free -> basic -> pro)
+- [] Churn rate tracking
+- [] Revenue metrics (MRR, ARR)
+- [] Usage by feature
+
+### Support Tools
+- [] View user's notes (with permission/audit log)
+- [] Impersonate user for debugging
+- [] Audit log for admin actions
+- [] Support ticket integration
+
+### System Health
+- [] Firebase usage metrics
+- [] Error tracking dashboard
+- [] API latency monitoring
+- [] Storage usage per user
 
 ---
 
