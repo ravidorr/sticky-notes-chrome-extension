@@ -147,13 +147,13 @@ Features that differentiate for developer and QA workflows:
 
 ---
 
-## Quick Wins to Validate
+## Quick Wins to Validate ✅
 
 Low-effort features to test market fit:
 
-1. **"Copy as Markdown" button** — Bug report template with URL + selector
-2. **"Copy screenshot" button** — One-click annotated screenshot
-3. **Metadata display** — Show URL, browser, viewport in note
+1. ~~**"Copy as Markdown" button**~~ ✅ — Bug report template with URL + selector
+2. ~~**"Copy screenshot" button**~~ ✅ — One-click annotated screenshot (highlights element)
+3. ~~**Metadata display**~~ ✅ — Collapsible footer showing URL, browser, viewport, timestamp
 
 ---
 

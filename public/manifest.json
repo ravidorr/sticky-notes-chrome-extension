@@ -5,6 +5,7 @@
   "description": "Annotate the web by attaching persistent sticky notes to specific UI elements on any website",
   "permissions": [
     "activeTab",
+    "tabs",
     "storage",
     "scripting",
     "webNavigation",

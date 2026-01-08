@@ -4,7 +4,15 @@
  */
 
 import { RichEditor } from './RichEditor.js';
-import { isValidEmail, THEME_COLORS, TIMEOUTS, VALID_THEMES } from '../../shared/utils.js';
+import { 
+  isValidEmail, 
+  THEME_COLORS, 
+  TIMEOUTS, 
+  VALID_THEMES,
+  getPageMetadata,
+  generateBugReportMarkdown,
+  formatRelativeTime
+} from '../../shared/utils.js';
 import { contentLogger as log } from '../../shared/logger.js';
 
 export class StickyNote {
@@ -30,6 +38,10 @@ export class StickyNote {
     this.onSave = options.onSave || (() => {});
     this.onDelete = options.onDelete || (() => {});
     
+    // Capture metadata at creation time, or use provided metadata
+    this.metadata = options.metadata || getPageMetadata();
+    this.createdAt = options.createdAt || new Date().toISOString();
+    
     this.element = null;
     this.textarea = null;
     this.isVisible = false;
@@ -37,6 +49,7 @@ export class StickyNote {
     this.dragOffset = { x: 0, y: 0 };
     this.customPosition = null;
     this.saveTimeout = null;
+    this.isMetadataExpanded = false;
     
     // Store bound event handlers to allow proper removal
     this.boundHandleDragMove = this.handleDragMove.bind(this);
@@ -60,6 +73,20 @@ export class StickyNote {
       <div class="sn-note-header">
         <span class="sn-note-header-title"></span>
         <div class="sn-note-header-actions">
+          <button class="sn-note-btn sn-copy-md-btn" title="Copy as Markdown">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 3v4a1 1 0 001 1h4"/>
+              <path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/>
+              <path d="M9 15l2 2 4-4"/>
+            </svg>
+          </button>
+          <button class="sn-note-btn sn-screenshot-btn" title="Copy screenshot">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <path d="M21 15l-5-5L5 21"/>
+            </svg>
+          </button>
           <button class="sn-note-btn sn-theme-btn" title="Change color">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.14-.74-.39-1.04-.23-.28-.37-.61-.37-.96 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.5-9-10-9z"/>
@@ -92,6 +119,32 @@ export class StickyNote {
       <div class="sn-note-content">
         <div class="sn-note-editor-container"></div>
       </div>
+      <div class="sn-note-footer">
+        <button class="sn-metadata-toggle">
+          <svg class="sn-metadata-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+          <span class="sn-metadata-time">${formatRelativeTime(this.createdAt)}</span>
+        </button>
+        <div class="sn-metadata-panel sn-hidden">
+          <div class="sn-metadata-row">
+            <span class="sn-metadata-label">URL</span>
+            <span class="sn-metadata-value sn-metadata-url" title="${this.metadata.url}">${this.truncateUrl(this.metadata.url)}</span>
+          </div>
+          <div class="sn-metadata-row">
+            <span class="sn-metadata-label">Browser</span>
+            <span class="sn-metadata-value">${this.metadata.browser}</span>
+          </div>
+          <div class="sn-metadata-row">
+            <span class="sn-metadata-label">Viewport</span>
+            <span class="sn-metadata-value">${this.metadata.viewport}</span>
+          </div>
+          <div class="sn-metadata-row">
+            <span class="sn-metadata-label">Element</span>
+            <span class="sn-metadata-value sn-metadata-selector" title="${this.selector}">${this.truncateSelector(this.selector)}</span>
+          </div>
+        </div>
+      </div>
     `;
     
     // Create rich editor
@@ -105,6 +158,35 @@ export class StickyNote {
     
     // Keep textarea reference for backward compatibility
     this.textarea = this.richEditor.editor;
+  }
+  
+  /**
+   * Truncate URL for display
+   * @param {string} url - URL to truncate
+   * @returns {string} Truncated URL
+   */
+  truncateUrl(url) {
+    if (!url) return '';
+    try {
+      const parsed = new URL(url);
+      const path = parsed.pathname;
+      if (path.length > 30) {
+        return parsed.host + path.substring(0, 27) + '...';
+      }
+      return parsed.host + path;
+    } catch {
+      return url.length > 40 ? url.substring(0, 37) + '...' : url;
+    }
+  }
+  
+  /**
+   * Truncate selector for display
+   * @param {string} selector - CSS selector to truncate
+   * @returns {string} Truncated selector
+   */
+  truncateSelector(selector) {
+    if (!selector) return '';
+    return selector.length > 35 ? selector.substring(0, 32) + '...' : selector;
   }
   
   /**
@@ -130,6 +212,18 @@ export class StickyNote {
     // Position button
     const positionBtn = this.element.querySelector('.sn-position-btn');
     positionBtn.addEventListener('click', this.handlePositionClick.bind(this));
+    
+    // Copy as Markdown button
+    const copyMdBtn = this.element.querySelector('.sn-copy-md-btn');
+    copyMdBtn.addEventListener('click', this.handleCopyMarkdown.bind(this));
+    
+    // Screenshot button
+    const screenshotBtn = this.element.querySelector('.sn-screenshot-btn');
+    screenshotBtn.addEventListener('click', this.handleScreenshot.bind(this));
+    
+    // Metadata toggle
+    const metadataToggle = this.element.querySelector('.sn-metadata-toggle');
+    metadataToggle.addEventListener('click', this.toggleMetadata.bind(this));
     
     // Global mouse events for dragging (use stored bound handlers for proper removal)
     document.addEventListener('mousemove', this.boundHandleDragMove);
@@ -173,6 +267,116 @@ export class StickyNote {
   handlePositionClick(event) {
     event.stopPropagation();
     this.showPositionPicker();
+  }
+  
+  /**
+   * Handle Copy as Markdown button click
+   */
+  async handleCopyMarkdown(event) {
+    event.stopPropagation();
+    
+    const markdown = generateBugReportMarkdown({
+      content: this.content,
+      selector: this.selector,
+      metadata: this.metadata
+    });
+    
+    try {
+      await navigator.clipboard.writeText(markdown);
+      this.showToast('Bug report copied to clipboard!');
+    } catch (error) {
+      log.error('Failed to copy markdown:', error);
+      this.showToast('Failed to copy to clipboard', 'error');
+    }
+  }
+  
+  /**
+   * Handle Screenshot button click
+   */
+  async handleScreenshot(event) {
+    event.stopPropagation();
+    
+    try {
+      // Highlight the anchor element temporarily
+      if (this.anchor) {
+        this.anchor.style.outline = '3px solid #3b82f6';
+        this.anchor.style.outlineOffset = '2px';
+      }
+      
+      // Hide the note temporarily to get a cleaner screenshot
+      const wasVisible = this.isVisible;
+      this.hide();
+      
+      // Small delay to ensure the UI updates
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Request screenshot from background script
+      const response = await chrome.runtime.sendMessage({
+        action: 'captureScreenshot'
+      });
+      
+      // Restore note visibility
+      if (wasVisible) {
+        this.show();
+      }
+      
+      // Remove highlight
+      if (this.anchor) {
+        this.anchor.style.outline = '';
+        this.anchor.style.outlineOffset = '';
+      }
+      
+      if (response.success && response.dataUrl) {
+        // Convert data URL to blob and copy to clipboard
+        const blob = await this.dataUrlToBlob(response.dataUrl);
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        this.showToast('Screenshot copied to clipboard!');
+      } else {
+        throw new Error(response.error || 'Failed to capture screenshot');
+      }
+    } catch (error) {
+      log.error('Failed to capture screenshot:', error);
+      
+      // Restore highlight removal on error
+      if (this.anchor) {
+        this.anchor.style.outline = '';
+        this.anchor.style.outlineOffset = '';
+      }
+      
+      this.showToast('Failed to capture screenshot', 'error');
+    }
+  }
+  
+  /**
+   * Convert data URL to Blob
+   * @param {string} dataUrl - Data URL string
+   * @returns {Promise<Blob>} Blob object
+   */
+  async dataUrlToBlob(dataUrl) {
+    const response = await fetch(dataUrl);
+    return response.blob();
+  }
+  
+  /**
+   * Toggle metadata panel visibility
+   */
+  toggleMetadata(event) {
+    event.stopPropagation();
+    
+    const panel = this.element.querySelector('.sn-metadata-panel');
+    const chevron = this.element.querySelector('.sn-metadata-chevron');
+    
+    this.isMetadataExpanded = !this.isMetadataExpanded;
+    
+    if (this.isMetadataExpanded) {
+      panel.classList.remove('sn-hidden');
+      chevron.style.transform = 'rotate(180deg)';
+    } else {
+      panel.classList.add('sn-hidden');
+      chevron.style.transform = '';
+    }
   }
   
   /**

@@ -595,6 +595,76 @@ describe('Background Handlers', () => {
     });
   });
 
+  describe('captureScreenshot', () => {
+    beforeEach(() => {
+      // Add chromeTabs mock to deps
+      localThis.mockChromeTabs = {
+        query: jest.fn(),
+        captureVisibleTab: jest.fn()
+      };
+      localThis.deps.chromeTabs = localThis.mockChromeTabs;
+      
+      // Recreate handlers with updated deps
+      localThis.handlers = createHandlers(localThis.deps);
+    });
+
+    it('should capture screenshot successfully', async () => {
+      const mockDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, windowId: 1 }]);
+      localThis.mockChromeTabs.captureVisibleTab.mockResolvedValue(mockDataUrl);
+      
+      const result = await localThis.handlers.captureScreenshot();
+      
+      expect(result.success).toBe(true);
+      expect(result.dataUrl).toBe(mockDataUrl);
+      expect(localThis.mockChromeTabs.captureVisibleTab).toHaveBeenCalledWith(1, {
+        format: 'png',
+        quality: 100
+      });
+    });
+
+    it('should return error when no active tab', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([]);
+      
+      const result = await localThis.handlers.captureScreenshot();
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('No active tab found');
+    });
+
+    it('should return error when chromeTabs is not available', async () => {
+      localThis.deps.chromeTabs = null;
+      localThis.handlers = createHandlers(localThis.deps);
+      
+      const result = await localThis.handlers.captureScreenshot();
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Tabs API not available');
+    });
+
+    it('should return error when capture fails', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, windowId: 1 }]);
+      localThis.mockChromeTabs.captureVisibleTab.mockRejectedValue(new Error('Capture failed'));
+      
+      const result = await localThis.handlers.captureScreenshot();
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Capture failed');
+      expect(localThis.mockLog.error).toHaveBeenCalled();
+    });
+
+    it('should be routable via handleMessage', async () => {
+      const mockDataUrl = 'data:image/png;base64,test';
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, windowId: 1 }]);
+      localThis.mockChromeTabs.captureVisibleTab.mockResolvedValue(mockDataUrl);
+      
+      const result = await localThis.handlers.handleMessage({ action: 'captureScreenshot' }, null);
+      
+      expect(result.success).toBe(true);
+      expect(result.dataUrl).toBe(mockDataUrl);
+    });
+  });
+
   describe('createHandlers', () => {
     it('should return all handler functions', () => {
       const handlers = createHandlers(localThis.deps);
@@ -608,6 +678,7 @@ describe('Background Handlers', () => {
       expect(typeof handlers.updateNote).toBe('function');
       expect(typeof handlers.deleteNote).toBe('function');
       expect(typeof handlers.shareNote).toBe('function');
+      expect(typeof handlers.captureScreenshot).toBe('function');
     });
   });
 });

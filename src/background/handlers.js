@@ -28,7 +28,8 @@ export function createHandlers(deps = {}) {
     generateId = defaultGenerateId,
     isValidEmail = defaultIsValidEmail,
     log = defaultLog,
-    chromeStorage = typeof chrome !== 'undefined' ? chrome.storage : null
+    chromeStorage = typeof chrome !== 'undefined' ? chrome.storage : null,
+    chromeTabs = typeof chrome !== 'undefined' ? chrome.tabs : null
   } = deps;
 
   /**
@@ -62,6 +63,9 @@ export function createHandlers(deps = {}) {
       
       case 'getUser':
         return getUser();
+      
+      case 'captureScreenshot':
+        return captureScreenshot();
       
       default:
         return { success: false, error: 'Unknown action' };
@@ -312,6 +316,36 @@ export function createHandlers(deps = {}) {
     }
   }
 
+  /**
+   * Capture a screenshot of the current tab
+   * @returns {Promise<Object>} Result with dataUrl or error
+   */
+  async function captureScreenshot() {
+    try {
+      if (!chromeTabs) {
+        return { success: false, error: 'Tabs API not available' };
+      }
+      
+      // Get the active tab
+      const [tab] = await chromeTabs.query({ active: true, currentWindow: true });
+      
+      if (!tab || !tab.id) {
+        return { success: false, error: 'No active tab found' };
+      }
+      
+      // Capture the visible tab
+      const dataUrl = await chromeTabs.captureVisibleTab(tab.windowId, {
+        format: 'png',
+        quality: 100
+      });
+      
+      return { success: true, dataUrl };
+    } catch (error) {
+      log.error('Screenshot capture error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   return {
     handleMessage,
     handleLogin,
@@ -321,7 +355,8 @@ export function createHandlers(deps = {}) {
     saveNote,
     updateNote,
     deleteNote,
-    shareNote
+    shareNote,
+    captureScreenshot
   };
 }
 

@@ -8,7 +8,7 @@ import { SelectionOverlay } from './components/SelectionOverlay.js';
 import { SelectorEngine } from './selectors/SelectorEngine.js';
 import { VisibilityManager } from './observers/VisibilityManager.js';
 import { RichEditor } from './components/RichEditor.js';
-import { escapeHtml } from '../shared/utils.js';
+import { escapeHtml, getBrowserInfo } from '../shared/utils.js';
 import { contentLogger as log } from '../shared/logger.js';
 
 /**
@@ -442,6 +442,83 @@ class StickyNotesApp {
         color: white;
       }
       
+      /* Note footer / metadata */
+      .sn-note-footer {
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 0;
+        font-size: 11px;
+      }
+      
+      .sn-metadata-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+        padding: 8px 12px;
+        border: none;
+        background: transparent;
+        color: #6b7280;
+        cursor: pointer;
+        font-size: 11px;
+        font-family: inherit;
+        text-align: left;
+        transition: background 0.15s ease;
+      }
+      
+      .sn-metadata-toggle:hover {
+        background: rgba(0, 0, 0, 0.05);
+      }
+      
+      .sn-metadata-chevron {
+        width: 12px;
+        height: 12px;
+        transition: transform 0.2s ease;
+        flex-shrink: 0;
+      }
+      
+      .sn-metadata-time {
+        flex: 1;
+      }
+      
+      .sn-metadata-panel {
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.03);
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+      }
+      
+      .sn-metadata-panel.sn-hidden {
+        display: none;
+      }
+      
+      .sn-metadata-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 3px 0;
+        gap: 8px;
+      }
+      
+      .sn-metadata-label {
+        color: #9ca3af;
+        font-weight: 500;
+        flex-shrink: 0;
+      }
+      
+      .sn-metadata-value {
+        color: #4b5563;
+        text-align: right;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 180px;
+      }
+      
+      .sn-metadata-url,
+      .sn-metadata-selector {
+        font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+        font-size: 10px;
+      }
+      
       ${RichEditor.getStyles()}
     `;
   }
@@ -504,6 +581,8 @@ class StickyNotesApp {
       content: noteData.content,
       theme: noteData.theme || 'yellow',
       position: noteData.position || { anchor: 'top-right' },
+      metadata: noteData.metadata,
+      createdAt: noteData.createdAt,
       onSave: (content) => this.handleNoteSave(noteData.id, content),
       onDelete: () => this.handleNoteDelete(noteData.id)
     });
@@ -941,14 +1020,22 @@ class StickyNotesApp {
       return;
     }
     
-    // Create new note
+    // Create new note with metadata
+    const browserInfo = getBrowserInfo();
     const noteData = {
       url: this.currentUrl,
       selector: selector,
       content: '',
       theme: 'yellow',
       position: { anchor: 'top-right' },
-      anchorText: element.textContent?.trim().substring(0, 100) || ''
+      anchorText: element.textContent?.trim().substring(0, 100) || '',
+      metadata: {
+        url: window.location.href,
+        title: document.title,
+        browser: `${browserInfo.browser}${browserInfo.version ? ' ' + browserInfo.version : ''}`,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+        timestamp: new Date().toISOString()
+      }
     };
     
     try {

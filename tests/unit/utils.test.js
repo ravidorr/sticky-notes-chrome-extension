@@ -210,3 +210,265 @@ describe('TIMEOUTS', () => {
     expect(utils.TIMEOUTS.TOOLTIP_FADE).toBe(500);
   });
 });
+
+describe('getBrowserInfo', () => {
+  const localThis = {};
+  
+  beforeEach(() => {
+    // Store original navigator
+    localThis.originalNavigator = global.navigator;
+  });
+  
+  afterEach(() => {
+    // Restore original navigator
+    if (localThis.originalNavigator) {
+      Object.defineProperty(global, 'navigator', {
+        value: localThis.originalNavigator,
+        writable: true
+      });
+    }
+  });
+  
+  it('should detect Chrome browser', () => {
+    Object.defineProperty(global, 'navigator', {
+      value: { userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+      writable: true
+    });
+    
+    const result = utils.getBrowserInfo();
+    expect(result.browser).toBe('Chrome');
+    expect(result.version).toBe('120');
+  });
+  
+  it('should detect Edge browser', () => {
+    Object.defineProperty(global, 'navigator', {
+      value: { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0' },
+      writable: true
+    });
+    
+    const result = utils.getBrowserInfo();
+    expect(result.browser).toBe('Edge');
+    expect(result.version).toBe('120');
+  });
+  
+  it('should detect Firefox browser', () => {
+    Object.defineProperty(global, 'navigator', {
+      value: { userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121' },
+      writable: true
+    });
+    
+    const result = utils.getBrowserInfo();
+    expect(result.browser).toBe('Firefox');
+    expect(result.version).toBe('121');
+  });
+  
+  it('should return userAgent string', () => {
+    const result = utils.getBrowserInfo();
+    expect(result.userAgent).toBeDefined();
+    expect(typeof result.userAgent).toBe('string');
+  });
+});
+
+describe('getViewportInfo', () => {
+  const localThis = {};
+  
+  beforeEach(() => {
+    localThis.originalInnerWidth = global.innerWidth;
+    localThis.originalInnerHeight = global.innerHeight;
+    localThis.originalDevicePixelRatio = global.devicePixelRatio;
+  });
+  
+  afterEach(() => {
+    global.innerWidth = localThis.originalInnerWidth;
+    global.innerHeight = localThis.originalInnerHeight;
+    global.devicePixelRatio = localThis.originalDevicePixelRatio;
+  });
+  
+  it('should return viewport dimensions', () => {
+    global.innerWidth = 1920;
+    global.innerHeight = 1080;
+    global.devicePixelRatio = 2;
+    
+    const result = utils.getViewportInfo();
+    expect(result.width).toBe(1920);
+    expect(result.height).toBe(1080);
+    expect(result.devicePixelRatio).toBe(2);
+  });
+  
+  it('should default devicePixelRatio to 1 if not available', () => {
+    global.innerWidth = 1024;
+    global.innerHeight = 768;
+    delete global.devicePixelRatio;
+    
+    const result = utils.getViewportInfo();
+    expect(result.devicePixelRatio).toBe(1);
+  });
+});
+
+describe('getPageMetadata', () => {
+  const localThis = {};
+  
+  beforeEach(() => {
+    localThis.originalLocation = global.location;
+    localThis.originalDocument = global.document;
+    localThis.originalInnerWidth = global.innerWidth;
+    localThis.originalInnerHeight = global.innerHeight;
+    
+    global.innerWidth = 1920;
+    global.innerHeight = 1080;
+    
+    // Mock location
+    delete global.location;
+    global.location = { href: 'https://example.com/page' };
+    
+    // Mock document.title
+    Object.defineProperty(global.document, 'title', {
+      value: 'Test Page',
+      configurable: true
+    });
+  });
+  
+  afterEach(() => {
+    global.location = localThis.originalLocation;
+    global.innerWidth = localThis.originalInnerWidth;
+    global.innerHeight = localThis.originalInnerHeight;
+  });
+  
+  it('should return page metadata object', () => {
+    const result = utils.getPageMetadata();
+    
+    expect(result.url).toBe('https://example.com/page');
+    expect(result.title).toBe('Test Page');
+    expect(result.viewport).toBe('1920x1080');
+    expect(result.timestamp).toBeDefined();
+    expect(result.browser).toBeDefined();
+    expect(result.userAgent).toBeDefined();
+  });
+  
+  it('should include valid ISO timestamp', () => {
+    const result = utils.getPageMetadata();
+    const date = new Date(result.timestamp);
+    expect(date.toString()).not.toBe('Invalid Date');
+  });
+});
+
+describe('generateBugReportMarkdown', () => {
+  it('should generate markdown with all sections', () => {
+    const options = {
+      content: '<b>Button is broken</b>',
+      selector: '#submit-btn',
+      metadata: {
+        url: 'https://example.com/form',
+        browser: 'Chrome 120',
+        viewport: '1920x1080',
+        timestamp: '2024-01-15T10:30:00.000Z'
+      }
+    };
+    
+    const markdown = utils.generateBugReportMarkdown(options);
+    
+    expect(markdown).toContain('## Bug Report');
+    expect(markdown).toContain('### Description');
+    expect(markdown).toContain('Button is broken');
+    expect(markdown).toContain('### Environment');
+    expect(markdown).toContain('**URL:** https://example.com/form');
+    expect(markdown).toContain('**Browser:** Chrome 120');
+    expect(markdown).toContain('**Viewport:** 1920x1080');
+    expect(markdown).toContain('### Element Reference');
+    expect(markdown).toContain('#submit-btn');
+    expect(markdown).toContain('### Steps to Reproduce');
+    expect(markdown).toContain('### Expected Behavior');
+    expect(markdown).toContain('### Actual Behavior');
+  });
+  
+  it('should strip HTML from content', () => {
+    const options = {
+      content: '<p>This is <strong>bold</strong> text</p>',
+      selector: '.element',
+      metadata: {
+        url: 'https://example.com',
+        browser: 'Chrome',
+        viewport: '1920x1080',
+        timestamp: new Date().toISOString()
+      }
+    };
+    
+    const markdown = utils.generateBugReportMarkdown(options);
+    expect(markdown).toContain('This is bold text');
+    expect(markdown).not.toContain('<p>');
+    expect(markdown).not.toContain('<strong>');
+  });
+  
+  it('should handle empty content', () => {
+    const options = {
+      content: '',
+      selector: '.element',
+      metadata: {
+        url: 'https://example.com',
+        browser: 'Chrome',
+        viewport: '1920x1080',
+        timestamp: new Date().toISOString()
+      }
+    };
+    
+    const markdown = utils.generateBugReportMarkdown(options);
+    expect(markdown).toContain('_No description provided_');
+  });
+});
+
+describe('formatRelativeTime', () => {
+  const localThis = {};
+  
+  beforeEach(() => {
+    // Use fake timers for consistent testing
+    jest.useFakeTimers();
+    localThis.now = new Date('2024-01-15T12:00:00.000Z');
+    jest.setSystemTime(localThis.now);
+  });
+  
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+  
+  it('should return "just now" for very recent times', () => {
+    const date = new Date(localThis.now.getTime() - 30 * 1000); // 30 seconds ago
+    expect(utils.formatRelativeTime(date)).toBe('just now');
+  });
+  
+  it('should return minutes ago', () => {
+    const date = new Date(localThis.now.getTime() - 5 * 60 * 1000); // 5 minutes ago
+    expect(utils.formatRelativeTime(date)).toBe('5 minutes ago');
+  });
+  
+  it('should return "1 minute ago" (singular)', () => {
+    const date = new Date(localThis.now.getTime() - 1 * 60 * 1000); // 1 minute ago
+    expect(utils.formatRelativeTime(date)).toBe('1 minute ago');
+  });
+  
+  it('should return hours ago', () => {
+    const date = new Date(localThis.now.getTime() - 3 * 60 * 60 * 1000); // 3 hours ago
+    expect(utils.formatRelativeTime(date)).toBe('3 hours ago');
+  });
+  
+  it('should return "1 hour ago" (singular)', () => {
+    const date = new Date(localThis.now.getTime() - 1 * 60 * 60 * 1000); // 1 hour ago
+    expect(utils.formatRelativeTime(date)).toBe('1 hour ago');
+  });
+  
+  it('should return days ago', () => {
+    const date = new Date(localThis.now.getTime() - 2 * 24 * 60 * 60 * 1000); // 2 days ago
+    expect(utils.formatRelativeTime(date)).toBe('2 days ago');
+  });
+  
+  it('should return locale date string for older dates', () => {
+    const date = new Date(localThis.now.getTime() - 10 * 24 * 60 * 60 * 1000); // 10 days ago
+    const result = utils.formatRelativeTime(date);
+    // Should be a formatted date, not "X days ago"
+    expect(result).not.toContain('days ago');
+  });
+  
+  it('should accept string dates', () => {
+    const dateStr = new Date(localThis.now.getTime() - 2 * 60 * 60 * 1000).toISOString();
+    expect(utils.formatRelativeTime(dateStr)).toBe('2 hours ago');
+  });
+});

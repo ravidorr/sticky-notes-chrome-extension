@@ -185,3 +185,131 @@ export const THEME_COLORS = {
 
 // Valid themes
 export const VALID_THEMES = ['yellow', 'blue', 'green', 'pink'];
+
+/**
+ * Get browser information
+ * @returns {Object} Browser info object
+ */
+export function getBrowserInfo() {
+  const ua = navigator.userAgent;
+  let browser = 'Unknown';
+  let version = '';
+  
+  if (ua.includes('Chrome') && !ua.includes('Edg')) {
+    browser = 'Chrome';
+    const match = ua.match(/Chrome\/(\d+)/);
+    version = match ? match[1] : '';
+  } else if (ua.includes('Edg')) {
+    browser = 'Edge';
+    const match = ua.match(/Edg\/(\d+)/);
+    version = match ? match[1] : '';
+  } else if (ua.includes('Firefox')) {
+    browser = 'Firefox';
+    const match = ua.match(/Firefox\/(\d+)/);
+    version = match ? match[1] : '';
+  } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+    browser = 'Safari';
+    const match = ua.match(/Version\/(\d+)/);
+    version = match ? match[1] : '';
+  }
+  
+  return { browser, version, userAgent: ua };
+}
+
+/**
+ * Get viewport dimensions
+ * @returns {Object} Viewport info
+ */
+export function getViewportInfo() {
+  return {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    devicePixelRatio: window.devicePixelRatio || 1
+  };
+}
+
+/**
+ * Get current page metadata
+ * @returns {Object} Page metadata
+ */
+export function getPageMetadata() {
+  const browserInfo = getBrowserInfo();
+  const viewport = getViewportInfo();
+  
+  return {
+    url: window.location.href,
+    title: document.title,
+    browser: `${browserInfo.browser}${browserInfo.version ? ' ' + browserInfo.version : ''}`,
+    viewport: `${viewport.width}x${viewport.height}`,
+    devicePixelRatio: viewport.devicePixelRatio,
+    timestamp: new Date().toISOString(),
+    userAgent: browserInfo.userAgent
+  };
+}
+
+/**
+ * Generate markdown bug report template
+ * @param {Object} options - Report options
+ * @param {string} options.content - Note content (HTML)
+ * @param {string} options.selector - CSS selector
+ * @param {Object} options.metadata - Page metadata
+ * @returns {string} Markdown formatted bug report
+ */
+export function generateBugReportMarkdown(options) {
+  const { content, selector, metadata } = options;
+  const plainContent = stripHtml(content).trim();
+  
+  const lines = [
+    '## Bug Report',
+    '',
+    '### Description',
+    plainContent || '_No description provided_',
+    '',
+    '### Environment',
+    `- **URL:** ${metadata.url}`,
+    `- **Browser:** ${metadata.browser}`,
+    `- **Viewport:** ${metadata.viewport}`,
+    `- **Timestamp:** ${new Date(metadata.timestamp).toLocaleString()}`,
+    '',
+    '### Element Reference',
+    '```css',
+    selector,
+    '```',
+    '',
+    '### Steps to Reproduce',
+    '1. Navigate to the URL above',
+    '2. Locate the element using the selector',
+    '3. ',
+    '',
+    '### Expected Behavior',
+    '',
+    '',
+    '### Actual Behavior',
+    '',
+    ''
+  ];
+  
+  return lines.join('\n');
+}
+
+/**
+ * Format relative time (e.g., "2 hours ago")
+ * @param {string|Date} date - Date to format
+ * @returns {string} Relative time string
+ */
+export function formatRelativeTime(date) {
+  const now = new Date();
+  const then = new Date(date);
+  const diffMs = now - then;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  
+  if (diffSec < 60) return 'just now';
+  if (diffMin < 60) return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`;
+  if (diffHour < 24) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
+  if (diffDay < 7) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+  
+  return then.toLocaleDateString();
+}

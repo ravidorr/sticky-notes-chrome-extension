@@ -78,6 +78,7 @@ export async function createNote(noteData, userId, deps = {}) {
     content: noteData.content || '',
     theme: theme,
     position: noteData.position || { anchor: 'top-right' },
+    metadata: noteData.metadata || null,
     ownerId: userId,
     sharedWith: [],
     createdAt: firebaseDeps.serverTimestamp(),
