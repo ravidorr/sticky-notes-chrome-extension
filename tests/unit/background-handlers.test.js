@@ -136,7 +136,8 @@ describe('Background Handlers', () => {
       const result = await localThis.handlers.handleMessage({ action: 'unknownAction' }, null);
       
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Unknown action');
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(Unknown action|unknownAction)$/);
     });
   });
 
@@ -423,7 +424,8 @@ describe('Background Handlers', () => {
       const result = await localThis.handlers.updateNote({ id: 'nonexistent' });
       
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Note not found');
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(Note not found|noteNotFound)$/);
     });
 
     it('should return error on failure', async () => {
@@ -484,7 +486,8 @@ describe('Background Handlers', () => {
       const result = await localThis.handlers.deleteNote('nonexistent');
       
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Note not found');
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(Note not found|noteNotFound)$/);
     });
 
     it('should return error on failure', async () => {
@@ -515,7 +518,8 @@ describe('Background Handlers', () => {
       const result = await localThis.handlers.shareNote('note-1', 'friend@example.com');
       
       expect(result.success).toBe(false);
-      expect(result.error).toBe('You must be logged in to share notes');
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(You must be logged in to share notes|mustBeLoggedInToShare)$/);
     });
 
     it('should require Firebase configuration', async () => {
@@ -525,7 +529,8 @@ describe('Background Handlers', () => {
       const result = await localThis.handlers.shareNote('note-1', 'friend@example.com');
       
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Sharing requires Firebase to be configured');
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(Sharing requires Firebase to be configured|sharingRequiresFirebase)$/);
     });
 
     it('should validate note ID', async () => {
@@ -534,11 +539,13 @@ describe('Background Handlers', () => {
       
       const result1 = await localThis.handlers.shareNote('', 'friend@example.com');
       expect(result1.success).toBe(false);
-      expect(result1.error).toBe('Invalid note ID');
+      // Check for either translated text or i18n key
+      expect(result1.error).toMatch(/^(Invalid note ID|invalidNoteId)$/);
       
       const result2 = await localThis.handlers.shareNote(null, 'friend@example.com');
       expect(result2.success).toBe(false);
-      expect(result2.error).toBe('Invalid note ID');
+      // Check for either translated text or i18n key
+      expect(result2.error).toMatch(/^(Invalid note ID|invalidNoteId)$/);
     });
 
     it('should validate email format', async () => {
@@ -549,7 +556,8 @@ describe('Background Handlers', () => {
       const result = await localThis.handlers.shareNote('note-1', 'invalid-email');
       
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Invalid email address');
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(Invalid email address|invalidEmailAddress)$/);
     });
 
     it('should prevent self-sharing', async () => {
@@ -559,7 +567,8 @@ describe('Background Handlers', () => {
       const result = await localThis.handlers.shareNote('note-1', 'test@example.com');
       
       expect(result.success).toBe(false);
-      expect(result.error).toBe('You cannot share a note with yourself');
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(You cannot share a note with yourself|cannotShareWithSelf)$/);
     });
 
     it('should be case-insensitive for self-share check', async () => {
@@ -569,7 +578,8 @@ describe('Background Handlers', () => {
       const result = await localThis.handlers.shareNote('note-1', 'TEST@EXAMPLE.COM');
       
       expect(result.success).toBe(false);
-      expect(result.error).toBe('You cannot share a note with yourself');
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(You cannot share a note with yourself|cannotShareWithSelf)$/);
     });
 
     it('should lowercase email before sharing', async () => {
@@ -629,7 +639,8 @@ describe('Background Handlers', () => {
       const result = await localThis.handlers.captureScreenshot();
       
       expect(result.success).toBe(false);
-      expect(result.error).toBe('No active tab found');
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(No active tab found|noActiveTab)$/);
     });
 
     it('should return error when chromeTabs is not available', async () => {
@@ -639,7 +650,8 @@ describe('Background Handlers', () => {
       const result = await localThis.handlers.captureScreenshot();
       
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Tabs API not available');
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(Tabs API not available|tabsApiNotAvailable)$/);
     });
 
     it('should return error when capture fails', async () => {

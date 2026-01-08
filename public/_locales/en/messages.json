@@ -1,0 +1,371 @@
+{
+  "extName": {
+    "message": "Element-Anchored Sticky Notes",
+    "description": "Name of the extension shown in browser"
+  },
+  "extDescription": {
+    "message": "Annotate the web by attaching persistent sticky notes to specific UI elements on any website",
+    "description": "Description of the extension shown in browser"
+  },
+
+  "appTitle": {
+    "message": "Sticky Notes",
+    "description": "Application title shown in popup header"
+  },
+  "close": {
+    "message": "Close",
+    "description": "Close button tooltip"
+  },
+
+  "signInPrompt": {
+    "message": "Sign in to sync your notes across devices",
+    "description": "Text shown when user is not signed in"
+  },
+  "signInWithGoogle": {
+    "message": "Sign in with Google",
+    "description": "Google sign-in button text"
+  },
+  "signOut": {
+    "message": "Sign out",
+    "description": "Sign out button tooltip"
+  },
+  "userName": {
+    "message": "User Name",
+    "description": "Default placeholder for user name"
+  },
+  "userEmail": {
+    "message": "user@email.com",
+    "description": "Default placeholder for user email"
+  },
+
+  "addNote": {
+    "message": "Add Note",
+    "description": "Add note button text"
+  },
+  "addNoteHint": {
+    "message": "Click, then select an element on the page",
+    "description": "Hint text below add note button"
+  },
+
+  "notesOnPage": {
+    "message": "Notes on this page",
+    "description": "Header for notes list section"
+  },
+  "noNotesYet": {
+    "message": "No notes on this page yet",
+    "description": "Empty state message when no notes exist"
+  },
+  "emptyNote": {
+    "message": "Empty note",
+    "description": "Fallback text for notes with no content"
+  },
+
+  "copyAsMarkdown": {
+    "message": "Copy as Markdown",
+    "description": "Tooltip for copy markdown button"
+  },
+  "copyScreenshot": {
+    "message": "Copy screenshot",
+    "description": "Tooltip for screenshot button"
+  },
+  "changeColor": {
+    "message": "Change color",
+    "description": "Tooltip for theme/color picker button"
+  },
+  "changePosition": {
+    "message": "Change position",
+    "description": "Tooltip for position picker button"
+  },
+  "share": {
+    "message": "Share",
+    "description": "Tooltip for share button"
+  },
+  "delete": {
+    "message": "Delete",
+    "description": "Tooltip for delete button"
+  },
+
+  "notePlaceholder": {
+    "message": "Write your note here...",
+    "description": "Placeholder text in note editor"
+  },
+
+  "positionTopLeft": {
+    "message": "Top Left",
+    "description": "Position option label"
+  },
+  "positionTopRight": {
+    "message": "Top Right",
+    "description": "Position option label"
+  },
+  "positionBottomLeft": {
+    "message": "Bottom Left",
+    "description": "Position option label"
+  },
+  "positionBottomRight": {
+    "message": "Bottom Right",
+    "description": "Position option label"
+  },
+
+  "copiedToClipboard": {
+    "message": "Copied to clipboard!",
+    "description": "Toast message after successful copy"
+  },
+  "failedToCopy": {
+    "message": "Failed to copy to clipboard",
+    "description": "Toast message when copy fails"
+  },
+  "screenshotCopied": {
+    "message": "Screenshot copied to clipboard!",
+    "description": "Toast message after successful screenshot"
+  },
+  "failedToScreenshot": {
+    "message": "Failed to capture screenshot",
+    "description": "Toast message when screenshot fails"
+  },
+
+  "deleteConfirm": {
+    "message": "Delete this note?",
+    "description": "Confirmation dialog for note deletion"
+  },
+
+  "shareNote": {
+    "message": "Share Note",
+    "description": "Share modal title"
+  },
+  "shareDescription": {
+    "message": "Enter the email address of the person you want to share this note with.",
+    "description": "Share modal description"
+  },
+  "emailPlaceholder": {
+    "message": "colleague@example.com",
+    "description": "Email input placeholder in share modal"
+  },
+  "cancel": {
+    "message": "Cancel",
+    "description": "Cancel button text"
+  },
+  "shareButton": {
+    "message": "Share",
+    "description": "Share button text in modal"
+  },
+  "noteShared": {
+    "message": "Note shared successfully!",
+    "description": "Toast message after successful share"
+  },
+  "failedToShare": {
+    "message": "Failed to share note",
+    "description": "Toast message when share fails"
+  },
+  "invalidEmail": {
+    "message": "Please enter a valid email address",
+    "description": "Error message for invalid email"
+  },
+
+  "metadataUrl": {
+    "message": "URL",
+    "description": "Metadata label for URL"
+  },
+  "metadataBrowser": {
+    "message": "Browser",
+    "description": "Metadata label for browser"
+  },
+  "metadataViewport": {
+    "message": "Viewport",
+    "description": "Metadata label for viewport"
+  },
+  "metadataElement": {
+    "message": "Element",
+    "description": "Metadata label for element selector"
+  },
+
+  "extensionUpdated": {
+    "message": "Extension Updated",
+    "description": "Title of refresh notification"
+  },
+  "extensionUpdatedDescription": {
+    "message": "The Sticky Notes extension was updated. Please refresh this page to continue using it.",
+    "description": "Description in refresh notification"
+  },
+  "refreshPage": {
+    "message": "Refresh Page",
+    "description": "Button text to refresh page"
+  },
+  "dismiss": {
+    "message": "Dismiss",
+    "description": "Button text to dismiss notification"
+  },
+
+  "noteAnchorNotFound": {
+    "message": "Note Anchor Not Found",
+    "description": "Title of re-anchor notification"
+  },
+  "reanchor": {
+    "message": "Re-anchor",
+    "description": "Button text to re-anchor a note"
+  },
+  "selectNewAnchor": {
+    "message": "Select New Anchor Element",
+    "description": "Title when in re-anchor mode"
+  },
+  "selectNewAnchorHint": {
+    "message": "Click on an element to re-anchor your note",
+    "description": "Instruction text for re-anchor mode"
+  },
+  "pressEscToCancel": {
+    "message": "Press ESC to cancel",
+    "description": "Hint text for canceling selection"
+  },
+
+  "cannotAddNotesToPage": {
+    "message": "Cannot add notes to this page. Chrome system pages and extension pages are not supported.",
+    "description": "Error message for restricted pages"
+  },
+  "couldNotEnableSelection": {
+    "message": "Could not enable selection mode. Please refresh the page and try again.",
+    "description": "Error message when selection mode fails"
+  },
+
+  "mustBeLoggedInToShare": {
+    "message": "You must be logged in to share notes",
+    "description": "Error when trying to share without login"
+  },
+  "sharingRequiresFirebase": {
+    "message": "Sharing requires Firebase to be configured",
+    "description": "Error when Firebase is not configured"
+  },
+  "invalidNoteId": {
+    "message": "Invalid note ID",
+    "description": "Error for invalid note ID"
+  },
+  "invalidEmailAddress": {
+    "message": "Invalid email address",
+    "description": "Error for invalid email"
+  },
+  "cannotShareWithSelf": {
+    "message": "You cannot share a note with yourself",
+    "description": "Error when trying to share with own email"
+  },
+  "noteNotFound": {
+    "message": "Note not found",
+    "description": "Error when note doesn't exist"
+  },
+  "unknownAction": {
+    "message": "Unknown action",
+    "description": "Error for unknown message action"
+  },
+  "noActiveTab": {
+    "message": "No active tab found",
+    "description": "Error when no active tab is found"
+  },
+  "tabsApiNotAvailable": {
+    "message": "Tabs API not available",
+    "description": "Error when tabs API is unavailable"
+  },
+
+  "bugReport": {
+    "message": "Bug Report",
+    "description": "Bug report template header"
+  },
+  "bugReportDescription": {
+    "message": "Description",
+    "description": "Bug report section title"
+  },
+  "bugReportEnvironment": {
+    "message": "Environment",
+    "description": "Bug report section title"
+  },
+  "bugReportElementRef": {
+    "message": "Element Reference",
+    "description": "Bug report section title"
+  },
+  "bugReportSteps": {
+    "message": "Steps to Reproduce",
+    "description": "Bug report section title"
+  },
+  "bugReportExpected": {
+    "message": "Expected Behavior",
+    "description": "Bug report section title"
+  },
+  "bugReportActual": {
+    "message": "Actual Behavior",
+    "description": "Bug report section title"
+  },
+  "bugReportNoDescription": {
+    "message": "_No description provided_",
+    "description": "Placeholder when no description"
+  },
+  "bugReportStep1": {
+    "message": "Navigate to the URL above",
+    "description": "Default step 1 in bug report"
+  },
+  "bugReportStep2": {
+    "message": "Locate the element using the selector",
+    "description": "Default step 2 in bug report"
+  },
+
+  "justNow": {
+    "message": "just now",
+    "description": "Relative time for very recent"
+  },
+  "minuteAgo": {
+    "message": "$COUNT$ minute ago",
+    "description": "Relative time singular",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "minutesAgo": {
+    "message": "$COUNT$ minutes ago",
+    "description": "Relative time plural",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "hourAgo": {
+    "message": "$COUNT$ hour ago",
+    "description": "Relative time singular",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "hoursAgo": {
+    "message": "$COUNT$ hours ago",
+    "description": "Relative time plural",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "dayAgo": {
+    "message": "$COUNT$ day ago",
+    "description": "Relative time singular",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "daysAgo": {
+    "message": "$COUNT$ days ago",
+    "description": "Relative time plural",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  }
+}

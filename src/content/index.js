@@ -10,6 +10,7 @@ import { VisibilityManager } from './observers/VisibilityManager.js';
 import { RichEditor } from './components/RichEditor.js';
 import { escapeHtml, getBrowserInfo } from '../shared/utils.js';
 import { contentLogger as log } from '../shared/logger.js';
+import { t } from '../shared/i18n.js';
 
 /**
  * Main application class for the content script
@@ -121,17 +122,17 @@ class StickyNotesApp {
         </div>
         <div style="flex: 1; min-width: 0;">
           <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 14px;">
-            Extension Updated
+            ${t('extensionUpdated')}
           </div>
           <div style="font-size: 13px; color: #6b7280; margin-bottom: 12px; line-height: 1.4;">
-            The Sticky Notes extension was updated. Please refresh this page to continue using it.
+            ${t('extensionUpdatedDescription')}
           </div>
           <div style="display: flex; gap: 8px;">
             <button id="sn-refresh-btn" style="flex: 1; padding: 10px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s;">
-              Refresh Page
+              ${t('refreshPage')}
             </button>
             <button id="sn-dismiss-refresh-btn" style="padding: 10px 12px; background: #f3f4f6; color: #6b7280; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; transition: background 0.15s;">
-              Dismiss
+              ${t('dismiss')}
             </button>
           </div>
         </div>
@@ -890,16 +891,16 @@ class StickyNotesApp {
           </svg>
         </div>
         <div style="flex: 1; min-width: 0;">
-          <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">Note Anchor Not Found</div>
+          <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">${t('noteAnchorNotFound')}</div>
           <div style="font-size: 13px; color: #6b7280; margin-bottom: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
             "${escapeHtml((noteData.content || '').substring(0, 50))}${noteData.content?.length > 50 ? '...' : ''}"
           </div>
           <div style="display: flex; gap: 8px;">
             <button class="sn-reanchor-btn" style="flex: 1; padding: 8px 12px; background: #facc15; color: #713f12; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;">
-              Re-anchor
+              ${t('reanchor')}
             </button>
             <button class="sn-dismiss-btn" style="padding: 8px 12px; background: #f3f4f6; color: #6b7280; border: none; border-radius: 6px; font-size: 13px; cursor: pointer;">
-              Dismiss
+              ${t('dismiss')}
             </button>
           </div>
         </div>
@@ -960,9 +961,9 @@ class StickyNotesApp {
       box-shadow: 0 20px 25px rgba(0, 0, 0, 0.2);
     `;
     tooltip.innerHTML = `
-      <div style="font-weight: 600; margin-bottom: 8px;">Select New Anchor Element</div>
-      <div style="opacity: 0.8;">Click on an element to re-anchor your note</div>
-      <div style="margin-top: 12px; font-size: 12px; opacity: 0.6;">Press ESC to cancel</div>
+      <div style="font-weight: 600; margin-bottom: 8px;">${t('selectNewAnchor')}</div>
+      <div style="opacity: 0.8;">${t('selectNewAnchorHint')}</div>
+      <div style="margin-top: 12px; font-size: 12px; opacity: 0.6;">${t('pressEscToCancel')}</div>
     `;
     
     this.container.appendChild(tooltip);

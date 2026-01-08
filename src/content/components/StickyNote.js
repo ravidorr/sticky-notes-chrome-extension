@@ -14,6 +14,7 @@ import {
   formatRelativeTime
 } from '../../shared/utils.js';
 import { contentLogger as log } from '../../shared/logger.js';
+import { t } from '../../shared/i18n.js';
 
 export class StickyNote {
   /**
@@ -73,21 +74,21 @@ export class StickyNote {
       <div class="sn-note-header">
         <span class="sn-note-header-title"></span>
         <div class="sn-note-header-actions">
-          <button class="sn-note-btn sn-copy-md-btn" title="Copy as Markdown">
+          <button class="sn-note-btn sn-copy-md-btn" title="${t('copyAsMarkdown')}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 3v4a1 1 0 001 1h4"/>
               <path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/>
               <path d="M9 15l2 2 4-4"/>
             </svg>
           </button>
-          <button class="sn-note-btn sn-screenshot-btn" title="Copy screenshot">
+          <button class="sn-note-btn sn-screenshot-btn" title="${t('copyScreenshot')}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2"/>
               <circle cx="8.5" cy="8.5" r="1.5"/>
               <path d="M21 15l-5-5L5 21"/>
             </svg>
           </button>
-          <button class="sn-note-btn sn-theme-btn" title="Change color">
+          <button class="sn-note-btn sn-theme-btn" title="${t('changeColor')}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.14-.74-.39-1.04-.23-.28-.37-.61-.37-.96 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.5-9-10-9z"/>
               <circle cx="7.5" cy="11.5" r="1.5" fill="currentColor"/>
@@ -95,13 +96,13 @@ export class StickyNote {
               <circle cx="16.5" cy="11.5" r="1.5" fill="currentColor"/>
             </svg>
           </button>
-          <button class="sn-note-btn sn-position-btn" title="Change position">
+          <button class="sn-note-btn sn-position-btn" title="${t('changePosition')}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l3 3 3-3M19 9l3 3-3 3"/>
               <path d="M2 12h20M12 2v20"/>
             </svg>
           </button>
-          <button class="sn-note-btn sn-share-btn" title="Share">
+          <button class="sn-note-btn sn-share-btn" title="${t('share')}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="18" cy="5" r="3"/>
               <circle cx="6" cy="12" r="3"/>
@@ -109,7 +110,7 @@ export class StickyNote {
               <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/>
             </svg>
           </button>
-          <button class="sn-note-btn sn-delete-btn" title="Delete">
+          <button class="sn-note-btn sn-delete-btn" title="${t('delete')}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
             </svg>
@@ -128,19 +129,19 @@ export class StickyNote {
         </button>
         <div class="sn-metadata-panel sn-hidden">
           <div class="sn-metadata-row">
-            <span class="sn-metadata-label">URL</span>
+            <span class="sn-metadata-label">${t('metadataUrl')}</span>
             <span class="sn-metadata-value sn-metadata-url" title="${this.metadata.url}">${this.truncateUrl(this.metadata.url)}</span>
           </div>
           <div class="sn-metadata-row">
-            <span class="sn-metadata-label">Browser</span>
+            <span class="sn-metadata-label">${t('metadataBrowser')}</span>
             <span class="sn-metadata-value">${this.metadata.browser}</span>
           </div>
           <div class="sn-metadata-row">
-            <span class="sn-metadata-label">Viewport</span>
+            <span class="sn-metadata-label">${t('metadataViewport')}</span>
             <span class="sn-metadata-value">${this.metadata.viewport}</span>
           </div>
           <div class="sn-metadata-row">
-            <span class="sn-metadata-label">Element</span>
+            <span class="sn-metadata-label">${t('metadataElement')}</span>
             <span class="sn-metadata-value sn-metadata-selector" title="${this.selector}">${this.truncateSelector(this.selector)}</span>
           </div>
         </div>
@@ -151,7 +152,7 @@ export class StickyNote {
     const editorContainer = this.element.querySelector('.sn-note-editor-container');
     this.richEditor = new RichEditor({
       content: this.content,
-      placeholder: 'Write your note here...',
+      placeholder: t('notePlaceholder'),
       onChange: (html) => this.handleEditorChange(html)
     });
     editorContainer.appendChild(this.richEditor.element);
@@ -283,10 +284,10 @@ export class StickyNote {
     
     try {
       await navigator.clipboard.writeText(markdown);
-      this.showToast('Copied to clipboard!');
+      this.showToast(t('copiedToClipboard'));
     } catch (error) {
       log.error('Failed to copy markdown:', error);
-      this.showToast('Failed to copy to clipboard', 'error');
+      this.showToast(t('failedToCopy'), 'error');
     }
   }
   
@@ -332,7 +333,7 @@ export class StickyNote {
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
         ]);
-        this.showToast('Screenshot copied to clipboard!');
+        this.showToast(t('screenshotCopied'));
       } else {
         throw new Error(response.error || 'Failed to capture screenshot');
       }
@@ -345,7 +346,7 @@ export class StickyNote {
         this.anchor.style.outlineOffset = '';
       }
       
-      this.showToast('Failed to capture screenshot', 'error');
+      this.showToast(t('failedToScreenshot'), 'error');
     }
   }
   
@@ -495,10 +496,10 @@ export class StickyNote {
    */
   showPositionPicker() {
     const positions = [
-      { value: 'top-left', label: 'Top Left' },
-      { value: 'top-right', label: 'Top Right' },
-      { value: 'bottom-left', label: 'Bottom Left' },
-      { value: 'bottom-right', label: 'Bottom Right' }
+      { value: 'top-left', label: t('positionTopLeft') },
+      { value: 'top-right', label: t('positionTopRight') },
+      { value: 'bottom-left', label: t('positionBottomLeft') },
+      { value: 'bottom-right', label: t('positionBottomRight') }
     ];
     
     const picker = document.createElement('div');
@@ -676,7 +677,7 @@ export class StickyNote {
    * Handle delete button click
    */
   handleDelete() {
-    if (confirm('Delete this note?')) {
+    if (confirm(t('deleteConfirm'))) {
       this.onDelete();
     }
   }
@@ -721,15 +722,15 @@ export class StickyNote {
     `;
     
     modal.innerHTML = `
-      <h3 style="margin: 0 0 16px; font-size: 18px; color: #1f2937;">Share Note</h3>
+      <h3 style="margin: 0 0 16px; font-size: 18px; color: #1f2937;">${t('shareNote')}</h3>
       <p style="margin: 0 0 16px; font-size: 14px; color: #6b7280;">
-        Enter the email address of the person you want to share this note with.
+        ${t('shareDescription')}
       </p>
-      <input type="email" placeholder="colleague@example.com" 
+      <input type="email" placeholder="${t('emailPlaceholder')}" 
         style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; margin-bottom: 16px; box-sizing: border-box;">
       <div style="display: flex; gap: 8px; justify-content: flex-end;">
-        <button class="sn-modal-cancel" style="padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #374151; cursor: pointer; font-size: 14px;">Cancel</button>
-        <button class="sn-modal-share" style="padding: 8px 16px; border: none; border-radius: 6px; background: #facc15; color: #713f12; cursor: pointer; font-size: 14px; font-weight: 500;">Share</button>
+        <button class="sn-modal-cancel" style="padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #374151; cursor: pointer; font-size: 14px;">${t('cancel')}</button>
+        <button class="sn-modal-share" style="padding: 8px 16px; border: none; border-radius: 6px; background: #facc15; color: #713f12; cursor: pointer; font-size: 14px; font-weight: 500;">${t('shareButton')}</button>
       </div>
     `;
     
@@ -755,7 +756,7 @@ export class StickyNote {
       
       // Validate email format
       if (!isValidEmail(email)) {
-        this.showToast('Please enter a valid email address', 'error');
+        this.showToast(t('invalidEmail'), 'error');
         emailInput.focus();
         return;
       }
@@ -769,13 +770,13 @@ export class StickyNote {
         
         if (response.success) {
           container.removeChild(overlay);
-          this.showToast('Note shared successfully!');
+          this.showToast(t('noteShared'));
         } else {
-          this.showToast(response.error || 'Failed to share note', 'error');
+          this.showToast(response.error || t('failedToShare'), 'error');
         }
       } catch (error) {
         log.error('Failed to share note:', error);
-        this.showToast('Failed to share note', 'error');
+        this.showToast(t('failedToShare'), 'error');
       }
     });
     

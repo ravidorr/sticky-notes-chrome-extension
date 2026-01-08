@@ -26,6 +26,7 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 - **Rich Text Editor**: Format notes with bold, italic, lists, and links
 - **Color Themes**: Choose from yellow, blue, green, or pink themes
 - **Position Controls**: Snap notes to top-left, top-right, bottom-left, or bottom-right
+- **Internationalization**: Supports English, French, and German (auto-detects browser language)
 
 ## Project Structure
 
@@ -40,7 +41,12 @@ sticky-notes-chrome-extension/
 │   ├── background/         # Service worker
 │   └── firebase/           # Firebase services (auth, notes, config)
 ├── public/
-│   └── manifest.json       # Chrome Extension Manifest V3
+│   ├── manifest.json       # Chrome Extension Manifest V3
+│   └── _locales/           # Internationalization
+│       ├── en/             # English (default)
+│       ├── fr/             # French
+│       ├── de/             # German
+│       └── he/             # Hebrew
 ├── tests/
 │   ├── unit/               # Jest unit tests
 │   └── e2e/                # Playwright E2E tests
@@ -150,6 +156,31 @@ service cloud.firestore {
   }
 }
 ```
+
+## Internationalization (i18n)
+
+The extension automatically detects and uses your browser's language. Currently supported languages:
+
+| Language | Code | Status |
+|----------|------|--------|
+| English | en | Default |
+| French | fr | Complete |
+| German | de | Complete |
+| Hebrew | he | Complete |
+
+### Testing Different Languages
+
+1. **Chrome**: Settings > Languages > Add your preferred language and move it to the top
+2. **Reload the extension** after changing language settings
+
+### Adding New Languages
+
+1. Create a new folder: `public/_locales/{lang_code}/`
+2. Copy `messages.json` from the `en` folder
+3. Translate all message values (keep keys the same)
+4. Rebuild: `npm run build`
+
+See `.cursor/rules/i18n.mdc` for detailed i18n guidelines.
 
 ## Usage
 

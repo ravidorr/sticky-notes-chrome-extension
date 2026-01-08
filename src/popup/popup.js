@@ -4,6 +4,7 @@
  */
 
 import { createPopupHandlers } from './handlers.js';
+import { initializeI18n } from '../shared/i18n.js';
 
 // Create handlers with default dependencies
 const handlers = createPopupHandlers();
@@ -93,6 +94,9 @@ async function onLogout() {
  * Initialize the popup
  */
 async function init() {
+  // Initialize i18n for HTML elements
+  initializeI18n();
+  
   initDOMElements();
   
   // Check auth state

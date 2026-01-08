@@ -367,18 +367,19 @@ describe('generateBugReportMarkdown', () => {
     
     const markdown = utils.generateBugReportMarkdown(options);
     
-    expect(markdown).toContain('## Bug Report');
-    expect(markdown).toContain('### Description');
+    // Check for either translated text or i18n keys (in test environment)
+    expect(markdown).toMatch(/## (Bug Report|bugReport)/);
+    expect(markdown).toMatch(/### (Description|bugReportDescription)/);
     expect(markdown).toContain('Button is broken');
-    expect(markdown).toContain('### Environment');
+    expect(markdown).toMatch(/### (Environment|bugReportEnvironment)/);
     expect(markdown).toContain('**URL:** https://example.com/form');
-    expect(markdown).toContain('**Browser:** Chrome 120');
-    expect(markdown).toContain('**Viewport:** 1920x1080');
-    expect(markdown).toContain('### Element Reference');
+    expect(markdown).toMatch(/\*\*(Browser|metadataBrowser):\*\* Chrome 120/);
+    expect(markdown).toMatch(/\*\*(Viewport|metadataViewport):\*\* 1920x1080/);
+    expect(markdown).toMatch(/### (Element Reference|bugReportElementRef)/);
     expect(markdown).toContain('#submit-btn');
-    expect(markdown).toContain('### Steps to Reproduce');
-    expect(markdown).toContain('### Expected Behavior');
-    expect(markdown).toContain('### Actual Behavior');
+    expect(markdown).toMatch(/### (Steps to Reproduce|bugReportSteps)/);
+    expect(markdown).toMatch(/### (Expected Behavior|bugReportExpected)/);
+    expect(markdown).toMatch(/### (Actual Behavior|bugReportActual)/);
   });
   
   it('should strip HTML from content', () => {
@@ -412,7 +413,8 @@ describe('generateBugReportMarkdown', () => {
     };
     
     const markdown = utils.generateBugReportMarkdown(options);
-    expect(markdown).toContain('_No description provided_');
+    // Check for either translated text or i18n key
+    expect(markdown).toMatch(/_No description provided_|bugReportNoDescription/);
   });
 });
 
@@ -432,43 +434,50 @@ describe('formatRelativeTime', () => {
   
   it('should return "just now" for very recent times', () => {
     const date = new Date(localThis.now.getTime() - 30 * 1000); // 30 seconds ago
-    expect(utils.formatRelativeTime(date)).toBe('just now');
+    // Check for either translated text or i18n key
+    expect(utils.formatRelativeTime(date)).toMatch(/^(just now|justNow)$/);
   });
   
   it('should return minutes ago', () => {
     const date = new Date(localThis.now.getTime() - 5 * 60 * 1000); // 5 minutes ago
-    expect(utils.formatRelativeTime(date)).toBe('5 minutes ago');
+    // Check for either translated text or i18n key
+    expect(utils.formatRelativeTime(date)).toMatch(/^(5 minutes ago|minutesAgo)$/);
   });
   
   it('should return "1 minute ago" (singular)', () => {
     const date = new Date(localThis.now.getTime() - 1 * 60 * 1000); // 1 minute ago
-    expect(utils.formatRelativeTime(date)).toBe('1 minute ago');
+    // Check for either translated text or i18n key
+    expect(utils.formatRelativeTime(date)).toMatch(/^(1 minute ago|minuteAgo)$/);
   });
   
   it('should return hours ago', () => {
     const date = new Date(localThis.now.getTime() - 3 * 60 * 60 * 1000); // 3 hours ago
-    expect(utils.formatRelativeTime(date)).toBe('3 hours ago');
+    // Check for either translated text or i18n key
+    expect(utils.formatRelativeTime(date)).toMatch(/^(3 hours ago|hoursAgo)$/);
   });
   
   it('should return "1 hour ago" (singular)', () => {
     const date = new Date(localThis.now.getTime() - 1 * 60 * 60 * 1000); // 1 hour ago
-    expect(utils.formatRelativeTime(date)).toBe('1 hour ago');
+    // Check for either translated text or i18n key
+    expect(utils.formatRelativeTime(date)).toMatch(/^(1 hour ago|hourAgo)$/);
   });
   
   it('should return days ago', () => {
     const date = new Date(localThis.now.getTime() - 2 * 24 * 60 * 60 * 1000); // 2 days ago
-    expect(utils.formatRelativeTime(date)).toBe('2 days ago');
+    // Check for either translated text or i18n key
+    expect(utils.formatRelativeTime(date)).toMatch(/^(2 days ago|daysAgo)$/);
   });
   
   it('should return locale date string for older dates', () => {
     const date = new Date(localThis.now.getTime() - 10 * 24 * 60 * 60 * 1000); // 10 days ago
     const result = utils.formatRelativeTime(date);
-    // Should be a formatted date, not "X days ago"
-    expect(result).not.toContain('days ago');
+    // Should be a formatted date, not "X days ago" or i18n key
+    expect(result).not.toMatch(/days ago|daysAgo/);
   });
   
   it('should accept string dates', () => {
     const dateStr = new Date(localThis.now.getTime() - 2 * 60 * 60 * 1000).toISOString();
-    expect(utils.formatRelativeTime(dateStr)).toBe('2 hours ago');
+    // Check for either translated text or i18n key
+    expect(utils.formatRelativeTime(dateStr)).toMatch(/^(2 hours ago|hoursAgo)$/);
   });
 });

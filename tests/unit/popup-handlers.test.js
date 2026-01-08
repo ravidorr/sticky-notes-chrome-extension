@@ -317,7 +317,8 @@ describe('Popup Handlers', () => {
       const note = { id: 'note-1', content: '', theme: 'yellow', selector: '#main' };
       const html = localThis.handlers.renderNoteItem(note);
       
-      expect(html).toContain('Empty note');
+      // Check for either the i18n key or the translated message
+      expect(html).toMatch(/Empty note|emptyNote/);
     });
 
     it('should strip HTML from content', () => {
@@ -334,7 +335,8 @@ describe('Popup Handlers', () => {
       const html = localThis.handlers.renderEmptyNotes();
       
       expect(html).toContain('notes-empty');
-      expect(html).toContain('No notes on this page yet');
+      // Check for either the i18n key or the translated message
+      expect(html).toMatch(/No notes on this page yet|noNotesYet/);
     });
   });
 

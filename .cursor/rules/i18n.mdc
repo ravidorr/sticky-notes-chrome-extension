@@ -1,0 +1,144 @@
+---
+name: i18n
+description: use i18n when adding text to the extension
+---
+
+# Internationalization (i18n) Guidelines
+
+This extension uses Chrome's built-in i18n API for internationalization. All user-facing text should be translatable.
+
+## File Structure
+
+```
+public/
+  _locales/
+    en/
+      messages.json    # English (default)
+    fr/
+      messages.json    # French
+    de/
+      messages.json    # German
+```
+
+## Adding New Translatable Strings
+
+### 1. Add the message to `public/_locales/en/messages.json`
+
+```json
+{
+  "myNewMessage": {
+    "message": "Hello, World!",
+    "description": "Greeting shown on the home page"
+  }
+}
+```
+
+### 2. Use the `t()` function in JavaScript
+
+```javascript
+import { t } from '../shared/i18n.js';
+
+// Simple usage
+const greeting = t('myNewMessage');
+
+// With substitutions (for dynamic values)
+const minutesAgo = t('minutesAgo', [count]);
+```
+
+### 3. For HTML files, use data attributes
+
+```html
+<!-- Text content -->
+<span data-i18n="myNewMessage">Fallback text</span>
+
+<!-- Placeholder -->
+<input data-i18n-placeholder="emailPlaceholder" placeholder="Fallback">
+
+<!-- Title/tooltip -->
+<button data-i18n-title="closeButton" title="Close">X</button>
+
+<!-- Aria-label -->
+<button data-i18n-aria-label="menuButton">Menu</button>
+```
+
+Then call `initializeI18n()` in your JavaScript:
+
+```javascript
+import { initializeI18n } from '../shared/i18n.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+  initializeI18n();
+});
+```
+
+## Message Format
+
+### Simple messages
+```json
+{
+  "greeting": {
+    "message": "Hello",
+    "description": "Simple greeting"
+  }
+}
+```
+
+### Messages with placeholders
+```json
+{
+  "welcomeUser": {
+    "message": "Welcome, $USER_NAME$!",
+    "description": "Welcome message with user name",
+    "placeholders": {
+      "user_name": {
+        "content": "$1",
+        "example": "John"
+      }
+    }
+  }
+}
+```
+
+Usage: `t('welcomeUser', ['John'])` returns "Welcome, John!"
+
+## Available i18n Functions
+
+| Function | Description |
+|----------|-------------|
+| `t(key, substitutions?)` | Get translated message |
+| `getUILanguage()` | Get current browser language |
+| `initializeI18n(root?)` | Translate all data-i18n elements |
+| `createTranslatedElement(tag, key, attrs?)` | Create element with translation |
+
+## Best Practices
+
+1. **Always provide a description** - Helps translators understand context
+2. **Use descriptive message keys** - `deleteConfirmation` not `msg1`
+3. **Keep messages in the same order** across all locale files
+4. **Don't concatenate translations** - Use placeholders instead
+5. **Test with different languages** - Some translations are longer
+6. **Update all locale files** when adding new messages
+
+## Adding a New Language
+
+1. Create folder: `public/_locales/{lang_code}/`
+2. Copy `messages.json` from English
+3. Translate all message values (keep keys the same)
+4. Rebuild the extension
+
+## manifest.json Requirements
+
+The manifest must include:
+```json
+{
+  "default_locale": "en"
+}
+```
+
+Extension name and description can use i18n:
+```json
+{
+  "name": "__MSG_extName__",
+  "description": "__MSG_extDescription__"
+}
+```

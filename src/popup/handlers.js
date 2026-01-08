@@ -5,6 +5,7 @@
 
 import { isRestrictedUrl, THEME_COLORS, escapeHtml, stripHtml, truncate } from '../shared/utils.js';
 import { popupLogger as defaultLog } from '../shared/logger.js';
+import { t } from '../shared/i18n.js';
 
 /**
  * Create popup handlers with injected dependencies
@@ -110,7 +111,7 @@ export function createPopupHandlers(deps = {}) {
       // Check if it's a restricted page
       if (isRestrictedUrl(tab.url)) {
         log.debug(' URL is restricted, cannot inject content script');
-        alertFn('Cannot add notes to this page. Chrome system pages and extension pages are not supported.');
+        alertFn(t('cannotAddNotesToPage'));
         return { success: false, error: 'Restricted URL' };
       }
       
@@ -157,7 +158,7 @@ export function createPopupHandlers(deps = {}) {
       }
     } catch (error) {
       log.error('Error enabling selection mode:', error);
-      alertFn('Could not enable selection mode. Please refresh the page and try again.');
+      alertFn(t('couldNotEnableSelection'));
       return { success: false, error: error.message };
     }
   }
@@ -250,7 +251,7 @@ export function createPopupHandlers(deps = {}) {
       <div class="note-item" data-id="${note.id}">
         <div class="note-item-color" style="background: ${getThemeColor(note.theme)}"></div>
         <div class="note-item-content">
-          <div class="note-item-text">${stripHtml(note.content) || 'Empty note'}</div>
+          <div class="note-item-text">${stripHtml(note.content) || t('emptyNote')}</div>
           <div class="note-item-meta">
             <span class="note-item-selector">${escapeHtml(truncateSelector(note.selector))}</span>
           </div>
@@ -270,7 +271,7 @@ export function createPopupHandlers(deps = {}) {
           <rect x="3" y="3" width="18" height="18" rx="2"/>
           <path d="M7 8h10M7 12h10M7 16h6"/>
         </svg>
-        <p>No notes on this page yet</p>
+        <p>${t('noNotesYet')}</p>
       </div>
     `;
   }

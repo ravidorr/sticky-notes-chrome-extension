@@ -1,0 +1,371 @@
+{
+  "extName": {
+    "message": "Notes Autocollantes Ancrees",
+    "description": "Name of the extension shown in browser"
+  },
+  "extDescription": {
+    "message": "Annotez le web en attachant des notes autocollantes persistantes a des elements d'interface specifiques sur n'importe quel site",
+    "description": "Description of the extension shown in browser"
+  },
+
+  "appTitle": {
+    "message": "Notes Autocollantes",
+    "description": "Application title shown in popup header"
+  },
+  "close": {
+    "message": "Fermer",
+    "description": "Close button tooltip"
+  },
+
+  "signInPrompt": {
+    "message": "Connectez-vous pour synchroniser vos notes sur tous vos appareils",
+    "description": "Text shown when user is not signed in"
+  },
+  "signInWithGoogle": {
+    "message": "Se connecter avec Google",
+    "description": "Google sign-in button text"
+  },
+  "signOut": {
+    "message": "Se deconnecter",
+    "description": "Sign out button tooltip"
+  },
+  "userName": {
+    "message": "Nom d'utilisateur",
+    "description": "Default placeholder for user name"
+  },
+  "userEmail": {
+    "message": "utilisateur@email.com",
+    "description": "Default placeholder for user email"
+  },
+
+  "addNote": {
+    "message": "Ajouter une note",
+    "description": "Add note button text"
+  },
+  "addNoteHint": {
+    "message": "Cliquez, puis selectionnez un element sur la page",
+    "description": "Hint text below add note button"
+  },
+
+  "notesOnPage": {
+    "message": "Notes sur cette page",
+    "description": "Header for notes list section"
+  },
+  "noNotesYet": {
+    "message": "Aucune note sur cette page pour le moment",
+    "description": "Empty state message when no notes exist"
+  },
+  "emptyNote": {
+    "message": "Note vide",
+    "description": "Fallback text for notes with no content"
+  },
+
+  "copyAsMarkdown": {
+    "message": "Copier en Markdown",
+    "description": "Tooltip for copy markdown button"
+  },
+  "copyScreenshot": {
+    "message": "Copier la capture d'ecran",
+    "description": "Tooltip for screenshot button"
+  },
+  "changeColor": {
+    "message": "Changer la couleur",
+    "description": "Tooltip for theme/color picker button"
+  },
+  "changePosition": {
+    "message": "Changer la position",
+    "description": "Tooltip for position picker button"
+  },
+  "share": {
+    "message": "Partager",
+    "description": "Tooltip for share button"
+  },
+  "delete": {
+    "message": "Supprimer",
+    "description": "Tooltip for delete button"
+  },
+
+  "notePlaceholder": {
+    "message": "Ecrivez votre note ici...",
+    "description": "Placeholder text in note editor"
+  },
+
+  "positionTopLeft": {
+    "message": "En haut a gauche",
+    "description": "Position option label"
+  },
+  "positionTopRight": {
+    "message": "En haut a droite",
+    "description": "Position option label"
+  },
+  "positionBottomLeft": {
+    "message": "En bas a gauche",
+    "description": "Position option label"
+  },
+  "positionBottomRight": {
+    "message": "En bas a droite",
+    "description": "Position option label"
+  },
+
+  "copiedToClipboard": {
+    "message": "Copie dans le presse-papiers !",
+    "description": "Toast message after successful copy"
+  },
+  "failedToCopy": {
+    "message": "Echec de la copie dans le presse-papiers",
+    "description": "Toast message when copy fails"
+  },
+  "screenshotCopied": {
+    "message": "Capture d'ecran copiee dans le presse-papiers !",
+    "description": "Toast message after successful screenshot"
+  },
+  "failedToScreenshot": {
+    "message": "Echec de la capture d'ecran",
+    "description": "Toast message when screenshot fails"
+  },
+
+  "deleteConfirm": {
+    "message": "Supprimer cette note ?",
+    "description": "Confirmation dialog for note deletion"
+  },
+
+  "shareNote": {
+    "message": "Partager la note",
+    "description": "Share modal title"
+  },
+  "shareDescription": {
+    "message": "Entrez l'adresse e-mail de la personne avec qui vous souhaitez partager cette note.",
+    "description": "Share modal description"
+  },
+  "emailPlaceholder": {
+    "message": "collegue@exemple.com",
+    "description": "Email input placeholder in share modal"
+  },
+  "cancel": {
+    "message": "Annuler",
+    "description": "Cancel button text"
+  },
+  "shareButton": {
+    "message": "Partager",
+    "description": "Share button text in modal"
+  },
+  "noteShared": {
+    "message": "Note partagee avec succes !",
+    "description": "Toast message after successful share"
+  },
+  "failedToShare": {
+    "message": "Echec du partage de la note",
+    "description": "Toast message when share fails"
+  },
+  "invalidEmail": {
+    "message": "Veuillez entrer une adresse e-mail valide",
+    "description": "Error message for invalid email"
+  },
+
+  "metadataUrl": {
+    "message": "URL",
+    "description": "Metadata label for URL"
+  },
+  "metadataBrowser": {
+    "message": "Navigateur",
+    "description": "Metadata label for browser"
+  },
+  "metadataViewport": {
+    "message": "Fenetre",
+    "description": "Metadata label for viewport"
+  },
+  "metadataElement": {
+    "message": "Element",
+    "description": "Metadata label for element selector"
+  },
+
+  "extensionUpdated": {
+    "message": "Extension mise a jour",
+    "description": "Title of refresh notification"
+  },
+  "extensionUpdatedDescription": {
+    "message": "L'extension Notes Autocollantes a ete mise a jour. Veuillez actualiser cette page pour continuer a l'utiliser.",
+    "description": "Description in refresh notification"
+  },
+  "refreshPage": {
+    "message": "Actualiser la page",
+    "description": "Button text to refresh page"
+  },
+  "dismiss": {
+    "message": "Ignorer",
+    "description": "Button text to dismiss notification"
+  },
+
+  "noteAnchorNotFound": {
+    "message": "Ancre de la note introuvable",
+    "description": "Title of re-anchor notification"
+  },
+  "reanchor": {
+    "message": "Re-ancrer",
+    "description": "Button text to re-anchor a note"
+  },
+  "selectNewAnchor": {
+    "message": "Selectionner un nouvel element d'ancrage",
+    "description": "Title when in re-anchor mode"
+  },
+  "selectNewAnchorHint": {
+    "message": "Cliquez sur un element pour re-ancrer votre note",
+    "description": "Instruction text for re-anchor mode"
+  },
+  "pressEscToCancel": {
+    "message": "Appuyez sur Echap pour annuler",
+    "description": "Hint text for canceling selection"
+  },
+
+  "cannotAddNotesToPage": {
+    "message": "Impossible d'ajouter des notes a cette page. Les pages systeme Chrome et les pages d'extension ne sont pas prises en charge.",
+    "description": "Error message for restricted pages"
+  },
+  "couldNotEnableSelection": {
+    "message": "Impossible d'activer le mode de selection. Veuillez actualiser la page et reessayer.",
+    "description": "Error message when selection mode fails"
+  },
+
+  "mustBeLoggedInToShare": {
+    "message": "Vous devez etre connecte pour partager des notes",
+    "description": "Error when trying to share without login"
+  },
+  "sharingRequiresFirebase": {
+    "message": "Le partage necessite la configuration de Firebase",
+    "description": "Error when Firebase is not configured"
+  },
+  "invalidNoteId": {
+    "message": "ID de note invalide",
+    "description": "Error for invalid note ID"
+  },
+  "invalidEmailAddress": {
+    "message": "Adresse e-mail invalide",
+    "description": "Error for invalid email"
+  },
+  "cannotShareWithSelf": {
+    "message": "Vous ne pouvez pas partager une note avec vous-meme",
+    "description": "Error when trying to share with own email"
+  },
+  "noteNotFound": {
+    "message": "Note introuvable",
+    "description": "Error when note doesn't exist"
+  },
+  "unknownAction": {
+    "message": "Action inconnue",
+    "description": "Error for unknown message action"
+  },
+  "noActiveTab": {
+    "message": "Aucun onglet actif trouve",
+    "description": "Error when no active tab is found"
+  },
+  "tabsApiNotAvailable": {
+    "message": "API des onglets non disponible",
+    "description": "Error when tabs API is unavailable"
+  },
+
+  "bugReport": {
+    "message": "Rapport de bug",
+    "description": "Bug report template header"
+  },
+  "bugReportDescription": {
+    "message": "Description",
+    "description": "Bug report section title"
+  },
+  "bugReportEnvironment": {
+    "message": "Environnement",
+    "description": "Bug report section title"
+  },
+  "bugReportElementRef": {
+    "message": "Reference de l'element",
+    "description": "Bug report section title"
+  },
+  "bugReportSteps": {
+    "message": "Etapes pour reproduire",
+    "description": "Bug report section title"
+  },
+  "bugReportExpected": {
+    "message": "Comportement attendu",
+    "description": "Bug report section title"
+  },
+  "bugReportActual": {
+    "message": "Comportement actuel",
+    "description": "Bug report section title"
+  },
+  "bugReportNoDescription": {
+    "message": "_Aucune description fournie_",
+    "description": "Placeholder when no description"
+  },
+  "bugReportStep1": {
+    "message": "Accedez a l'URL ci-dessus",
+    "description": "Default step 1 in bug report"
+  },
+  "bugReportStep2": {
+    "message": "Localisez l'element a l'aide du selecteur",
+    "description": "Default step 2 in bug report"
+  },
+
+  "justNow": {
+    "message": "a l'instant",
+    "description": "Relative time for very recent"
+  },
+  "minuteAgo": {
+    "message": "il y a $COUNT$ minute",
+    "description": "Relative time singular",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "minutesAgo": {
+    "message": "il y a $COUNT$ minutes",
+    "description": "Relative time plural",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "hourAgo": {
+    "message": "il y a $COUNT$ heure",
+    "description": "Relative time singular",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "hoursAgo": {
+    "message": "il y a $COUNT$ heures",
+    "description": "Relative time plural",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "dayAgo": {
+    "message": "il y a $COUNT$ jour",
+    "description": "Relative time singular",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "daysAgo": {
+    "message": "il y a $COUNT$ jours",
+    "description": "Relative time plural",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  }
+}

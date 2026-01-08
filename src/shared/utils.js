@@ -3,6 +3,8 @@
  * Common functions used across the extension
  */
 
+import { t } from './i18n.js';
+
 /**
  * Escape HTML to prevent XSS attacks
  * @param {string} str - String to escape
@@ -260,31 +262,31 @@ export function generateBugReportMarkdown(options) {
   const plainContent = stripHtml(content).trim();
   
   const lines = [
-    '## Bug Report',
+    `## ${t('bugReport')}`,
     '',
-    '### Description',
-    plainContent || '_No description provided_',
+    `### ${t('bugReportDescription')}`,
+    plainContent || t('bugReportNoDescription'),
     '',
-    '### Environment',
+    `### ${t('bugReportEnvironment')}`,
     `- **URL:** ${metadata.url}`,
-    `- **Browser:** ${metadata.browser}`,
-    `- **Viewport:** ${metadata.viewport}`,
+    `- **${t('metadataBrowser')}:** ${metadata.browser}`,
+    `- **${t('metadataViewport')}:** ${metadata.viewport}`,
     `- **Timestamp:** ${new Date(metadata.timestamp).toLocaleString()}`,
     '',
-    '### Element Reference',
+    `### ${t('bugReportElementRef')}`,
     '```css',
     selector,
     '```',
     '',
-    '### Steps to Reproduce',
-    '1. Navigate to the URL above',
-    '2. Locate the element using the selector',
+    `### ${t('bugReportSteps')}`,
+    `1. ${t('bugReportStep1')}`,
+    `2. ${t('bugReportStep2')}`,
     '3. ',
     '',
-    '### Expected Behavior',
+    `### ${t('bugReportExpected')}`,
     '',
     '',
-    '### Actual Behavior',
+    `### ${t('bugReportActual')}`,
     '',
     ''
   ];
@@ -306,10 +308,10 @@ export function formatRelativeTime(date) {
   const diffHour = Math.floor(diffMin / 60);
   const diffDay = Math.floor(diffHour / 24);
   
-  if (diffSec < 60) return 'just now';
-  if (diffMin < 60) return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`;
-  if (diffHour < 24) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
-  if (diffDay < 7) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+  if (diffSec < 60) return t('justNow');
+  if (diffMin < 60) return diffMin === 1 ? t('minuteAgo', [diffMin]) : t('minutesAgo', [diffMin]);
+  if (diffHour < 24) return diffHour === 1 ? t('hourAgo', [diffHour]) : t('hoursAgo', [diffHour]);
+  if (diffDay < 7) return diffDay === 1 ? t('dayAgo', [diffDay]) : t('daysAgo', [diffDay]);
   
   return then.toLocaleDateString();
 }

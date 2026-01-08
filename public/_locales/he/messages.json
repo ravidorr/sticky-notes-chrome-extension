@@ -1,0 +1,371 @@
+{
+  "extName": {
+    "message": "פתקיות דביקות מעוגנות לאלמנטים",
+    "description": "Name of the extension shown in browser"
+  },
+  "extDescription": {
+    "message": "הוסיפו הערות לאתרים על ידי הצמדת פתקיות דביקות לאלמנטים ספציפיים בכל אתר",
+    "description": "Description of the extension shown in browser"
+  },
+
+  "appTitle": {
+    "message": "פתקיות דביקות",
+    "description": "Application title shown in popup header"
+  },
+  "close": {
+    "message": "סגור",
+    "description": "Close button tooltip"
+  },
+
+  "signInPrompt": {
+    "message": "התחברו כדי לסנכרן את הפתקיות בין המכשירים שלכם",
+    "description": "Text shown when user is not signed in"
+  },
+  "signInWithGoogle": {
+    "message": "התחברות עם Google",
+    "description": "Google sign-in button text"
+  },
+  "signOut": {
+    "message": "התנתק",
+    "description": "Sign out button tooltip"
+  },
+  "userName": {
+    "message": "שם משתמש",
+    "description": "Default placeholder for user name"
+  },
+  "userEmail": {
+    "message": "user@email.com",
+    "description": "Default placeholder for user email"
+  },
+
+  "addNote": {
+    "message": "הוסף פתקית",
+    "description": "Add note button text"
+  },
+  "addNoteHint": {
+    "message": "לחצו ואז בחרו אלמנט בדף",
+    "description": "Hint text below add note button"
+  },
+
+  "notesOnPage": {
+    "message": "פתקיות בדף זה",
+    "description": "Header for notes list section"
+  },
+  "noNotesYet": {
+    "message": "אין עדיין פתקיות בדף זה",
+    "description": "Empty state message when no notes exist"
+  },
+  "emptyNote": {
+    "message": "פתקית ריקה",
+    "description": "Fallback text for notes with no content"
+  },
+
+  "copyAsMarkdown": {
+    "message": "העתק כ-Markdown",
+    "description": "Tooltip for copy markdown button"
+  },
+  "copyScreenshot": {
+    "message": "העתק צילום מסך",
+    "description": "Tooltip for screenshot button"
+  },
+  "changeColor": {
+    "message": "שנה צבע",
+    "description": "Tooltip for theme/color picker button"
+  },
+  "changePosition": {
+    "message": "שנה מיקום",
+    "description": "Tooltip for position picker button"
+  },
+  "share": {
+    "message": "שתף",
+    "description": "Tooltip for share button"
+  },
+  "delete": {
+    "message": "מחק",
+    "description": "Tooltip for delete button"
+  },
+
+  "notePlaceholder": {
+    "message": "כתבו את הפתקית שלכם כאן...",
+    "description": "Placeholder text in note editor"
+  },
+
+  "positionTopLeft": {
+    "message": "למעלה משמאל",
+    "description": "Position option label"
+  },
+  "positionTopRight": {
+    "message": "למעלה מימין",
+    "description": "Position option label"
+  },
+  "positionBottomLeft": {
+    "message": "למטה משמאל",
+    "description": "Position option label"
+  },
+  "positionBottomRight": {
+    "message": "למטה מימין",
+    "description": "Position option label"
+  },
+
+  "copiedToClipboard": {
+    "message": "הועתק ללוח!",
+    "description": "Toast message after successful copy"
+  },
+  "failedToCopy": {
+    "message": "ההעתקה ללוח נכשלה",
+    "description": "Toast message when copy fails"
+  },
+  "screenshotCopied": {
+    "message": "צילום המסך הועתק ללוח!",
+    "description": "Toast message after successful screenshot"
+  },
+  "failedToScreenshot": {
+    "message": "צילום המסך נכשל",
+    "description": "Toast message when screenshot fails"
+  },
+
+  "deleteConfirm": {
+    "message": "למחוק את הפתקית?",
+    "description": "Confirmation dialog for note deletion"
+  },
+
+  "shareNote": {
+    "message": "שתף פתקית",
+    "description": "Share modal title"
+  },
+  "shareDescription": {
+    "message": "הזינו את כתובת האימייל של האדם שאיתו תרצו לשתף את הפתקית.",
+    "description": "Share modal description"
+  },
+  "emailPlaceholder": {
+    "message": "colleague@example.com",
+    "description": "Email input placeholder in share modal"
+  },
+  "cancel": {
+    "message": "ביטול",
+    "description": "Cancel button text"
+  },
+  "shareButton": {
+    "message": "שתף",
+    "description": "Share button text in modal"
+  },
+  "noteShared": {
+    "message": "הפתקית שותפה בהצלחה!",
+    "description": "Toast message after successful share"
+  },
+  "failedToShare": {
+    "message": "שיתוף הפתקית נכשל",
+    "description": "Toast message when share fails"
+  },
+  "invalidEmail": {
+    "message": "נא להזין כתובת אימייל תקינה",
+    "description": "Error message for invalid email"
+  },
+
+  "metadataUrl": {
+    "message": "כתובת",
+    "description": "Metadata label for URL"
+  },
+  "metadataBrowser": {
+    "message": "דפדפן",
+    "description": "Metadata label for browser"
+  },
+  "metadataViewport": {
+    "message": "גודל חלון",
+    "description": "Metadata label for viewport"
+  },
+  "metadataElement": {
+    "message": "אלמנט",
+    "description": "Metadata label for element selector"
+  },
+
+  "extensionUpdated": {
+    "message": "התוסף עודכן",
+    "description": "Title of refresh notification"
+  },
+  "extensionUpdatedDescription": {
+    "message": "תוסף הפתקיות הדביקות עודכן. נא לרענן את הדף כדי להמשיך להשתמש בו.",
+    "description": "Description in refresh notification"
+  },
+  "refreshPage": {
+    "message": "רענן דף",
+    "description": "Button text to refresh page"
+  },
+  "dismiss": {
+    "message": "סגור",
+    "description": "Button text to dismiss notification"
+  },
+
+  "noteAnchorNotFound": {
+    "message": "עוגן הפתקית לא נמצא",
+    "description": "Title of re-anchor notification"
+  },
+  "reanchor": {
+    "message": "עגן מחדש",
+    "description": "Button text to re-anchor a note"
+  },
+  "selectNewAnchor": {
+    "message": "בחרו אלמנט עיגון חדש",
+    "description": "Title when in re-anchor mode"
+  },
+  "selectNewAnchorHint": {
+    "message": "לחצו על אלמנט כדי לעגן מחדש את הפתקית",
+    "description": "Instruction text for re-anchor mode"
+  },
+  "pressEscToCancel": {
+    "message": "לחצו Esc לביטול",
+    "description": "Hint text for canceling selection"
+  },
+
+  "cannotAddNotesToPage": {
+    "message": "לא ניתן להוסיף פתקיות לדף זה. דפי מערכת של Chrome ודפי תוספים אינם נתמכים.",
+    "description": "Error message for restricted pages"
+  },
+  "couldNotEnableSelection": {
+    "message": "לא ניתן להפעיל מצב בחירה. נא לרענן את הדף ולנסות שוב.",
+    "description": "Error message when selection mode fails"
+  },
+
+  "mustBeLoggedInToShare": {
+    "message": "עליכם להתחבר כדי לשתף פתקיות",
+    "description": "Error when trying to share without login"
+  },
+  "sharingRequiresFirebase": {
+    "message": "שיתוף דורש הגדרת Firebase",
+    "description": "Error when Firebase is not configured"
+  },
+  "invalidNoteId": {
+    "message": "מזהה פתקית לא תקין",
+    "description": "Error for invalid note ID"
+  },
+  "invalidEmailAddress": {
+    "message": "כתובת אימייל לא תקינה",
+    "description": "Error for invalid email"
+  },
+  "cannotShareWithSelf": {
+    "message": "לא ניתן לשתף פתקית עם עצמכם",
+    "description": "Error when trying to share with own email"
+  },
+  "noteNotFound": {
+    "message": "הפתקית לא נמצאה",
+    "description": "Error when note doesn't exist"
+  },
+  "unknownAction": {
+    "message": "פעולה לא מוכרת",
+    "description": "Error for unknown message action"
+  },
+  "noActiveTab": {
+    "message": "לא נמצא לשונית פעילה",
+    "description": "Error when no active tab is found"
+  },
+  "tabsApiNotAvailable": {
+    "message": "API של לשוניות לא זמין",
+    "description": "Error when tabs API is unavailable"
+  },
+
+  "bugReport": {
+    "message": "דוח באג",
+    "description": "Bug report template header"
+  },
+  "bugReportDescription": {
+    "message": "תיאור",
+    "description": "Bug report section title"
+  },
+  "bugReportEnvironment": {
+    "message": "סביבה",
+    "description": "Bug report section title"
+  },
+  "bugReportElementRef": {
+    "message": "הפניה לאלמנט",
+    "description": "Bug report section title"
+  },
+  "bugReportSteps": {
+    "message": "שלבים לשחזור",
+    "description": "Bug report section title"
+  },
+  "bugReportExpected": {
+    "message": "התנהגות צפויה",
+    "description": "Bug report section title"
+  },
+  "bugReportActual": {
+    "message": "התנהגות בפועל",
+    "description": "Bug report section title"
+  },
+  "bugReportNoDescription": {
+    "message": "_לא סופק תיאור_",
+    "description": "Placeholder when no description"
+  },
+  "bugReportStep1": {
+    "message": "נווטו לכתובת למעלה",
+    "description": "Default step 1 in bug report"
+  },
+  "bugReportStep2": {
+    "message": "אתרו את האלמנט באמצעות הסלקטור",
+    "description": "Default step 2 in bug report"
+  },
+
+  "justNow": {
+    "message": "עכשיו",
+    "description": "Relative time for very recent"
+  },
+  "minuteAgo": {
+    "message": "לפני דקה",
+    "description": "Relative time singular",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "minutesAgo": {
+    "message": "לפני $COUNT$ דקות",
+    "description": "Relative time plural",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "hourAgo": {
+    "message": "לפני שעה",
+    "description": "Relative time singular",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "hoursAgo": {
+    "message": "לפני $COUNT$ שעות",
+    "description": "Relative time plural",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "dayAgo": {
+    "message": "לפני יום",
+    "description": "Relative time singular",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "daysAgo": {
+    "message": "לפני $COUNT$ ימים",
+    "description": "Relative time plural",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  }
+}

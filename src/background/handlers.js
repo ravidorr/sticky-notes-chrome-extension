@@ -8,6 +8,7 @@
 
 import { generateId as defaultGenerateId, isValidEmail as defaultIsValidEmail } from '../shared/utils.js';
 import { backgroundLogger as defaultLog } from '../shared/logger.js';
+import { t } from '../shared/i18n.js';
 
 /**
  * Create handlers with injected dependencies
@@ -68,7 +69,7 @@ export function createHandlers(deps = {}) {
         return captureScreenshot();
       
       default:
-        return { success: false, error: 'Unknown action' };
+        return { success: false, error: t('unknownAction') };
     }
   }
 
@@ -221,7 +222,7 @@ export function createHandlers(deps = {}) {
       
       const index = notes.findIndex(item => item.id === note.id);
       if (index === -1) {
-        return { success: false, error: 'Note not found' };
+        return { success: false, error: t('noteNotFound') };
       }
       
       notes[index] = {
@@ -264,7 +265,7 @@ export function createHandlers(deps = {}) {
       const filteredNotes = notes.filter(item => item.id !== noteId);
       
       if (filteredNotes.length === notes.length) {
-        return { success: false, error: 'Note not found' };
+        return { success: false, error: t('noteNotFound') };
       }
       
       await chromeStorage.local.set({ notes: filteredNotes });
@@ -285,26 +286,26 @@ export function createHandlers(deps = {}) {
       const user = await getCurrentUser();
       
       if (!user) {
-        return { success: false, error: 'You must be logged in to share notes' };
+        return { success: false, error: t('mustBeLoggedInToShare') };
       }
       
       if (!isFirebaseConfigured()) {
-        return { success: false, error: 'Sharing requires Firebase to be configured' };
+        return { success: false, error: t('sharingRequiresFirebase') };
       }
       
       // Validate noteId format
       if (!noteId || typeof noteId !== 'string' || noteId.length === 0) {
-        return { success: false, error: 'Invalid note ID' };
+        return { success: false, error: t('invalidNoteId') };
       }
       
       // Validate email format (server-side validation)
       if (!isValidEmail(email)) {
-        return { success: false, error: 'Invalid email address' };
+        return { success: false, error: t('invalidEmailAddress') };
       }
       
       // Prevent sharing with yourself
       if (email.toLowerCase() === user.email?.toLowerCase()) {
-        return { success: false, error: 'You cannot share a note with yourself' };
+        return { success: false, error: t('cannotShareWithSelf') };
       }
       
       await shareNoteInFirestore(noteId, email.toLowerCase(), user.uid);
@@ -323,14 +324,14 @@ export function createHandlers(deps = {}) {
   async function captureScreenshot() {
     try {
       if (!chromeTabs) {
-        return { success: false, error: 'Tabs API not available' };
+        return { success: false, error: t('tabsApiNotAvailable') };
       }
       
       // Get the active tab
       const [tab] = await chromeTabs.query({ active: true, currentWindow: true });
       
       if (!tab || !tab.id) {
-        return { success: false, error: 'No active tab found' };
+        return { success: false, error: t('noActiveTab') };
       }
       
       // Capture the visible tab
