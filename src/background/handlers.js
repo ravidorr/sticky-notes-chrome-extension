@@ -127,11 +127,18 @@ export function createHandlers(deps = {}) {
       if (isFirebaseConfigured() && user) {
         try {
           log.debug(' Querying Firestore for notes...');
-          const notes = await getNotesForUrl(url, user.uid);
+          log.debug(' User:', { uid: user.uid, email: user.email });
+          const notes = await getNotesForUrl(url, user.uid, user.email);
           log.debug(' Firestore returned', notes.length, 'notes:', notes);
           return { success: true, notes };
         } catch (error) {
-          log.warn(' Firestore query failed, falling back to local storage:', error);
+          log.error(' Firestore query failed:', error.message);
+          log.error(' Full error:', error);
+          // Check if this is a missing index error
+          if (error.message && error.message.includes('index')) {
+            log.error(' This appears to be a missing Firestore index error. Please create the required indexes in Firebase Console.');
+          }
+          log.warn(' Falling back to local storage');
         }
       }
       

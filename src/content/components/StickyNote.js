@@ -749,10 +749,14 @@ export class StickyNote {
       container.removeChild(overlay);
     });
     
-    // Handle share
-    modal.querySelector('.sn-modal-share').addEventListener('click', async () => {
+    // Share handler function
+    const handleShare = async () => {
       const email = emailInput.value.trim();
-      if (!email) return;
+      if (!email) {
+        this.showToast(t('invalidEmail'), 'error');
+        emailInput.focus();
+        return;
+      }
       
       // Validate email format
       if (!isValidEmail(email)) {
@@ -762,21 +766,37 @@ export class StickyNote {
       }
       
       try {
+        log.debug('Sharing note:', this.id, 'with:', email);
         const response = await chrome.runtime.sendMessage({
           action: 'shareNote',
           noteId: this.id,
           email: email
         });
         
-        if (response.success) {
+        log.debug('Share response:', response);
+        
+        if (response && response.success) {
           container.removeChild(overlay);
           this.showToast(t('noteShared'));
         } else {
-          this.showToast(response.error || t('failedToShare'), 'error');
+          const errorMsg = response?.error || t('failedToShare');
+          log.error('Share failed:', errorMsg);
+          this.showToast(errorMsg, 'error');
         }
       } catch (error) {
         log.error('Failed to share note:', error);
         this.showToast(t('failedToShare'), 'error');
+      }
+    };
+    
+    // Handle share button click
+    modal.querySelector('.sn-modal-share').addEventListener('click', handleShare);
+    
+    // Handle Enter key in email input
+    emailInput.addEventListener('keydown', (keyEvent) => {
+      if (keyEvent.key === 'Enter') {
+        keyEvent.preventDefault();
+        handleShare();
       }
     });
     

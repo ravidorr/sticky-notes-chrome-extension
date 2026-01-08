@@ -165,7 +165,7 @@ describe('Firebase Notes', () => {
         .mockResolvedValueOnce({ forEach: (cb) => mockOwnedDocs.forEach(cb), size: 1 })
         .mockResolvedValueOnce({ forEach: (cb) => mockSharedDocs.forEach(cb), size: 1 });
       
-      const notes = await getNotesForUrl('https://example.com', 'user-123', localThis.deps);
+      const notes = await getNotesForUrl('https://example.com', 'user-123', 'user@example.com', localThis.deps);
       
       expect(notes).toHaveLength(2);
       expect(notes[0].id).toBe('owned-1');
@@ -182,7 +182,7 @@ describe('Firebase Notes', () => {
         .mockResolvedValueOnce({ forEach: (cb) => mockDocs.forEach(cb), size: 1 })
         .mockResolvedValueOnce({ forEach: (cb) => mockDocs.forEach(cb), size: 1 });
       
-      const notes = await getNotesForUrl('https://example.com', 'user-123', localThis.deps);
+      const notes = await getNotesForUrl('https://example.com', 'user-123', 'user@example.com', localThis.deps);
       
       expect(notes).toHaveLength(1);
     });
@@ -190,8 +190,23 @@ describe('Firebase Notes', () => {
     it('should throw error when Firebase is not configured', async () => {
       localThis.deps.isFirebaseConfigured = jest.fn(() => false);
       
-      await expect(getNotesForUrl('https://example.com', 'user-123', localThis.deps))
+      await expect(getNotesForUrl('https://example.com', 'user-123', 'user@example.com', localThis.deps))
         .rejects.toThrow('Firebase is not configured');
+    });
+    
+    it('should handle missing email gracefully', async () => {
+      const mockOwnedDocs = [
+        { id: 'owned-1', data: () => ({ url: 'https://example.com', content: 'Owned note' }) }
+      ];
+      
+      localThis.deps.getDocs
+        .mockResolvedValueOnce({ forEach: (cb) => mockOwnedDocs.forEach(cb), size: 1 });
+      
+      // Pass null/undefined email - should still return owned notes
+      const notes = await getNotesForUrl('https://example.com', 'user-123', null, localThis.deps);
+      
+      expect(notes).toHaveLength(1);
+      expect(notes[0].id).toBe('owned-1');
     });
   });
 

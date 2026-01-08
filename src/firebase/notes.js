@@ -99,10 +99,11 @@ export async function createNote(noteData, userId, deps = {}) {
  * Get notes for a URL (owned or shared with user)
  * @param {string} url - Page URL
  * @param {string} userId - Current user ID
+ * @param {string} userEmail - Current user's email (for shared notes lookup)
  * @param {Object} deps - Optional dependencies for testing
  * @returns {Promise<Array>} Array of notes
  */
-export async function getNotesForUrl(url, userId, deps = {}) {
+export async function getNotesForUrl(url, userId, userEmail, deps = {}) {
   const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
@@ -122,18 +123,22 @@ export async function getNotesForUrl(url, userId, deps = {}) {
     firebaseDeps.orderBy('createdAt', 'desc')
   );
   
-  // Query for shared notes
-  const sharedQuery = firebaseDeps.query(
+  // Query for shared notes - use email address since sharedWith stores emails
+  const normalizedEmail = userEmail?.toLowerCase();
+  const sharedQuery = normalizedEmail ? firebaseDeps.query(
     firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
     firebaseDeps.where('url', '==', normalizedUrl),
-    firebaseDeps.where('sharedWith', 'array-contains', userId),
+    firebaseDeps.where('sharedWith', 'array-contains', normalizedEmail),
     firebaseDeps.orderBy('createdAt', 'desc')
-  );
+  ) : null;
   
-  const [ownedSnap, sharedSnap] = await Promise.all([
-    firebaseDeps.getDocs(ownedQuery),
-    firebaseDeps.getDocs(sharedQuery)
-  ]);
+  // Execute queries - sharedQuery may be null if no email provided
+  const queries = [firebaseDeps.getDocs(ownedQuery)];
+  if (sharedQuery) {
+    queries.push(firebaseDeps.getDocs(sharedQuery));
+  }
+  
+  const [ownedSnap, sharedSnap] = await Promise.all(queries);
   
   const notes = [];
   const seenIds = new Set();
@@ -146,13 +151,15 @@ export async function getNotesForUrl(url, userId, deps = {}) {
     }
   });
   
-  sharedSnap.forEach(doc => {
-    const data = doc.data();
-    if (!seenIds.has(doc.id)) {
-      seenIds.add(doc.id);
-      notes.push({ id: doc.id, ...data, isShared: true });
-    }
-  });
+  if (sharedSnap) {
+    sharedSnap.forEach(doc => {
+      const data = doc.data();
+      if (!seenIds.has(doc.id)) {
+        seenIds.add(doc.id);
+        notes.push({ id: doc.id, ...data, isShared: true });
+      }
+    });
+  }
   
   return notes;
 }
