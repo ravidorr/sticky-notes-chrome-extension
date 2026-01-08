@@ -457,14 +457,48 @@ export class StickyNote {
   }
   
   /**
+   * Get SVG icon for position
+   * Shows a box (element) with a small rectangle (note) in the corresponding corner
+   * @param {string} position - Position value (top-left, top-right, etc.)
+   * @returns {string} SVG markup
+   */
+  getPositionIcon(position) {
+    // Base: rounded rectangle representing the element
+    // Small filled rectangle representing note position
+    const icons = {
+      'top-left': `
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="4" y="4" width="16" height="16" rx="2" stroke="#9ca3af"/>
+          <rect x="5" y="5" width="6" height="5" rx="1" fill="#374151" stroke="none"/>
+        </svg>`,
+      'top-right': `
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="4" y="4" width="16" height="16" rx="2" stroke="#9ca3af"/>
+          <rect x="13" y="5" width="6" height="5" rx="1" fill="#374151" stroke="none"/>
+        </svg>`,
+      'bottom-left': `
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="4" y="4" width="16" height="16" rx="2" stroke="#9ca3af"/>
+          <rect x="5" y="14" width="6" height="5" rx="1" fill="#374151" stroke="none"/>
+        </svg>`,
+      'bottom-right': `
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="4" y="4" width="16" height="16" rx="2" stroke="#9ca3af"/>
+          <rect x="13" y="14" width="6" height="5" rx="1" fill="#374151" stroke="none"/>
+        </svg>`
+    };
+    return icons[position] || icons['top-right'];
+  }
+  
+  /**
    * Show position picker popup
    */
   showPositionPicker() {
     const positions = [
-      { value: 'top-left', label: 'Top Left', icon: 'TL' },
-      { value: 'top-right', label: 'Top Right', icon: 'TR' },
-      { value: 'bottom-left', label: 'Bottom Left', icon: 'BL' },
-      { value: 'bottom-right', label: 'Bottom Right', icon: 'BR' }
+      { value: 'top-left', label: 'Top Left' },
+      { value: 'top-right', label: 'Top Right' },
+      { value: 'bottom-left', label: 'Bottom Left' },
+      { value: 'bottom-right', label: 'Bottom Right' }
     ];
     
     const picker = document.createElement('div');
@@ -482,6 +516,7 @@ export class StickyNote {
     
     positions.forEach(pos => {
       const btn = document.createElement('button');
+      const isSelected = this.position.anchor === pos.value;
       btn.style.cssText = `
         display: flex;
         align-items: center;
@@ -489,14 +524,14 @@ export class StickyNote {
         width: 100%;
         padding: 8px 12px;
         border: none;
-        background: ${this.position.anchor === pos.value ? '#f3f4f6' : 'transparent'};
+        background: ${isSelected ? '#f3f4f6' : 'transparent'};
         border-radius: 6px;
         cursor: pointer;
         font-size: 13px;
         color: #374151;
         text-align: left;
       `;
-      btn.innerHTML = `<span>${pos.icon}</span><span>${pos.label}</span>`;
+      btn.innerHTML = `${this.getPositionIcon(pos.value)}<span>${pos.label}</span>`;
       
       btn.addEventListener('click', () => {
         this.position.anchor = pos.value;

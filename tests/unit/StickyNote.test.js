@@ -226,6 +226,46 @@ describe('StickyNote', () => {
     });
   });
   
+  describe('getPositionIcon', () => {
+    it('should return SVG markup for top-left position', () => {
+      const icon = note.getPositionIcon('top-left');
+      expect(icon).toContain('<svg');
+      expect(icon).toContain('viewBox="0 0 24 24"');
+      expect(icon).toContain('</svg>');
+    });
+    
+    it('should return SVG markup for top-right position', () => {
+      const icon = note.getPositionIcon('top-right');
+      expect(icon).toContain('<svg');
+      expect(icon).toContain('</svg>');
+    });
+    
+    it('should return SVG markup for bottom-left position', () => {
+      const icon = note.getPositionIcon('bottom-left');
+      expect(icon).toContain('<svg');
+      expect(icon).toContain('</svg>');
+    });
+    
+    it('should return SVG markup for bottom-right position', () => {
+      const icon = note.getPositionIcon('bottom-right');
+      expect(icon).toContain('<svg');
+      expect(icon).toContain('</svg>');
+    });
+    
+    it('should return default icon (top-right) for unknown position', () => {
+      const unknownIcon = note.getPositionIcon('invalid-position');
+      const defaultIcon = note.getPositionIcon('top-right');
+      expect(unknownIcon).toBe(defaultIcon);
+    });
+    
+    it('should contain rect elements representing element and note', () => {
+      const icon = note.getPositionIcon('top-left');
+      // Should have at least 2 rect elements (one for element box, one for note position)
+      const rectCount = (icon.match(/<rect/g) || []).length;
+      expect(rectCount).toBeGreaterThanOrEqual(2);
+    });
+  });
+  
   describe('showPositionPicker', () => {
     it('should have showPositionPicker method', () => {
       expect(typeof note.showPositionPicker).toBe('function');
@@ -239,6 +279,34 @@ describe('StickyNote', () => {
       note.showPositionPicker();
       const picker = note.element.querySelector('.sn-position-picker');
       expect(picker).not.toBeNull();
+    });
+    
+    it('should create four position buttons with SVG icons', () => {
+      note.showPositionPicker();
+      const picker = note.element.querySelector('.sn-position-picker');
+      const buttons = picker.querySelectorAll('button');
+      expect(buttons.length).toBe(4);
+      
+      // Each button should contain an SVG
+      buttons.forEach(btn => {
+        expect(btn.querySelector('svg')).not.toBeNull();
+      });
+    });
+    
+    it('should highlight currently selected position', () => {
+      note.position.anchor = 'bottom-left';
+      note.showPositionPicker();
+      const picker = note.element.querySelector('.sn-position-picker');
+      const buttons = picker.querySelectorAll('button');
+      
+      // Verify we have 4 buttons and they have background styles set
+      expect(buttons.length).toBe(4);
+      
+      // At least one button should have a non-transparent background (the selected one)
+      const buttonsWithBackground = Array.from(buttons).filter(btn => 
+        btn.style.background && btn.style.background !== 'transparent'
+      );
+      expect(buttonsWithBackground.length).toBeGreaterThanOrEqual(1);
     });
   });
   
