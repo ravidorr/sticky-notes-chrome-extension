@@ -682,6 +682,135 @@ svg.editor-btn {
     animation: notePop 0.5s ease-out;
 }
 
+/* --- Unified Card System --- */
+.card {
+    padding: 2rem;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-2xl);
+    transition: all 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+}
+
+/* Card hover accent colors */
+.card--accent-blue:hover { border-color: var(--c-blue-200); }
+.card--accent-slate:hover { border-color: var(--c-slate-300); }
+.card--accent-yellow:hover { border-color: var(--c-yellow-400); }
+
+[data-theme="dark"] .card--accent-blue:hover { border-color: var(--c-blue-800); }
+[data-theme="dark"] .card--accent-slate:hover { border-color: var(--c-slate-600); }
+[data-theme="dark"] .card--accent-yellow:hover { border-color: var(--c-yellow-600); }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .card--accent-blue:hover { border-color: var(--c-blue-800); }
+    :root:not([data-theme="light"]) .card--accent-slate:hover { border-color: var(--c-slate-600); }
+    :root:not([data-theme="light"]) .card--accent-yellow:hover { border-color: var(--c-yellow-600); }
+}
+
+/* Unified card icon */
+.card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 1.5rem;
+    background: var(--color-bg);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.3s;
+}
+
+.card:hover .card-icon {
+    transform: scale(1.1);
+}
+
+.card-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+/* Card icon color variants */
+.card-icon--blue { color: var(--c-blue-500); }
+.card-icon--slate { color: var(--c-slate-500); }
+.card-icon--yellow { 
+    background: var(--c-yellow-100); 
+    color: var(--c-yellow-700);
+}
+
+[data-theme="dark"] .card-icon--yellow {
+    background: var(--c-yellow-900);
+    color: var(--c-yellow-300);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .card-icon--yellow {
+        background: var(--c-yellow-900);
+        color: var(--c-yellow-300);
+    }
+}
+
+/* Card typography */
+.card h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--color-text);
+}
+
+.card p {
+    color: var(--color-text-secondary);
+}
+
+/* Card with buttons */
+.card .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+}
+
+.card .btn + .btn {
+    margin-top: 0.5rem;
+}
+
+.card .btn-secondary {
+    background-color: var(--c-slate-100);
+    color: var(--c-slate-700);
+    border: 1px solid var(--color-border-light);
+}
+
+.card .btn-secondary:hover {
+    background-color: var(--c-slate-200);
+}
+
+[data-theme="dark"] .card .btn-secondary {
+    background-color: var(--c-slate-700);
+    color: var(--c-slate-100);
+    border-color: var(--c-slate-600);
+}
+
+[data-theme="dark"] .card .btn-secondary:hover {
+    background-color: var(--c-slate-600);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .card .btn-secondary {
+        background-color: var(--c-slate-700);
+        color: var(--c-slate-100);
+        border-color: var(--c-slate-600);
+    }
+    :root:not([data-theme="light"]) .card .btn-secondary:hover {
+        background-color: var(--c-slate-600);
+    }
+}
+
 /* --- Pain Points Section --- */
 .pain-points {
     padding: 5rem 0;
@@ -693,54 +822,6 @@ svg.editor-btn {
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1.5rem;
     margin-top: 3rem;
-}
-
-.pain-card {
-    padding: 2rem;
-    background: var(--color-bg-secondary);
-    border-radius: var(--radius-2xl);
-    border: 1px solid var(--color-border-light);
-    transition: all 0.3s;
-}
-
-.pain-card:hover {
-    transform: translateY(-4px);
-    border-color: var(--c-slate-300);
-    box-shadow: var(--shadow-xl);
-}
-
-.pain-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 3rem;
-    height: 3rem;
-    margin-bottom: 1.5rem;
-    background: var(--color-bg);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-sm);
-    color: var(--c-slate-500);
-    transition: transform 0.3s;
-}
-
-.pain-card:hover .pain-icon {
-    transform: scale(1.1);
-}
-
-.pain-icon svg {
-    width: 1.5rem;
-    height: 1.5rem;
-}
-
-.pain-card h3 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin-bottom: 0.75rem;
-    color: var(--color-text);
-}
-
-.pain-card p {
-    color: var(--color-text-secondary);
 }
 
 /* --- Demo Section --- */
@@ -1008,47 +1089,8 @@ svg.editor-btn {
     .features-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
-.feature-card {
-    padding: 2rem;
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border-light);
-    border-radius: var(--radius-2xl);
-    transition: all 0.3s;
-}
-
-.feature-card:hover {
-    transform: translateY(-4px);
-    border-color: var(--c-blue-200);
-    box-shadow: var(--shadow-xl);
-}
-
-.icon-box {
-    width: 3rem;
-    height: 3rem;
-    background: var(--color-bg);
-    border-radius: var(--radius-xl);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: var(--shadow-sm);
-    margin-bottom: 1.5rem;
-    transition: transform 0.3s;
-}
-
-.feature-card:hover .icon-box {
-    transform: scale(1.1);
-}
-
-.feature-card h3 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin-bottom: 0.75rem;
-    color: var(--color-text);
-}
-
-.feature-card p {
-    color: var(--color-text-secondary);
-}
+/* Legacy class alias - use .card .card--accent-blue instead */
+.feature-card { /* Deprecated - see .card */ }
 
 /* --- How it Works --- */
 .section-steps {
@@ -1068,77 +1110,13 @@ svg.editor-btn {
     .steps-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
-.step-card {
-    padding: 2rem;
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border-light);
-    border-radius: var(--radius-2xl);
-    transition: all 0.3s;
-}
+/* Legacy class alias - use .card .card--accent-yellow instead */
+.step-card { /* Deprecated - see .card */ }
 
-.step-card:hover {
-    transform: translateY(-4px);
-    border-color: var(--c-yellow-400);
-    box-shadow: var(--shadow-xl);
-}
-
-.step-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 3rem;
-    height: 3rem;
-    margin-bottom: 1.5rem;
-    background: var(--c-yellow-100);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-sm);
-    transition: transform 0.3s;
-}
-
-.step-icon span {
+/* Step icon number styling */
+.card-icon span {
     font-size: 1rem;
     font-weight: 700;
-    color: var(--c-yellow-700);
-}
-
-.step-card:hover .step-icon {
-    transform: scale(1.1);
-}
-
-.step-card h3 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin-bottom: 0.75rem;
-    color: var(--color-text);
-}
-
-.step-card p {
-    color: var(--color-text-secondary);
-}
-
-/* Dark mode adjustments for step cards */
-[data-theme="dark"] .step-icon {
-    background: var(--c-yellow-900);
-}
-
-[data-theme="dark"] .step-icon span {
-    color: var(--c-yellow-300);
-}
-
-[data-theme="dark"] .step-card:hover {
-    border-color: var(--c-yellow-600);
-}
-
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .step-icon {
-        background: var(--c-yellow-900);
-    }
-    :root:not([data-theme="light"]) .step-icon span {
-        color: var(--c-yellow-300);
-    }
-    :root:not([data-theme="light"]) .step-card:hover {
-        border-color: var(--c-yellow-600);
-    }
 }
 
 /* --- Comparison Table --- */
@@ -1236,14 +1214,7 @@ svg.editor-btn {
     :root:not([data-theme="light"]) .icon-partial { color: #f59e0b; }
 }
 
-/* Card hover states in dark mode */
-[data-theme="dark"] .pain-card:hover { border-color: var(--c-slate-600); }
-[data-theme="dark"] .feature-card:hover { border-color: var(--c-blue-800); }
-
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .pain-card:hover { border-color: var(--c-slate-600); }
-    :root:not([data-theme="light"]) .feature-card:hover { border-color: var(--c-blue-800); }
-}
+/* Legacy card hover states removed - now using unified .card system */
 
 /* --- Pricing Section --- */
 .section-pricing {
@@ -1469,6 +1440,10 @@ svg.editor-btn {
     text-decoration: underline;
 }
 
+.legal-page a.btn {
+    text-decoration: none;
+}
+
 .legal-page a:hover {
     color: var(--c-blue-700);
 }
@@ -1621,4 +1596,22 @@ svg.editor-btn {
         grid-row: span 1;
         min-height: 8rem;
     }
+}
+
+/* --- Contact Page --- */
+.contact-methods {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+/* Contact cards need full-width buttons */
+.contact-methods .card .btn {
+    width: 100%;
+}
+
+/* Contact cards need extra paragraph margin */
+.contact-methods .card p {
+    margin-bottom: 1.5rem;
 }

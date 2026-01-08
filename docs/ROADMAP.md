@@ -7,15 +7,15 @@
 ### Pain Points We Solve
 - Bug reports lack context ("The button is broken" with no URL, screenshot, or element reference)
 - Screenshot + Jira ping-pong (back and forth asking "which button? which page?")
-- Staging environments change — hard to reproduce issues
-- Designer ↔ Dev handoff friction ("This margin looks off" — where exactly?)
+- Staging environments change - hard to reproduce issues
+- Designer ↔ Dev handoff friction ("This margin looks off" - where exactly?)
 
 ### Value Proposition
 > "Sticky notes for your staging environment. Click, annotate, share. Bug reports that actually make sense."
 
 ---
 
-## Current Status (MVP)
+## Current Status (MVP) [x]
 
 - [x] Note creation anchored to DOM elements
 - [x] Robust CSS selector generation with fuzzy matching
@@ -29,7 +29,7 @@
 - [x] Re-anchor UI when elements not found
 - [x] Extension context invalidation handling
 
-### Code Quality ✅
+### Code Quality [x]
 - [x] ESLint configuration with pre-commit hooks
 - [x] Unit test coverage (325 tests, ~32% coverage)
 - [x] Shared utility functions for testability
@@ -39,7 +39,7 @@
 
 ---
 
-## Phase 1: Authentication & Cloud Sync ✅
+## Phase 1: Authentication & Cloud Sync [x]
 
 - [x] Firebase Authentication (Google Sign-In)
 - [x] Cloud sync with Firestore
@@ -48,13 +48,13 @@
 
 ---
 
-## Phase 2: Threaded Discussions & Real-time Sync
+## Phase 2: Threaded Discussions & Real-time Sync []
 
 Add comment threads to notes for Q&A and discussions.
 
 ### Real-time Features
-- [ ] Real-time collaborative updates (live sync for notes)
-- [ ] Real-time sync for comments
+- [] Real-time collaborative updates (live sync for notes)
+- [] Real-time sync for comments
 
 ### Data Model
 ```javascript
@@ -71,11 +71,11 @@ Add comment threads to notes for Q&A and discussions.
 ```
 
 ### Features
-- [ ] Comment list in note (collapsible)
-- [ ] Reply button per comment
-- [ ] User avatars/names display
-- [ ] Relative timestamps ("2 hours ago")
-- [ ] Real-time sync for comments
+- [] Comment list in note (collapsible)
+- [] Reply button per comment
+- [] User avatars/names display
+- [] Relative timestamps ("2 hours ago")
+- [] Real-time sync for comments
 
 ### Considerations
 - Depth limit for nested replies (recommend: 1 level)
@@ -90,34 +90,34 @@ Add comment threads to notes for Q&A and discussions.
 Features that differentiate for developer and QA workflows:
 
 ### Metadata Capture (High Priority)
-- [ ] Auto-capture URL, viewport size, browser, timestamp
-- [ ] Capture element selector in bug report format
-- [ ] Console errors capture (optional)
-- [ ] Environment tagging (staging vs production)
+- [] Auto-capture URL, viewport size, browser, timestamp
+- [] Capture element selector in bug report format
+- [] Console errors capture (optional)
+- [] Environment tagging (staging vs production)
 
 ### Screenshot & Export
-- [ ] Screenshot on note creation
-- [ ] "Copy as Markdown" — generates bug report template
-- [ ] "Copy screenshot" — one-click annotated screenshot
-- [ ] Shareable link that highlights the element
+- [] Screenshot on note creation
+- [] "Copy as Markdown" - generates bug report template
+- [] "Copy screenshot" - one-click annotated screenshot
+- [] Shareable link that highlights the element
 
 ### Issue Tracking Integration
-- [ ] Jira integration (one-click ticket creation)
-- [ ] Linear integration
-- [ ] GitHub Issues integration
-- [ ] Status tracking (open/resolved/reopened)
+- [] Jira integration (one-click ticket creation)
+- [] Linear integration
+- [] GitHub Issues integration
+- [] Status tracking (open/resolved/reopened)
 
 ### Advanced
-- [ ] Session replay link support (LogRocket/FullStory)
-- [ ] Batch export notes as report
+- [] Session replay link support (LogRocket/FullStory)
+- [] Batch export notes as report
 
 ---
 
 ## Phase 4: Team & Billing
 
-- [ ] Team workspaces
-- [ ] Role-based permissions
-- [ ] Usage analytics dashboard
+- [] Team workspaces
+- [] Role-based permissions
+- [] Usage analytics dashboard
 
 ### Pricing Model (Proposed)
 | Tier | Price | Features |
@@ -143,17 +143,17 @@ Features that differentiate for developer and QA workflows:
 - **Simpler** than Marker.io/BugHerd
 - **More affordable** for small teams
 - **Developer-first** with selector capture
-- **Lightweight** — just what you need, nothing more
+- **Lightweight** - just what you need, nothing more
 
 ---
 
-## Quick Wins to Validate ✅
+## Quick Wins to Validate [x]
 
 Low-effort features to test market fit:
 
-1. ~~**"Copy as Markdown" button**~~ ✅ — Bug report template with URL + selector
-2. ~~**"Copy screenshot" button**~~ ✅ — One-click annotated screenshot (highlights element)
-3. ~~**Metadata display**~~ ✅ — Collapsible footer showing URL, browser, viewport, timestamp
+1. ~~**"Copy as Markdown" button**~~ [x] - Bug report template with URL + selector
+2. ~~**"Copy screenshot" button**~~ [x] - One-click annotated screenshot (highlights element)
+3. ~~**Metadata display**~~ [x] - Collapsible footer showing URL, browser, viewport, timestamp
 
 ---
 

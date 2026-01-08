@@ -1,5 +1,6 @@
 import globals from 'globals';
 import pluginJs from '@eslint/js';
+import noEmojiPlugin from 'eslint-plugin-no-emoji';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
@@ -18,6 +19,9 @@ export default [
   },
   pluginJs.configs.recommended,
   {
+    plugins: {
+      'no-emoji': noEmojiPlugin
+    },
     rules: {
       // Error prevention
       'no-unused-vars': ['warn', { 
@@ -47,7 +51,10 @@ export default [
       
       // Chrome Extension specific
       'no-eval': 'error',
-      'no-implied-eval': 'error'
+      'no-implied-eval': 'error',
+      
+      // No emoji in code
+      'no-emoji/no-emoji': 'error'
     }
   },
   {

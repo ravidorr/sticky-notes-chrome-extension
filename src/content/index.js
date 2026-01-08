@@ -184,7 +184,7 @@ class StickyNotesApp {
       this.setupMutationObserver();
       log.debug(' Mutation observer ready');
       
-      log.debug(' ✅ Content script fully initialized and ready to receive messages');
+      log.debug('Content script fully initialized and ready to receive messages');
       
       // Load existing notes for this page (async, non-blocking)
       log.debug(' Loading notes for this page...');
@@ -192,7 +192,7 @@ class StickyNotesApp {
         log.warn(' Failed to load notes:', err);
       });
     } catch (error) {
-      log.error(' ❌ Failed to initialize:', error);
+      log.error('Failed to initialize:', error);
     }
   }
   
@@ -601,14 +601,14 @@ class StickyNotesApp {
   setupMessageListeners() {
     log.debug(' Adding chrome.runtime.onMessage listener');
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      log.debug(' 📨 Message received:', message);
+      log.debug('Message received:', message);
       this.handleMessage(message)
         .then(response => {
-          log.debug(' 📤 Sending response:', response);
+          log.debug('Sending response:', response);
           sendResponse(response);
         })
         .catch(error => {
-          log.error(' ❌ Message handler error:', error);
+          log.error('Message handler error:', error);
           sendResponse({ success: false, error: error.message });
         });
       return true;
@@ -683,7 +683,7 @@ class StickyNotesApp {
     
     log.debug(' Appending overlay to container');
     this.container.appendChild(this.selectionOverlay.element);
-    log.debug(' ✅ Selection mode fully enabled - click an element to add a note');
+    log.debug('Selection mode fully enabled - click an element to add a note');
   }
   
   /**

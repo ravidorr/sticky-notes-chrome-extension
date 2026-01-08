@@ -245,7 +245,7 @@ Open `public/manifest.json` and update the `oauth2` section:
 }
 ```
 
-> **Note:** The OAuth client ID in `manifest.json` is safe to commit — it's tied to your specific extension ID.
+> **Note:** The OAuth client ID in `manifest.json` is safe to commit - it's tied to your specific extension ID.
 
 ### 9.2: Update .env
 
@@ -331,13 +331,13 @@ This usually means **Firestore indexes are missing**:
 
 | Item | Location | Status |
 |------|----------|--------|
-| Firebase config | `.env` file | ⬜ |
-| OAuth client ID | `.env` file | ⬜ |
-| OAuth client ID | `public/manifest.json` | ⬜ |
-| Extension ID in Google Cloud | OAuth credentials | ⬜ |
-| Extension domain in Firebase Auth | Authorized domains | ⬜ |
-| Firestore security rules | Firebase Console | ⬜ |
-| Firestore indexes (2 required) | Firebase Console | ⬜ |
+| Firebase config | `.env` file | [] |
+| OAuth client ID | `.env` file | [] |
+| OAuth client ID | `public/manifest.json` | [] |
+| Extension ID in Google Cloud | OAuth credentials | [] |
+| Extension domain in Firebase Auth | Authorized domains | [] |
+| Firestore security rules | Firebase Console | [] |
+| Firestore indexes (2 required) | Firebase Console | [] |
 
 ---
 
@@ -345,8 +345,8 @@ This usually means **Firestore indexes are missing**:
 
 - **Never commit real API keys** to public repositories
 - Consider using environment variables for production
-- The test mode Firestore rules expire after 30 days — make sure to set up proper security rules
-- OAuth consent screen in "Testing" mode limits users — publish for wider access
+- The test mode Firestore rules expire after 30 days - make sure to set up proper security rules
+- OAuth consent screen in "Testing" mode limits users - publish for wider access
 
 ---
 
@@ -354,10 +354,10 @@ This usually means **Firestore indexes are missing**:
 
 After completing this setup:
 
-1. ✅ Users can sign in with Google
-2. ✅ Notes are stored in Firestore
-3. ✅ Notes sync across devices
-4. ✅ Notes can be shared with other users
+1. [x] Users can sign in with Google
+2. [x] Notes are stored in Firestore
+3. [x] Notes sync across devices
+4. [x] Notes can be shared with other users
 
 For sharing features, implement the UI to:
 - Look up users by email

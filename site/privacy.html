@@ -3,18 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - Sticky Notes</title>
-    <meta name="description" content="Privacy Policy for Sticky Notes Chrome Extension">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Sticky Notes">
+    <meta property="og:title" content="Sticky Notes - Visual Bug Reporting for Dev Teams">
+    <meta property="og:description" content="Click, annotate, share. Bug reports that actually make sense.">
+    <meta property="og:image" content="images/og-image.png">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sticky Notes - Visual Bug Reporting for Dev Teams">
+    <meta name="twitter:description" content="Click, annotate, share. Bug reports that actually make sense.">
+
+
+    <title>Privacy Policy - Sticky Notes</title>
+    <meta name="description" content="Privacy Policy for Sticky Notes Chrome Extension">
 </head>
 <body>
+
     <!-- Navigation -->
-    <nav class="navbar" id="navbar">
-        <div class="container nav-container">
+    <nav id="navbar" class="navbar">
+        <div class="container flex justify-between items-center">
+            <!-- Logo -->
             <a href="index.html" class="flex items-center gap-2">
                 <div class="nav-logo-box">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -22,14 +41,85 @@
                         <path d="M4 5h8M4 8h8M4 11h5" stroke="#713f12" stroke-width="1.5" stroke-linecap="round"/>
                     </svg>
                 </div>
-                <span class="font-bold text-lg">Sticky Notes</span>
+                <span class="logo-text">Sticky Notes</span>
             </a>
-            <div class="desktop-menu flex items-center gap-6">
-                <a href="index.html" class="nav-link">Home</a>
+
+            <!-- Desktop Menu -->
+            <div class="desktop-menu items-center gap-8">
+                <a href="index.html#features" class="nav-link">Features</a>
+                <a href="index.html#demo" class="nav-link">Live Demo</a>
+                <a href="index.html#how-it-works" class="nav-link">How it Works</a>
+                <a href="index.html#pricing" class="nav-link">Pricing</a>
                 <a href="https://github.com/ravidorr/sticky-notes-chrome-extension" target="_blank" rel="noopener" class="nav-link">GitHub</a>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+                    <!-- Sun icon (shown in dark mode) -->
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <!-- Moon icon (shown in light mode) -->
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <button class="btn btn-primary gap-2">
+                    <img src="chrome-logo.svg" width="16" height="16" alt="" aria-hidden="true">
+                    Add to Chrome
+                </button>
+            </div>
+
+            <!-- Mobile Menu Button -->
+            <div class="flex items-center gap-2">
+                <button id="theme-toggle-mobile" class="theme-toggle mobile-theme-toggle" aria-label="Toggle dark mode">
+                    <!-- Sun icon (shown in dark mode) -->
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <!-- Moon icon (shown in light mode) -->
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Toggle menu">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
             </div>
         </div>
+
+        <!-- Mobile Dropdown -->
+        <div id="mobile-menu" class="mobile-dropdown hidden flex">
+            <a href="index.html#features" class="nav-link">Features</a>
+            <a href="index.html#demo" class="nav-link">Live Demo</a>
+            <a href="index.html#how-it-works" class="nav-link">How it Works</a>
+            <a href="index.html#pricing" class="nav-link">Pricing</a>
+            <a href="https://github.com/ravidorr/sticky-notes-chrome-extension" target="_blank" rel="noopener" class="nav-link">GitHub</a>
+            <button class="btn btn-primary gap-2 w-full">
+                <img src="chrome-logo.svg" width="16" height="16" alt="" aria-hidden="true">
+                Add to Chrome
+            </button>
+        </div>
     </nav>
+
+
 
     <!-- Main Content -->
     <main class="legal-page">
@@ -137,17 +227,47 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <div class="footer-bottom simple">
-                <p>© 2026 Sticky Notes. Open source under MIT License.</p>
-                <div class="footer-bottom-links">
-                    <a href="privacy.html">Privacy</a>
-                    <a href="terms.html">Terms</a>
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="index.html" class="flex items-center gap-2">
+                        <div class="nav-logo-box">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="1" y="1" width="14" height="14" rx="2" fill="#facc15"/>
+                                <path d="M4 5h8M4 8h8M4 11h5" stroke="#713f12" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <span class="logo-text">Sticky Notes</span>
+                    </a>
+                    <p>Visual bug reporting for dev teams. Built with care for developers.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <a href="index.html#features">Features</a>
+                    <a href="index.html#pricing">Pricing</a>
+                    <a href="index.html#how-it-works">How It Works</a>
+                </div>
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <a href="https://github.com/ravidorr/sticky-notes-chrome-extension#readme" target="_blank" rel="noopener">Documentation</a>
+                    <a href="https://github.com/ravidorr/sticky-notes-chrome-extension/releases" target="_blank" rel="noopener">Changelog</a>
                     <a href="https://github.com/ravidorr/sticky-notes-chrome-extension" target="_blank" rel="noopener">GitHub</a>
                 </div>
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <a href="privacy.html">Privacy Policy</a>
+                    <a href="terms.html">Terms of Service</a>
+                    <a href="contact.html">Contact</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Sticky Notes. All rights reserved.</p>
             </div>
         </div>
     </footer>
 
+    <!-- Scripts -->
     <script type="module" src="scripts.js"></script>
+
+
 </body>
 </html>

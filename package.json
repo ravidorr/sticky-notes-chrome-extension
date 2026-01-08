@@ -6,13 +6,14 @@
   "scripts": {
     "dev": "node scripts/build.js && vite build --watch",
     "build": "node scripts/build.js",
+    "build:site": "node scripts/build-site.js",
     "preview": "vite preview",
     "lint": "npm run lint:js && npm run lint:css && npm run lint:html",
     "lint:js": "eslint src/",
     "lint:js:fix": "eslint src/ --fix",
     "lint:css": "stylelint \"site/**/*.css\" \"src/**/*.css\"",
     "lint:css:fix": "stylelint \"site/**/*.css\" \"src/**/*.css\" --fix",
-    "lint:html": "htmlhint \"site/**/*.html\" \"src/**/*.html\" \"public/**/*.html\"",
+    "lint:html": "htmlhint \"site/*.html\" \"src/**/*.html\" \"public/**/*.html\"",
     "lint:fix": "npm run lint:js:fix && npm run lint:css:fix",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
@@ -42,6 +43,7 @@
     "@jest/globals": "^29.7.0",
     "@playwright/test": "^1.52.0",
     "eslint": "^9.39.2",
+    "eslint-plugin-no-emoji": "^2.0.2",
     "globals": "^17.0.0",
     "htmlhint": "^1.8.0",
     "husky": "^9.1.7",
@@ -69,7 +71,7 @@
     "src/**/*.css": [
       "stylelint --fix"
     ],
-    "site/**/*.html": [
+    "site/*.html": [
       "htmlhint"
     ],
     "public/**/*.html": [

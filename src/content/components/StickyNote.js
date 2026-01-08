@@ -461,10 +461,10 @@ export class StickyNote {
    */
   showPositionPicker() {
     const positions = [
-      { value: 'top-left', label: 'Top Left', icon: '↖' },
-      { value: 'top-right', label: 'Top Right', icon: '↗' },
-      { value: 'bottom-left', label: 'Bottom Left', icon: '↙' },
-      { value: 'bottom-right', label: 'Bottom Right', icon: '↘' }
+      { value: 'top-left', label: 'Top Left', icon: 'TL' },
+      { value: 'top-right', label: 'Top Right', icon: 'TR' },
+      { value: 'bottom-left', label: 'Bottom Left', icon: 'BL' },
+      { value: 'bottom-right', label: 'Bottom Right', icon: 'BR' }
     ];
     
     const picker = document.createElement('div');

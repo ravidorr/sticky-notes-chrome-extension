@@ -1,1 +1,24 @@
-npx lint-staged && npm test
+# Exit immediately if any command fails
+set -e
+
+# Run lint-staged for code quality
+npx lint-staged
+
+# Check if any template or partial files are staged
+SITE_TEMPLATES_CHANGED=$(git diff --cached --name-only | grep -E '^site/(templates|partials)/' || true)
+
+if [ -n "$SITE_TEMPLATES_CHANGED" ]; then
+    echo "Site templates/partials changed, rebuilding site..."
+    npm run build:site
+    
+    # Lint the generated HTML files before staging
+    echo "Linting generated HTML files..."
+    npx htmlhint site/*.html
+    
+    # Stage the generated HTML files (all .html in site root, not subdirs)
+    git add site/*.html
+    echo "Generated files staged"
+fi
+
+# Run tests
+npm test
