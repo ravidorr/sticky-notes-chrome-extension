@@ -283,7 +283,7 @@ export class StickyNote {
     
     try {
       await navigator.clipboard.writeText(markdown);
-      this.showToast('Bug report copied to clipboard!');
+      this.showToast('Copied to clipboard!');
     } catch (error) {
       log.error('Failed to copy markdown:', error);
       this.showToast('Failed to copy to clipboard', 'error');
