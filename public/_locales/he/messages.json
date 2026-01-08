@@ -22,7 +22,7 @@
     "description": "Text shown when user is not signed in"
   },
   "signInWithGoogle": {
-    "message": "התחברות עם Google",
+    "message": "התחברות עם גוגל",
     "description": "Google sign-in button text"
   },
   "signOut": {
