@@ -115,20 +115,20 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Notes collection
     match /notes/{noteId} {
-      // Allow read if user owns the note or it's shared with them
+      // Allow read if user owns the note OR is in sharedWith array (by email)
       allow read: if request.auth != null && (
         resource.data.ownerId == request.auth.uid ||
-        request.auth.uid in resource.data.sharedWith
+        request.auth.token.email in resource.data.sharedWith
       );
       
-      // Allow create if user is authenticated
+      // Allow create if user is authenticated and sets themselves as owner
       allow create: if request.auth != null && 
         request.resource.data.ownerId == request.auth.uid;
       
-      // Allow update if user owns or has access
+      // Allow update if user owns the note OR is in sharedWith array
       allow update: if request.auth != null && (
         resource.data.ownerId == request.auth.uid ||
-        request.auth.uid in resource.data.sharedWith
+        request.auth.token.email in resource.data.sharedWith
       );
       
       // Allow delete only for owner
@@ -138,6 +138,8 @@ service cloud.firestore {
   }
 }
 ```
+
+> **Important:** The `sharedWith` array stores **email addresses** (not user IDs), so we use `request.auth.token.email` for the sharing check.
 
 3. Click **"Publish"**
 
@@ -302,10 +304,11 @@ VITE_OAUTH_CLIENT_ID=123456789-abc123.apps.googleusercontent.com
 - Check that all values in `src/firebase/config.js` are replaced
 - Ensure `apiKey` is not the placeholder `"YOUR_API_KEY"`
 
-### "Permission denied" in Firestore
-- Verify Firestore security rules are published
+### "Permission denied" or "Missing or insufficient permissions" in Firestore
+- Verify Firestore security rules are published (Step 6)
 - Check that the user is properly authenticated
 - Verify the `ownerId` field matches `request.auth.uid`
+- For shared notes: ensure rules use `request.auth.token.email` (not `request.auth.uid`) since `sharedWith` stores emails
 
 ### Notes not appearing in popup (but visible on page)
 This usually means **Firestore indexes are missing**:
@@ -357,8 +360,9 @@ After completing this setup:
 1. [x] Users can sign in with Google
 2. [x] Notes are stored in Firestore
 3. [x] Notes sync across devices
-4. [x] Notes can be shared with other users
+4. [x] Notes can be shared with other users by email
 
-For sharing features, implement the UI to:
-- Look up users by email
-- Call `shareNote()` with the target user ID
+To share a note:
+1. Click the share button on any note you own
+2. Enter the recipient's email address
+3. The note will appear for them when they sign in with that email

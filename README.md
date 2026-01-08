@@ -135,19 +135,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /notes/{noteId} {
-      // Allow read if user owns the note or is in sharedWith
+      // Allow read if user owns the note OR is in sharedWith array (by email)
       allow read: if request.auth != null && 
         (resource.data.ownerId == request.auth.uid || 
-         request.auth.uid in resource.data.sharedWith);
+         request.auth.token.email in resource.data.sharedWith);
       
-      // Allow create if authenticated
+      // Allow create if authenticated and sets themselves as owner
       allow create: if request.auth != null && 
         request.resource.data.ownerId == request.auth.uid;
       
-      // Allow update if owner or shared with
+      // Allow update if owner or shared with (by email)
       allow update: if request.auth != null && 
         (resource.data.ownerId == request.auth.uid || 
-         request.auth.uid in resource.data.sharedWith);
+         request.auth.token.email in resource.data.sharedWith);
       
       // Allow delete only for owner
       allow delete: if request.auth != null && 
@@ -156,6 +156,8 @@ service cloud.firestore {
   }
 }
 ```
+
+> **Note:** The `sharedWith` array stores email addresses, so we use `request.auth.token.email` for sharing checks.
 
 ## Internationalization (i18n)
 
