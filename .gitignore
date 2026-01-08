@@ -4,6 +4,9 @@ node_modules/
 # Build output
 dist/
 
+# Generated site HTML (built by CI, not committed)
+site/*.html
+
 # IDE
 .idea/
 .vscode/
