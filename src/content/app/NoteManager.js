@@ -516,6 +516,9 @@ export class NoteManager {
       // Force show the note
       note.show();
       
+      // Bring note to front (above other notes)
+      note.bringToFront();
+      
       // Add highlight effect
       note.highlight();
     }
