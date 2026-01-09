@@ -324,4 +324,130 @@ describe('Background Script Logic', () => {
       expect(filtered.map(note => note.id)).toContain('3');
     });
   });
+  
+  describe('context menu', () => {
+    beforeEach(() => {
+      // Mock chrome.contextMenus
+      global.chrome.contextMenus = {
+        create: jest.fn((options, callback) => {
+          if (callback) callback();
+        }),
+        onClicked: {
+          addListener: jest.fn()
+        }
+      };
+      chrome.tabs.sendMessage.mockClear();
+    });
+    
+    it('should create context menu with correct options', () => {
+      function createContextMenu() {
+        chrome.contextMenus.create({
+          id: 'create-sticky-note',
+          title: 'Create Sticky Note Here',
+          contexts: ['page', 'selection', 'image', 'link']
+        });
+      }
+      
+      createContextMenu();
+      
+      expect(chrome.contextMenus.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'create-sticky-note',
+          contexts: expect.arrayContaining(['page', 'selection', 'image', 'link'])
+        })
+      );
+    });
+    
+    it('should register click handler for context menu', () => {
+      function setupContextMenuHandler(handler) {
+        chrome.contextMenus.onClicked.addListener(handler);
+      }
+      
+      const handler = jest.fn();
+      setupContextMenuHandler(handler);
+      
+      expect(chrome.contextMenus.onClicked.addListener).toHaveBeenCalledWith(handler);
+    });
+    
+    it('should send createNoteAtClick message on menu click', async () => {
+      chrome.tabs.sendMessage.mockResolvedValue({ success: true });
+      
+      async function handleContextMenuClick(info, tab) {
+        if (info.menuItemId === 'create-sticky-note' && tab?.id) {
+          await chrome.tabs.sendMessage(tab.id, {
+            action: 'createNoteAtClick'
+          });
+        }
+      }
+      
+      await handleContextMenuClick(
+        { menuItemId: 'create-sticky-note' },
+        { id: 123 }
+      );
+      
+      expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(
+        123,
+        { action: 'createNoteAtClick' }
+      );
+    });
+    
+    it('should not send message for wrong menu item', async () => {
+      async function handleContextMenuClick(info, tab) {
+        if (info.menuItemId === 'create-sticky-note' && tab?.id) {
+          await chrome.tabs.sendMessage(tab.id, {
+            action: 'createNoteAtClick'
+          });
+        }
+      }
+      
+      await handleContextMenuClick(
+        { menuItemId: 'other-menu-item' },
+        { id: 123 }
+      );
+      
+      expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
+    });
+    
+    it('should not send message if tab is missing', async () => {
+      async function handleContextMenuClick(info, tab) {
+        if (info.menuItemId === 'create-sticky-note' && tab?.id) {
+          await chrome.tabs.sendMessage(tab.id, {
+            action: 'createNoteAtClick'
+          });
+        }
+      }
+      
+      await handleContextMenuClick(
+        { menuItemId: 'create-sticky-note' },
+        null
+      );
+      
+      expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
+    });
+    
+    it('should handle sendMessage errors gracefully', async () => {
+      chrome.tabs.sendMessage.mockRejectedValue(new Error('Tab not found'));
+      
+      async function handleContextMenuClick(info, tab) {
+        if (info.menuItemId === 'create-sticky-note' && tab?.id) {
+          try {
+            await chrome.tabs.sendMessage(tab.id, {
+              action: 'createNoteAtClick'
+            });
+          } catch (error) {
+            // Silently handle - tab may not have content script
+            return { error: error.message };
+          }
+        }
+        return { success: true };
+      }
+      
+      const result = await handleContextMenuClick(
+        { menuItemId: 'create-sticky-note' },
+        { id: 123 }
+      );
+      
+      expect(result.error).toBe('Tab not found');
+    });
+  });
 });

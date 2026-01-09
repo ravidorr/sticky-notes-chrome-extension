@@ -94,6 +94,11 @@ export class MessageHandler {
         log.error(' Subscription error:', message.type, message.error);
         return { success: true };
       
+      case 'createNoteAtClick':
+        log.debug(' Creating note at right-clicked element');
+        await this.app.createNoteAtClick();
+        return { success: true };
+      
       default:
         log.warn(' Unknown action:', message.action);
         return { success: false, error: 'Unknown action' };

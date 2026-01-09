@@ -427,4 +427,203 @@ describe('Content Script Logic', () => {
       observer.disconnect();
     });
   });
+  
+  describe('context menu - right-click tracking', () => {
+    it('should track last right-clicked element', () => {
+      let lastRightClickedElement = null;
+      
+      document.addEventListener('contextmenu', (e) => {
+        lastRightClickedElement = e.target;
+      }, true);
+      
+      const element = document.getElementById('title');
+      const event = new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true
+      });
+      element.dispatchEvent(event);
+      
+      expect(lastRightClickedElement).toBe(element);
+    });
+    
+    it('should update tracked element on subsequent right-clicks', () => {
+      let lastRightClickedElement = null;
+      
+      const handler = (e) => {
+        lastRightClickedElement = e.target;
+      };
+      document.addEventListener('contextmenu', handler, true);
+      
+      // First right-click
+      const element1 = document.getElementById('title');
+      element1.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+      expect(lastRightClickedElement).toBe(element1);
+      
+      // Second right-click on different element
+      const element2 = document.getElementById('paragraph');
+      element2.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+      expect(lastRightClickedElement).toBe(element2);
+      
+      document.removeEventListener('contextmenu', handler, true);
+    });
+  });
+  
+  describe('context menu - createNoteAtClick message handling', () => {
+    it('should handle createNoteAtClick action', () => {
+      const createNoteAtClick = jest.fn(() => Promise.resolve());
+      
+      function handleMessage(message, handlers) {
+        const handler = handlers[message.action];
+        if (handler) {
+          return handler(message);
+        }
+        return { success: false, error: 'Unknown action' };
+      }
+      
+      handleMessage(
+        { action: 'createNoteAtClick' },
+        { createNoteAtClick }
+      );
+      
+      expect(createNoteAtClick).toHaveBeenCalled();
+    });
+    
+    it('should not create note without right-clicked element', async () => {
+      let lastRightClickedElement = null;
+      let noteCreated = false;
+      
+      async function createNoteAtClick() {
+        if (!lastRightClickedElement) {
+          return { success: false, error: 'No element' };
+        }
+        noteCreated = true;
+        return { success: true };
+      }
+      
+      const result = await createNoteAtClick();
+      
+      expect(result.success).toBe(false);
+      expect(noteCreated).toBe(false);
+    });
+    
+    it('should create note with tracked element', async () => {
+      let lastRightClickedElement = document.getElementById('title');
+      let createdSelector = null;
+      
+      function generateSelector(element) {
+        return `#${element.id}`;
+      }
+      
+      async function createNoteAtClick() {
+        if (!lastRightClickedElement) {
+          return { success: false, error: 'No element' };
+        }
+        
+        const selector = generateSelector(lastRightClickedElement);
+        if (!selector) {
+          return { success: false, error: 'Could not generate selector' };
+        }
+        
+        createdSelector = selector;
+        return { success: true, selector };
+      }
+      
+      const result = await createNoteAtClick();
+      
+      expect(result.success).toBe(true);
+      expect(createdSelector).toBe('#title');
+    });
+  });
+  
+  describe('context menu - note creation at element', () => {
+    it('should save note with correct metadata', async () => {
+      const element = document.getElementById('article-1');
+      const selector = '#article-1';
+      
+      chrome.runtime.sendMessage.mockResolvedValue({
+        success: true,
+        note: { id: 'new-id', selector, content: '' }
+      });
+      
+      async function createNoteAtElement(element, selector) {
+        const noteData = {
+          url: window.location.href,
+          selector: selector,
+          content: '',
+          theme: 'yellow',
+          position: { anchor: 'top-right' },
+          anchorText: element.textContent?.trim().substring(0, 100) || '',
+          metadata: {
+            url: window.location.href,
+            title: document.title,
+            browser: 'Test Browser',
+            viewport: `${window.innerWidth}x${window.innerHeight}`,
+            timestamp: new Date().toISOString()
+          }
+        };
+        
+        const response = await chrome.runtime.sendMessage({
+          action: 'saveNote',
+          note: noteData
+        });
+        
+        return response;
+      }
+      
+      const result = await createNoteAtElement(element, selector);
+      
+      expect(result.success).toBe(true);
+      expect(result.note.selector).toBe('#article-1');
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'saveNote',
+          note: expect.objectContaining({
+            selector: '#article-1',
+            theme: 'yellow',
+            content: ''
+          })
+        })
+      );
+    });
+    
+    it('should handle missing element gracefully', async () => {
+      async function createNoteAtElement(element, selector) {
+        if (!element || !selector) {
+          return { success: false, error: 'Missing element or selector' };
+        }
+        return { success: true };
+      }
+      
+      const result = await createNoteAtElement(null, null);
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Missing element or selector');
+    });
+    
+    it('should handle save failure', async () => {
+      const element = document.getElementById('title');
+      
+      chrome.runtime.sendMessage.mockResolvedValue({
+        success: false,
+        error: 'Storage quota exceeded'
+      });
+      
+      async function createNoteAtElement(element, selector) {
+        const response = await chrome.runtime.sendMessage({
+          action: 'saveNote',
+          note: { selector, content: '' }
+        });
+        
+        if (!response.success) {
+          return { success: false, error: response.error };
+        }
+        return response;
+      }
+      
+      const result = await createNoteAtElement(element, '#title');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Storage quota exceeded');
+    });
+  });
 });

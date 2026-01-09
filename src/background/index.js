@@ -73,6 +73,29 @@ export function bootstrap() {
     initializeFirebase();
   }
 
+  // Create context menu for creating notes
+  chrome.contextMenus.create({
+    id: 'create-sticky-note',
+    title: chrome.i18n.getMessage('contextMenuCreateNote') || 'Create Sticky Note Here',
+    contexts: ['page', 'selection', 'image', 'link']
+  }, () => {
+    // Ignore error if menu already exists (e.g., during hot reload)
+    if (chrome.runtime.lastError) {
+      log.debug('Context menu creation:', chrome.runtime.lastError.message);
+    }
+  });
+
+  // Handle context menu click
+  chrome.contextMenus.onClicked.addListener((info, tab) => {
+    if (info.menuItemId === 'create-sticky-note' && tab?.id) {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'createNoteAtClick'
+      }).catch(error => {
+        log.warn('Failed to send createNoteAtClick message:', error);
+      });
+    }
+  });
+
   // Listen for messages from popup and content scripts
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleMessage(message, sender)

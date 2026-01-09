@@ -502,5 +502,14 @@
   "realtimeSyncRequiresFirebase": {
     "message": "סנכרון בזמן אמת דורש הגדרת Firebase",
     "description": "Error when Firebase is not configured for real-time sync"
+  },
+
+  "contextMenuCreateNote": {
+    "message": "צור פתק כאן",
+    "description": "Context menu item to create a note on the right-clicked element"
+  },
+  "noteCreated": {
+    "message": "הפתק נוצר",
+    "description": "Toast message after creating a note from context menu"
   }
 }

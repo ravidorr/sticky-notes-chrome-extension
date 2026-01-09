@@ -21,6 +21,7 @@ export class StickyNotesApp {
     this.currentUrl = window.location.href;
     this.contextInvalidated = false;
     this.currentUser = null;
+    this.lastRightClickedElement = null;
     
     // Services
     this.selectorEngine = new SelectorEngine();
@@ -32,7 +33,19 @@ export class StickyNotesApp {
     this.realtimeSync = null;
     this.messageHandler = null;
     
+    // Track right-clicked element for context menu
+    this.setupContextMenuTracking();
+    
     this.init();
+  }
+  
+  /**
+   * Track the element that was right-clicked for context menu
+   */
+  setupContextMenuTracking() {
+    document.addEventListener('contextmenu', (e) => {
+      this.lastRightClickedElement = e.target;
+    }, true);
   }
   
   /**
@@ -249,5 +262,33 @@ export class StickyNotesApp {
    */
   highlightNote(noteId) {
     this.noteManager.highlightNote(noteId);
+  }
+  
+  /**
+   * Create a note at the last right-clicked element
+   * Called from context menu
+   */
+  async createNoteAtClick() {
+    if (!this.lastRightClickedElement) {
+      log.warn('No right-clicked element to attach note to');
+      return;
+    }
+    
+    try {
+      // Generate selector for the clicked element
+      const selector = this.selectorEngine.generate(this.lastRightClickedElement);
+      
+      if (!selector) {
+        log.warn('Could not generate selector for element');
+        return;
+      }
+      
+      // Create note via NoteManager
+      await this.noteManager.createNoteAtElement(this.lastRightClickedElement, selector);
+      
+      log.debug('Created note at right-clicked element');
+    } catch (error) {
+      log.error('Failed to create note at click:', error);
+    }
   }
 }

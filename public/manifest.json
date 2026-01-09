@@ -10,7 +10,8 @@
     "storage",
     "scripting",
     "webNavigation",
-    "identity"
+    "identity",
+    "contextMenus"
   ],
   "host_permissions": [
     "<all_urls>"

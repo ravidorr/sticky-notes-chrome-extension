@@ -206,7 +206,7 @@ Unplanned feature ideas for future consideration:
 
 - [] Minimize note (collapse to small indicator)
 - [] Delete/bulk delete notes from popup.html
-- [] Add note through right-click context menu
+- [x] Add note through right-click context menu
 - [] Read-only user permissions (viewers who can see notes but not edit/comment) - pricing implications?
 - [] Freemium model with ads - all features free forever but with ads in notes (research: can Google Ads be injected into extension UI?)
 

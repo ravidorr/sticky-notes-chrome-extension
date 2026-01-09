@@ -380,6 +380,56 @@ export class NoteManager {
   }
   
   /**
+   * Create a note at a specific element (from context menu)
+   * @param {Element} element - Element to attach note to
+   * @param {string} selector - CSS selector for the element
+   */
+  async createNoteAtElement(element, selector) {
+    if (!element || !selector) {
+      log.warn('Cannot create note: missing element or selector');
+      return;
+    }
+    
+    // Create new note with metadata
+    const browserInfo = getBrowserInfo();
+    const noteData = {
+      url: this.getCurrentUrl(),
+      selector: selector,
+      content: '',
+      theme: 'yellow',
+      position: { anchor: 'top-right' },
+      anchorText: element.textContent?.trim().substring(0, 100) || '',
+      metadata: {
+        url: window.location.href,
+        title: document.title,
+        browser: `${browserInfo.browser}${browserInfo.version ? ' ' + browserInfo.version : ''}`,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+        timestamp: new Date().toISOString()
+      }
+    };
+    
+    try {
+      // Save to storage
+      const response = await this.sendMessage({
+        action: 'saveNote',
+        note: noteData
+      });
+      
+      if (response.success) {
+        // Create the note UI
+        this.createNoteFromData(response.note);
+        log.debug('Created note at element from context menu');
+      } else {
+        log.error('Failed to save note:', response.error);
+      }
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Failed to create note at element:', error);
+      }
+    }
+  }
+  
+  /**
    * Update notes from real-time sync
    * @param {Array} updatedNotes - Updated notes array
    */

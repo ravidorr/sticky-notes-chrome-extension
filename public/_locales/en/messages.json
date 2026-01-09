@@ -502,5 +502,14 @@
   "realtimeSyncRequiresFirebase": {
     "message": "Real-time sync requires Firebase to be configured",
     "description": "Error when Firebase is not configured for real-time sync"
+  },
+
+  "contextMenuCreateNote": {
+    "message": "Create Sticky Note Here",
+    "description": "Context menu item to create a note on the right-clicked element"
+  },
+  "noteCreated": {
+    "message": "Sticky note created",
+    "description": "Toast message after creating a note from context menu"
   }
 }
