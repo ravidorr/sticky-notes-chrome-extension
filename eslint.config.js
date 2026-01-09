@@ -1,6 +1,7 @@
 import globals from 'globals';
 import pluginJs from '@eslint/js';
 import noEmojiPlugin from 'eslint-plugin-no-emoji';
+import noEmDashPlugin from 'eslint-plugin-no-em-dash';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
@@ -21,7 +22,8 @@ export default [
   pluginJs.configs.recommended,
   {
     plugins: {
-      'no-emoji': noEmojiPlugin
+      'no-emoji': noEmojiPlugin,
+      'no-em-dash': noEmDashPlugin
     },
     rules: {
       // Error prevention
@@ -55,7 +57,10 @@ export default [
       'no-implied-eval': 'error',
       
       // No emoji in code
-      'no-emoji/no-emoji': 'error'
+      'no-emoji/no-emoji': 'error',
+      
+      // No em dashes - use regular hyphens instead
+      'no-em-dash/no-em-dash': 'error'
     }
   },
   {
