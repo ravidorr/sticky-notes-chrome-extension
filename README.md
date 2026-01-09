@@ -1,5 +1,10 @@
 # Element-Anchored Sticky Notes Chrome Extension
 
+[![CI](https://github.com/ravidorr/sticky-notes-chrome-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/ravidorr/sticky-notes-chrome-extension/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/ravidorr/sticky-notes-chrome-extension/pulls)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/ravidorr/sticky-notes-chrome-extension/graphs/commit-activity)
+
 A Chrome extension that allows users to annotate the web by attaching persistent sticky notes to specific UI elements on any website.
 
 ## Features
