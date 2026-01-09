@@ -14,9 +14,9 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js';
 export function getShadowStyles() {
   return `
     /* Sticky note container */
+    /* Note: z-index is set dynamically via inline style for bring-to-front functionality */
     .sn-note {
       position: absolute;
-      z-index: 2147483647;
       width: 280px;
       min-height: 120px;
       background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%);

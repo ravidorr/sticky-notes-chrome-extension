@@ -20,6 +20,12 @@ import { contentLogger as log } from '../../shared/logger.js';
 import { t } from '../../shared/i18n.js';
 
 export class StickyNote {
+  // Static z-index counter for bring-to-front functionality
+  // Base z-index is high to stay above page content but leaves room for incrementing
+  // (2147483647 is max int32, so we use a lower value)
+  static baseZIndex = 2147480000;
+  static currentZIndex = 2147480000;
+
   /**
    * Create a new sticky note
    * @param {Object} options - Note options
@@ -89,6 +95,8 @@ export class StickyNote {
     this.element = document.createElement('div');
     this.element.className = `sn-note sn-theme-${this.theme} sn-hidden`;
     this.element.dataset.noteId = this.id;
+    // Set initial z-index (will be increased when clicked for bring-to-front)
+    this.element.style.zIndex = StickyNote.baseZIndex;
     
     this.element.innerHTML = `
       <div class="sn-note-header">
@@ -229,7 +237,7 @@ export class StickyNote {
    * Setup event listeners
    */
   setupEventListeners() {
-    // Header drag
+    // Header drag (also brings note to front)
     const header = this.element.querySelector('.sn-note-header');
     header.addEventListener('mousedown', this.handleDragStart.bind(this));
     
@@ -270,6 +278,19 @@ export class StickyNote {
     
     // Keyboard shortcuts
     this.element.addEventListener('keydown', this.handleKeyDown.bind(this));
+    
+    // Bring to front when editor receives focus
+    const editorArea = this.element.querySelector('.sn-note-body');
+    if (editorArea) {
+      editorArea.addEventListener('focusin', () => this.bringToFront());
+    }
+    
+    // Bring to front when clicking anywhere on the note
+    this.element.addEventListener('click', (e) => {
+      // Don't bring to front if clicking inside a confirm dialog
+      if (e.target.closest('.sn-confirm-backdrop')) return;
+      this.bringToFront();
+    });
   }
   
   /**
@@ -671,12 +692,24 @@ export class StickyNote {
   }
   
   /**
+   * Bring this note to the front (above other notes)
+   */
+  bringToFront() {
+    if (!this.element) return;
+    StickyNote.currentZIndex++;
+    this.element.style.zIndex = StickyNote.currentZIndex;
+  }
+
+  /**
    * Handle drag start
    * @param {MouseEvent} event - Mouse event
    */
   handleDragStart(event) {
     // Don't start drag if clicking buttons
     if (event.target.closest('.sn-note-btn')) return;
+    
+    // Bring note to front when starting to drag
+    this.bringToFront();
     
     this.isDragging = true;
     this.dragOffset = {
@@ -720,7 +753,8 @@ export class StickyNote {
   async handleDelete() {
     const confirmed = await ConfirmDialog.show({
       message: t('deleteConfirm'),
-      shadowRoot: this.element.getRootNode()
+      shadowRoot: this.element.getRootNode(),
+      zIndex: StickyNote.currentZIndex + 1000
     });
     if (confirmed) {
       this.onDelete();

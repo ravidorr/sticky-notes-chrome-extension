@@ -17,13 +17,16 @@ export class ConfirmDialog {
    * @param {string} [options.cancelText] - Cancel button text (default: 'Cancel')
    * @param {boolean} [options.danger] - If true, styles confirm button as destructive
    * @param {ShadowRoot} options.shadowRoot - Shadow root to render in
+   * @param {number} [options.zIndex] - Z-index for the dialog (default: very high)
    * @returns {Promise<boolean>} Resolves true if confirmed, false if cancelled
    */
-  static show({ message, confirmText, cancelText, danger = true, shadowRoot }) {
+  static show({ message, confirmText, cancelText, danger = true, shadowRoot, zIndex }) {
     return new Promise((resolve) => {
-      // Create backdrop
+      // Create backdrop with z-index higher than any note
       const backdrop = document.createElement('div');
       backdrop.className = 'sn-confirm-backdrop';
+      // Use provided z-index or default to very high value
+      backdrop.style.zIndex = zIndex || 2147483647;
       
       // Create dialog
       const dialog = document.createElement('div');
@@ -65,8 +68,12 @@ export class ConfirmDialog {
       // Focus confirm button
       confirmBtn.focus();
       
-      // Cleanup function
+      // Cleanup function with guard to prevent multiple calls
+      let cleanupCalled = false;
       const cleanup = (result) => {
+        if (cleanupCalled) return;
+        cleanupCalled = true;
+        
         backdrop.classList.add('sn-confirm-closing');
         const handleAnimationEnd = () => {
           backdrop.remove();
@@ -77,9 +84,39 @@ export class ConfirmDialog {
         setTimeout(handleAnimationEnd, 200);
       };
       
-      // Event handlers
-      confirmBtn.addEventListener('click', () => cleanup(true));
-      cancelBtn.addEventListener('click', () => cleanup(false));
+      // Event handlers - use mouseup instead of click for more reliable capture
+      // Also stop propagation to prevent document-level handlers from interfering
+      const handleButtonMouseDown = (e) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      };
+      
+      confirmBtn.addEventListener('mousedown', handleButtonMouseDown);
+      cancelBtn.addEventListener('mousedown', handleButtonMouseDown);
+      
+      confirmBtn.addEventListener('mouseup', (e) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        cleanup(true);
+      });
+      cancelBtn.addEventListener('mouseup', (e) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        cleanup(false);
+      });
+      
+      // Also keep click handlers as backup
+      confirmBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        cleanup(true);
+      });
+      cancelBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        cleanup(false);
+      });
+      
       backdrop.addEventListener('click', (event) => {
         if (event.target === backdrop) cleanup(false);
       });
@@ -117,13 +154,13 @@ export class ConfirmDialog {
   static getStyles() {
     return `
       /* Confirm dialog backdrop */
+      /* Note: z-index is set dynamically via inline style to be above all notes */
       .sn-confirm-backdrop {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
-        z-index: 2147483647;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -159,6 +196,8 @@ export class ConfirmDialog {
           0 0 0 1px rgba(0, 0, 0, 0.05);
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
         animation: sn-scale-in 0.15s ease;
+        pointer-events: auto;
+        position: relative;
       }
       
       .sn-confirm-closing .sn-confirm-dialog {
@@ -215,6 +254,8 @@ export class ConfirmDialog {
         cursor: pointer;
         transition: all 0.15s ease;
         min-width: 80px;
+        pointer-events: auto;
+        position: relative;
       }
       
       .sn-confirm-btn:focus {

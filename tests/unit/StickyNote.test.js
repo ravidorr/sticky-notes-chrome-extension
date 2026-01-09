@@ -447,4 +447,73 @@ describe('StickyNote', () => {
       expect(StickyNote).toBeDefined();
     });
   });
+  
+  describe('z-index management', () => {
+    it('should have static baseZIndex property', () => {
+      expect(StickyNote.baseZIndex).toBeDefined();
+      expect(typeof StickyNote.baseZIndex).toBe('number');
+    });
+    
+    it('should have static currentZIndex property', () => {
+      expect(StickyNote.currentZIndex).toBeDefined();
+      expect(typeof StickyNote.currentZIndex).toBe('number');
+    });
+    
+    it('should have baseZIndex less than max int32 to allow incrementing', () => {
+      // Max int32 is 2147483647, we need room to increment
+      expect(StickyNote.baseZIndex).toBeLessThan(2147483647);
+    });
+    
+    it('should set initial z-index on element', () => {
+      expect(note.element.style.zIndex).toBe(String(StickyNote.baseZIndex));
+    });
+  });
+  
+  describe('bringToFront', () => {
+    it('should have bringToFront method', () => {
+      expect(typeof note.bringToFront).toBe('function');
+    });
+    
+    it('should increment currentZIndex when called', () => {
+      const localThis = {};
+      localThis.initialZIndex = StickyNote.currentZIndex;
+      note.bringToFront();
+      expect(StickyNote.currentZIndex).toBe(localThis.initialZIndex + 1);
+    });
+    
+    it('should update element z-index to currentZIndex', () => {
+      note.bringToFront();
+      expect(note.element.style.zIndex).toBe(String(StickyNote.currentZIndex));
+    });
+    
+    it('should not throw if element is null', () => {
+      note.element = null;
+      expect(() => note.bringToFront()).not.toThrow();
+    });
+    
+    it('should bring note to front when clicked', () => {
+      const localThis = {};
+      localThis.bringToFrontSpy = jest.spyOn(note, 'bringToFront');
+      
+      note.element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      
+      expect(localThis.bringToFrontSpy).toHaveBeenCalled();
+    });
+    
+    it('should bring note to front when dragging starts', () => {
+      const localThis = {};
+      localThis.initialZIndex = StickyNote.currentZIndex;
+      
+      const header = note.element.querySelector('.sn-note-header');
+      const mousedownEvent = new MouseEvent('mousedown', {
+        clientX: 100,
+        clientY: 100,
+        bubbles: true
+      });
+      
+      header.dispatchEvent(mousedownEvent);
+      
+      expect(StickyNote.currentZIndex).toBeGreaterThan(localThis.initialZIndex);
+    });
+  });
 });

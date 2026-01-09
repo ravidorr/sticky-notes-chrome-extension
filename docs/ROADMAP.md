@@ -213,6 +213,8 @@ Unplanned feature ideas for future consideration:
 - [] Firefox browser support (requires WebExtensions API adaptation)
 - [] Test data cleanup feature (delete all notes for testing purposes)
 - [] WCAG 2.1 AA accessibility compliance
+- [] Additional note positions: Center Left, Center Right, Top Center, Bottom Center
+- [] Auto position: smart positioning based on available viewport space
 
 ---
 

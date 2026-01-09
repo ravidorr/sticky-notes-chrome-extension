@@ -7,6 +7,7 @@ import { t } from '../../shared/i18n.js';
 import { formatRelativeTime, escapeHtml } from '../../shared/utils.js';
 import { contentLogger as log } from '../../shared/logger.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
+import { StickyNote } from './StickyNote.js';
 
 export class CommentSection {
   /**
@@ -513,7 +514,8 @@ export class CommentSection {
   async deleteComment(commentId) {
     const confirmed = await ConfirmDialog.show({
       message: t('deleteCommentConfirm'),
-      shadowRoot: this.element.getRootNode()
+      shadowRoot: this.element.getRootNode(),
+      zIndex: StickyNote.currentZIndex + 1000
     });
     if (!confirmed) return;
     

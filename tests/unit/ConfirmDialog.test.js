@@ -278,6 +278,62 @@ describe('ConfirmDialog', () => {
       cancelBtn.click();
       await promise;
     });
+    
+    it('uses provided zIndex for backdrop', async () => {
+      const customZIndex = 9999999;
+      const promise = ConfirmDialog.show({
+        message: 'Test message',
+        shadowRoot,
+        zIndex: customZIndex
+      });
+      
+      const backdrop = shadowRoot.querySelector('.sn-confirm-backdrop');
+      expect(backdrop.style.zIndex).toBe(String(customZIndex));
+      
+      const cancelBtn = shadowRoot.querySelector('.sn-confirm-cancel');
+      cancelBtn.click();
+      await promise;
+    });
+    
+    it('uses default zIndex when not provided', async () => {
+      const promise = ConfirmDialog.show({
+        message: 'Test message',
+        shadowRoot
+      });
+      
+      const backdrop = shadowRoot.querySelector('.sn-confirm-backdrop');
+      // Default should be a very high value
+      expect(parseInt(backdrop.style.zIndex)).toBeGreaterThan(2000000000);
+      
+      const cancelBtn = shadowRoot.querySelector('.sn-confirm-cancel');
+      cancelBtn.click();
+      await promise;
+    });
+    
+    it('only resolves once even if clicked multiple times', async () => {
+      const localThis = {};
+      localThis.resolveCount = 0;
+      
+      const promise = ConfirmDialog.show({
+        message: 'Test message',
+        shadowRoot
+      }).then(result => {
+        localThis.resolveCount++;
+        return result;
+      });
+      
+      const confirmBtn = shadowRoot.querySelector('.sn-confirm-ok');
+      
+      // Click multiple times rapidly
+      confirmBtn.click();
+      confirmBtn.click();
+      confirmBtn.click();
+      
+      await promise;
+      
+      // Should only resolve once due to cleanupCalled guard
+      expect(localThis.resolveCount).toBe(1);
+    });
   });
   
   describe('getStyles()', () => {
