@@ -27,6 +27,7 @@ describe('StickyNote', () => {
   let anchor;
   let container;
   let onSave;
+  let onThemeChange;
   let onDelete;
   
   beforeEach(() => {
@@ -36,6 +37,7 @@ describe('StickyNote', () => {
     document.body.appendChild(container);
     
     onSave = jest.fn();
+    onThemeChange = jest.fn();
     onDelete = jest.fn();
     
     note = new StickyNote({
@@ -46,6 +48,7 @@ describe('StickyNote', () => {
       theme: 'yellow',
       position: { anchor: 'top-right' },
       onSave: onSave,
+      onThemeChange: onThemeChange,
       onDelete: onDelete
     });
   });
@@ -146,6 +149,30 @@ describe('StickyNote', () => {
         expect(note.theme).toBe(theme);
         expect(note.element.classList.contains(`sn-theme-${theme}`)).toBe(true);
       });
+    });
+  });
+  
+  describe('onThemeChange callback', () => {
+    it('should call onThemeChange when theme picker button is clicked', () => {
+      // Show the theme picker
+      note.showThemePicker();
+      const picker = note.element.querySelector('.sn-theme-picker');
+      expect(picker).not.toBeNull();
+      
+      // Click on the blue theme button (second button)
+      const themeButtons = picker.querySelectorAll('button');
+      expect(themeButtons.length).toBeGreaterThan(1);
+      
+      // Click on a different theme (not yellow which is current)
+      themeButtons[1].click(); // blue
+      
+      expect(onThemeChange).toHaveBeenCalledWith('blue');
+    });
+    
+    it('should not call onThemeChange if setTheme is called directly', () => {
+      // setTheme alone should not trigger the callback
+      note.setTheme('green');
+      expect(onThemeChange).not.toHaveBeenCalled();
     });
   });
   
