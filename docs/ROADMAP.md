@@ -209,6 +209,8 @@ Unplanned feature ideas for future consideration:
 - [x] Add note through right-click context menu
 - [] Read-only user permissions (viewers who can see notes but not edit/comment) - pricing implications?
 - [] Freemium model with ads - all features free forever but with ads in notes (research: can Google Ads be injected into extension UI?)
+- [] Edge browser support (Chromium-based, should be straightforward)
+- [] Firefox browser support (requires WebExtensions API adaptation)
 
 ---
 
