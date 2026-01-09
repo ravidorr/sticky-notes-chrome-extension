@@ -494,33 +494,34 @@ export class StickyNote {
   
   /**
    * Get SVG icon for position
-   * Shows a box (element) with a small rectangle (note) in the corresponding corner
+   * Shows a small filled square (element) with a larger empty square (note) 
+   * positioned intuitively relative to the element
    * @param {string} position - Position value (top-left, top-right, etc.)
    * @returns {string} SVG markup
    */
   getPositionIcon(position) {
-    // Base: rounded rectangle representing the element
-    // Small filled rectangle representing note position
+    // Small filled square = element, larger empty square = note
+    // Position names are intuitive: "top-right" means note is above and to the right of element
     const icons = {
       'top-left': `
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="4" y="4" width="16" height="16" rx="2" stroke="#9ca3af"/>
-          <rect x="5" y="5" width="6" height="5" rx="1" fill="#374151" stroke="none"/>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-width="1.5">
+          <rect x="1" y="1" width="10" height="10" rx="1" stroke="#9ca3af" fill="none"/>
+          <rect x="13" y="13" width="6" height="6" rx="1" fill="#374151" stroke="none"/>
         </svg>`,
       'top-right': `
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="4" y="4" width="16" height="16" rx="2" stroke="#9ca3af"/>
-          <rect x="13" y="5" width="6" height="5" rx="1" fill="#374151" stroke="none"/>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-width="1.5">
+          <rect x="13" y="1" width="10" height="10" rx="1" stroke="#9ca3af" fill="none"/>
+          <rect x="5" y="13" width="6" height="6" rx="1" fill="#374151" stroke="none"/>
         </svg>`,
       'bottom-left': `
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="4" y="4" width="16" height="16" rx="2" stroke="#9ca3af"/>
-          <rect x="5" y="14" width="6" height="5" rx="1" fill="#374151" stroke="none"/>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-width="1.5">
+          <rect x="1" y="13" width="10" height="10" rx="1" stroke="#9ca3af" fill="none"/>
+          <rect x="13" y="5" width="6" height="6" rx="1" fill="#374151" stroke="none"/>
         </svg>`,
       'bottom-right': `
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="4" y="4" width="16" height="16" rx="2" stroke="#9ca3af"/>
-          <rect x="13" y="14" width="6" height="5" rx="1" fill="#374151" stroke="none"/>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-width="1.5">
+          <rect x="13" y="13" width="10" height="10" rx="1" stroke="#9ca3af" fill="none"/>
+          <rect x="5" y="5" width="6" height="6" rx="1" fill="#374151" stroke="none"/>
         </svg>`
     };
     return icons[position] || icons['top-right'];
@@ -620,23 +621,28 @@ export class StickyNote {
     let x, y;
     
     // Calculate position based on anchor position setting
+    // Position names are intuitive: "top-right" means note is ABOVE and to the RIGHT of element
     switch (this.position.anchor) {
       case 'top-left':
+        // Note above and to the left of element
         x = anchorRect.left + scrollX - noteRect.width - 10;
-        y = anchorRect.top + scrollY;
-        break;
-      case 'bottom-right':
-        x = anchorRect.right + scrollX + 10;
-        y = anchorRect.bottom + scrollY - noteRect.height;
-        break;
-      case 'bottom-left':
-        x = anchorRect.left + scrollX - noteRect.width - 10;
-        y = anchorRect.bottom + scrollY - noteRect.height;
+        y = anchorRect.top + scrollY - noteRect.height - 10;
         break;
       case 'top-right':
-      default:
+        // Note above and to the right of element
         x = anchorRect.right + scrollX + 10;
-        y = anchorRect.top + scrollY;
+        y = anchorRect.top + scrollY - noteRect.height - 10;
+        break;
+      case 'bottom-left':
+        // Note below and to the left of element
+        x = anchorRect.left + scrollX - noteRect.width - 10;
+        y = anchorRect.bottom + scrollY + 10;
+        break;
+      case 'bottom-right':
+      default:
+        // Note below and to the right of element (default)
+        x = anchorRect.right + scrollX + 10;
+        y = anchorRect.bottom + scrollY + 10;
         break;
     }
     
