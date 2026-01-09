@@ -79,9 +79,6 @@ sticky-notes-chrome-extension/
 # Install dependencies
 npm install
 
-# Generate icon files
-npm run generate:icons
-
 # Build the extension
 npm run build
 ```
