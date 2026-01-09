@@ -224,6 +224,7 @@ Unplanned feature ideas for future consideration:
 
 - [] Note position relative to element (top/bottom + right/left) isn't always working correctly
 - [] On some pages, notes fail to attach to elements at all
+- [] On pages with repeated content structures (e.g., live news feeds), notes may attach to the wrong instance of an element due to non-unique CSS selectors
 
 ### Minor
 

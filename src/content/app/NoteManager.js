@@ -76,6 +76,12 @@ export class NoteManager {
    * @param {Object} noteData - Note data from storage
    */
   createNoteFromData(noteData) {
+    // Check if note already exists to prevent duplicates
+    if (this.notes.has(noteData.id)) {
+      log.debug('Note already exists, skipping creation:', noteData.id);
+      return;
+    }
+    
     // Find the anchor element
     let anchorElement = document.querySelector(noteData.selector);
     
@@ -112,6 +118,7 @@ export class NoteManager {
       metadata: noteData.metadata,
       createdAt: noteData.createdAt,
       onSave: (content) => this.handleNoteSave(noteData.id, content),
+      onThemeChange: (theme) => this.handleThemeChange(noteData.id, theme),
       onDelete: () => this.handleNoteDelete(noteData.id),
       // Comment-related options
       user: user,
@@ -145,6 +152,24 @@ export class NoteManager {
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
         log.error('Error saving note:', error);
+      }
+    }
+  }
+  
+  /**
+   * Handle theme change
+   * @param {string} noteId - Note ID
+   * @param {string} theme - New theme
+   */
+  async handleThemeChange(noteId, theme) {
+    try {
+      await this.sendMessage({
+        action: 'updateNote',
+        note: { id: noteId, theme }
+      });
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Error saving theme:', error);
       }
     }
   }
@@ -336,6 +361,12 @@ export class NoteManager {
     // Generate selector for the element
     const selector = this.selectorEngine.generate(element);
     
+    // Verify the selector finds the right element
+    const foundElement = document.querySelector(selector);
+    if (foundElement !== element) {
+      log.warn('Selector matches a different element - page may have duplicate structures');
+    }
+    
     if (!selector) {
       log.error('Could not generate selector for element');
       return;
@@ -509,11 +540,31 @@ export class NoteManager {
    */
   highlightNote(noteId) {
     const note = this.notes.get(noteId);
-    if (note && note.anchor) {
-      // Scroll element into view
-      note.anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      
-      // Force show the note
+    
+    if (!note) {
+      return;
+    }
+    
+    if (!note.anchor) {
+      // Try to find the anchor element again
+      const anchor = document.querySelector(note.selector);
+      if (anchor) {
+        note.anchor = anchor;
+      } else {
+        return;
+      }
+    }
+    
+    // Scroll element into view
+    note.anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    // Reset custom position so note positions relative to anchor
+    note.customPosition = null;
+    
+    // Wait for scroll animation to complete before positioning
+    // This ensures the note is positioned relative to anchor's final position
+    setTimeout(() => {
+      // Force show the note (this will call updatePosition)
       note.show();
       
       // Bring note to front (above other notes)
@@ -521,7 +572,7 @@ export class NoteManager {
       
       // Add highlight effect
       note.highlight();
-    }
+    }, 400); // 400ms matches typical smooth scroll duration
   }
   
   /**

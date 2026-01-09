@@ -36,6 +36,7 @@ export class StickyNote {
    * @param {string} options.theme - Color theme (yellow, blue, green, pink)
    * @param {Object} options.position - Position config
    * @param {Function} options.onSave - Save callback
+   * @param {Function} options.onThemeChange - Theme change callback
    * @param {Function} options.onDelete - Delete callback
    * @param {Object} options.user - Current user for comments { uid, email, displayName }
    * @param {Function} options.onAddComment - Add comment callback
@@ -53,6 +54,7 @@ export class StickyNote {
     this.theme = options.theme || 'yellow';
     this.position = options.position || { anchor: 'top-right' };
     this.onSave = options.onSave || (() => {});
+    this.onThemeChange = options.onThemeChange || (() => {});
     this.onDelete = options.onDelete || (() => {});
     
     // Comment-related callbacks
@@ -486,7 +488,7 @@ export class StickyNote {
       
       btn.addEventListener('click', () => {
         this.setTheme(theme);
-        this.onSave(this.content); // Save theme change
+        this.onThemeChange(theme); // Save theme change
         picker.remove();
       });
       
@@ -638,6 +640,11 @@ export class StickyNote {
     const noteRect = this.element.getBoundingClientRect();
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // For wide elements (more than 70% of viewport), use a smarter positioning
+    const isWideElement = anchorRect.width > viewportWidth * 0.7;
     
     let x, y;
     
@@ -651,7 +658,11 @@ export class StickyNote {
         break;
       case 'top-right':
         // Note above and to the right of element
-        x = anchorRect.right + scrollX + 10;
+        if (isWideElement) {
+          x = Math.min(anchorRect.right, viewportWidth - noteRect.width - 20) + scrollX;
+        } else {
+          x = anchorRect.right + scrollX + 10;
+        }
         y = anchorRect.top + scrollY - noteRect.height - 10;
         break;
       case 'bottom-left':
@@ -662,33 +673,26 @@ export class StickyNote {
       case 'bottom-right':
       default:
         // Note below and to the right of element (default)
-        x = anchorRect.right + scrollX + 10;
+        if (isWideElement) {
+          // For wide elements, position at a reasonable location within viewport
+          x = Math.min(anchorRect.right, viewportWidth * 0.7) + scrollX;
+        } else {
+          x = anchorRect.right + scrollX + 10;
+        }
         y = anchorRect.bottom + scrollY + 10;
         break;
     }
     
     // Collision detection - keep note in viewport
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+    const maxX = scrollX + viewportWidth - noteRect.width - 20;
+    const maxY = scrollY + viewportHeight - noteRect.height - 20;
     
-    // Adjust horizontal position
-    if (x + noteRect.width > scrollX + viewportWidth) {
-      x = anchorRect.left + scrollX - noteRect.width - 10;
-    }
-    if (x < scrollX) {
-      x = scrollX + 10;
-    }
+    // Ensure note stays within visible bounds
+    const finalX = Math.max(scrollX + 10, Math.min(x, maxX));
+    const finalY = Math.max(scrollY + 10, Math.min(y, maxY));
     
-    // Adjust vertical position
-    if (y + noteRect.height > scrollY + viewportHeight) {
-      y = scrollY + viewportHeight - noteRect.height - 10;
-    }
-    if (y < scrollY) {
-      y = scrollY + 10;
-    }
-    
-    this.element.style.left = `${x}px`;
-    this.element.style.top = `${y}px`;
+    this.element.style.left = `${finalX}px`;
+    this.element.style.top = `${finalY}px`;
   }
   
   /**
