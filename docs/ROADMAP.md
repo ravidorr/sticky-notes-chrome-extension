@@ -211,14 +211,21 @@ Unplanned feature ideas for future consideration:
 - [] Freemium model with ads - all features free forever but with ads in notes (research: can Google Ads be injected into extension UI?)
 - [] Edge browser support (Chromium-based, should be straightforward)
 - [] Firefox browser support (requires WebExtensions API adaptation)
+- [] Test data cleanup feature (delete all notes for testing purposes)
+- [] WCAG 2.1 AA accessibility compliance
 
 ---
 
 ## Known Bugs
 
-- [] The yellow color of the "Add to Chrome" button doesn't work well with the colors in the Chrome SVG logo
+### Major
+
 - [] Note position relative to element (top/bottom + right/left) isn't always working correctly
 - [] On some pages, notes fail to attach to elements at all
+
+### Minor
+
+- [] The yellow color of the "Add to Chrome" button doesn't work well with the colors in the Chrome SVG logo
 
 ---
 
