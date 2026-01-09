@@ -31,11 +31,12 @@
 
 ### Code Quality [x]
 - [x] ESLint configuration with pre-commit hooks
-- [x] Unit test coverage (325 tests, ~32% coverage)
+- [x] Unit test coverage (739 tests, ~65% coverage)
 - [x] Shared utility functions for testability
 - [x] Conditional debug logging (configurable via env)
 - [x] XSS prevention with HTML escaping
 - [x] CSS selector validation for security
+- [x] Modular content script architecture
 
 ---
 
@@ -48,13 +49,13 @@
 
 ---
 
-## Phase 2: Threaded Discussions & Real-time Sync []
+## Phase 2: Threaded Discussions & Real-time Sync [x]
 
 Add comment threads to notes for Q&A and discussions.
 
 ### Real-time Features
-- [] Real-time collaborative updates (live sync for notes)
-- [] Real-time sync for comments
+- [x] Real-time collaborative updates (live sync for notes)
+- [x] Real-time sync for comments
 
 ### Data Model
 ```javascript
@@ -64,6 +65,7 @@ Add comment threads to notes for Q&A and discussions.
   authorId: "user2",
   authorEmail: "user2@email.com",
   authorName: "Jane Doe",
+  authorPhotoURL: "https://...",  // User's profile photo
   content: "What does this mean?",
   createdAt: Timestamp,
   parentId: null  // null = top-level, commentId for replies
@@ -71,17 +73,18 @@ Add comment threads to notes for Q&A and discussions.
 ```
 
 ### Features
-- [] Comment list in note (collapsible)
-- [] Reply button per comment
-- [] User avatars/names display
-- [] Relative timestamps ("2 hours ago")
-- [] Real-time sync for comments
+- [x] Comment list in note (collapsible)
+- [x] Reply button per comment (1-level nesting)
+- [x] User avatars/names display
+- [x] Relative timestamps ("2 hours ago")
+- [x] Real-time sync for comments
 
-### Considerations
-- Depth limit for nested replies (recommend: 1 level)
-- Permissions: who can comment?
-- UI expansion for thread display
-- **Firestore Index**: Composite index on `parentId` + `createdAt` for efficient threaded queries
+### Implementation Notes
+- Depth limit: 1 level (direct replies only)
+- Permissions: Anyone with note access can comment
+- Comment authors can edit/delete their own comments
+- Note owners can delete any comment
+- **Firestore Index**: Composite index on `parentId` + `createdAt` (see FIREBASE_SETUP.md)
 
 ---
 
@@ -194,6 +197,26 @@ Low-effort features to test market fit:
 1. ~~**"Copy as Markdown" button**~~ [x] - Bug report template with URL + selector
 2. ~~**"Copy screenshot" button**~~ [x] - One-click annotated screenshot (highlights element)
 3. ~~**Metadata display**~~ [x] - Collapsible footer showing URL, browser, viewport, timestamp
+
+---
+
+## Ideas Bucket
+
+Unplanned feature ideas for future consideration:
+
+- [] Minimize note (collapse to small indicator)
+- [] Delete/bulk delete notes from popup.html
+- [] Add note through right-click context menu
+- [] Read-only user permissions (viewers who can see notes but not edit/comment) - pricing implications?
+- [] Freemium model with ads - all features free forever but with ads in notes (research: can Google Ads be injected into extension UI?)
+
+---
+
+## Known Bugs
+
+- [] The yellow color of the "Add to Chrome" button doesn't work well with the colors in the Chrome SVG logo
+- [] Note position relative to element (top/bottom + right/left) isn't always working correctly
+- [] On some pages, notes fail to attach to elements at all
 
 ---
 

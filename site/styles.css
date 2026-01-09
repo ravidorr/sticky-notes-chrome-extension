@@ -659,6 +659,21 @@ svg.editor-btn {
     font-family: var(--font-sans);
 }
 
+.note-comments-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    border-top: 1px solid rgba(217, 119, 6, 0.1);
+    color: #92400e;
+    font-size: 0.625rem;
+    cursor: pointer;
+}
+
+.note-comments-toggle .chevron {
+    margin-left: auto;
+}
+
 .note-footer {
     padding: 0.25rem 0.5rem;
     border-top: 1px solid rgba(217, 119, 6, 0.1);

@@ -1,0 +1,484 @@
+/**
+ * Note Manager
+ * Handles note CRUD operations, comments, and anchor management
+ */
+
+import { StickyNote } from '../components/StickyNote.js';
+import { contentLogger as log } from '../../shared/logger.js';
+import { t } from '../../shared/i18n.js';
+import { getBrowserInfo } from '../../shared/utils.js';
+
+/**
+ * Manages note operations
+ */
+export class NoteManager {
+  /**
+   * Create a NoteManager instance
+   * @param {Object} options - Configuration options
+   * @param {Map} options.notes - Notes map
+   * @param {Object} options.selectorEngine - Selector engine instance
+   * @param {Object} options.visibilityManager - Visibility manager instance
+   * @param {HTMLElement} options.container - Container element
+   * @param {Function} options.sendMessage - Function to send messages
+   * @param {Function} options.isContextInvalidatedError - Function to check context errors
+   * @param {Function} options.getCurrentUser - Function to get current user
+   * @param {Function} options.getCurrentUrl - Function to get current URL
+   * @param {Function} options.subscribeToComments - Function to subscribe to comments
+   * @param {Function} options.unsubscribeFromComments - Function to unsubscribe from comments
+   * @param {Function} options.showReanchorUI - Function to show reanchor UI
+   */
+  constructor(options) {
+    this.notes = options.notes;
+    this.selectorEngine = options.selectorEngine;
+    this.visibilityManager = options.visibilityManager;
+    this.container = options.container;
+    this.sendMessage = options.sendMessage;
+    this.isContextInvalidatedError = options.isContextInvalidatedError;
+    this.getCurrentUser = options.getCurrentUser;
+    this.getCurrentUrl = options.getCurrentUrl;
+    this.subscribeToComments = options.subscribeToComments;
+    this.unsubscribeFromComments = options.unsubscribeFromComments;
+    this.showReanchorUI = options.showReanchorUI;
+  }
+  
+  /**
+   * Load notes for the current page
+   * @param {Function} subscribeToNotes - Function to subscribe after loading
+   */
+  async loadNotes(subscribeToNotes) {
+    try {
+      // First, do a one-time fetch to get initial notes
+      const response = await this.sendMessage({
+        action: 'getNotes',
+        url: this.getCurrentUrl()
+      });
+      
+      if (response.success && response.notes) {
+        response.notes.forEach(noteData => {
+          this.createNoteFromData(noteData);
+        });
+      }
+      
+      // Then subscribe to real-time updates if user is logged in
+      const user = this.getCurrentUser();
+      if (user) {
+        await subscribeToNotes();
+      }
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Error loading notes:', error);
+      }
+    }
+  }
+  
+  /**
+   * Create a note from saved data
+   * @param {Object} noteData - Note data from storage
+   */
+  createNoteFromData(noteData) {
+    // Find the anchor element
+    let anchorElement = document.querySelector(noteData.selector);
+    
+    // If not found, try fuzzy matching
+    if (!anchorElement) {
+      log.warn(`Anchor element not found for selector: ${noteData.selector}`);
+      
+      // Try fuzzy matching
+      anchorElement = this.selectorEngine.findBestMatch(noteData.selector, {
+        textContent: noteData.anchorText || ''
+      });
+      
+      if (anchorElement) {
+        log.debug('Found element using fuzzy matching');
+        // Update the selector
+        this.handleReanchor(noteData.id, anchorElement);
+      } else {
+        // Show re-anchor UI
+        this.showReanchorUI(noteData);
+        return;
+      }
+    }
+    
+    const user = this.getCurrentUser();
+    
+    // Create note instance with comment callbacks
+    const note = new StickyNote({
+      id: noteData.id,
+      anchor: anchorElement,
+      selector: noteData.selector,
+      content: noteData.content,
+      theme: noteData.theme || 'yellow',
+      position: noteData.position || { anchor: 'top-right' },
+      metadata: noteData.metadata,
+      createdAt: noteData.createdAt,
+      onSave: (content) => this.handleNoteSave(noteData.id, content),
+      onDelete: () => this.handleNoteDelete(noteData.id),
+      // Comment-related options
+      user: user,
+      onAddComment: (noteId, commentData) => this.handleAddComment(noteId, commentData),
+      onEditComment: (noteId, commentId, updates) => this.handleEditComment(noteId, commentId, updates),
+      onDeleteComment: (noteId, commentId) => this.handleDeleteComment(noteId, commentId),
+      onLoadComments: (noteId) => this.handleLoadComments(noteId),
+      onCommentsOpened: (noteId) => this.subscribeToComments(noteId),
+      onCommentsClosed: (noteId) => this.unsubscribeFromComments(noteId)
+    });
+    
+    // Add to container and map
+    this.container.appendChild(note.element);
+    this.notes.set(noteData.id, note);
+    
+    // Setup visibility observer
+    this.visibilityManager.observe(anchorElement, note);
+  }
+  
+  /**
+   * Handle note save
+   * @param {string} noteId - Note ID
+   * @param {string} content - Note content
+   */
+  async handleNoteSave(noteId, content) {
+    try {
+      await this.sendMessage({
+        action: 'updateNote',
+        note: { id: noteId, content }
+      });
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Error saving note:', error);
+      }
+    }
+  }
+  
+  /**
+   * Handle note delete
+   * @param {string} noteId - Note ID
+   */
+  async handleNoteDelete(noteId) {
+    try {
+      const response = await this.sendMessage({
+        action: 'deleteNote',
+        noteId
+      });
+      
+      if (response.success) {
+        const note = this.notes.get(noteId);
+        if (note) {
+          this.visibilityManager.unobserve(note.anchor);
+          note.destroy();
+          this.notes.delete(noteId);
+        }
+      }
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Error deleting note:', error);
+      }
+    }
+  }
+  
+  /**
+   * Handle adding a comment to a note
+   * @param {string} noteId - Note ID
+   * @param {Object} commentData - Comment data { content, parentId }
+   * @returns {Promise<Object>} Created comment
+   */
+  async handleAddComment(noteId, commentData) {
+    try {
+      const response = await this.sendMessage({
+        action: 'addComment',
+        noteId,
+        comment: commentData
+      });
+      
+      if (response.success) {
+        return response.comment;
+      } else {
+        throw new Error(response.error || t('failedToAddComment'));
+      }
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Error adding comment:', error);
+      }
+      throw error;
+    }
+  }
+  
+  /**
+   * Handle editing a comment
+   * @param {string} noteId - Note ID
+   * @param {string} commentId - Comment ID
+   * @param {Object} updates - Updates { content }
+   * @returns {Promise<boolean>} Success
+   */
+  async handleEditComment(noteId, commentId, updates) {
+    try {
+      const response = await this.sendMessage({
+        action: 'editComment',
+        noteId,
+        commentId,
+        updates
+      });
+      
+      if (response.success) {
+        return true;
+      } else {
+        throw new Error(response.error || t('failedToUpdateComment'));
+      }
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Error editing comment:', error);
+      }
+      throw error;
+    }
+  }
+  
+  /**
+   * Handle deleting a comment
+   * @param {string} noteId - Note ID
+   * @param {string} commentId - Comment ID
+   * @returns {Promise<boolean>} Success
+   */
+  async handleDeleteComment(noteId, commentId) {
+    try {
+      const response = await this.sendMessage({
+        action: 'deleteComment',
+        noteId,
+        commentId
+      });
+      
+      if (response.success) {
+        return true;
+      } else {
+        throw new Error(response.error || t('failedToDeleteComment'));
+      }
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Error deleting comment:', error);
+      }
+      throw error;
+    }
+  }
+  
+  /**
+   * Handle loading comments for a note
+   * @param {string} noteId - Note ID
+   * @returns {Promise<Array>} Comments array
+   */
+  async handleLoadComments(noteId) {
+    try {
+      const response = await this.sendMessage({
+        action: 'getComments',
+        noteId
+      });
+      
+      if (response.success) {
+        return response.comments || [];
+      } else {
+        throw new Error(response.error || t('failedToLoadComments'));
+      }
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Error loading comments:', error);
+      }
+      throw error;
+    }
+  }
+  
+  /**
+   * Handle re-anchoring a note to a new element
+   * @param {string} noteId - Note ID
+   * @param {Element} newAnchor - New anchor element
+   */
+  async handleReanchor(noteId, newAnchor) {
+    const newSelector = this.selectorEngine.generate(newAnchor);
+    
+    if (!newSelector) {
+      log.error('Could not generate selector for new anchor');
+      return;
+    }
+    
+    try {
+      await this.sendMessage({
+        action: 'updateNote',
+        note: { 
+          id: noteId, 
+          selector: newSelector,
+          anchorText: newAnchor.textContent?.trim().substring(0, 100) || ''
+        }
+      });
+      
+      log.debug('Note re-anchored successfully');
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Failed to re-anchor note:', error);
+      }
+    }
+  }
+  
+  /**
+   * Handle element selection for new note creation
+   * @param {Element} element - Selected element
+   * @param {Object} pendingReanchor - Pending reanchor data if in reanchor mode
+   */
+  async handleElementSelect(element, pendingReanchor = null) {
+    // Check if this is a re-anchor operation
+    if (pendingReanchor) {
+      await this.handleReanchor(pendingReanchor.id, element);
+      
+      // Recreate the note with new anchor
+      this.createNoteFromData({
+        ...pendingReanchor,
+        selector: this.selectorEngine.generate(element)
+      });
+      
+      return;
+    }
+    
+    // Generate selector for the element
+    const selector = this.selectorEngine.generate(element);
+    
+    if (!selector) {
+      log.error('Could not generate selector for element');
+      return;
+    }
+    
+    // Create new note with metadata
+    const browserInfo = getBrowserInfo();
+    const noteData = {
+      url: this.getCurrentUrl(),
+      selector: selector,
+      content: '',
+      theme: 'yellow',
+      position: { anchor: 'top-right' },
+      anchorText: element.textContent?.trim().substring(0, 100) || '',
+      metadata: {
+        url: window.location.href,
+        title: document.title,
+        browser: `${browserInfo.browser}${browserInfo.version ? ' ' + browserInfo.version : ''}`,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+        timestamp: new Date().toISOString()
+      }
+    };
+    
+    try {
+      // Save to storage
+      const response = await this.sendMessage({
+        action: 'saveNote',
+        note: noteData
+      });
+      
+      if (response.success) {
+        // Create the note UI
+        this.createNoteFromData(response.note);
+      } else {
+        log.error('Failed to save note:', response.error);
+      }
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Failed to save note:', error);
+      }
+    }
+  }
+  
+  /**
+   * Update notes from real-time sync
+   * @param {Array} updatedNotes - Updated notes array
+   */
+  handleRealtimeNotesUpdate(updatedNotes) {
+    if (!updatedNotes) return;
+    
+    // Create sets for efficient lookup
+    const currentIds = new Set(this.notes.keys());
+    const updatedIds = new Set(updatedNotes.map(n => n.id));
+    
+    // Remove notes that no longer exist
+    currentIds.forEach(id => {
+      if (!updatedIds.has(id)) {
+        const note = this.notes.get(id);
+        if (note) {
+          this.visibilityManager.unobserve(note.anchor);
+          note.destroy();
+          this.notes.delete(id);
+          log.debug('Removed note:', id);
+        }
+      }
+    });
+    
+    // Update existing notes or create new ones
+    updatedNotes.forEach(noteData => {
+      const existingNote = this.notes.get(noteData.id);
+      
+      if (existingNote) {
+        // Update content if changed
+        const newContent = noteData.content || '';
+        if (existingNote.content !== newContent) {
+          existingNote.richEditor.setContent(newContent);
+          existingNote.content = newContent;
+          log.debug('Updated note content:', noteData.id);
+        }
+        
+        // Update theme if changed (use fallback to match createNoteFromData)
+        const newTheme = noteData.theme || 'yellow';
+        if (existingNote.theme !== newTheme) {
+          existingNote.setTheme(newTheme);
+          log.debug('Updated note theme:', noteData.id);
+        }
+      } else {
+        // Create new note
+        this.createNoteFromData(noteData);
+        log.debug('Created new note from real-time update:', noteData.id);
+      }
+    });
+  }
+  
+  /**
+   * Update comments from real-time sync
+   * @param {string} noteId - Note ID
+   * @param {Array} comments - Updated comments array
+   */
+  handleRealtimeCommentsUpdate(noteId, comments) {
+    const note = this.notes.get(noteId);
+    if (note && note.commentSection) {
+      note.commentSection.updateComments(comments || []);
+      log.debug('Updated comments for note:', noteId, 'count:', comments?.length || 0);
+    }
+  }
+  
+  /**
+   * Update user on all notes
+   * @param {Object|null} user - User object or null
+   */
+  updateUser(user) {
+    this.notes.forEach(note => {
+      note.setUser(user);
+    });
+  }
+  
+  /**
+   * Highlight a specific note
+   * @param {string} noteId - Note ID
+   */
+  highlightNote(noteId) {
+    const note = this.notes.get(noteId);
+    if (note && note.anchor) {
+      // Scroll element into view
+      note.anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Force show the note
+      note.show();
+      
+      // Add highlight effect
+      note.highlight();
+    }
+  }
+  
+  /**
+   * Clear all notes
+   */
+  clearAll() {
+    this.notes.forEach((note, _id) => {
+      this.visibilityManager.unobserve(note.anchor);
+      note.destroy();
+    });
+    this.notes.clear();
+  }
+}

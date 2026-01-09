@@ -367,5 +367,140 @@
         "example": "2"
       }
     }
+  },
+
+  "comments": {
+    "message": "Kommentare",
+    "description": "Comments section header"
+  },
+  "commentsCount": {
+    "message": "$COUNT$ Kommentare",
+    "description": "Number of comments on a note",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "commentCount": {
+    "message": "$COUNT$ Kommentar",
+    "description": "Single comment count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "noComments": {
+    "message": "Noch keine Kommentare",
+    "description": "Empty state for comments section"
+  },
+  "addComment": {
+    "message": "Kommentar hinzufugen",
+    "description": "Placeholder for comment input"
+  },
+  "reply": {
+    "message": "Antworten",
+    "description": "Reply button text"
+  },
+  "replyTo": {
+    "message": "Antwort an $NAME$",
+    "description": "Reply input placeholder",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Hans"
+      }
+    }
+  },
+  "editComment": {
+    "message": "Bearbeiten",
+    "description": "Edit comment button"
+  },
+  "deleteComment": {
+    "message": "Loschen",
+    "description": "Delete comment button"
+  },
+  "deleteCommentConfirm": {
+    "message": "Diesen Kommentar loschen?",
+    "description": "Confirmation for comment deletion"
+  },
+  "commentDeleted": {
+    "message": "Kommentar geloscht",
+    "description": "Toast after comment deletion"
+  },
+  "commentAdded": {
+    "message": "Kommentar hinzugefugt",
+    "description": "Toast after adding comment"
+  },
+  "commentUpdated": {
+    "message": "Kommentar aktualisiert",
+    "description": "Toast after updating comment"
+  },
+  "failedToAddComment": {
+    "message": "Kommentar konnte nicht hinzugefugt werden",
+    "description": "Error when comment creation fails"
+  },
+  "failedToDeleteComment": {
+    "message": "Kommentar konnte nicht geloscht werden",
+    "description": "Error when comment deletion fails"
+  },
+  "failedToUpdateComment": {
+    "message": "Kommentar konnte nicht aktualisiert werden",
+    "description": "Error when comment update fails"
+  },
+  "failedToLoadComments": {
+    "message": "Kommentare konnten nicht geladen werden",
+    "description": "Error when loading comments fails"
+  },
+  "commentTooLong": {
+    "message": "Kommentar darf $COUNT$ Zeichen nicht uberschreiten",
+    "description": "Error for comment length limit",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2000"
+      }
+    }
+  },
+  "commentEmpty": {
+    "message": "Kommentar darf nicht leer sein",
+    "description": "Error for empty comment"
+  },
+  "showReplies": {
+    "message": "$COUNT$ Antworten anzeigen",
+    "description": "Button to expand replies",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "hideReplies": {
+    "message": "Antworten ausblenden",
+    "description": "Button to collapse replies"
+  },
+  "anonymous": {
+    "message": "Anonym",
+    "description": "Fallback name for users without display name"
+  },
+  "mustBeLoggedInToComment": {
+    "message": "Sie mussen angemeldet sein, um zu kommentieren",
+    "description": "Error when trying to comment without login"
+  },
+  "commentsRequireFirebase": {
+    "message": "Kommentare erfordern die Firebase-Konfiguration",
+    "description": "Error when Firebase is not configured for comments"
+  },
+  "mustBeLoggedInForRealtime": {
+    "message": "Sie muessen angemeldet sein fuer Echtzeit-Synchronisation",
+    "description": "Error when trying to use real-time sync without login"
+  },
+  "realtimeSyncRequiresFirebase": {
+    "message": "Echtzeit-Synchronisation erfordert Firebase-Konfiguration",
+    "description": "Error when Firebase is not configured for real-time sync"
   }
 }

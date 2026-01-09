@@ -14,7 +14,8 @@ import {
   query, 
   where, 
   orderBy,
-  serverTimestamp 
+  serverTimestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './config.js';
 import { VALID_THEMES, normalizeUrl, validateSelectorPattern } from '../shared/utils.js';
@@ -35,7 +36,8 @@ const defaultFirestoreDeps = {
   query,
   where,
   orderBy,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot
 };
 
 /**
@@ -311,4 +313,130 @@ export async function shareNote(noteId, shareWithUserId, ownerId, deps = {}) {
       updatedAt: firebaseDeps.serverTimestamp()
     });
   }
+}
+
+/**
+ * Subscribe to real-time updates for notes on a URL
+ * @param {string} url - Page URL
+ * @param {string} userId - Current user ID
+ * @param {string} userEmail - Current user's email (for shared notes lookup)
+ * @param {Function} onUpdate - Callback when notes change (receives array of notes)
+ * @param {Function} onError - Callback on error
+ * @param {Object} deps - Optional dependencies for testing
+ * @returns {Function} Unsubscribe function
+ */
+export function subscribeToNotesForUrl(url, userId, userEmail, onUpdate, onError, deps = {}) {
+  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const dbInstance = deps.db !== undefined ? deps.db : db;
+  const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
+  
+  if (!isConfigured || !dbInstance) {
+    onError(new Error('Firebase is not configured'));
+    return () => {};
+  }
+  
+  // Validate required parameters
+  if (!url || typeof url !== 'string') {
+    onError(new Error('Invalid URL'));
+    return () => {};
+  }
+  
+  if (!userId || typeof userId !== 'string') {
+    onError(new Error('User ID required'));
+    return () => {};
+  }
+  
+  if (typeof onUpdate !== 'function') {
+    onError(new Error('onUpdate callback required'));
+    return () => {};
+  }
+  
+  if (typeof onError !== 'function') {
+    // Can't call onError if it's not a function, so just return
+    return () => {};
+  }
+  
+  // Normalize URL to origin + pathname
+  const normalizedUrl = normalizeUrl(url);
+  const normalizedEmail = userEmail?.toLowerCase();
+  
+  // Track notes from both queries
+  let ownedNotes = [];
+  let sharedNotes = [];
+  
+  // Helper to merge and dedupe notes
+  const mergeAndNotify = () => {
+    const allNotes = [];
+    const seenIds = new Set(); // Local variable for deduplication
+    
+    ownedNotes.forEach(note => {
+      if (!seenIds.has(note.id)) {
+        seenIds.add(note.id);
+        allNotes.push(note);
+      }
+    });
+    
+    sharedNotes.forEach(note => {
+      if (!seenIds.has(note.id)) {
+        seenIds.add(note.id);
+        allNotes.push({ ...note, isShared: true });
+      }
+    });
+    
+    onUpdate(allNotes);
+  };
+  
+  // Query for owned notes
+  const ownedQuery = firebaseDeps.query(
+    firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
+    firebaseDeps.where('url', '==', normalizedUrl),
+    firebaseDeps.where('ownerId', '==', userId),
+    firebaseDeps.orderBy('createdAt', 'desc')
+  );
+  
+  // Subscribe to owned notes
+  const unsubOwned = firebaseDeps.onSnapshot(
+    ownedQuery,
+    (snapshot) => {
+      ownedNotes = [];
+      snapshot.forEach(doc => {
+        ownedNotes.push({ id: doc.id, ...doc.data() });
+      });
+      mergeAndNotify();
+    },
+    (error) => {
+      onError(error);
+    }
+  );
+  
+  // Subscribe to shared notes if email is available
+  let unsubShared = () => {};
+  if (normalizedEmail) {
+    const sharedQuery = firebaseDeps.query(
+      firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
+      firebaseDeps.where('url', '==', normalizedUrl),
+      firebaseDeps.where('sharedWith', 'array-contains', normalizedEmail),
+      firebaseDeps.orderBy('createdAt', 'desc')
+    );
+    
+    unsubShared = firebaseDeps.onSnapshot(
+      sharedQuery,
+      (snapshot) => {
+        sharedNotes = [];
+        snapshot.forEach(doc => {
+          sharedNotes.push({ id: doc.id, ...doc.data() });
+        });
+        mergeAndNotify();
+      },
+      (error) => {
+        onError(error);
+      }
+    );
+  }
+  
+  // Return unsubscribe function that cleans up both listeners
+  return () => {
+    unsubOwned();
+    unsubShared();
+  };
 }

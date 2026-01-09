@@ -26,6 +26,16 @@ export function createHandlers(deps = {}) {
     deleteNoteFromFirestore,
     shareNoteInFirestore,
     isFirebaseConfigured,
+    // Comment service functions
+    createCommentInFirestore,
+    getCommentsForNoteFromFirestore,
+    updateCommentInFirestore,
+    deleteCommentFromFirestore,
+    // Real-time subscription functions
+    subscribeToNotesForUrl,
+    subscribeToComments,
+    noteSubscriptions = new Map(),
+    commentSubscriptions = new Map(),
     generateId = defaultGenerateId,
     isValidEmail = defaultIsValidEmail,
     log = defaultLog,
@@ -36,10 +46,10 @@ export function createHandlers(deps = {}) {
   /**
    * Handle incoming messages
    * @param {Object} message - Message object
-   * @param {Object} _sender - Sender info
+   * @param {Object} sender - Sender info (contains tab info)
    * @returns {Promise<Object>} Response
    */
-  async function handleMessage(message, _sender) {
+  async function handleMessage(message, sender) {
     switch (message.action) {
       case 'login':
         return handleLogin();
@@ -67,6 +77,32 @@ export function createHandlers(deps = {}) {
       
       case 'captureScreenshot':
         return captureScreenshot();
+      
+      // Comment actions
+      case 'addComment':
+        return addComment(message.noteId, message.comment);
+      
+      case 'editComment':
+        return editComment(message.noteId, message.commentId, message.updates);
+      
+      case 'deleteComment':
+        return deleteCommentHandler(message.noteId, message.commentId);
+      
+      case 'getComments':
+        return getComments(message.noteId);
+      
+      // Real-time subscription actions
+      case 'subscribeToNotes':
+        return subscribeNotes(message.url, sender);
+      
+      case 'unsubscribeFromNotes':
+        return unsubscribeNotes(sender);
+      
+      case 'subscribeToComments':
+        return subscribeCommentsHandler(message.noteId, sender);
+      
+      case 'unsubscribeFromComments':
+        return unsubscribeCommentsHandler(message.noteId, sender);
       
       default:
         return { success: false, error: t('unknownAction') };
@@ -354,6 +390,341 @@ export function createHandlers(deps = {}) {
     }
   }
 
+  /**
+   * Add a comment to a note
+   * @param {string} noteId - Note ID
+   * @param {Object} commentData - Comment data { content, parentId }
+   * @returns {Promise<Object>} Result with created comment
+   */
+  async function addComment(noteId, commentData) {
+    try {
+      const user = await getCurrentUser();
+      
+      if (!user) {
+        return { success: false, error: t('mustBeLoggedInToComment') };
+      }
+      
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('commentsRequireFirebase') };
+      }
+      
+      if (!createCommentInFirestore) {
+        return { success: false, error: 'Comment service not available' };
+      }
+      
+      const comment = await createCommentInFirestore(noteId, commentData, user);
+      
+      return { success: true, comment };
+    } catch (error) {
+      log.error('Add comment error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Edit a comment
+   * @param {string} noteId - Note ID
+   * @param {string} commentId - Comment ID
+   * @param {Object} updates - Updates { content }
+   * @returns {Promise<Object>} Result
+   */
+  async function editComment(noteId, commentId, updates) {
+    try {
+      const user = await getCurrentUser();
+      
+      if (!user) {
+        return { success: false, error: t('mustBeLoggedInToComment') };
+      }
+      
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('commentsRequireFirebase') };
+      }
+      
+      if (!updateCommentInFirestore) {
+        return { success: false, error: 'Comment service not available' };
+      }
+      
+      await updateCommentInFirestore(noteId, commentId, updates, user.uid);
+      
+      return { success: true };
+    } catch (error) {
+      log.error('Edit comment error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Delete a comment
+   * @param {string} noteId - Note ID
+   * @param {string} commentId - Comment ID
+   * @returns {Promise<Object>} Result
+   */
+  async function deleteCommentHandler(noteId, commentId) {
+    try {
+      const user = await getCurrentUser();
+      
+      if (!user) {
+        return { success: false, error: t('mustBeLoggedInToComment') };
+      }
+      
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('commentsRequireFirebase') };
+      }
+      
+      if (!deleteCommentFromFirestore) {
+        return { success: false, error: 'Comment service not available' };
+      }
+      
+      await deleteCommentFromFirestore(noteId, commentId, user.uid);
+      
+      return { success: true };
+    } catch (error) {
+      log.error('Delete comment error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get comments for a note
+   * @param {string} noteId - Note ID
+   * @returns {Promise<Object>} Result with comments array
+   */
+  async function getComments(noteId) {
+    try {
+      const user = await getCurrentUser();
+      
+      if (!user) {
+        return { success: false, error: t('mustBeLoggedInToComment') };
+      }
+      
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('commentsRequireFirebase') };
+      }
+      
+      if (!getCommentsForNoteFromFirestore) {
+        return { success: false, error: 'Comment service not available' };
+      }
+      
+      const comments = await getCommentsForNoteFromFirestore(noteId, user);
+      
+      return { success: true, comments };
+    } catch (error) {
+      log.error('Get comments error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Subscribe to real-time note updates for a URL
+   * @param {string} url - Page URL
+   * @param {Object} sender - Message sender (contains tab info)
+   * @returns {Promise<Object>} Result
+   */
+  async function subscribeNotes(url, sender) {
+    try {
+      const tabId = sender?.tab?.id;
+      if (!tabId) {
+        return { success: false, error: 'Tab ID not available' };
+      }
+      
+      const user = await getCurrentUser();
+      
+      if (!user) {
+        return { success: false, error: t('mustBeLoggedInForRealtime') };
+      }
+      
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('realtimeSyncRequiresFirebase') };
+      }
+      
+      if (!subscribeToNotesForUrl) {
+        return { success: false, error: 'Subscription service not available' };
+      }
+      
+      // Clean up existing subscription for this tab
+      const existingSub = noteSubscriptions.get(tabId);
+      if (existingSub) {
+        existingSub.unsubscribe();
+      }
+      
+      // Set up new subscription
+      const unsubscribe = subscribeToNotesForUrl(
+        url,
+        user.uid,
+        user.email,
+        (notes) => {
+          // Push updates to the tab
+          if (chromeTabs) {
+            chromeTabs.sendMessage(tabId, {
+              action: 'notesUpdated',
+              notes
+            }).catch(() => {
+              // Tab might be closed, clean up subscription
+              try {
+                unsubscribe();
+              } catch (e) {
+                log.warn('Error during unsubscribe:', e);
+              }
+              noteSubscriptions.delete(tabId);
+            });
+          }
+        },
+        (error) => {
+          log.error('Note subscription error:', error);
+          if (chromeTabs) {
+            chromeTabs.sendMessage(tabId, {
+              action: 'subscriptionError',
+              type: 'notes',
+              error: error.message
+            }).catch(() => {});
+          }
+        }
+      );
+      
+      noteSubscriptions.set(tabId, { url, unsubscribe });
+      log.debug('Subscribed to notes for tab', tabId, 'url', url);
+      
+      return { success: true };
+    } catch (error) {
+      log.error('Subscribe notes error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Unsubscribe from note updates
+   * @param {Object} sender - Message sender (contains tab info)
+   * @returns {Promise<Object>} Result
+   */
+  async function unsubscribeNotes(sender) {
+    try {
+      const tabId = sender?.tab?.id;
+      if (!tabId) {
+        return { success: false, error: 'Tab ID not available' };
+      }
+      
+      const sub = noteSubscriptions.get(tabId);
+      if (sub) {
+        sub.unsubscribe();
+        noteSubscriptions.delete(tabId);
+        log.debug('Unsubscribed from notes for tab', tabId);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      log.error('Unsubscribe notes error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Subscribe to real-time comment updates for a note
+   * @param {string} noteId - Note ID
+   * @param {Object} sender - Message sender (contains tab info)
+   * @returns {Promise<Object>} Result
+   */
+  async function subscribeCommentsHandler(noteId, sender) {
+    try {
+      const tabId = sender?.tab?.id;
+      if (!tabId) {
+        return { success: false, error: 'Tab ID not available' };
+      }
+      
+      const user = await getCurrentUser();
+      
+      if (!user) {
+        return { success: false, error: t('mustBeLoggedInToComment') };
+      }
+      
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('commentsRequireFirebase') };
+      }
+      
+      if (!subscribeToComments) {
+        return { success: false, error: 'Subscription service not available' };
+      }
+      
+      const subKey = `${tabId}-${noteId}`;
+      
+      // Clean up existing subscription
+      const existingSub = commentSubscriptions.get(subKey);
+      if (existingSub) {
+        existingSub();
+      }
+      
+      // Set up new subscription
+      const unsubscribe = subscribeToComments(
+        noteId,
+        user,
+        (comments) => {
+          // Push updates to the tab
+          if (chromeTabs) {
+            chromeTabs.sendMessage(tabId, {
+              action: 'commentsUpdated',
+              noteId,
+              comments
+            }).catch(() => {
+              // Tab might be closed, clean up subscription
+              try {
+                unsubscribe();
+              } catch (e) {
+                log.warn('Error during unsubscribe:', e);
+              }
+              commentSubscriptions.delete(subKey);
+            });
+          }
+        },
+        (error) => {
+          log.error('Comment subscription error:', error);
+          if (chromeTabs) {
+            chromeTabs.sendMessage(tabId, {
+              action: 'subscriptionError',
+              type: 'comments',
+              noteId,
+              error: error.message
+            }).catch(() => {});
+          }
+        }
+      );
+      
+      commentSubscriptions.set(subKey, unsubscribe);
+      log.debug('Subscribed to comments for tab', tabId, 'note', noteId);
+      
+      return { success: true };
+    } catch (error) {
+      log.error('Subscribe comments error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Unsubscribe from comment updates
+   * @param {string} noteId - Note ID
+   * @param {Object} sender - Message sender (contains tab info)
+   * @returns {Promise<Object>} Result
+   */
+  async function unsubscribeCommentsHandler(noteId, sender) {
+    try {
+      const tabId = sender?.tab?.id;
+      if (!tabId) {
+        return { success: false, error: 'Tab ID not available' };
+      }
+      
+      const subKey = `${tabId}-${noteId}`;
+      const unsub = commentSubscriptions.get(subKey);
+      if (unsub) {
+        unsub();
+        commentSubscriptions.delete(subKey);
+        log.debug('Unsubscribed from comments for tab', tabId, 'note', noteId);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      log.error('Unsubscribe comments error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   return {
     handleMessage,
     handleLogin,
@@ -364,7 +735,17 @@ export function createHandlers(deps = {}) {
     updateNote,
     deleteNote,
     shareNote,
-    captureScreenshot
+    captureScreenshot,
+    // Comment handlers
+    addComment,
+    editComment,
+    deleteCommentHandler,
+    getComments,
+    // Subscription handlers
+    subscribeNotes,
+    unsubscribeNotes,
+    subscribeCommentsHandler,
+    unsubscribeCommentsHandler
   };
 }
 

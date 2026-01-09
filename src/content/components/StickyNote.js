@@ -4,8 +4,10 @@
  */
 
 import { RichEditor } from './RichEditor.js';
+import { CommentSection } from './CommentSection.js';
 import { 
   isValidEmail, 
+  escapeHtml,
   THEME_COLORS, 
   TIMEOUTS, 
   VALID_THEMES,
@@ -28,6 +30,13 @@ export class StickyNote {
    * @param {Object} options.position - Position config
    * @param {Function} options.onSave - Save callback
    * @param {Function} options.onDelete - Delete callback
+   * @param {Object} options.user - Current user for comments { uid, email, displayName }
+   * @param {Function} options.onAddComment - Add comment callback
+   * @param {Function} options.onEditComment - Edit comment callback
+   * @param {Function} options.onDeleteComment - Delete comment callback
+   * @param {Function} options.onLoadComments - Load comments callback
+   * @param {Function} options.onCommentsOpened - Called when comments panel is opened
+   * @param {Function} options.onCommentsClosed - Called when comments panel is closed
    */
   constructor(options) {
     this.id = options.id;
@@ -39,12 +48,22 @@ export class StickyNote {
     this.onSave = options.onSave || (() => {});
     this.onDelete = options.onDelete || (() => {});
     
+    // Comment-related callbacks
+    this.user = options.user || null;
+    this.onAddComment = options.onAddComment || (() => Promise.resolve());
+    this.onEditComment = options.onEditComment || (() => Promise.resolve());
+    this.onDeleteComment = options.onDeleteComment || (() => Promise.resolve());
+    this.onLoadComments = options.onLoadComments || (() => Promise.resolve([]));
+    this.onCommentsOpened = options.onCommentsOpened || (() => {});
+    this.onCommentsClosed = options.onCommentsClosed || (() => {});
+    
     // Capture metadata at creation time, or use provided metadata
     this.metadata = options.metadata || getPageMetadata();
     this.createdAt = options.createdAt || new Date().toISOString();
     
     this.element = null;
     this.textarea = null;
+    this.commentSection = null;
     this.isVisible = false;
     this.isDragging = false;
     this.dragOffset = { x: 0, y: 0 };
@@ -130,19 +149,19 @@ export class StickyNote {
         <div class="sn-metadata-panel sn-hidden">
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataUrl')}</span>
-            <span class="sn-metadata-value sn-metadata-url" title="${this.metadata.url}">${this.truncateUrl(this.metadata.url)}</span>
+            <span class="sn-metadata-value sn-metadata-url" title="${escapeHtml(this.metadata.url)}">${escapeHtml(this.truncateUrl(this.metadata.url))}</span>
           </div>
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataBrowser')}</span>
-            <span class="sn-metadata-value">${this.metadata.browser}</span>
+            <span class="sn-metadata-value">${escapeHtml(this.metadata.browser)}</span>
           </div>
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataViewport')}</span>
-            <span class="sn-metadata-value">${this.metadata.viewport}</span>
+            <span class="sn-metadata-value">${escapeHtml(this.metadata.viewport)}</span>
           </div>
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataElement')}</span>
-            <span class="sn-metadata-value sn-metadata-selector" title="${this.selector}">${this.truncateSelector(this.selector)}</span>
+            <span class="sn-metadata-value sn-metadata-selector" title="${escapeHtml(this.selector)}">${escapeHtml(this.truncateSelector(this.selector))}</span>
           </div>
         </div>
       </div>
@@ -159,6 +178,21 @@ export class StickyNote {
     
     // Keep textarea reference for backward compatibility
     this.textarea = this.richEditor.editor;
+    
+    // Create comment section (inserted before footer)
+    this.commentSection = new CommentSection({
+      noteId: this.id,
+      user: this.user,
+      onAddComment: this.onAddComment,
+      onEditComment: this.onEditComment,
+      onDeleteComment: this.onDeleteComment,
+      onLoadComments: this.onLoadComments,
+      onPanelOpened: this.onCommentsOpened,
+      onPanelClosed: this.onCommentsClosed
+    });
+    
+    const footer = this.element.querySelector('.sn-note-footer');
+    this.element.insertBefore(this.commentSection.element, footer);
   }
   
   /**
@@ -913,6 +947,26 @@ export class StickyNote {
     this.element.classList.add(`sn-theme-${this.theme}`);
   }
   
+  /**
+   * Set the current user for comments
+   * @param {Object} user - User object { uid, email, displayName }
+   */
+  setUser(user) {
+    this.user = user;
+    if (this.commentSection) {
+      this.commentSection.setUser(user);
+    }
+  }
+  
+  /**
+   * Refresh comments in the comment section
+   */
+  async refreshComments() {
+    if (this.commentSection) {
+      await this.commentSection.refresh();
+    }
+  }
+  
   // isValidEmail and escapeHtml are now imported from shared/utils.js
   
   /**
@@ -928,6 +982,12 @@ export class StickyNote {
     document.removeEventListener('mousemove', this.boundHandleDragMove);
     document.removeEventListener('mouseup', this.boundHandleDragEnd);
     window.removeEventListener('resize', this.boundHandleWindowResize);
+    
+    // Destroy comment section
+    if (this.commentSection) {
+      this.commentSection.destroy();
+      this.commentSection = null;
+    }
     
     // Remove element
     if (this.element && this.element.parentNode) {

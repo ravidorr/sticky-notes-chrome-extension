@@ -367,5 +367,140 @@
         "example": "2"
       }
     }
+  },
+
+  "comments": {
+    "message": "תגובות",
+    "description": "Comments section header"
+  },
+  "commentsCount": {
+    "message": "$COUNT$ תגובות",
+    "description": "Number of comments on a note",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "commentCount": {
+    "message": "תגובה $COUNT$",
+    "description": "Single comment count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "noComments": {
+    "message": "אין תגובות עדיין",
+    "description": "Empty state for comments section"
+  },
+  "addComment": {
+    "message": "הוסף תגובה",
+    "description": "Placeholder for comment input"
+  },
+  "reply": {
+    "message": "הגב",
+    "description": "Reply button text"
+  },
+  "replyTo": {
+    "message": "הגב ל-$NAME$",
+    "description": "Reply input placeholder",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "יוחנן"
+      }
+    }
+  },
+  "editComment": {
+    "message": "ערוך",
+    "description": "Edit comment button"
+  },
+  "deleteComment": {
+    "message": "מחק",
+    "description": "Delete comment button"
+  },
+  "deleteCommentConfirm": {
+    "message": "למחוק את התגובה?",
+    "description": "Confirmation for comment deletion"
+  },
+  "commentDeleted": {
+    "message": "התגובה נמחקה",
+    "description": "Toast after comment deletion"
+  },
+  "commentAdded": {
+    "message": "התגובה נוספה",
+    "description": "Toast after adding comment"
+  },
+  "commentUpdated": {
+    "message": "התגובה עודכנה",
+    "description": "Toast after updating comment"
+  },
+  "failedToAddComment": {
+    "message": "הוספת התגובה נכשלה",
+    "description": "Error when comment creation fails"
+  },
+  "failedToDeleteComment": {
+    "message": "מחיקת התגובה נכשלה",
+    "description": "Error when comment deletion fails"
+  },
+  "failedToUpdateComment": {
+    "message": "עדכון התגובה נכשל",
+    "description": "Error when comment update fails"
+  },
+  "failedToLoadComments": {
+    "message": "טעינת התגובות נכשלה",
+    "description": "Error when loading comments fails"
+  },
+  "commentTooLong": {
+    "message": "התגובה לא יכולה לעלות על $COUNT$ תווים",
+    "description": "Error for comment length limit",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2000"
+      }
+    }
+  },
+  "commentEmpty": {
+    "message": "התגובה לא יכולה להיות ריקה",
+    "description": "Error for empty comment"
+  },
+  "showReplies": {
+    "message": "הצג $COUNT$ תגובות",
+    "description": "Button to expand replies",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "hideReplies": {
+    "message": "הסתר תגובות",
+    "description": "Button to collapse replies"
+  },
+  "anonymous": {
+    "message": "אנונימי",
+    "description": "Fallback name for users without display name"
+  },
+  "mustBeLoggedInToComment": {
+    "message": "עליכם להתחבר כדי להגיב",
+    "description": "Error when trying to comment without login"
+  },
+  "commentsRequireFirebase": {
+    "message": "תגובות דורשות הגדרת Firebase",
+    "description": "Error when Firebase is not configured for comments"
+  },
+  "mustBeLoggedInForRealtime": {
+    "message": "יש להתחבר לסנכרון בזמן אמת",
+    "description": "Error when trying to use real-time sync without login"
+  },
+  "realtimeSyncRequiresFirebase": {
+    "message": "סנכרון בזמן אמת דורש הגדרת Firebase",
+    "description": "Error when Firebase is not configured for real-time sync"
   }
 }

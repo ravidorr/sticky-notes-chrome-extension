@@ -19,6 +19,7 @@ jest.unstable_mockModule('firebase/firestore', () => ({
   where: jest.fn(),
   orderBy: jest.fn(),
   serverTimestamp: jest.fn(() => ({ _type: 'serverTimestamp' })),
+  onSnapshot: jest.fn(),
   getFirestore: jest.fn(() => ({ name: 'mock-db' })),
   initializeFirestore: jest.fn(() => ({ name: 'mock-db' })),
   persistentLocalCache: jest.fn(),
@@ -40,7 +41,8 @@ const {
   getNotesForUrl,
   updateNote,
   deleteNote,
-  shareNote
+  shareNote,
+  subscribeToNotesForUrl
 } = await import('../../src/firebase/notes.js');
 
 describe('Firebase Notes', () => {
@@ -68,7 +70,8 @@ describe('Firebase Notes', () => {
       query: jest.fn((col) => col),
       where: jest.fn(() => ({})),
       orderBy: jest.fn(() => ({})),
-      serverTimestamp: jest.fn(() => ({ _type: 'serverTimestamp' }))
+      serverTimestamp: jest.fn(() => ({ _type: 'serverTimestamp' })),
+      onSnapshot: jest.fn()
     };
   });
 
@@ -427,6 +430,284 @@ describe('Firebase Notes', () => {
       
       await expect(shareNote('note-123', 'newuser@example.com', 'user-123', localThis.deps))
         .rejects.toThrow('Cannot share with more than 50 users');
+    });
+  });
+
+  describe('subscribeToNotesForUrl', () => {
+    it('should call onError when Firebase is not configured', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      
+      const unsubscribe = subscribeToNotesForUrl(
+        'https://example.com',
+        'user-123',
+        'user@example.com',
+        onUpdate,
+        onError,
+        { ...localThis.deps, db: null, isFirebaseConfigured: () => false }
+      );
+      
+      expect(onError).toHaveBeenCalledWith(expect.any(Error));
+      expect(onError.mock.calls[0][0].message).toBe('Firebase is not configured');
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should set up onSnapshot listeners for owned and shared notes', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      const mockUnsubscribe = jest.fn();
+      
+      localThis.deps.onSnapshot.mockReturnValue(mockUnsubscribe);
+      localThis.deps.query.mockReturnValue({ _query: 'mock' });
+      localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
+      
+      const unsubscribe = subscribeToNotesForUrl(
+        'https://example.com',
+        'user-123',
+        'user@example.com',
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      // Should set up two listeners (owned + shared)
+      expect(localThis.deps.onSnapshot).toHaveBeenCalledTimes(2);
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should only set up one listener when no email provided', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      const mockUnsubscribe = jest.fn();
+      
+      localThis.deps.onSnapshot.mockReturnValue(mockUnsubscribe);
+      localThis.deps.query.mockReturnValue({ _query: 'mock' });
+      localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
+      
+      subscribeToNotesForUrl(
+        'https://example.com',
+        'user-123',
+        null, // No email
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      // Should only set up one listener (owned only)
+      expect(localThis.deps.onSnapshot).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call onUpdate with merged notes when snapshot fires', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      let ownedCallback;
+      
+      localThis.deps.onSnapshot.mockImplementation((query, successCb) => {
+        ownedCallback = successCb;
+        return jest.fn();
+      });
+      localThis.deps.query.mockReturnValue({ _query: 'mock' });
+      localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
+      
+      subscribeToNotesForUrl(
+        'https://example.com',
+        'user-123',
+        null, // No email, so only owned query
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      // Simulate snapshot with notes
+      const mockSnapshot = {
+        forEach: (cb) => {
+          cb({ id: 'note-1', data: () => ({ content: 'Test' }) });
+          cb({ id: 'note-2', data: () => ({ content: 'Test 2' }) });
+        }
+      };
+      ownedCallback(mockSnapshot);
+      
+      expect(onUpdate).toHaveBeenCalledWith([
+        { id: 'note-1', content: 'Test' },
+        { id: 'note-2', content: 'Test 2' }
+      ]);
+    });
+
+    it('should call onError when snapshot listener errors', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      let errorCallback;
+      
+      localThis.deps.onSnapshot.mockImplementation((query, successCb, errorCb) => {
+        errorCallback = errorCb;
+        return jest.fn();
+      });
+      localThis.deps.query.mockReturnValue({ _query: 'mock' });
+      localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
+      
+      subscribeToNotesForUrl(
+        'https://example.com',
+        'user-123',
+        null,
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      // Simulate error
+      const mockError = new Error('Firestore error');
+      errorCallback(mockError);
+      
+      expect(onError).toHaveBeenCalledWith(mockError);
+    });
+
+    it('should unsubscribe from all listeners when unsubscribe is called', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      const mockUnsubOwned = jest.fn();
+      const mockUnsubShared = jest.fn();
+      
+      let callCount = 0;
+      localThis.deps.onSnapshot.mockImplementation(() => {
+        callCount++;
+        return callCount === 1 ? mockUnsubOwned : mockUnsubShared;
+      });
+      localThis.deps.query.mockReturnValue({ _query: 'mock' });
+      localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
+      
+      const unsubscribe = subscribeToNotesForUrl(
+        'https://example.com',
+        'user-123',
+        'user@example.com',
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      unsubscribe();
+      
+      expect(mockUnsubOwned).toHaveBeenCalled();
+      expect(mockUnsubShared).toHaveBeenCalled();
+    });
+
+    it('should dedupe notes that appear in both owned and shared', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      let ownedCallback, sharedCallback;
+      let callCount = 0;
+      
+      localThis.deps.onSnapshot.mockImplementation((query, successCb) => {
+        callCount++;
+        if (callCount === 1) {
+          ownedCallback = successCb;
+        } else {
+          sharedCallback = successCb;
+        }
+        return jest.fn();
+      });
+      localThis.deps.query.mockReturnValue({ _query: 'mock' });
+      localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
+      
+      subscribeToNotesForUrl(
+        'https://example.com',
+        'user-123',
+        'user@example.com',
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      // Simulate owned snapshot
+      ownedCallback({
+        forEach: (cb) => {
+          cb({ id: 'note-1', data: () => ({ content: 'Owned' }) });
+        }
+      });
+      
+      // Simulate shared snapshot with same note ID
+      sharedCallback({
+        forEach: (cb) => {
+          cb({ id: 'note-1', data: () => ({ content: 'Shared' }) }); // Same ID
+          cb({ id: 'note-2', data: () => ({ content: 'Only shared' }) });
+        }
+      });
+      
+      // Should only have 2 notes, not 3
+      const lastCall = onUpdate.mock.calls[onUpdate.mock.calls.length - 1][0];
+      expect(lastCall).toHaveLength(2);
+      expect(lastCall[0].id).toBe('note-1');
+      expect(lastCall[1].id).toBe('note-2');
+      expect(lastCall[1].isShared).toBe(true);
+    });
+
+    it('should call onError when url is invalid', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      
+      const unsubscribe = subscribeToNotesForUrl(
+        '',
+        'user-123',
+        'user@example.com',
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      expect(onError).toHaveBeenCalledWith(expect.any(Error));
+      expect(onError.mock.calls[0][0].message).toBe('Invalid URL');
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should call onError when userId is invalid', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      
+      const unsubscribe = subscribeToNotesForUrl(
+        'https://example.com',
+        null,
+        'user@example.com',
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      expect(onError).toHaveBeenCalledWith(expect.any(Error));
+      expect(onError.mock.calls[0][0].message).toBe('User ID required');
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should call onError when onUpdate is not a function', () => {
+      const onError = jest.fn();
+      
+      const unsubscribe = subscribeToNotesForUrl(
+        'https://example.com',
+        'user-123',
+        'user@example.com',
+        'not a function',
+        onError,
+        localThis.deps
+      );
+      
+      expect(onError).toHaveBeenCalledWith(expect.any(Error));
+      expect(onError.mock.calls[0][0].message).toBe('onUpdate callback required');
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should return noop when onError is not a function', () => {
+      const onUpdate = jest.fn();
+      
+      const unsubscribe = subscribeToNotesForUrl(
+        'https://example.com',
+        'user-123',
+        'user@example.com',
+        onUpdate,
+        'not a function',
+        localThis.deps
+      );
+      
+      // Should return without error
+      expect(typeof unsubscribe).toBe('function');
+      expect(onUpdate).not.toHaveBeenCalled();
     });
   });
 });

@@ -367,5 +367,140 @@
         "example": "2"
       }
     }
+  },
+
+  "comments": {
+    "message": "Comments",
+    "description": "Comments section header"
+  },
+  "commentsCount": {
+    "message": "$COUNT$ comments",
+    "description": "Number of comments on a note",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "commentCount": {
+    "message": "$COUNT$ comment",
+    "description": "Single comment count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "noComments": {
+    "message": "No comments yet",
+    "description": "Empty state for comments section"
+  },
+  "addComment": {
+    "message": "Add a comment",
+    "description": "Placeholder for comment input"
+  },
+  "reply": {
+    "message": "Reply",
+    "description": "Reply button text"
+  },
+  "replyTo": {
+    "message": "Reply to $NAME$",
+    "description": "Reply input placeholder",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "John"
+      }
+    }
+  },
+  "editComment": {
+    "message": "Edit",
+    "description": "Edit comment button"
+  },
+  "deleteComment": {
+    "message": "Delete",
+    "description": "Delete comment button"
+  },
+  "deleteCommentConfirm": {
+    "message": "Delete this comment?",
+    "description": "Confirmation for comment deletion"
+  },
+  "commentDeleted": {
+    "message": "Comment deleted",
+    "description": "Toast after comment deletion"
+  },
+  "commentAdded": {
+    "message": "Comment added",
+    "description": "Toast after adding comment"
+  },
+  "commentUpdated": {
+    "message": "Comment updated",
+    "description": "Toast after updating comment"
+  },
+  "failedToAddComment": {
+    "message": "Failed to add comment",
+    "description": "Error when comment creation fails"
+  },
+  "failedToDeleteComment": {
+    "message": "Failed to delete comment",
+    "description": "Error when comment deletion fails"
+  },
+  "failedToUpdateComment": {
+    "message": "Failed to update comment",
+    "description": "Error when comment update fails"
+  },
+  "failedToLoadComments": {
+    "message": "Failed to load comments",
+    "description": "Error when loading comments fails"
+  },
+  "commentTooLong": {
+    "message": "Comment cannot exceed $COUNT$ characters",
+    "description": "Error for comment length limit",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2000"
+      }
+    }
+  },
+  "commentEmpty": {
+    "message": "Comment cannot be empty",
+    "description": "Error for empty comment"
+  },
+  "showReplies": {
+    "message": "Show $COUNT$ replies",
+    "description": "Button to expand replies",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "hideReplies": {
+    "message": "Hide replies",
+    "description": "Button to collapse replies"
+  },
+  "anonymous": {
+    "message": "Anonymous",
+    "description": "Fallback name for users without display name"
+  },
+  "mustBeLoggedInToComment": {
+    "message": "You must be logged in to comment",
+    "description": "Error when trying to comment without login"
+  },
+  "commentsRequireFirebase": {
+    "message": "Comments require Firebase to be configured",
+    "description": "Error when Firebase is not configured for comments"
+  },
+  "mustBeLoggedInForRealtime": {
+    "message": "You must be logged in for real-time sync",
+    "description": "Error when trying to use real-time sync without login"
+  },
+  "realtimeSyncRequiresFirebase": {
+    "message": "Real-time sync requires Firebase to be configured",
+    "description": "Error when Firebase is not configured for real-time sync"
   }
 }

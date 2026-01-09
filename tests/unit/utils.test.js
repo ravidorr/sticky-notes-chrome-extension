@@ -13,21 +13,37 @@ beforeEach(async () => {
 
 describe('escapeHtml', () => {
   it('should escape HTML special characters', () => {
-    expect(utils.escapeHtml('<script>alert("xss")</script>')).toBe('&lt;script&gt;alert("xss")&lt;/script&gt;');
+    expect(utils.escapeHtml('<script>alert("xss")</script>')).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
   });
   
   it('should handle ampersands', () => {
     expect(utils.escapeHtml('foo & bar')).toBe('foo &amp; bar');
   });
   
-  it('should handle quotes', () => {
-    expect(utils.escapeHtml('"hello"')).toBe('"hello"');
+  it('should escape double quotes for attribute safety', () => {
+    expect(utils.escapeHtml('"hello"')).toBe('&quot;hello&quot;');
+  });
+  
+  it('should escape single quotes for attribute safety', () => {
+    expect(utils.escapeHtml("'hello'")).toBe('&#39;hello&#39;');
   });
   
   it('should return empty string for null/undefined', () => {
     expect(utils.escapeHtml(null)).toBe('');
     expect(utils.escapeHtml(undefined)).toBe('');
     expect(utils.escapeHtml('')).toBe('');
+  });
+  
+  it('should pass through backticks unchanged (not HTML-special)', () => {
+    // Backticks are not special in HTML context - they're just regular characters
+    expect(utils.escapeHtml('`hello`')).toBe('`hello`');
+  });
+  
+  it('should safely handle template literal-like syntax', () => {
+    // Even if user input looks like JS template syntax, it's just a string value
+    // when returned from escapeHtml - won't be evaluated as template expressions
+    const malicious = '`${alert(1)}`';
+    expect(utils.escapeHtml(malicious)).toBe('`${alert(1)}`');
   });
 });
 

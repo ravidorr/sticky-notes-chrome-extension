@@ -134,6 +134,34 @@ service cloud.firestore {
       // Allow delete only for owner
       allow delete: if request.auth != null && 
         resource.data.ownerId == request.auth.uid;
+      
+      // Comments subcollection
+      match /comments/{commentId} {
+        // Helper function to check note access
+        function hasNoteAccess() {
+          let note = get(/databases/$(database)/documents/notes/$(noteId)).data;
+          return note.ownerId == request.auth.uid || 
+                 request.auth.token.email in note.sharedWith;
+        }
+        
+        // Read: anyone with note access
+        allow read: if request.auth != null && hasNoteAccess();
+        
+        // Create: anyone with note access who sets themselves as author
+        allow create: if request.auth != null && 
+          hasNoteAccess() &&
+          request.resource.data.authorId == request.auth.uid;
+        
+        // Update: only comment author
+        allow update: if request.auth != null && 
+          resource.data.authorId == request.auth.uid;
+        
+        // Delete: comment author OR note owner
+        allow delete: if request.auth != null && (
+          resource.data.authorId == request.auth.uid ||
+          get(/databases/$(database)/documents/notes/$(noteId)).data.ownerId == request.auth.uid
+        );
+      }
     }
   }
 }
@@ -180,6 +208,12 @@ The extension uses compound queries that **require composite indexes**. Without 
 | `url` | Ascending |
 | `sharedWith` | Arrays |
 | `createdAt` | Descending |
+
+**Index 3: Comments Query** (for threaded comments)
+| Collection | Field | Order |
+|------------|-------|-------|
+| `notes/{noteId}/comments` | `parentId` | Ascending |
+| `notes/{noteId}/comments` | `createdAt` | Ascending |
 
 > ⚠️ **Field order matters!** The fields must be in the exact order shown above.
 
@@ -339,8 +373,8 @@ This usually means **Firestore indexes are missing**:
 | OAuth client ID | `public/manifest.json` | [] |
 | Extension ID in Google Cloud | OAuth credentials | [] |
 | Extension domain in Firebase Auth | Authorized domains | [] |
-| Firestore security rules | Firebase Console | [] |
-| Firestore indexes (2 required) | Firebase Console | [] |
+| Firestore security rules (notes + comments) | Firebase Console | [] |
+| Firestore indexes (3 required) | Firebase Console | [] |
 
 ---
 
@@ -361,8 +395,15 @@ After completing this setup:
 2. [x] Notes are stored in Firestore
 3. [x] Notes sync across devices
 4. [x] Notes can be shared with other users by email
+5. [x] Users can add comments and replies to notes
+6. [x] Real-time sync keeps notes and comments updated
 
 To share a note:
 1. Click the share button on any note you own
 2. Enter the recipient's email address
 3. The note will appear for them when they sign in with that email
+
+To add a comment:
+1. Click the comments toggle at the bottom of any note
+2. Type your comment and press Enter or click Send
+3. Click "Reply" to respond to an existing comment

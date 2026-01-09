@@ -73,6 +73,19 @@ global.chrome = {
     onHistoryStateUpdated: {
       addListener: jest.fn()
     }
+  },
+  i18n: {
+    getMessage: jest.fn((key, substitutions) => {
+      // Return the key as the message for testing
+      if (substitutions) {
+        if (Array.isArray(substitutions)) {
+          return substitutions.reduce((msg, sub, i) => msg.replace(`$${i + 1}`, sub), key);
+        }
+        return key.replace('$1', substitutions);
+      }
+      return key;
+    }),
+    getUILanguage: jest.fn(() => 'en')
   }
 };
 

@@ -35,11 +35,19 @@ sticky-notes-chrome-extension/
 ├── src/
 │   ├── popup/              # Extension popup UI
 │   ├── content/            # Content script (DOM injection)
-│   │   ├── components/     # UI components (StickyNote, RichEditor, SelectionOverlay)
+│   │   ├── app/            # Application modules
+│   │   │   ├── StickyNotesApp.js   # Main orchestration class
+│   │   │   ├── NoteManager.js      # Note CRUD and comments
+│   │   │   ├── RealtimeSync.js     # Real-time subscriptions
+│   │   │   ├── MessageHandler.js   # Message routing
+│   │   │   ├── UIManager.js        # UI state and selection mode
+│   │   │   └── styles.js           # Shadow DOM styles
+│   │   ├── components/     # UI components (StickyNote, RichEditor, etc.)
 │   │   ├── selectors/      # CSS selector generation (SelectorEngine)
 │   │   └── observers/      # Visibility management (VisibilityManager)
 │   ├── background/         # Service worker
-│   └── firebase/           # Firebase services (auth, notes, config)
+│   ├── firebase/           # Firebase services (auth, notes, comments)
+│   └── shared/             # Shared utilities (i18n, logger, utils)
 ├── public/
 │   ├── manifest.json       # Chrome Extension Manifest V3
 │   └── _locales/           # Internationalization

@@ -7,14 +7,18 @@ import { t } from './i18n.js';
 
 /**
  * Escape HTML to prevent XSS attacks
+ * Escapes &, <, >, ", and ' for safe use in both HTML content and attributes
  * @param {string} str - String to escape
  * @returns {string} Escaped string safe for HTML insertion
  */
 export function escapeHtml(str) {
   if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**
