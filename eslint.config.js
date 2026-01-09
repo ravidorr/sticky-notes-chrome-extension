@@ -43,7 +43,7 @@ export default [
       'prefer-arrow-callback': 'warn',
       'id-length': ['warn', { 
         'min': 2, 
-        'exceptions': ['i', 'j', 'k', 'x', 'y', '_'],  // Allow common loop/coordinate vars
+        'exceptions': ['i', 'j', 'k', 'x', 'y', '_', 't'],  // Allow common loop/coordinate vars and i18n function
         'properties': 'never'  // Don't check object properties
       }],
       

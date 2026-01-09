@@ -134,8 +134,8 @@ export function bootstrap() {
     if (noteSub) {
       try {
         noteSub.unsubscribe();
-      } catch (e) {
-        log.warn('Error cleaning up note subscription:', e);
+      } catch (error) {
+        log.error('Error cleaning up note subscription:', error);
       }
       noteSubscriptions.delete(tabId);
       log.debug('Cleaned up note subscription for tab', tabId);
@@ -146,8 +146,8 @@ export function bootstrap() {
       if (key.startsWith(`${tabId}-`)) {
         try {
           unsubscribe();
-        } catch (e) {
-          log.warn('Error cleaning up comment subscription:', key, e);
+        } catch (error) {
+          log.error('Error cleaning up comment subscription:', key, error);
         }
         commentSubscriptions.delete(key);
         log.debug('Cleaned up comment subscription', key);

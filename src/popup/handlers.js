@@ -123,12 +123,12 @@ export function createPopupHandlers(deps = {}) {
         windowClose();
         return { success: true };
       } catch (error) {
-        log.debug(' First message failed:', error.message);
+        log.error(' First message failed:', error.message);
         
         // Content script not loaded - inject it first
         if (error.message.includes('Receiving end does not exist') || 
             error.message.includes('Could not establish connection')) {
-          log.debug(' Content script not found, injecting...');
+          log.error(' Content script not found, injecting...');
           await injectContentScript(tab.id);
           
           // Wait for the script to initialize with retry
@@ -144,9 +144,9 @@ export function createPopupHandlers(deps = {}) {
               log.debug(' Retry successful! Response:', response);
               windowClose();
               return { success: true };
-            } catch (retryError) {
-              log.debug(' Retry failed:', retryError.message);
-              lastError = retryError;
+            } catch (error) {
+              log.error(' Retry failed:', error);
+              lastError = error;
               retries--;
             }
           }

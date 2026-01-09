@@ -4,7 +4,6 @@
  */
 
 import { t } from '../../shared/i18n.js';
-import { escapeHtml } from '../../shared/utils.js';
 
 /**
  * Custom confirmation dialog that matches the extension's styling
@@ -81,29 +80,29 @@ export class ConfirmDialog {
       // Event handlers
       confirmBtn.addEventListener('click', () => cleanup(true));
       cancelBtn.addEventListener('click', () => cleanup(false));
-      backdrop.addEventListener('click', (e) => {
-        if (e.target === backdrop) cleanup(false);
+      backdrop.addEventListener('click', (event) => {
+        if (event.target === backdrop) cleanup(false);
       });
       
       // Keyboard handling
-      dialog.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          e.preventDefault();
+      dialog.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
           cleanup(false);
-        } else if (e.key === 'Enter') {
-          e.preventDefault();
+        } else if (event.key === 'Enter') {
+          event.preventDefault();
           cleanup(true);
-        } else if (e.key === 'Tab') {
+        } else if (event.key === 'Tab') {
           // Trap focus within dialog
           const focusableElements = [cancelBtn, confirmBtn];
           const firstEl = focusableElements[0];
           const lastEl = focusableElements[focusableElements.length - 1];
           
-          if (e.shiftKey && document.activeElement === firstEl) {
-            e.preventDefault();
+          if (event.shiftKey && document.activeElement === firstEl) {
+            event.preventDefault();
             lastEl.focus();
-          } else if (!e.shiftKey && document.activeElement === lastEl) {
-            e.preventDefault();
+          } else if (!event.shiftKey && document.activeElement === lastEl) {
+            event.preventDefault();
             firstEl.focus();
           }
         }

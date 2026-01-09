@@ -438,7 +438,7 @@ export class NoteManager {
     
     // Create sets for efficient lookup
     const currentIds = new Set(this.notes.keys());
-    const updatedIds = new Set(updatedNotes.map(n => n.id));
+    const updatedIds = new Set(updatedNotes.map(note => note.id));
     
     // Remove notes that no longer exist
     currentIds.forEach(id => {

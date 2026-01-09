@@ -60,7 +60,6 @@ export async function getOAuthToken(deps = {}) {
  * @returns {Promise<Object>} User object
  */
 export async function signInWithGoogle(deps = {}) {
-  const logger = deps.log || log;
   const chromeStorage = deps.chromeStorage || chrome.storage;
   const authConfigured = deps.isAuthConfigured !== undefined ? deps.isAuthConfigured : isAuthConfigured(deps);
   
@@ -110,7 +109,7 @@ export async function signInWithGoogle(deps = {}) {
     
     return user;
   } catch (error) {
-    logger.error('Sign in error:', error);
+    log.error('Sign in error:', error);
     throw error;
   }
 }
@@ -145,7 +144,6 @@ export async function revokeOAuthToken(deps = {}) {
  * @returns {Promise<void>}
  */
 export async function signOut(deps = {}) {
-  const logger = deps.log || log;
   const chromeStorage = deps.chromeStorage || chrome.storage;
   const authConfigured = deps.isAuthConfigured !== undefined ? deps.isAuthConfigured : isAuthConfigured(deps);
   const authInstance = deps.auth || auth;
@@ -166,7 +164,7 @@ export async function signOut(deps = {}) {
     // Clear local storage
     await chromeStorage.local.remove(['user']);
   } catch (error) {
-    logger.error('Sign out error:', error);
+    log.error('Sign out error:', error);
     throw error;
   }
 }

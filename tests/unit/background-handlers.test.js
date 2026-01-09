@@ -325,7 +325,7 @@ describe('Background Handlers', () => {
       
       expect(result.success).toBe(true);
       expect(result.note.id).toBe('note_123_abc');
-      expect(localThis.mockLog.warn).toHaveBeenCalled();
+      expect(localThis.mockLog.error).toHaveBeenCalled();
     });
 
     it('should save to local storage when not logged in', async () => {

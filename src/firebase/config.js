@@ -142,13 +142,13 @@ export function initializeFirebase(options = {}) {
           })
         });
       }
-    } catch (err) {
+    } catch (error) {
       // If Firestore was already initialized (e.g., in another tab), fall back to default
-      if (err.code === 'failed-precondition') {
-        log.warn('Firestore persistence: Using existing instance');
+      if (error.code === 'failed-precondition') {
+        log.error('Firestore persistence: Using existing instance');
         db = deps.getFirestore(app);
       } else {
-        log.warn('Firestore initialization error:', err);
+        log.error('Firestore initialization error:', error);
         db = deps.getFirestore(app);
       }
     }

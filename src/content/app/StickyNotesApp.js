@@ -43,8 +43,8 @@ export class StickyNotesApp {
    * Track the element that was right-clicked for context menu
    */
   setupContextMenuTracking() {
-    document.addEventListener('contextmenu', (e) => {
-      this.lastRightClickedElement = e.target;
+    document.addEventListener('contextmenu', (event) => {
+      this.lastRightClickedElement = event.target;
     }, true);
   }
   
@@ -188,7 +188,7 @@ export class StickyNotesApp {
       }
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
-        log.debug('Failed to fetch user:', error);
+        log.error('Failed to fetch user:', error);
       }
       this.currentUser = null;
     }

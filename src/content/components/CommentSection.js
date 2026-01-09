@@ -93,20 +93,20 @@ export class CommentSection {
       submitBtn.disabled = !input.value.trim();
     });
     
-    input.addEventListener('keydown', (e) => {
-      e.stopPropagation(); // Prevent page shortcuts
-      if (e.key === 'Enter' && !e.shiftKey && input.value.trim()) {
-        e.preventDefault();
+    input.addEventListener('keydown', (event) => {
+      event.stopPropagation(); // Prevent page shortcuts
+      if (event.key === 'Enter' && !event.shiftKey && input.value.trim()) {
+        event.preventDefault();
         this.submitComment();
       }
-      if (e.key === 'Escape') {
+      if (event.key === 'Escape') {
         this.cancelReply();
       }
     });
     
     // Stop other keyboard events from propagating
-    input.addEventListener('keyup', (e) => e.stopPropagation());
-    input.addEventListener('keypress', (e) => e.stopPropagation());
+    input.addEventListener('keyup', (event) => event.stopPropagation());
+    input.addEventListener('keypress', (event) => event.stopPropagation());
     
     submitBtn.addEventListener('click', () => this.submitComment());
   }
@@ -200,8 +200,8 @@ export class CommentSection {
     }
     
     // Organize comments into threads
-    const topLevel = this.comments.filter(c => !c.parentId);
-    const replies = this.comments.filter(c => c.parentId);
+    const topLevel = this.comments.filter(comment => !comment.parentId);
+    const replies = this.comments.filter(comment => comment.parentId);
     const replyMap = new Map();
     
     replies.forEach(reply => {
@@ -418,7 +418,7 @@ export class CommentSection {
    * @param {string} commentId - Comment ID to edit
    */
   startEdit(commentId) {
-    const comment = this.comments.find(c => c.id === commentId);
+    const comment = this.comments.find(comment => comment.id === commentId);
     if (!comment) return;
     
     this.editingComment = commentId;

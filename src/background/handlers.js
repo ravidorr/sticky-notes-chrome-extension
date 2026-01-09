@@ -214,7 +214,7 @@ export function createHandlers(deps = {}) {
           const newNote = await createNote(note, user.uid);
           return { success: true, note: newNote };
         } catch (error) {
-          log.warn('Firestore save failed, falling back to local storage:', error);
+          log.error('Firestore save failed, falling back to local storage:', error);
         }
       }
       
@@ -255,7 +255,7 @@ export function createHandlers(deps = {}) {
           await updateNoteInFirestore(note.id, note, user.uid);
           return { success: true, note };
         } catch (error) {
-          log.warn('Firestore update failed, falling back to local storage:', error);
+          log.error('Firestore update failed, falling back to local storage:', error);
         }
       }
       
@@ -297,7 +297,7 @@ export function createHandlers(deps = {}) {
           await deleteNoteFromFirestore(noteId, user.uid);
           return { success: true };
         } catch (error) {
-          log.warn('Firestore delete failed, falling back to local storage:', error);
+          log.error('Firestore delete failed, falling back to local storage:', error);
         }
       }
       
@@ -562,8 +562,8 @@ export function createHandlers(deps = {}) {
               // Tab might be closed, clean up subscription
               try {
                 unsubscribe();
-              } catch (e) {
-                log.warn('Error during unsubscribe:', e);
+              } catch (error) {
+                log.error('Error during unsubscribe:', error);
               }
               noteSubscriptions.delete(tabId);
             });
@@ -667,8 +667,8 @@ export function createHandlers(deps = {}) {
               // Tab might be closed, clean up subscription
               try {
                 unsubscribe();
-              } catch (e) {
-                log.warn('Error during unsubscribe:', e);
+              } catch (error) {
+                log.error('Error during unsubscribe:', error);
               }
               commentSubscriptions.delete(subKey);
             });

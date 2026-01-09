@@ -44,7 +44,7 @@ export class RealtimeSync {
       }
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
-        log.warn('Failed to subscribe to notes:', error);
+        log.error('Failed to subscribe to notes:', error);
       }
     }
   }
@@ -58,7 +58,7 @@ export class RealtimeSync {
       log.debug('Unsubscribed from real-time note updates');
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
-        log.warn('Failed to unsubscribe from notes:', error);
+        log.error('Failed to unsubscribe from notes:', error);
       }
     }
   }
@@ -86,7 +86,7 @@ export class RealtimeSync {
       }
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
-        log.warn('Failed to subscribe to comments:', error);
+        log.error('Failed to subscribe to comments:', error);
       }
     }
   }
@@ -110,7 +110,7 @@ export class RealtimeSync {
       log.debug('Unsubscribed from real-time comment updates for note:', noteId);
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
-        log.warn('Failed to unsubscribe from comments:', error);
+        log.error('Failed to unsubscribe from comments:', error);
       }
     }
   }

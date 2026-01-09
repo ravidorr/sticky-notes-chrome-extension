@@ -46,13 +46,6 @@ describe('Firebase Auth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    localThis.mockLog = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn()
-    };
-    
     localThis.mockChromeStorage = {
       local: {
         get: jest.fn(),
@@ -141,8 +134,7 @@ describe('Firebase Auth', () => {
       
       const user = await signInWithGoogle({
         isAuthConfigured: false,
-        chromeStorage: localThis.mockChromeStorage,
-        log: localThis.mockLog
+        chromeStorage: localThis.mockChromeStorage
       });
       
       expect(user.email).toBe('local@example.com');
@@ -171,7 +163,6 @@ describe('Firebase Auth', () => {
       const user = await signInWithGoogle({
         isAuthConfigured: true,
         chromeStorage: localThis.mockChromeStorage,
-        log: localThis.mockLog,
         initializeFirebase: jest.fn(),
         getOAuthToken: jest.fn().mockResolvedValue('mock-token'),
         GoogleAuthProvider: mockGoogleProvider,
@@ -189,27 +180,21 @@ describe('Firebase Auth', () => {
       await expect(signInWithGoogle({
         isAuthConfigured: true,
         chromeStorage: localThis.mockChromeStorage,
-        log: localThis.mockLog,
         initializeFirebase: jest.fn(),
         getOAuthToken: jest.fn().mockResolvedValue(null)
       })).rejects.toThrow('Failed to get OAuth token');
-      
-      expect(localThis.mockLog.error).toHaveBeenCalled();
     });
 
     it('should throw error on sign in failure', async () => {
       await expect(signInWithGoogle({
         isAuthConfigured: true,
         chromeStorage: localThis.mockChromeStorage,
-        log: localThis.mockLog,
         initializeFirebase: jest.fn(),
         getOAuthToken: jest.fn().mockResolvedValue('token'),
         GoogleAuthProvider: { credential: jest.fn() },
         signInWithCredential: jest.fn().mockRejectedValue(new Error('Auth error')),
         auth: {}
       })).rejects.toThrow('Auth error');
-      
-      expect(localThis.mockLog.error).toHaveBeenCalled();
     });
   });
 
@@ -261,8 +246,7 @@ describe('Firebase Auth', () => {
         auth: { name: 'auth' },
         firebaseSignOut: mockFirebaseSignOut,
         revokeOAuthToken: mockRevokeToken,
-        chromeStorage: localThis.mockChromeStorage,
-        log: localThis.mockLog
+        chromeStorage: localThis.mockChromeStorage
       });
       
       expect(mockFirebaseSignOut).toHaveBeenCalled();
@@ -279,8 +263,7 @@ describe('Firebase Auth', () => {
         isAuthConfigured: false,
         firebaseSignOut: mockFirebaseSignOut,
         revokeOAuthToken: mockRevokeToken,
-        chromeStorage: localThis.mockChromeStorage,
-        log: localThis.mockLog
+        chromeStorage: localThis.mockChromeStorage
       });
       
       expect(mockFirebaseSignOut).not.toHaveBeenCalled();
@@ -293,11 +276,8 @@ describe('Firebase Auth', () => {
       
       await expect(signOut({
         isAuthConfigured: false,
-        chromeStorage: localThis.mockChromeStorage,
-        log: localThis.mockLog
+        chromeStorage: localThis.mockChromeStorage
       })).rejects.toThrow('Storage error');
-      
-      expect(localThis.mockLog.error).toHaveBeenCalled();
     });
 
     it('should skip Firebase sign out when auth is null', async () => {
@@ -309,8 +289,7 @@ describe('Firebase Auth', () => {
         auth: null,
         firebaseSignOut: mockFirebaseSignOut,
         revokeOAuthToken: jest.fn().mockResolvedValue(),
-        chromeStorage: localThis.mockChromeStorage,
-        log: localThis.mockLog
+        chromeStorage: localThis.mockChromeStorage
       });
       
       expect(mockFirebaseSignOut).not.toHaveBeenCalled();

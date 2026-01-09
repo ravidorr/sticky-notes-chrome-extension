@@ -5,6 +5,7 @@
  */
 
 import { validateSelectorPattern } from '../../shared/utils.js';
+import { contentLogger as log } from '../../shared/logger.js';
 
 export class SelectorEngine {
   constructor() {
@@ -637,7 +638,8 @@ export class SelectorEngine {
     // Try to use the selector to verify it's valid CSS (DOM check)
     try {
       document.querySelector(trimmed);
-    } catch (_e) {
+    } catch (error) {
+      log.error('Invalid CSS selector syntax:', error);
       return { valid: false, error: 'Invalid CSS selector syntax' };
     }
     
