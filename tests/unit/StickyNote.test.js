@@ -174,10 +174,73 @@ describe('StickyNote', () => {
   });
   
   describe('handleDelete', () => {
-    it('should call onDelete callback', () => {
-      // handleDelete may be async or have other behavior
-      // Just verify the method exists and can be called
+    it('should be an async function', () => {
       expect(typeof note.handleDelete).toBe('function');
+    });
+    
+    it('should call onDelete callback when confirmed', async () => {
+      // Create a host element with shadow root for the dialog
+      const host = document.createElement('div');
+      document.body.appendChild(host);
+      const shadowRoot = host.attachShadow({ mode: 'open' });
+      shadowRoot.appendChild(note.element);
+      
+      // Start the delete operation (it will show the dialog)
+      const deletePromise = note.handleDelete();
+      
+      // Find and click the confirm button in the dialog
+      await new Promise(resolve => setTimeout(resolve, 10));
+      const confirmBtn = shadowRoot.querySelector('.sn-confirm-ok');
+      expect(confirmBtn).not.toBeNull();
+      confirmBtn.click();
+      
+      await deletePromise;
+      
+      expect(onDelete).toHaveBeenCalled();
+    });
+    
+    it('should not call onDelete callback when cancelled', async () => {
+      // Create a host element with shadow root for the dialog
+      const host = document.createElement('div');
+      document.body.appendChild(host);
+      const shadowRoot = host.attachShadow({ mode: 'open' });
+      shadowRoot.appendChild(note.element);
+      
+      // Start the delete operation (it will show the dialog)
+      const deletePromise = note.handleDelete();
+      
+      // Find and click the cancel button in the dialog
+      await new Promise(resolve => setTimeout(resolve, 10));
+      const cancelBtn = shadowRoot.querySelector('.sn-confirm-cancel');
+      expect(cancelBtn).not.toBeNull();
+      cancelBtn.click();
+      
+      await deletePromise;
+      
+      expect(onDelete).not.toHaveBeenCalled();
+    });
+    
+    it('should show confirmation dialog with correct message', async () => {
+      // Create a host element with shadow root for the dialog
+      const host = document.createElement('div');
+      document.body.appendChild(host);
+      const shadowRoot = host.attachShadow({ mode: 'open' });
+      shadowRoot.appendChild(note.element);
+      
+      // Start the delete operation
+      const deletePromise = note.handleDelete();
+      
+      // Check dialog appears with message
+      await new Promise(resolve => setTimeout(resolve, 10));
+      const message = shadowRoot.querySelector('.sn-confirm-message');
+      expect(message).not.toBeNull();
+      // The message should be the i18n key 'deleteConfirm'
+      expect(message.textContent).toBe('deleteConfirm');
+      
+      // Clean up
+      const cancelBtn = shadowRoot.querySelector('.sn-confirm-cancel');
+      cancelBtn.click();
+      await deletePromise;
     });
   });
   

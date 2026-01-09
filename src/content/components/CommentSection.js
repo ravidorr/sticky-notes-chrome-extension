@@ -6,6 +6,7 @@
 import { t } from '../../shared/i18n.js';
 import { formatRelativeTime, escapeHtml } from '../../shared/utils.js';
 import { contentLogger as log } from '../../shared/logger.js';
+import { ConfirmDialog } from './ConfirmDialog.js';
 
 export class CommentSection {
   /**
@@ -510,7 +511,11 @@ export class CommentSection {
    * @param {string} commentId - Comment ID
    */
   async deleteComment(commentId) {
-    if (!confirm(t('deleteCommentConfirm'))) return;
+    const confirmed = await ConfirmDialog.show({
+      message: t('deleteCommentConfirm'),
+      shadowRoot: this.element.getRootNode()
+    });
+    if (!confirmed) return;
     
     try {
       await this.onDeleteComment(this.noteId, commentId);

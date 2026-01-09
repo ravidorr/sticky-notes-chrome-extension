@@ -5,6 +5,7 @@
 
 import { RichEditor } from './RichEditor.js';
 import { CommentSection } from './CommentSection.js';
+import { ConfirmDialog } from './ConfirmDialog.js';
 import { 
   isValidEmail, 
   escapeHtml,
@@ -710,8 +711,12 @@ export class StickyNote {
   /**
    * Handle delete button click
    */
-  handleDelete() {
-    if (confirm(t('deleteConfirm'))) {
+  async handleDelete() {
+    const confirmed = await ConfirmDialog.show({
+      message: t('deleteConfirm'),
+      shadowRoot: this.element.getRootNode()
+    });
+    if (confirmed) {
       this.onDelete();
     }
   }

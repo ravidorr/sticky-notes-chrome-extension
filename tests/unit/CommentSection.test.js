@@ -560,27 +560,56 @@ describe('CommentSection', () => {
   });
   
   describe('delete comment', () => {
-    beforeEach(() => {
-      // Mock window.confirm
-      global.confirm = jest.fn(() => true);
-    });
-    
-    it('calls delete callback after confirmation', async () => {
+    it('shows confirmation dialog when deleting', async () => {
       mockCallbacks.onLoadComments.mockResolvedValue([
         { id: 'c1', authorId: 'user-1', authorName: 'Test User', content: 'To delete', createdAt: new Date().toISOString() }
       ]);
       
-      await commentSection.togglePanel();
-      await commentSection.deleteComment('c1');
+      // Create a host element in the document so we can attach shadow root
+      const host = document.createElement('div');
+      document.body.appendChild(host);
+      const shadowRoot = host.attachShadow({ mode: 'open' });
+      shadowRoot.appendChild(commentSection.element);
       
-      expect(global.confirm).toHaveBeenCalled();
+      await commentSection.togglePanel();
+      
+      // Start the delete operation (it will show the dialog)
+      const deletePromise = commentSection.deleteComment('c1');
+      
+      // Find and click the confirm button in the dialog
+      await new Promise(resolve => setTimeout(resolve, 10));
+      const confirmBtn = shadowRoot.querySelector('.sn-confirm-ok');
+      expect(confirmBtn).not.toBeNull();
+      confirmBtn.click();
+      
+      await deletePromise;
+      
       expect(mockCallbacks.onDeleteComment).toHaveBeenCalledWith('note-123', 'c1');
     });
     
     it('does not delete when confirmation cancelled', async () => {
-      global.confirm = jest.fn(() => false);
+      mockCallbacks.onLoadComments.mockResolvedValue([
+        { id: 'c1', authorId: 'user-1', authorName: 'Test User', content: 'To delete', createdAt: new Date().toISOString() }
+      ]);
       
-      await commentSection.deleteComment('c1');
+      // Create a host element in the document so we can attach shadow root
+      const host = document.createElement('div');
+      document.body.appendChild(host);
+      const shadowRoot = host.attachShadow({ mode: 'open' });
+      shadowRoot.appendChild(commentSection.element);
+      
+      await commentSection.togglePanel();
+      
+      // Start the delete operation (it will show the dialog)
+      const deletePromise = commentSection.deleteComment('c1');
+      
+      // Find and click the cancel button in the dialog
+      await new Promise(resolve => setTimeout(resolve, 10));
+      const cancelBtn = shadowRoot.querySelector('.sn-confirm-cancel');
+      expect(cancelBtn).not.toBeNull();
+      cancelBtn.click();
+      
+      await deletePromise;
       
       expect(mockCallbacks.onDeleteComment).not.toHaveBeenCalled();
     });

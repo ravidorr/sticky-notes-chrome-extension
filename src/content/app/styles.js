@@ -5,6 +5,7 @@
 
 import { RichEditor } from '../components/RichEditor.js';
 import { CommentSection } from '../components/CommentSection.js';
+import { ConfirmDialog } from '../components/ConfirmDialog.js';
 
 /**
  * Get CSS styles for shadow DOM
@@ -266,6 +267,8 @@ export function getShadowStyles() {
     ${RichEditor.getStyles()}
     
     ${CommentSection.getStyles()}
+    
+    ${ConfirmDialog.getStyles()}
   `;
 }
 
