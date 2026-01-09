@@ -113,9 +113,20 @@ body {
   box-shadow: 0 2px 8px rgba(234, 179, 8, 0.3);
 }
 
-.btn-action:hover {
+.btn-action:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(234, 179, 8, 0.4);
+}
+
+.btn-action:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.action-hint.restricted {
+  color: #ef4444;
 }
 
 /* Main content */

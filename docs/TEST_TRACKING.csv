@@ -17,7 +17,7 @@ TEST-3.1,Popup UI,Popup Display (Logged Out State),4,"Check ""Notes on this page
 TEST-3.1,Popup UI,Popup Display (Logged Out State),5,Check footer,"Shows version number (e.g., ""v1.0.0"")",
 TEST-3.2,Popup UI,Add Note Button (Restricted Page),1,Navigate to chrome://extensions,Chrome internal page opens,
 TEST-3.2,Popup UI,Add Note Button (Restricted Page),2,Click extension icon,Popup opens,
-TEST-3.2,Popup UI,Add Note Button (Restricted Page),3,"Check ""Add Note"" button","Button disabled OR shows ""Not available on this page""",
+TEST-3.2,Popup UI,Add Note Button (Restricted Page),3,"Check ""Add Note"" button","Button is disabled (grayed out) and hint text shows ""Notes cannot be added to Chrome system pages"" in red",
 TEST-3.3,Popup UI,Add Note Button (Regular Page),1,Navigate to http://localhost:3000,Test page opens,
 TEST-3.3,Popup UI,Add Note Button (Regular Page),2,Click extension icon,Popup opens,
 TEST-3.3,Popup UI,Add Note Button (Regular Page),3,"Click ""Add Note"" button",Selection mode activates on page,

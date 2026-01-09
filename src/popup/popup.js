@@ -4,7 +4,8 @@
  */
 
 import { createPopupHandlers } from './handlers.js';
-import { initializeI18n } from '../shared/i18n.js';
+import { initializeI18n, t } from '../shared/i18n.js';
+import { isRestrictedUrl } from '../shared/utils.js';
 
 // Create handlers with default dependencies
 const handlers = createPopupHandlers();
@@ -12,7 +13,7 @@ const handlers = createPopupHandlers();
 // DOM Elements (will be populated after DOMContentLoaded)
 let authSection, userSection, loginBtn, logoutBtn, closeBtn;
 let userAvatar, userName, userEmail;
-let addNoteBtn, notesList, notesCount;
+let addNoteBtn, notesList, notesCount, actionHint;
 
 /**
  * Initialize DOM elements
@@ -29,6 +30,19 @@ function initDOMElements() {
   addNoteBtn = document.getElementById('addNoteBtn');
   notesList = document.getElementById('notesList');
   notesCount = document.getElementById('notesCount');
+  actionHint = document.querySelector('.action-hint');
+}
+
+/**
+ * Disable add note button for restricted pages
+ * @param {string} url - Current tab URL
+ */
+function updateAddNoteButtonState(url) {
+  if (isRestrictedUrl(url)) {
+    addNoteBtn.disabled = true;
+    actionHint.textContent = t('restrictedPageHint');
+    actionHint.classList.add('restricted');
+  }
 }
 
 /**
@@ -105,6 +119,12 @@ async function init() {
     showUserSection(user);
   } else {
     showAuthSection();
+  }
+  
+  // Get current tab and check if restricted
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.url) {
+    updateAddNoteButtonState(tab.url);
   }
   
   // Load notes for current tab

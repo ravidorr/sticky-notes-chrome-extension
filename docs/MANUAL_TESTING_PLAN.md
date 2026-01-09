@@ -103,7 +103,7 @@
 |------|--------|-----------------|
 | 1 | Navigate to `chrome://extensions` | Chrome internal page opens |
 | 2 | Click extension icon | Popup opens |
-| 3 | Check "Add Note" button | Button disabled OR shows "Not available on this page" |
+| 3 | Check "Add Note" button | Button is disabled (grayed out) and hint text shows "Notes cannot be added to Chrome system pages" in red |
 
 ### TEST-3.3: Add Note Button (Regular Page)
 

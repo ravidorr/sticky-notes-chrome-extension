@@ -74,10 +74,12 @@ export function bootstrap() {
   }
 
   // Create context menu for creating notes
+  // Only show on regular web pages (http/https), not on restricted pages (chrome://, about:, etc.)
   chrome.contextMenus.create({
     id: 'create-sticky-note',
     title: chrome.i18n.getMessage('contextMenuCreateNote') || 'Create Sticky Note Here',
-    contexts: ['page', 'selection', 'image', 'link']
+    contexts: ['page', 'selection', 'image', 'link'],
+    documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
   }, () => {
     // Ignore error if menu already exists (e.g., during hot reload)
     if (chrome.runtime.lastError) {

@@ -221,6 +221,10 @@
     "message": "לא ניתן להוסיף פתקיות לדף זה. דפי מערכת של Chrome ודפי תוספים אינם נתמכים.",
     "description": "Error message for restricted pages"
   },
+  "restrictedPageHint": {
+    "message": "לא ניתן להוסיף פתקיות לדפי מערכת של Chrome",
+    "description": "Hint shown when Add Note button is disabled on restricted pages"
+  },
   "couldNotEnableSelection": {
     "message": "לא ניתן להפעיל מצב בחירה. נא לרענן את הדף ולנסות שוב.",
     "description": "Error message when selection mode fails"

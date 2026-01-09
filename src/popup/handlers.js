@@ -108,10 +108,9 @@ export function createPopupHandlers(deps = {}) {
       
       log.debug(' Active tab:', { id: tab.id, url: tab.url });
       
-      // Check if it's a restricted page
+      // Check if it's a restricted page (fallback check - button should already be disabled)
       if (isRestrictedUrl(tab.url)) {
         log.debug(' URL is restricted, cannot inject content script');
-        alertFn(t('cannotAddNotesToPage'));
         return { success: false, error: 'Restricted URL' };
       }
       

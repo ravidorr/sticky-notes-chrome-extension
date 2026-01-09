@@ -148,7 +148,8 @@ describe('Popup Handlers', () => {
       
       expect(result.success).toBe(false);
       expect(result.error).toBe('Restricted URL');
-      expect(localThis.mockAlert).toHaveBeenCalled();
+      // Note: Alert was removed - button is disabled in UI before user can click
+      expect(localThis.mockAlert).not.toHaveBeenCalled();
     });
 
     it('should enable selection mode when content script responds', async () => {

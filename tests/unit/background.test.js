@@ -344,7 +344,8 @@ describe('Background Script Logic', () => {
         chrome.contextMenus.create({
           id: 'create-sticky-note',
           title: 'Create Sticky Note Here',
-          contexts: ['page', 'selection', 'image', 'link']
+          contexts: ['page', 'selection', 'image', 'link'],
+          documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
         });
       }
       
@@ -353,7 +354,8 @@ describe('Background Script Logic', () => {
       expect(chrome.contextMenus.create).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'create-sticky-note',
-          contexts: expect.arrayContaining(['page', 'selection', 'image', 'link'])
+          contexts: expect.arrayContaining(['page', 'selection', 'image', 'link']),
+          documentUrlPatterns: expect.arrayContaining(['http://*/*', 'https://*/*'])
         })
       );
     });

@@ -221,6 +221,10 @@
     "message": "Impossible d'ajouter des notes a cette page. Les pages systeme Chrome et les pages d'extension ne sont pas prises en charge.",
     "description": "Error message for restricted pages"
   },
+  "restrictedPageHint": {
+    "message": "Les notes ne peuvent pas etre ajoutees aux pages systeme Chrome",
+    "description": "Hint shown when Add Note button is disabled on restricted pages"
+  },
   "couldNotEnableSelection": {
     "message": "Impossible d'activer le mode de selection. Veuillez actualiser la page et reessayer.",
     "description": "Error message when selection mode fails"

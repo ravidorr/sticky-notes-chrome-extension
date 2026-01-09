@@ -221,6 +221,10 @@
     "message": "Auf dieser Seite konnen keine Notizen hinzugefugt werden. Chrome-Systemseiten und Erweiterungsseiten werden nicht unterstutzt.",
     "description": "Error message for restricted pages"
   },
+  "restrictedPageHint": {
+    "message": "Notizen konnen nicht zu Chrome-Systemseiten hinzugefugt werden",
+    "description": "Hint shown when Add Note button is disabled on restricted pages"
+  },
   "couldNotEnableSelection": {
     "message": "Auswahlmodus konnte nicht aktiviert werden. Bitte aktualisieren Sie die Seite und versuchen Sie es erneut.",
     "description": "Error message when selection mode fails"
