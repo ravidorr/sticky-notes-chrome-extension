@@ -7,8 +7,34 @@ import { createPopupHandlers } from './handlers.js';
 import { initializeI18n, t } from '../shared/i18n.js';
 import { isRestrictedUrl } from '../shared/utils.js';
 
-// Create handlers with default dependencies
-const handlers = createPopupHandlers();
+/**
+ * Show a toast notification in the popup
+ * @param {string} message - Message to display
+ * @param {string} type - 'error' or 'success'
+ */
+function showToast(message, type = 'error') {
+  // Remove existing toast if any
+  const existing = document.querySelector('.popup-toast');
+  if (existing) {
+    existing.remove();
+  }
+  
+  const toast = document.createElement('div');
+  toast.className = `popup-toast ${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  // Auto-remove after 3 seconds
+  setTimeout(() => {
+    toast.classList.add('hiding');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// Create handlers with toast support
+const handlers = createPopupHandlers({
+  showErrorToast: (msg) => showToast(msg, 'error')
+});
 
 // DOM Elements (will be populated after DOMContentLoaded)
 let authSection, userSection, loginBtn, logoutBtn, closeBtn;

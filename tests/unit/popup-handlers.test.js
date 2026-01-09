@@ -42,7 +42,7 @@ describe('Popup Handlers', () => {
     };
     
     localThis.mockWindowClose = jest.fn();
-    localThis.mockAlert = jest.fn();
+    localThis.mockShowErrorToast = jest.fn();
     
     localThis.deps = {
       log: localThis.mockLog,
@@ -51,7 +51,7 @@ describe('Popup Handlers', () => {
       chromeScripting: localThis.mockChromeScripting,
       chromeStorage: localThis.mockChromeStorage,
       windowClose: localThis.mockWindowClose,
-      alertFn: localThis.mockAlert
+      showErrorToast: localThis.mockShowErrorToast
     };
     
     localThis.handlers = createPopupHandlers(localThis.deps);
@@ -148,8 +148,8 @@ describe('Popup Handlers', () => {
       
       expect(result.success).toBe(false);
       expect(result.error).toBe('Restricted URL');
-      // Note: Alert was removed - button is disabled in UI before user can click
-      expect(localThis.mockAlert).not.toHaveBeenCalled();
+      // Note: Toast not shown for restricted URL - button is disabled in UI before user can click
+      expect(localThis.mockShowErrorToast).not.toHaveBeenCalled();
     });
 
     it('should enable selection mode when content script responds', async () => {
@@ -202,7 +202,7 @@ describe('Popup Handlers', () => {
       const result = await localThis.handlers.handleAddNote();
       
       expect(result.success).toBe(false);
-      expect(localThis.mockAlert).toHaveBeenCalled();
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
     });
 
     it('should handle non-injection errors', async () => {
@@ -212,7 +212,7 @@ describe('Popup Handlers', () => {
       const result = await localThis.handlers.handleAddNote();
       
       expect(result.success).toBe(false);
-      expect(localThis.mockAlert).toHaveBeenCalled();
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
     });
   });
 

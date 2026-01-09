@@ -20,7 +20,7 @@ export function createPopupHandlers(deps = {}) {
     chromeScripting = chrome.scripting,
     chromeStorage = chrome.storage,
     windowClose = () => window.close(),
-    alertFn = alert
+    showErrorToast = null  // Will be provided by popup.js
   } = deps;
 
   /**
@@ -157,7 +157,9 @@ export function createPopupHandlers(deps = {}) {
       }
     } catch (error) {
       log.error('Error enabling selection mode:', error);
-      alertFn(t('couldNotEnableSelection'));
+      if (showErrorToast) {
+        showErrorToast(t('couldNotEnableSelection'));
+      }
       return { success: false, error: error.message };
     }
   }
