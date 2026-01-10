@@ -76,8 +76,8 @@
   },
 
   "copyAsMarkdown": {
-    "message": "Als Markdown kopieren",
-    "description": "Tooltip for copy markdown button"
+    "message": "Bug als Markdown kopieren",
+    "description": "Tooltip for copy bug report as markdown button"
   },
   "copyScreenshot": {
     "message": "Screenshot kopieren",

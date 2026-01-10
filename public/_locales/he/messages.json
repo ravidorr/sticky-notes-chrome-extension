@@ -76,8 +76,8 @@
   },
 
   "copyAsMarkdown": {
-    "message": "העתק כ-Markdown",
-    "description": "Tooltip for copy markdown button"
+    "message": "העתק באג כ-Markdown",
+    "description": "Tooltip for copy bug report as markdown button"
   },
   "copyScreenshot": {
     "message": "העתק צילום מסך",
