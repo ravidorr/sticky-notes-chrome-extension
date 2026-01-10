@@ -119,6 +119,7 @@ export class NoteManager {
       createdAt: noteData.createdAt,
       onSave: (content) => this.handleNoteSave(noteData.id, content),
       onThemeChange: (theme) => this.handleThemeChange(noteData.id, theme),
+      onPositionChange: (position) => this.handlePositionChange(noteData.id, position),
       onDelete: () => this.handleNoteDelete(noteData.id),
       // Comment-related options
       user: user,
@@ -170,6 +171,24 @@ export class NoteManager {
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
         log.error('Error saving theme:', error);
+      }
+    }
+  }
+  
+  /**
+   * Handle position change
+   * @param {string} noteId - Note ID
+   * @param {Object} position - New position { anchor: string } or { custom: { x, y } }
+   */
+  async handlePositionChange(noteId, position) {
+    try {
+      await this.sendMessage({
+        action: 'updateNote',
+        note: { id: noteId, position }
+      });
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Error saving position:', error);
       }
     }
   }

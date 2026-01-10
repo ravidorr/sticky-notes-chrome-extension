@@ -206,6 +206,7 @@ Unplanned feature ideas for future consideration:
 
 - [] Minimize note (collapse to small indicator)
 - [] Delete/bulk delete notes from popup.html
+- [] Delete old notes from popup UI (filter by age, cleanup stale notes)
 - [x] Add note through right-click context menu
 - [] Read-only user permissions (viewers who can see notes but not edit/comment) - pricing implications?
 - [] Freemium model with ads - all features free forever but with ads in notes (research: can Google Ads be injected into extension UI?)
@@ -215,6 +216,9 @@ Unplanned feature ideas for future consideration:
 - [] WCAG 2.1 AA accessibility compliance
 - [] Additional note positions: Center Left, Center Right, Top Center, Bottom Center
 - [] Auto position: smart positioning based on available viewport space
+- [] Note content length validation (e.g., 10,000-50,000 chars) for UX, performance, and cost control
+- [] Image support in notes (Pro feature - requires Firebase Storage, upload flow, cost considerations)
+- [] RichEditor enhancements: code/monospace, strikethrough, checkboxes, blockquotes
 
 ---
 

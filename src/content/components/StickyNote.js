@@ -55,6 +55,7 @@ export class StickyNote {
     this.position = options.position || { anchor: 'top-right' };
     this.onSave = options.onSave || (() => {});
     this.onThemeChange = options.onThemeChange || (() => {});
+    this.onPositionChange = options.onPositionChange || (() => {});
     this.onDelete = options.onDelete || (() => {});
     
     // Comment-related callbacks
@@ -76,7 +77,8 @@ export class StickyNote {
     this.isVisible = false;
     this.isDragging = false;
     this.dragOffset = { x: 0, y: 0 };
-    this.customPosition = null;
+    // Restore custom position if it was saved
+    this.customPosition = this.position.custom || null;
     this.saveTimeout = null;
     this.isMetadataExpanded = false;
     
@@ -275,8 +277,9 @@ export class StickyNote {
     document.addEventListener('mousemove', this.boundHandleDragMove);
     document.addEventListener('mouseup', this.boundHandleDragEnd);
     
-    // Window resize
+    // Window resize and scroll
     window.addEventListener('resize', this.boundHandleWindowResize);
+    window.addEventListener('scroll', this.boundHandleWindowResize, { passive: true });
     
     // Keyboard shortcuts
     this.element.addEventListener('keydown', this.handleKeyDown.bind(this));
@@ -594,10 +597,10 @@ export class StickyNote {
       btn.innerHTML = `${this.getPositionIcon(pos.value)}<span>${pos.label}</span>`;
       
       btn.addEventListener('click', () => {
-        this.position.anchor = pos.value;
+        this.position = { anchor: pos.value };
         this.customPosition = null; // Reset custom position
         this.updatePosition();
-        this.onSave(this.content); // Save position change
+        this.onPositionChange(this.position);
         picker.remove();
       });
       
@@ -630,9 +633,20 @@ export class StickyNote {
   updatePosition() {
     if (!this.anchor || !this.element) return;
     
+    // Handle custom drag position (stored relative to anchor)
     if (this.customPosition) {
-      this.element.style.left = `${this.customPosition.x}px`;
-      this.element.style.top = `${this.customPosition.y}px`;
+      if (this.customPosition.offsetX !== undefined) {
+        // Position relative to anchor element
+        const anchorRect = this.anchor.getBoundingClientRect();
+        const x = anchorRect.left + this.customPosition.offsetX + window.scrollX;
+        const y = anchorRect.top + this.customPosition.offsetY + window.scrollY;
+        this.element.style.left = `${x}px`;
+        this.element.style.top = `${y}px`;
+      } else {
+        // Legacy: absolute document position
+        this.element.style.left = `${this.customPosition.x}px`;
+        this.element.style.top = `${this.customPosition.y}px`;
+      }
       return;
     }
     
@@ -728,16 +742,30 @@ export class StickyNote {
   /**
    * Handle drag move
    * @param {MouseEvent} event - Mouse event
+   * Note: Position is stored relative to anchor element to survive page scrolls
    */
   handleDragMove(event) {
     if (!this.isDragging) return;
     
-    const posX = event.clientX - this.dragOffset.x + window.scrollX;
-    const posY = event.clientY - this.dragOffset.y + window.scrollY;
+    // Calculate viewport position (container is position:fixed)
+    const posX = event.clientX - this.dragOffset.x;
+    const posY = event.clientY - this.dragOffset.y;
     
-    this.customPosition = { x: posX, y: posY };
-    this.element.style.left = `${posX}px`;
-    this.element.style.top = `${posY}px`;
+    // Apply position immediately for smooth dragging
+    this.element.style.left = `${posX + window.scrollX}px`;
+    this.element.style.top = `${posY + window.scrollY}px`;
+    
+    // Store position relative to anchor for persistence
+    if (this.anchor) {
+      const anchorRect = this.anchor.getBoundingClientRect();
+      this.customPosition = {
+        offsetX: posX - anchorRect.left,
+        offsetY: posY - anchorRect.top
+      };
+    } else {
+      // Fallback: store absolute document position
+      this.customPosition = { x: posX + window.scrollX, y: posY + window.scrollY };
+    }
   }
   
   /**
@@ -748,6 +776,12 @@ export class StickyNote {
     
     this.isDragging = false;
     this.element.style.cursor = '';
+    
+    // Save custom position if dragged
+    if (this.customPosition) {
+      this.position = { custom: this.customPosition };
+      this.onPositionChange(this.position);
+    }
   }
   
   
@@ -942,12 +976,16 @@ export class StickyNote {
   }
   
   /**
-   * Handle window resize
+   * Handle window resize or scroll
+   * Custom positions stored relative to anchor need recalculation
    */
   handleWindowResize() {
-    if (!this.customPosition) {
-      this.updatePosition();
+    // Always update position - anchor-based and anchor-relative custom positions both need recalculation
+    // Only skip for legacy absolute custom positions
+    if (this.customPosition && this.customPosition.x !== undefined) {
+      return; // Legacy absolute position - don't update
     }
+    this.updatePosition();
   }
   
   /**
@@ -1037,6 +1075,7 @@ export class StickyNote {
     document.removeEventListener('mousemove', this.boundHandleDragMove);
     document.removeEventListener('mouseup', this.boundHandleDragEnd);
     window.removeEventListener('resize', this.boundHandleWindowResize);
+    window.removeEventListener('scroll', this.boundHandleWindowResize);
     
     // Destroy comment section
     if (this.commentSection) {

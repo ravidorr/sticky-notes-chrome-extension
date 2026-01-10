@@ -29,7 +29,7 @@ TEST-3.4,Popup UI,Notes List in Popup,4,Each note shows colored indicator,Theme 
 TEST-3.4,Popup UI,Notes List in Popup,5,Each note shows truncated selector,Selector text truncated if long,
 TEST-3.4,Popup UI,Notes List in Popup,6,Click on a note in the list,"Note highlights on page, page scrolls to it",
 TEST-4.1,Element Selection,Selection Mode Activation,1,Navigate to test page,Page loads,
-TEST-4.1,Element Selection,Selection Mode Activation,2,"Click ""Add Note"" from popup OR right-click > ""Create Sticky Note Here""",Selection mode activates,
+TEST-4.1,Element Selection,Selection Mode Activation,2,"Click ""Add Note"" from popup",Selection mode activates,
 TEST-4.1,Element Selection,Selection Mode Activation,3,Observe cursor,Cursor changes (crosshair or similar),
 TEST-4.1,Element Selection,Selection Mode Activation,4,Observe tooltip,"Click on an element to attach a note (ESC to cancel)" appears,
 TEST-4.2,Element Selection,Element Hover Highlight,1,Enter selection mode,Mode active,
