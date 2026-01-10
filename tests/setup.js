@@ -86,6 +86,12 @@ global.chrome = {
       return key;
     }),
     getUILanguage: jest.fn(() => 'en')
+  },
+  action: {
+    setBadgeText: jest.fn(() => Promise.resolve()),
+    setBadgeBackgroundColor: jest.fn(() => Promise.resolve()),
+    getBadgeText: jest.fn(() => Promise.resolve('')),
+    getBadgeBackgroundColor: jest.fn(() => Promise.resolve([0, 0, 0, 0]))
   }
 };
 

@@ -68,6 +68,18 @@ export class MessageHandler {
         this.app.highlightNote(message.noteId);
         return { success: true };
       
+      case 'showOrphanedNote':
+        log.debug(' Showing orphaned note centered:', message.noteId);
+        this.app.showOrphanedNote(message.noteId);
+        return { success: true };
+      
+      case 'getNotesWithOrphanStatus':
+        log.debug(' Getting notes with orphan status');
+        return { 
+          success: true, 
+          notes: this.app.noteManager.getAllNotesWithOrphanStatus() 
+        };
+      
       case 'pageLoaded':
       case 'urlChanged':
         log.debug(' URL changed:', message.url);

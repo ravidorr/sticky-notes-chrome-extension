@@ -106,7 +106,8 @@ function renderNotesList(notes) {
   
   // Add click handlers
   notesList.querySelectorAll('.note-item').forEach(item => {
-    item.addEventListener('click', () => handlers.handleNoteClick(item.dataset.id));
+    const isOrphaned = item.dataset.orphaned === 'true';
+    item.addEventListener('click', () => handlers.handleNoteClick(item.dataset.id, isOrphaned));
   });
 }
 

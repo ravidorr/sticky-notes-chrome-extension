@@ -877,4 +877,161 @@ describe('Content Script Logic', () => {
       expect(localThis.note.customPosition).toEqual({ offsetX: 100, offsetY: 200 });
     });
   });
+  
+  describe('orphaned notes management', () => {
+    it('should track orphaned notes separately', () => {
+      const localThis = {};
+      localThis.orphanedNotes = new Map();
+      localThis.pendingNotes = new Map();
+      
+      function addOrphanedNote(noteData) {
+        const entry = { noteData, addedAt: Date.now() };
+        localThis.orphanedNotes.set(noteData.id, entry);
+        localThis.pendingNotes.set(noteData.id, entry);
+      }
+      
+      addOrphanedNote({ id: 'note-1', selector: '#missing', content: 'Test' });
+      
+      expect(localThis.orphanedNotes.size).toBe(1);
+      expect(localThis.pendingNotes.size).toBe(1);
+      expect(localThis.orphanedNotes.has('note-1')).toBe(true);
+    });
+    
+    it('should remove from orphanedNotes when anchor is found', () => {
+      const localThis = {};
+      localThis.orphanedNotes = new Map();
+      localThis.pendingNotes = new Map();
+      localThis.resolved = [];
+      
+      // Add orphaned note
+      const noteData = { id: 'note-1', selector: '#found-element', content: 'Test' };
+      localThis.orphanedNotes.set('note-1', { noteData });
+      localThis.pendingNotes.set('note-1', { noteData });
+      
+      function resolveOrphanedNote(noteId) {
+        localThis.pendingNotes.delete(noteId);
+        localThis.orphanedNotes.delete(noteId);
+        localThis.resolved.push(noteId);
+      }
+      
+      resolveOrphanedNote('note-1');
+      
+      expect(localThis.orphanedNotes.size).toBe(0);
+      expect(localThis.pendingNotes.size).toBe(0);
+      expect(localThis.resolved).toContain('note-1');
+    });
+    
+    it('should get all notes with orphan status', () => {
+      const localThis = {};
+      localThis.notes = new Map();
+      localThis.orphanedNotes = new Map();
+      
+      // Add an active note
+      localThis.notes.set('active-1', { 
+        id: 'active-1', 
+        content: 'Active', 
+        theme: 'yellow', 
+        selector: '#active' 
+      });
+      
+      // Add an orphaned note
+      localThis.orphanedNotes.set('orphan-1', { 
+        noteData: { id: 'orphan-1', content: 'Orphaned', theme: 'blue', selector: '#missing' }
+      });
+      
+      function getAllNotesWithOrphanStatus() {
+        const allNotes = [];
+        localThis.notes.forEach((note, id) => {
+          allNotes.push({ ...note, id, isOrphaned: false });
+        });
+        localThis.orphanedNotes.forEach((entry, id) => {
+          if (!localThis.notes.has(id)) {
+            allNotes.push({ ...entry.noteData, isOrphaned: true });
+          }
+        });
+        return allNotes;
+      }
+      
+      const notes = getAllNotesWithOrphanStatus();
+      
+      expect(notes).toHaveLength(2);
+      expect(notes.find(n => n.id === 'active-1').isOrphaned).toBe(false);
+      expect(notes.find(n => n.id === 'orphan-1').isOrphaned).toBe(true);
+    });
+    
+    it('should position orphaned note centered on viewport', () => {
+      const localThis = {};
+      localThis.element = document.createElement('div');
+      localThis.element.style.width = '280px';
+      localThis.element.style.height = '200px';
+      document.body.appendChild(localThis.element);
+      
+      // Mock getBoundingClientRect
+      localThis.element.getBoundingClientRect = jest.fn(() => ({
+        width: 280,
+        height: 200
+      }));
+      
+      function positionCentered() {
+        const rect = localThis.element.getBoundingClientRect();
+        const x = (window.innerWidth - rect.width) / 2;
+        const y = (window.innerHeight - rect.height) / 2;
+        localThis.element.style.left = `${x}px`;
+        localThis.element.style.top = `${y}px`;
+        return { x, y };
+      }
+      
+      const pos = positionCentered();
+      
+      // Should be centered
+      expect(pos.x).toBe((window.innerWidth - 280) / 2);
+      expect(pos.y).toBe((window.innerHeight - 200) / 2);
+    });
+    
+    it('should update badge count when orphaned notes change', async () => {
+      const localThis = {};
+      localThis.orphanedNotes = new Map();
+      localThis.badgeUpdates = [];
+      
+      async function updateOrphanedBadge() {
+        localThis.badgeUpdates.push(localThis.orphanedNotes.size);
+      }
+      
+      // Add orphaned note
+      localThis.orphanedNotes.set('note-1', { noteData: { id: 'note-1' } });
+      await updateOrphanedBadge();
+      
+      // Add another
+      localThis.orphanedNotes.set('note-2', { noteData: { id: 'note-2' } });
+      await updateOrphanedBadge();
+      
+      // Remove one
+      localThis.orphanedNotes.delete('note-1');
+      await updateOrphanedBadge();
+      
+      expect(localThis.badgeUpdates).toEqual([1, 2, 1]);
+    });
+    
+    it('should clear both pending and orphaned notes on URL change', () => {
+      const localThis = {};
+      localThis.pendingNotes = new Map();
+      localThis.orphanedNotes = new Map();
+      
+      // Add some notes
+      localThis.pendingNotes.set('note-1', { noteData: { id: 'note-1' } });
+      localThis.orphanedNotes.set('note-1', { noteData: { id: 'note-1' } });
+      localThis.pendingNotes.set('note-2', { noteData: { id: 'note-2' } });
+      localThis.orphanedNotes.set('note-2', { noteData: { id: 'note-2' } });
+      
+      function clearPendingNotes() {
+        localThis.pendingNotes.clear();
+        localThis.orphanedNotes.clear();
+      }
+      
+      clearPendingNotes();
+      
+      expect(localThis.pendingNotes.size).toBe(0);
+      expect(localThis.orphanedNotes.size).toBe(0);
+    });
+  });
 });

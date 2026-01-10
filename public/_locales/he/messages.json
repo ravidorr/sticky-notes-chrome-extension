@@ -60,6 +60,21 @@
     "description": "Fallback text for notes with no content"
   },
 
+  "orphanedNoteHint": {
+    "message": "האלמנט לא נמצא בדף",
+    "description": "Hint shown for orphaned notes whose anchor element is not found"
+  },
+  "orphanedNotesCount": {
+    "message": "$COUNT$ פתקיות יתומות",
+    "description": "Badge tooltip showing count of orphaned notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+
   "copyAsMarkdown": {
     "message": "העתק כ-Markdown",
     "description": "Tooltip for copy markdown button"

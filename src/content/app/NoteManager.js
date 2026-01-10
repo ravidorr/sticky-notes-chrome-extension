@@ -42,39 +42,59 @@ export class NoteManager {
     
     // Track notes waiting for their anchor elements to appear (for SPAs)
     this.pendingNotes = new Map();
-    // Timeout before showing re-anchor UI (give SPAs time to inject elements)
-    this.pendingNoteTimeout = 10000; // 10 seconds
+    
+    // Track orphaned notes (anchor element not found, user can view centered)
+    this.orphanedNotes = new Map();
   }
   
   /**
-   * Add a note to pending queue (waiting for anchor element to appear)
+   * Add a note to pending/orphaned queue (waiting for anchor element to appear)
+   * Notes are kept indefinitely - no timeout, user controls via popup
    * @param {Object} noteData - Note data
    */
   addPendingNote(noteData) {
-    log.debug(`Adding note to pending queue: ${noteData.id}`);
+    log.debug(`Adding note to orphaned queue: ${noteData.id}`);
     
-    const pendingEntry = {
+    const orphanedEntry = {
       noteData,
-      addedAt: Date.now(),
-      timeoutId: setTimeout(() => {
-        this.handlePendingNoteTimeout(noteData.id);
-      }, this.pendingNoteTimeout)
+      addedAt: Date.now()
     };
     
-    this.pendingNotes.set(noteData.id, pendingEntry);
+    this.orphanedNotes.set(noteData.id, orphanedEntry);
+    
+    // Also keep in pendingNotes for MutationObserver to check
+    this.pendingNotes.set(noteData.id, orphanedEntry);
+    
+    // Update badge on extension icon
+    this.updateOrphanedBadge();
   }
   
   /**
-   * Handle timeout for pending note - show re-anchor UI
-   * @param {string} noteId - Note ID
+   * Update the extension icon badge with orphaned notes count
    */
-  handlePendingNoteTimeout(noteId) {
-    const pending = this.pendingNotes.get(noteId);
-    if (!pending) return;
-    
-    log.debug(`Pending note timeout, showing re-anchor UI: ${noteId}`);
-    this.pendingNotes.delete(noteId);
-    this.showReanchorUI(pending.noteData);
+  async updateOrphanedBadge() {
+    try {
+      const count = this.orphanedNotes.size;
+      await this.sendMessage({
+        action: 'updateOrphanedCount',
+        count
+      });
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Failed to update orphaned badge:', error);
+      }
+    }
+  }
+  
+  /**
+   * Get orphaned notes data for popup display
+   * @returns {Array} Array of orphaned note data objects
+   */
+  getOrphanedNotes() {
+    return Array.from(this.orphanedNotes.values()).map(entry => ({
+      ...entry.noteData,
+      isOrphaned: true
+    }));
   }
   
   /**
@@ -112,23 +132,28 @@ export class NoteManager {
     
     // Create notes for resolved pending entries
     resolved.forEach(({ noteId, pending }) => {
-      // Clear timeout
-      clearTimeout(pending.timeoutId);
       this.pendingNotes.delete(noteId);
+      // Also remove from orphanedNotes since anchor was found
+      this.orphanedNotes.delete(noteId);
       
       // Create the note (will find anchor on retry)
       this.createNoteFromData(pending.noteData);
     });
+    
+    // Update badge if any notes were resolved
+    if (resolved.length > 0) {
+      this.updateOrphanedBadge();
+    }
   }
   
   /**
-   * Clear all pending notes (e.g., on URL change)
+   * Clear all pending and orphaned notes (e.g., on URL change)
    */
   clearPendingNotes() {
-    this.pendingNotes.forEach((pending) => {
-      clearTimeout(pending.timeoutId);
-    });
     this.pendingNotes.clear();
+    this.orphanedNotes.clear();
+    // Update badge (will clear it since count is 0)
+    this.updateOrphanedBadge();
   }
   
   /**
@@ -694,6 +719,153 @@ export class NoteManager {
       // Add highlight effect
       note.highlight();
     }, 400); // 400ms matches typical smooth scroll duration
+  }
+  
+  /**
+   * Show an orphaned note centered on screen
+   * Used when user clicks on orphaned note in popup
+   * @param {string} noteId - Note ID
+   */
+  showOrphanedNote(noteId) {
+    const orphanedEntry = this.orphanedNotes.get(noteId);
+    
+    if (!orphanedEntry) {
+      log.warn(`Orphaned note not found: ${noteId}`);
+      return;
+    }
+    
+    const { noteData } = orphanedEntry;
+    
+    // Check if note UI already exists
+    let note = this.notes.get(noteId);
+    
+    if (!note) {
+      // Create note without anchor (will be centered)
+      const user = this.getCurrentUser();
+      
+      note = new StickyNote({
+        id: noteData.id,
+        anchor: null, // No anchor - will be positioned centered
+        selector: noteData.selector,
+        content: noteData.content,
+        theme: noteData.theme || 'yellow',
+        position: noteData.position || { anchor: 'top-right' },
+        metadata: noteData.metadata,
+        createdAt: noteData.createdAt,
+        onSave: (content) => this.handleNoteSave(noteData.id, content),
+        onThemeChange: (theme) => this.handleThemeChange(noteData.id, theme),
+        onPositionChange: (position) => this.handlePositionChange(noteData.id, position),
+        onDelete: () => this.handleOrphanedNoteDelete(noteData.id),
+        // Comment-related options
+        user: user,
+        onAddComment: (id, commentData) => this.handleAddComment(id, commentData),
+        onEditComment: (id, commentId, updates) => this.handleEditComment(id, commentId, updates),
+        onDeleteComment: (id, commentId) => this.handleDeleteComment(id, commentId),
+        onLoadComments: (id) => this.handleLoadComments(id),
+        onCommentsOpened: (id) => this.subscribeToComments(id),
+        onCommentsClosed: (id) => this.unsubscribeFromComments(id)
+      });
+      
+      // Add to container
+      this.container.appendChild(note.element);
+      this.notes.set(noteId, note);
+    }
+    
+    // Position centered on screen (fixed position)
+    this.positionNoteCentered(note);
+    
+    // Show and highlight
+    note.show();
+    note.bringToFront();
+    note.highlight();
+  }
+  
+  /**
+   * Position a note centered on the viewport
+   * @param {Object} note - StickyNote instance
+   */
+  positionNoteCentered(note) {
+    if (!note.element) return;
+    
+    const noteRect = note.element.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Calculate center position (using scroll-adjusted coordinates)
+    const x = (viewportWidth - noteRect.width) / 2 + window.scrollX;
+    const y = (viewportHeight - noteRect.height) / 2 + window.scrollY;
+    
+    // Set position directly
+    note.element.style.left = `${x}px`;
+    note.element.style.top = `${y}px`;
+    
+    // Store as custom position so it doesn't get recalculated
+    note.customPosition = { x, y };
+  }
+  
+  /**
+   * Handle delete for orphaned note
+   * @param {string} noteId - Note ID
+   */
+  async handleOrphanedNoteDelete(noteId) {
+    try {
+      const response = await this.sendMessage({
+        action: 'deleteNote',
+        noteId
+      });
+      
+      if (response.success) {
+        // Remove from notes map
+        const note = this.notes.get(noteId);
+        if (note) {
+          note.destroy();
+          this.notes.delete(noteId);
+        }
+        
+        // Remove from orphanedNotes and pendingNotes
+        this.orphanedNotes.delete(noteId);
+        this.pendingNotes.delete(noteId);
+        
+        // Update badge
+        this.updateOrphanedBadge();
+      }
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Error deleting orphaned note:', error);
+      }
+    }
+  }
+  
+  /**
+   * Get all notes with orphan status for popup display
+   * @returns {Array} Array of note objects with isOrphaned flag
+   */
+  getAllNotesWithOrphanStatus() {
+    const allNotes = [];
+    
+    // Add active notes (not orphaned)
+    this.notes.forEach((note, id) => {
+      allNotes.push({
+        id,
+        content: note.content,
+        theme: note.theme,
+        selector: note.selector,
+        isOrphaned: false
+      });
+    });
+    
+    // Add orphaned notes
+    this.orphanedNotes.forEach((entry, id) => {
+      // Don't add if already in notes (shouldn't happen but check)
+      if (!this.notes.has(id)) {
+        allNotes.push({
+          ...entry.noteData,
+          isOrphaned: true
+        });
+      }
+    });
+    
+    return allNotes;
   }
   
   /**

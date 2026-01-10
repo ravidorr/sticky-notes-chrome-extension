@@ -1282,6 +1282,65 @@ describe('Background Handlers', () => {
       expect(typeof handlers.unsubscribeNotes).toBe('function');
       expect(typeof handlers.subscribeCommentsHandler).toBe('function');
       expect(typeof handlers.unsubscribeCommentsHandler).toBe('function');
+      // Badge management
+      expect(typeof handlers.updateOrphanedBadge).toBe('function');
+    });
+  });
+  
+  describe('updateOrphanedBadge', () => {
+    it('should set badge text when count > 0', async () => {
+      const handlers = createHandlers(localThis.deps);
+      const sender = { tab: { id: 1 } };
+      
+      const result = await handlers.updateOrphanedBadge(3, sender);
+      
+      expect(result.success).toBe(true);
+      expect(chrome.action.setBadgeText).toHaveBeenCalledWith({
+        text: '3',
+        tabId: 1
+      });
+      expect(chrome.action.setBadgeBackgroundColor).toHaveBeenCalledWith({
+        color: '#f59e0b',
+        tabId: 1
+      });
+    });
+    
+    it('should clear badge when count is 0', async () => {
+      const handlers = createHandlers(localThis.deps);
+      const sender = { tab: { id: 1 } };
+      
+      const result = await handlers.updateOrphanedBadge(0, sender);
+      
+      expect(result.success).toBe(true);
+      expect(chrome.action.setBadgeText).toHaveBeenCalledWith({
+        text: '',
+        tabId: 1
+      });
+    });
+    
+    it('should handle missing tab ID', async () => {
+      const handlers = createHandlers(localThis.deps);
+      const sender = {}; // No tab
+      
+      const result = await handlers.updateOrphanedBadge(2, sender);
+      
+      // Should still work, just without tabId
+      expect(result.success).toBe(true);
+    });
+  });
+  
+  describe('handleMessage updateOrphanedCount', () => {
+    it('should route updateOrphanedCount to updateOrphanedBadge', async () => {
+      const handlers = createHandlers(localThis.deps);
+      const sender = { tab: { id: 1 } };
+      
+      const result = await handlers.handleMessage(
+        { action: 'updateOrphanedCount', count: 5 },
+        sender
+      );
+      
+      expect(result.success).toBe(true);
+      expect(chrome.action.setBadgeText).toHaveBeenCalled();
     });
   });
 });

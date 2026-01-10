@@ -200,10 +200,12 @@ export function createPopupHandlers(deps = {}) {
 
   /**
    * Handle note item click - scroll to element and highlight note
+   * For orphaned notes, shows them centered on screen
    * @param {string} noteId - Note ID
+   * @param {boolean} isOrphaned - Whether the note is orphaned (element not found)
    * @returns {Promise<Object>} Result with success flag
    */
-  async function handleNoteClick(noteId) {
+  async function handleNoteClick(noteId, isOrphaned = false) {
     try {
       const [tab] = await chromeTabs.query({ active: true, currentWindow: true });
       
@@ -211,8 +213,11 @@ export function createPopupHandlers(deps = {}) {
         return { success: false, error: 'No active tab' };
       }
       
+      // Use different action for orphaned notes
+      const action = isOrphaned ? 'showOrphanedNote' : 'highlightNote';
+      
       await chromeTabs.sendMessage(tab.id, { 
-        action: 'highlightNote', 
+        action, 
         noteId 
       });
       
@@ -248,14 +253,26 @@ export function createPopupHandlers(deps = {}) {
    * @returns {string} HTML string
    */
   function renderNoteItem(note) {
+    const orphanedClass = note.isOrphaned ? ' note-item-orphaned' : '';
+    const orphanedAttr = note.isOrphaned ? ' data-orphaned="true"' : '';
+    const orphanedHint = note.isOrphaned ? `
+          <div class="note-item-orphan-hint">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>${t('orphanedNoteHint')}</span>
+          </div>` : '';
+    
     return `
-      <div class="note-item" data-id="${note.id}">
+      <div class="note-item${orphanedClass}" data-id="${note.id}"${orphanedAttr}>
         <div class="note-item-color" style="background: ${getThemeColor(note.theme)}"></div>
         <div class="note-item-content">
           <div class="note-item-text">${stripHtml(note.content) || t('emptyNote')}</div>
           <div class="note-item-meta">
             <span class="note-item-selector">${escapeHtml(truncateSelector(note.selector))}</span>
-          </div>
+          </div>${orphanedHint}
         </div>
       </div>
     `;

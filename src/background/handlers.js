@@ -104,8 +104,47 @@ export function createHandlers(deps = {}) {
       case 'unsubscribeFromComments':
         return unsubscribeCommentsHandler(message.noteId, sender);
       
+      // Badge management for orphaned notes
+      case 'updateOrphanedCount':
+        return updateOrphanedBadge(message.count, sender);
+      
       default:
         return { success: false, error: t('unknownAction') };
+    }
+  }
+  
+  /**
+   * Update extension icon badge for orphaned notes
+   * @param {number} count - Number of orphaned notes
+   * @param {Object} sender - Message sender (contains tab info)
+   * @returns {Object} Result
+   */
+  async function updateOrphanedBadge(count, sender) {
+    try {
+      const tabId = sender?.tab?.id;
+      
+      if (count > 0) {
+        // Show badge with count
+        await chrome.action.setBadgeText({ 
+          text: count.toString(),
+          tabId: tabId 
+        });
+        await chrome.action.setBadgeBackgroundColor({ 
+          color: '#f59e0b', // Orange/amber warning color
+          tabId: tabId 
+        });
+      } else {
+        // Clear badge
+        await chrome.action.setBadgeText({ 
+          text: '',
+          tabId: tabId 
+        });
+      }
+      
+      return { success: true };
+    } catch (error) {
+      log.error('Error updating orphaned badge:', error);
+      return { success: false, error: error.message };
     }
   }
 
@@ -745,7 +784,9 @@ export function createHandlers(deps = {}) {
     subscribeNotes,
     unsubscribeNotes,
     subscribeCommentsHandler,
-    unsubscribeCommentsHandler
+    unsubscribeCommentsHandler,
+    // Badge management
+    updateOrphanedBadge
   };
 }
 

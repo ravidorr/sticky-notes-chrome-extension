@@ -60,6 +60,21 @@
     "description": "Fallback text for notes with no content"
   },
 
+  "orphanedNoteHint": {
+    "message": "Element nicht auf der Seite gefunden",
+    "description": "Hint shown for orphaned notes whose anchor element is not found"
+  },
+  "orphanedNotesCount": {
+    "message": "$COUNT$ verwaiste Notizen",
+    "description": "Badge tooltip showing count of orphaned notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+
   "copyAsMarkdown": {
     "message": "Als Markdown kopieren",
     "description": "Tooltip for copy markdown button"

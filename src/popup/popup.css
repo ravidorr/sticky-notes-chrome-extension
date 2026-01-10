@@ -339,6 +339,37 @@ body {
   border-radius: 4px;
 }
 
+/* Orphaned note styling */
+.note-item-orphaned {
+  background: #fef3c7;
+}
+
+.note-item-orphaned:hover {
+  background: #fde68a;
+}
+
+.note-item-orphaned .note-item-text {
+  color: #92400e;
+}
+
+.note-item-orphaned .note-item-color {
+  opacity: 0.6;
+}
+
+.note-item-orphan-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #b45309;
+}
+
+.note-item-orphan-hint svg {
+  stroke: #f59e0b;
+  flex-shrink: 0;
+}
+
 /* Footer */
 .popup-footer {
   display: flex;

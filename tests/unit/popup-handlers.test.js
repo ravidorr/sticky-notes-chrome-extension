@@ -360,4 +360,71 @@ describe('Popup Handlers', () => {
         .rejects.toThrow('Could not inject content script');
     });
   });
+  
+  describe('renderNoteItem orphaned notes', () => {
+    it('should render orphaned note with warning indicator', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test note', 
+        theme: 'yellow', 
+        selector: '#missing',
+        isOrphaned: true 
+      };
+      const html = localThis.handlers.renderNoteItem(note);
+      
+      expect(html).toContain('note-item-orphaned');
+      expect(html).toContain('data-orphaned="true"');
+      expect(html).toContain('note-item-orphan-hint');
+    });
+    
+    it('should not show orphan indicator for regular notes', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test note', 
+        theme: 'yellow', 
+        selector: '#main',
+        isOrphaned: false 
+      };
+      const html = localThis.handlers.renderNoteItem(note);
+      
+      expect(html).not.toContain('note-item-orphaned');
+      expect(html).not.toContain('data-orphaned="true"');
+      expect(html).not.toContain('note-item-orphan-hint');
+    });
+  });
+  
+  describe('handleNoteClick with orphaned notes', () => {
+    it('should send highlightNote action for regular notes', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'http://example.com' }]);
+      localThis.mockChromeTabs.sendMessage.mockResolvedValue({ success: true });
+      
+      await localThis.handlers.handleNoteClick('note-1', false);
+      
+      expect(localThis.mockChromeTabs.sendMessage).toHaveBeenCalledWith(1, {
+        action: 'highlightNote',
+        noteId: 'note-1'
+      });
+    });
+    
+    it('should send showOrphanedNote action for orphaned notes', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'http://example.com' }]);
+      localThis.mockChromeTabs.sendMessage.mockResolvedValue({ success: true });
+      
+      await localThis.handlers.handleNoteClick('note-1', true);
+      
+      expect(localThis.mockChromeTabs.sendMessage).toHaveBeenCalledWith(1, {
+        action: 'showOrphanedNote',
+        noteId: 'note-1'
+      });
+    });
+    
+    it('should close window after clicking orphaned note', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'http://example.com' }]);
+      localThis.mockChromeTabs.sendMessage.mockResolvedValue({ success: true });
+      
+      await localThis.handlers.handleNoteClick('note-1', true);
+      
+      expect(localThis.mockWindowClose).toHaveBeenCalled();
+    });
+  });
 });

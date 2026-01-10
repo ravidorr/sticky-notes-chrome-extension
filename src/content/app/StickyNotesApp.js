@@ -265,6 +265,14 @@ export class StickyNotesApp {
   }
   
   /**
+   * Show an orphaned note centered on screen
+   * @param {string} noteId - Note ID
+   */
+  showOrphanedNote(noteId) {
+    this.noteManager.showOrphanedNote(noteId);
+  }
+  
+  /**
    * Create a note at the last right-clicked element
    * Called from context menu
    */
