@@ -629,6 +629,8 @@ export class StickyNote {
   
   /**
    * Update note position relative to anchor element
+   * Note: The note element is inside a position:fixed container,
+   * so all coordinates are viewport-relative (no scroll adjustment needed)
    */
   updatePosition() {
     if (!this.anchor || !this.element) return;
@@ -636,24 +638,24 @@ export class StickyNote {
     // Handle custom drag position (stored relative to anchor)
     if (this.customPosition) {
       if (this.customPosition.offsetX !== undefined) {
-        // Position relative to anchor element
+        // Position relative to anchor element (viewport coordinates)
         const anchorRect = this.anchor.getBoundingClientRect();
-        const x = anchorRect.left + this.customPosition.offsetX + window.scrollX;
-        const y = anchorRect.top + this.customPosition.offsetY + window.scrollY;
+        const x = anchorRect.left + this.customPosition.offsetX;
+        const y = anchorRect.top + this.customPosition.offsetY;
         this.element.style.left = `${x}px`;
         this.element.style.top = `${y}px`;
       } else {
-        // Legacy: absolute document position
-        this.element.style.left = `${this.customPosition.x}px`;
-        this.element.style.top = `${this.customPosition.y}px`;
+        // Legacy: absolute document position - convert to viewport coordinates
+        const x = this.customPosition.x - window.scrollX;
+        const y = this.customPosition.y - window.scrollY;
+        this.element.style.left = `${x}px`;
+        this.element.style.top = `${y}px`;
       }
       return;
     }
     
     const anchorRect = this.anchor.getBoundingClientRect();
     const noteRect = this.element.getBoundingClientRect();
-    const scrollX = window.scrollX;
-    const scrollY = window.scrollY;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     
@@ -662,38 +664,38 @@ export class StickyNote {
     
     let x, y;
     
-    // Calculate position based on anchor position setting
+    // Calculate position based on anchor position setting (all in viewport coordinates)
     // Position names are intuitive: "top-right" means note is ABOVE and to the RIGHT of element
     switch (this.position.anchor) {
       case 'top-left':
         // Note above and to the left of element
-        x = anchorRect.left + scrollX - noteRect.width - 10;
-        y = anchorRect.top + scrollY - noteRect.height - 10;
+        x = anchorRect.left - noteRect.width - 10;
+        y = anchorRect.top - noteRect.height - 10;
         break;
       case 'top-right':
         // Note above and to the right of element
         if (isWideElement) {
-          x = Math.min(anchorRect.right, viewportWidth - noteRect.width - 20) + scrollX;
+          x = Math.min(anchorRect.right, viewportWidth - noteRect.width - 20);
         } else {
-          x = anchorRect.right + scrollX + 10;
+          x = anchorRect.right + 10;
         }
-        y = anchorRect.top + scrollY - noteRect.height - 10;
+        y = anchorRect.top - noteRect.height - 10;
         break;
       case 'bottom-left':
         // Note below and to the left of element
-        x = anchorRect.left + scrollX - noteRect.width - 10;
-        y = anchorRect.bottom + scrollY + 10;
+        x = anchorRect.left - noteRect.width - 10;
+        y = anchorRect.bottom + 10;
         break;
       case 'bottom-right':
       default:
         // Note below and to the right of element (default)
         if (isWideElement) {
           // For wide elements, position at a reasonable location within viewport
-          x = Math.min(anchorRect.right, viewportWidth * 0.7) + scrollX;
+          x = Math.min(anchorRect.right, viewportWidth * 0.7);
         } else {
-          x = anchorRect.right + scrollX + 10;
+          x = anchorRect.right + 10;
         }
-        y = anchorRect.bottom + scrollY + 10;
+        y = anchorRect.bottom + 10;
         break;
     }
     
@@ -737,6 +739,7 @@ export class StickyNote {
    * Handle drag move
    * @param {MouseEvent} event - Mouse event
    * Note: Position is stored relative to anchor element to survive page scrolls
+   * The note container is position:fixed, so all coordinates are viewport-relative
    */
   handleDragMove(event) {
     if (!this.isDragging) return;
@@ -745,9 +748,9 @@ export class StickyNote {
     const posX = event.clientX - this.dragOffset.x;
     const posY = event.clientY - this.dragOffset.y;
     
-    // Apply position immediately for smooth dragging
-    this.element.style.left = `${posX + window.scrollX}px`;
-    this.element.style.top = `${posY + window.scrollY}px`;
+    // Apply position immediately for smooth dragging (viewport coordinates)
+    this.element.style.left = `${posX}px`;
+    this.element.style.top = `${posY}px`;
     
     // Store position relative to anchor for persistence
     if (this.anchor) {
@@ -757,7 +760,7 @@ export class StickyNote {
         offsetY: posY - anchorRect.top
       };
     } else {
-      // Fallback: store absolute document position
+      // Fallback: store absolute document position (for legacy compatibility)
       this.customPosition = { x: posX + window.scrollX, y: posY + window.scrollY };
     }
   }

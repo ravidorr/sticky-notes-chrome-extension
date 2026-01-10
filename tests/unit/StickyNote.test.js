@@ -307,13 +307,16 @@ describe('StickyNote', () => {
       expect(note.isDragging).toBe(false);
     });
     
-    it('should update position during drag', () => {
+    it('should update position during drag in viewport coords', () => {
       note.isDragging = true;
       note.dragOffset = { x: 10, y: 10 };
       
       note.handleDragMove({ clientX: 200, clientY: 200 });
       
       expect(note.customPosition).not.toBeNull();
+      // Position should be applied in viewport coords: clientX - dragOffset.x = 190
+      expect(note.element.style.left).toBe('190px');
+      expect(note.element.style.top).toBe('190px');
     });
     
     it('should store anchor-relative position during drag', () => {
@@ -489,17 +492,33 @@ describe('StickyNote', () => {
       expect(() => note.updatePosition()).not.toThrow();
     });
 
-    it('should use legacy custom position if set (x, y format)', () => {
+    it('should use legacy custom position converted to viewport coords (x, y format)', () => {
+      const localThis = {};
+      // Legacy positions are document coordinates, converted to viewport coords
+      // With scrollX=0, scrollY=0: viewport = document coords
       note.customPosition = { x: 100, y: 200 };
       note.updatePosition();
-      // Custom position should be applied
-      expect(note.customPosition).toEqual({ x: 100, y: 200 });
       expect(note.element.style.left).toBe('100px');
       expect(note.element.style.top).toBe('200px');
+      
+      // With scroll, legacy positions should be converted to viewport coords
+      localThis.originalScrollX = window.scrollX;
+      localThis.originalScrollY = window.scrollY;
+      Object.defineProperty(window, 'scrollX', { value: 50, writable: true });
+      Object.defineProperty(window, 'scrollY', { value: 100, writable: true });
+      
+      note.updatePosition();
+      // Document pos (100, 200) - scroll (50, 100) = viewport pos (50, 100)
+      expect(note.element.style.left).toBe('50px');
+      expect(note.element.style.top).toBe('100px');
+      
+      // Restore
+      Object.defineProperty(window, 'scrollX', { value: localThis.originalScrollX, writable: true });
+      Object.defineProperty(window, 'scrollY', { value: localThis.originalScrollY, writable: true });
     });
     
-    it('should use anchor-relative custom position if set (offsetX, offsetY format)', () => {
-      // Mock anchor position
+    it('should use anchor-relative custom position in viewport coords (offsetX, offsetY format)', () => {
+      // Mock anchor position (viewport coordinates from getBoundingClientRect)
       note.anchor.getBoundingClientRect = jest.fn(() => ({
         left: 50,
         top: 100,
@@ -512,10 +531,68 @@ describe('StickyNote', () => {
       note.customPosition = { offsetX: 20, offsetY: 30 };
       note.updatePosition();
       
-      // Position should be calculated from anchor + offset + scroll
-      // With scrollX=0, scrollY=0: left = 50 + 20 = 70, top = 100 + 30 = 130
+      // Position should be calculated from anchor + offset (viewport coords, no scroll)
+      // left = 50 + 20 = 70, top = 100 + 30 = 130
       expect(note.element.style.left).toBe('70px');
       expect(note.element.style.top).toBe('130px');
+    });
+    
+    it('should follow anchor when anchor moves (simulating scroll)', () => {
+      const localThis = {};
+      localThis.anchorTop = 200;
+      
+      // Mock anchor that can change position (simulating scroll)
+      note.anchor.getBoundingClientRect = jest.fn(() => ({
+        left: 50,
+        top: localThis.anchorTop,
+        right: 150,
+        bottom: localThis.anchorTop + 50,
+        width: 100,
+        height: 50
+      }));
+      
+      note.customPosition = { offsetX: 20, offsetY: 30 };
+      note.updatePosition();
+      
+      // Initial position: anchor at top=200, note at 200+30=230
+      expect(note.element.style.top).toBe('230px');
+      
+      // Simulate scroll: anchor moves up in viewport
+      localThis.anchorTop = 100;
+      note.updatePosition();
+      
+      // Note should follow anchor: 100+30=130
+      expect(note.element.style.top).toBe('130px');
+    });
+    
+    it('should position relative to anchor without scroll values (viewport coords)', () => {
+      const localThis = {};
+      localThis.originalScrollY = window.scrollY;
+      
+      // Mock anchor position
+      note.anchor.getBoundingClientRect = jest.fn(() => ({
+        left: 50,
+        top: 100,
+        right: 150,
+        bottom: 150,
+        width: 100,
+        height: 50
+      }));
+      
+      // Set scroll value
+      Object.defineProperty(window, 'scrollY', { value: 500, writable: true });
+      
+      note.customPosition = null;
+      note.position = { anchor: 'bottom-right' };
+      note.updatePosition();
+      
+      // Position should NOT include scroll values (pure viewport coords)
+      // bottom-right: x = anchorRect.right + 10 = 160, y = anchorRect.bottom + 10 = 160
+      expect(note.element.style.left).toBe('160px');
+      expect(note.element.style.top).toBe('160px');
+      
+      // Restore
+      Object.defineProperty(window, 'scrollY', { value: localThis.originalScrollY, writable: true });
     });
   });
 

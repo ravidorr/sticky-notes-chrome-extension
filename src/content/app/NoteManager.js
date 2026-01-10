@@ -782,6 +782,7 @@ export class NoteManager {
   
   /**
    * Position a note centered on the viewport
+   * Note: The note container is position:fixed, so coordinates are viewport-relative
    * @param {Object} note - StickyNote instance
    */
   positionNoteCentered(note) {
@@ -791,16 +792,17 @@ export class NoteManager {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     
-    // Calculate center position (using scroll-adjusted coordinates)
-    const x = (viewportWidth - noteRect.width) / 2 + window.scrollX;
-    const y = (viewportHeight - noteRect.height) / 2 + window.scrollY;
+    // Calculate center position (viewport coordinates - no scroll adjustment)
+    const x = (viewportWidth - noteRect.width) / 2;
+    const y = (viewportHeight - noteRect.height) / 2;
     
-    // Set position directly
+    // Set position directly (viewport coordinates)
     note.element.style.left = `${x}px`;
     note.element.style.top = `${y}px`;
     
-    // Store as custom position so it doesn't get recalculated
-    note.customPosition = { x, y };
+    // Store as legacy document position for persistence
+    // (will be converted to viewport coords in updatePosition)
+    note.customPosition = { x: x + window.scrollX, y: y + window.scrollY };
   }
   
   /**
