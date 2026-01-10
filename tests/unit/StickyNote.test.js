@@ -91,6 +91,23 @@ describe('StickyNote', () => {
     it('should create rich editor', () => {
       expect(note.richEditor).toBeDefined();
     });
+    
+    it('should restore custom position from saved position.custom', () => {
+      const noteWithCustomPosition = new StickyNote({
+        id: 'test-note-custom-pos',
+        anchor: anchor,
+        content: '',
+        position: { custom: { offsetX: 50, offsetY: 75 } }
+      });
+      
+      expect(noteWithCustomPosition.customPosition).toEqual({ offsetX: 50, offsetY: 75 });
+      
+      noteWithCustomPosition.destroy();
+    });
+    
+    it('should have null customPosition if no custom position saved', () => {
+      expect(note.customPosition).toBeNull();
+    });
   });
   
   describe('render', () => {
@@ -298,6 +315,51 @@ describe('StickyNote', () => {
       
       expect(note.customPosition).not.toBeNull();
     });
+    
+    it('should store anchor-relative position during drag', () => {
+      note.isDragging = true;
+      note.dragOffset = { x: 10, y: 10 };
+      
+      // Mock anchor position
+      note.anchor.getBoundingClientRect = jest.fn(() => ({
+        left: 50,
+        top: 50,
+        right: 150,
+        bottom: 100,
+        width: 100,
+        height: 50
+      }));
+      
+      note.handleDragMove({ clientX: 200, clientY: 200 });
+      
+      // Should store position relative to anchor (offsetX, offsetY)
+      expect(note.customPosition).toHaveProperty('offsetX');
+      expect(note.customPosition).toHaveProperty('offsetY');
+      expect(note.customPosition.offsetX).toBe(140); // 200 - 10 - 50
+      expect(note.customPosition.offsetY).toBe(140); // 200 - 10 - 50
+    });
+    
+    it('should call onPositionChange when drag ends with custom position', () => {
+      const localThis = {};
+      localThis.onPositionChange = jest.fn();
+      
+      const noteWithCallback = new StickyNote({
+        id: 'test-note-drag',
+        anchor: anchor,
+        content: '',
+        onPositionChange: localThis.onPositionChange
+      });
+      
+      noteWithCallback.isDragging = true;
+      noteWithCallback.customPosition = { offsetX: 100, offsetY: 50 };
+      noteWithCallback.handleDragEnd();
+      
+      expect(localThis.onPositionChange).toHaveBeenCalledWith({
+        custom: { offsetX: 100, offsetY: 50 }
+      });
+      
+      noteWithCallback.destroy();
+    });
   });
   
   describe('showThemePicker', () => {
@@ -426,20 +488,57 @@ describe('StickyNote', () => {
     it('should call updatePosition without error', () => {
       expect(() => note.updatePosition()).not.toThrow();
     });
-    
-    it('should use custom position if set', () => {
+
+    it('should use legacy custom position if set (x, y format)', () => {
       note.customPosition = { x: 100, y: 200 };
       note.updatePosition();
       // Custom position should be applied
       expect(note.customPosition).toEqual({ x: 100, y: 200 });
+      expect(note.element.style.left).toBe('100px');
+      expect(note.element.style.top).toBe('200px');
+    });
+    
+    it('should use anchor-relative custom position if set (offsetX, offsetY format)', () => {
+      // Mock anchor position
+      note.anchor.getBoundingClientRect = jest.fn(() => ({
+        left: 50,
+        top: 100,
+        right: 150,
+        bottom: 150,
+        width: 100,
+        height: 50
+      }));
+      
+      note.customPosition = { offsetX: 20, offsetY: 30 };
+      note.updatePosition();
+      
+      // Position should be calculated from anchor + offset + scroll
+      // With scrollX=0, scrollY=0: left = 50 + 20 = 70, top = 100 + 30 = 130
+      expect(note.element.style.left).toBe('70px');
+      expect(note.element.style.top).toBe('130px');
     });
   });
-  
+
   describe('handleWindowResize', () => {
-    it('should update position on resize', () => {
+    it('should update position on resize for anchor-based position', () => {
       const updateSpy = jest.spyOn(note, 'updatePosition');
+      note.customPosition = null;
       note.handleWindowResize();
       expect(updateSpy).toHaveBeenCalled();
+    });
+    
+    it('should update position on resize for anchor-relative custom position', () => {
+      const updateSpy = jest.spyOn(note, 'updatePosition');
+      note.customPosition = { offsetX: 20, offsetY: 30 };
+      note.handleWindowResize();
+      expect(updateSpy).toHaveBeenCalled();
+    });
+    
+    it('should NOT update position for legacy absolute custom position', () => {
+      const updateSpy = jest.spyOn(note, 'updatePosition');
+      note.customPosition = { x: 100, y: 200 };
+      note.handleWindowResize();
+      expect(updateSpy).not.toHaveBeenCalled();
     });
   });
   
