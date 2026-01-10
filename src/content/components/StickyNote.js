@@ -108,10 +108,12 @@ export class StickyNote {
         <div class="sn-note-header-actions">
           <button class="sn-note-btn sn-copy-md-btn" title="${t('copyAsMarkdown')}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M8 2l1.88 1.88M14.12 3.88L16 2M12 8v4M12 12l-3 3M12 12l3 3"/>
-              <circle cx="12" cy="8" r="2"/>
-              <path d="M9 18h6M8 22h8M12 18v4"/>
-              <path d="M7 12l-2 2M17 12l2 2"/>
+              <path d="M8 4l2 2M16 4l-2 2"/>
+              <ellipse cx="12" cy="14" rx="6" ry="7"/>
+              <path d="M12 7v14"/>
+              <path d="M6 11l-3-1M18 11l3-1"/>
+              <path d="M6 15l-3 1M18 15l3 1"/>
+              <path d="M6 19l-2 2M18 19l2 2"/>
             </svg>
           </button>
           <button class="sn-note-btn sn-screenshot-btn" title="${t('copyScreenshot')}">
