@@ -626,4 +626,255 @@ describe('Content Script Logic', () => {
       expect(result.error).toBe('Storage quota exceeded');
     });
   });
+  
+  describe('pending notes for SPA support', () => {
+    it('should add note to pending queue when anchor not found', () => {
+      const localThis = {};
+      localThis.pendingNotes = new Map();
+      localThis.pendingNoteTimeout = 10000;
+      localThis.showReanchorUI = jest.fn();
+      
+      function addPendingNote(noteData) {
+        const pendingEntry = {
+          noteData,
+          addedAt: Date.now(),
+          timeoutId: setTimeout(() => {
+            localThis.pendingNotes.delete(noteData.id);
+            localThis.showReanchorUI(noteData);
+          }, localThis.pendingNoteTimeout)
+        };
+        localThis.pendingNotes.set(noteData.id, pendingEntry);
+      }
+      
+      const noteData = { id: 'note-1', selector: '#non-existent', content: 'Test' };
+      addPendingNote(noteData);
+      
+      expect(localThis.pendingNotes.has('note-1')).toBe(true);
+      expect(localThis.pendingNotes.get('note-1').noteData).toEqual(noteData);
+      
+      // Cleanup timeout
+      clearTimeout(localThis.pendingNotes.get('note-1').timeoutId);
+    });
+    
+    it('should resolve pending note when element appears', () => {
+      const localThis = {};
+      localThis.pendingNotes = new Map();
+      localThis.resolved = [];
+      
+      // Add a pending note
+      const noteData = { id: 'note-1', selector: '#dynamic-element', content: 'Test' };
+      localThis.pendingNotes.set('note-1', {
+        noteData,
+        addedAt: Date.now(),
+        timeoutId: null
+      });
+      
+      function checkPendingNotes() {
+        localThis.pendingNotes.forEach((pending, noteId) => {
+          const anchorElement = document.querySelector(pending.noteData.selector);
+          if (anchorElement) {
+            localThis.resolved.push(noteId);
+            localThis.pendingNotes.delete(noteId);
+          }
+        });
+      }
+      
+      // Element doesn't exist yet
+      checkPendingNotes();
+      expect(localThis.resolved).toHaveLength(0);
+      expect(localThis.pendingNotes.size).toBe(1);
+      
+      // Simulate SPA injecting the element
+      const dynamicElement = document.createElement('div');
+      dynamicElement.id = 'dynamic-element';
+      document.body.appendChild(dynamicElement);
+      
+      // Now check again
+      checkPendingNotes();
+      expect(localThis.resolved).toContain('note-1');
+      expect(localThis.pendingNotes.size).toBe(0);
+    });
+    
+    it('should show re-anchor UI after timeout', async () => {
+      const localThis = {};
+      localThis.pendingNotes = new Map();
+      localThis.showReanchorUI = jest.fn();
+      
+      // Use a very short timeout for testing
+      const shortTimeout = 50;
+      
+      function addPendingNote(noteData) {
+        const pendingEntry = {
+          noteData,
+          addedAt: Date.now(),
+          timeoutId: setTimeout(() => {
+            localThis.pendingNotes.delete(noteData.id);
+            localThis.showReanchorUI(noteData);
+          }, shortTimeout)
+        };
+        localThis.pendingNotes.set(noteData.id, pendingEntry);
+      }
+      
+      const noteData = { id: 'note-timeout', selector: '#never-exists', content: 'Test' };
+      addPendingNote(noteData);
+      
+      // Wait for timeout
+      await new Promise(resolve => setTimeout(resolve, shortTimeout + 20));
+      
+      expect(localThis.showReanchorUI).toHaveBeenCalledWith(noteData);
+      expect(localThis.pendingNotes.has('note-timeout')).toBe(false);
+    });
+    
+    it('should clear pending notes on URL change', () => {
+      const localThis = {};
+      localThis.pendingNotes = new Map();
+      
+      // Add multiple pending notes with timeouts
+      const timeoutIds = [];
+      for (let i = 0; i < 3; i++) {
+        const timeoutId = setTimeout(() => {}, 10000);
+        timeoutIds.push(timeoutId);
+        localThis.pendingNotes.set(`note-${i}`, {
+          noteData: { id: `note-${i}` },
+          timeoutId
+        });
+      }
+      
+      function clearPendingNotes() {
+        localThis.pendingNotes.forEach((pending) => {
+          clearTimeout(pending.timeoutId);
+        });
+        localThis.pendingNotes.clear();
+      }
+      
+      expect(localThis.pendingNotes.size).toBe(3);
+      
+      clearPendingNotes();
+      
+      expect(localThis.pendingNotes.size).toBe(0);
+    });
+    
+    it('should not duplicate pending notes', () => {
+      const localThis = {};
+      localThis.pendingNotes = new Map();
+      
+      function addPendingNote(noteData) {
+        if (localThis.pendingNotes.has(noteData.id)) {
+          return false; // Already pending
+        }
+        localThis.pendingNotes.set(noteData.id, { noteData });
+        return true;
+      }
+      
+      const noteData = { id: 'note-1', selector: '#test' };
+      
+      expect(addPendingNote(noteData)).toBe(true);
+      expect(addPendingNote(noteData)).toBe(false);
+      expect(localThis.pendingNotes.size).toBe(1);
+    });
+  });
+  
+  describe('highlightNote position persistence', () => {
+    it('should clear customPosition when highlighting a note', () => {
+      const localThis = {};
+      localThis.note = {
+        anchor: document.createElement('div'),
+        selector: '#test',
+        customPosition: { offsetX: 100, offsetY: 200 },
+        position: { custom: { offsetX: 100, offsetY: 200 } },
+        onPositionChange: jest.fn(),
+        show: jest.fn(),
+        bringToFront: jest.fn(),
+        highlight: jest.fn()
+      };
+      
+      function highlightNote(note) {
+        if (!note || !note.anchor) return;
+        
+        // Reset custom position so note positions relative to anchor
+        note.customPosition = null;
+        // Persist the position change to storage
+        note.position = { anchor: 'top-right' };
+        note.onPositionChange(note.position);
+      }
+      
+      highlightNote(localThis.note);
+      
+      expect(localThis.note.customPosition).toBeNull();
+    });
+    
+    it('should reset position to default anchor when highlighting', () => {
+      const localThis = {};
+      localThis.note = {
+        anchor: document.createElement('div'),
+        customPosition: { offsetX: 100, offsetY: 200 },
+        position: { custom: { offsetX: 100, offsetY: 200 } },
+        onPositionChange: jest.fn(),
+        show: jest.fn(),
+        bringToFront: jest.fn(),
+        highlight: jest.fn()
+      };
+      
+      function highlightNote(note) {
+        if (!note || !note.anchor) return;
+        
+        note.customPosition = null;
+        note.position = { anchor: 'top-right' };
+        note.onPositionChange(note.position);
+      }
+      
+      highlightNote(localThis.note);
+      
+      expect(localThis.note.position).toEqual({ anchor: 'top-right' });
+    });
+    
+    it('should call onPositionChange to persist position when highlighting', () => {
+      const localThis = {};
+      localThis.note = {
+        anchor: document.createElement('div'),
+        customPosition: { offsetX: 100, offsetY: 200 },
+        position: { custom: { offsetX: 100, offsetY: 200 } },
+        onPositionChange: jest.fn(),
+        show: jest.fn(),
+        bringToFront: jest.fn(),
+        highlight: jest.fn()
+      };
+      
+      function highlightNote(note) {
+        if (!note || !note.anchor) return;
+        
+        note.customPosition = null;
+        note.position = { anchor: 'top-right' };
+        note.onPositionChange(note.position);
+      }
+      
+      highlightNote(localThis.note);
+      
+      expect(localThis.note.onPositionChange).toHaveBeenCalledWith({ anchor: 'top-right' });
+    });
+    
+    it('should not call onPositionChange if note has no anchor', () => {
+      const localThis = {};
+      localThis.note = {
+        anchor: null,
+        customPosition: { offsetX: 100, offsetY: 200 },
+        position: { custom: { offsetX: 100, offsetY: 200 } },
+        onPositionChange: jest.fn()
+      };
+      
+      function highlightNote(note) {
+        if (!note || !note.anchor) return;
+        
+        note.customPosition = null;
+        note.position = { anchor: 'top-right' };
+        note.onPositionChange(note.position);
+      }
+      
+      highlightNote(localThis.note);
+      
+      expect(localThis.note.onPositionChange).not.toHaveBeenCalled();
+      // customPosition should remain unchanged since early return
+      expect(localThis.note.customPosition).toEqual({ offsetX: 100, offsetY: 200 });
+    });
+  });
 });

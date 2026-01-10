@@ -99,7 +99,7 @@ export class StickyNotesApp {
       
       // Setup mutation observer for dynamic content
       log.debug(' Setting up mutation observer...');
-      this.uiManager.setupMutationObserver(this.notes, this.visibilityManager);
+      this.uiManager.setupMutationObserver(this.notes, this.visibilityManager, this.noteManager);
       log.debug(' Mutation observer ready');
       
       log.debug('Content script fully initialized and ready to receive messages');

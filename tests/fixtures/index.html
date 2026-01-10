@@ -99,6 +99,35 @@
       color: #9ca3af;
       font-size: 14px;
     }
+    
+    /* SPA Simulation styles */
+    #spa-simulation-section {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border: 2px dashed #f59e0b;
+      border-radius: 12px;
+      padding: 24px;
+    }
+    
+    #spa-simulation-section h2 {
+      color: #92400e;
+    }
+    
+    #spa-container {
+      min-height: 150px;
+      margin: 16px 0;
+    }
+    
+    #spa-status {
+      background: rgba(255,255,255,0.7);
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+    
+    #spa-timer {
+      font-weight: 600;
+      color: #b45309;
+    }
   </style>
 </head>
 <body>
@@ -165,10 +194,66 @@
         Element with dynamic react ID
       </div>
     </section>
+    
+    <section id="spa-simulation-section">
+      <h2>SPA Simulation Section</h2>
+      <p>This section simulates SPA behavior - content appears and disappears every 30 seconds.</p>
+      <div id="spa-container">
+        <!-- Dynamic content will be injected here -->
+      </div>
+      <p id="spa-status" class="description">Status: <span id="spa-timer">Loading...</span></p>
+    </section>
   </main>
   
   <footer>
     <p>&copy; 2025 Sticky Notes Extension Test Page</p>
   </footer>
+  
+  <script>
+    // SPA Simulation - toggles content every 30 seconds
+    (function() {
+      const container = document.getElementById('spa-container');
+      const timerSpan = document.getElementById('spa-timer');
+      let isVisible = false;
+      let countdown = 30;
+      
+      const dynamicContent = `
+        <div class="card" data-testid="spa-card" id="spa-dynamic-card">
+          <h3>Dynamically Loaded Card</h3>
+          <p>This card appears and disappears to simulate SPA content loading.</p>
+          <p>Try attaching a note to this element - it will persist when the element returns.</p>
+          <button id="spa-action-btn" data-testid="spa-action-btn">SPA Action</button>
+        </div>
+        <div class="list-item" data-testid="spa-list-item" id="spa-list-item">
+          <strong>Dynamic List Item</strong> - This item is loaded dynamically
+        </div>
+      `;
+      
+      function toggleContent() {
+        isVisible = !isVisible;
+        if (isVisible) {
+          container.innerHTML = dynamicContent;
+        } else {
+          container.innerHTML = '<p style="color: #9ca3af; font-style: italic;">Content removed - will reappear in 30 seconds...</p>';
+        }
+        countdown = 30;
+      }
+      
+      function updateTimer() {
+        countdown--;
+        if (countdown <= 0) {
+          toggleContent();
+        }
+        const action = isVisible ? 'disappear' : 'appear';
+        timerSpan.textContent = `Content will ${action} in ${countdown} seconds`;
+      }
+      
+      // Initial state - content visible
+      toggleContent();
+      
+      // Update every second
+      setInterval(updateTimer, 1000);
+    })();
+  </script>
 </body>
 </html>

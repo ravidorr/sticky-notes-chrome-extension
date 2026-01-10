@@ -642,4 +642,77 @@ describe('StickyNote', () => {
       expect(StickyNote.currentZIndex).toBeGreaterThan(localThis.initialZIndex);
     });
   });
+  
+  describe('updateAnchor', () => {
+    it('should update anchor element', () => {
+      const localThis = {};
+      localThis.newAnchor = document.createElement('div');
+      localThis.newAnchor.id = 'new-anchor';
+      document.body.appendChild(localThis.newAnchor);
+      
+      note.updateAnchor(localThis.newAnchor);
+      
+      expect(note.anchor).toBe(localThis.newAnchor);
+    });
+    
+    it('should clear customPosition', () => {
+      const localThis = {};
+      localThis.newAnchor = document.createElement('div');
+      document.body.appendChild(localThis.newAnchor);
+      
+      // Set a custom position first
+      note.customPosition = { offsetX: 100, offsetY: 200 };
+      
+      note.updateAnchor(localThis.newAnchor);
+      
+      expect(note.customPosition).toBeNull();
+    });
+    
+    it('should reset position to default anchor position', () => {
+      const localThis = {};
+      localThis.newAnchor = document.createElement('div');
+      document.body.appendChild(localThis.newAnchor);
+      
+      // Set a custom position in the position object
+      note.position = { custom: { offsetX: 100, offsetY: 200 } };
+      note.customPosition = { offsetX: 100, offsetY: 200 };
+      
+      note.updateAnchor(localThis.newAnchor);
+      
+      expect(note.position).toEqual({ anchor: 'top-right' });
+    });
+    
+    it('should call onPositionChange to persist the position change', () => {
+      const localThis = {};
+      localThis.onPositionChange = jest.fn();
+      localThis.newAnchor = document.createElement('div');
+      document.body.appendChild(localThis.newAnchor);
+      
+      // Create a note with onPositionChange callback
+      localThis.noteWithCallback = new StickyNote({
+        id: 'test-note-position-change',
+        anchor: anchor,
+        content: '',
+        position: { custom: { offsetX: 50, offsetY: 75 } },
+        onPositionChange: localThis.onPositionChange
+      });
+      
+      localThis.noteWithCallback.updateAnchor(localThis.newAnchor);
+      
+      expect(localThis.onPositionChange).toHaveBeenCalledWith({ anchor: 'top-right' });
+      
+      localThis.noteWithCallback.destroy();
+    });
+    
+    it('should call updatePosition after changing anchor', () => {
+      const localThis = {};
+      localThis.updatePositionSpy = jest.spyOn(note, 'updatePosition');
+      localThis.newAnchor = document.createElement('div');
+      document.body.appendChild(localThis.newAnchor);
+      
+      note.updateAnchor(localThis.newAnchor);
+      
+      expect(localThis.updatePositionSpy).toHaveBeenCalled();
+    });
+  });
 });

@@ -1027,6 +1027,10 @@ export class StickyNote {
   updateAnchor(newAnchor) {
     this.anchor = newAnchor;
     this.customPosition = null;
+    // Reset position to default anchor and persist the change
+    // This ensures the cleared customPosition is saved to storage
+    this.position = { anchor: 'top-right' };
+    this.onPositionChange(this.position);
     this.updatePosition();
   }
   

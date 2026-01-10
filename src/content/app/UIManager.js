@@ -354,8 +354,9 @@ export class UIManager {
    * Setup mutation observer for dynamic content
    * @param {Map} notes - Notes map
    * @param {Object} visibilityManager - Visibility manager
+   * @param {Object} noteManager - Note manager instance (for pending notes)
    */
-  setupMutationObserver(notes, visibilityManager) {
+  setupMutationObserver(notes, visibilityManager, noteManager = null) {
     const observer = new MutationObserver((_mutations) => {
       // Check if any anchor elements were removed
       notes.forEach((note, _id) => {
@@ -363,12 +364,22 @@ export class UIManager {
           // Anchor element was removed, try to find it again
           const newAnchor = document.querySelector(note.selector);
           if (newAnchor) {
+            // Store old anchor reference before updating
+            const oldAnchor = note.anchor;
+            // Unobserve old anchor first
+            visibilityManager.unobserve(oldAnchor);
+            // Update note's anchor reference
             note.updateAnchor(newAnchor);
-            visibilityManager.unobserve(note.anchor);
+            // Observe new anchor
             visibilityManager.observe(newAnchor, note);
           }
         }
       });
+      
+      // Check if any pending notes can now find their anchors (SPA support)
+      if (noteManager) {
+        noteManager.checkPendingNotes();
+      }
     });
     
     observer.observe(document.body, {

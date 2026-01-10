@@ -39,6 +39,96 @@ export class NoteManager {
     this.subscribeToComments = options.subscribeToComments;
     this.unsubscribeFromComments = options.unsubscribeFromComments;
     this.showReanchorUI = options.showReanchorUI;
+    
+    // Track notes waiting for their anchor elements to appear (for SPAs)
+    this.pendingNotes = new Map();
+    // Timeout before showing re-anchor UI (give SPAs time to inject elements)
+    this.pendingNoteTimeout = 10000; // 10 seconds
+  }
+  
+  /**
+   * Add a note to pending queue (waiting for anchor element to appear)
+   * @param {Object} noteData - Note data
+   */
+  addPendingNote(noteData) {
+    log.debug(`Adding note to pending queue: ${noteData.id}`);
+    
+    const pendingEntry = {
+      noteData,
+      addedAt: Date.now(),
+      timeoutId: setTimeout(() => {
+        this.handlePendingNoteTimeout(noteData.id);
+      }, this.pendingNoteTimeout)
+    };
+    
+    this.pendingNotes.set(noteData.id, pendingEntry);
+  }
+  
+  /**
+   * Handle timeout for pending note - show re-anchor UI
+   * @param {string} noteId - Note ID
+   */
+  handlePendingNoteTimeout(noteId) {
+    const pending = this.pendingNotes.get(noteId);
+    if (!pending) return;
+    
+    log.debug(`Pending note timeout, showing re-anchor UI: ${noteId}`);
+    this.pendingNotes.delete(noteId);
+    this.showReanchorUI(pending.noteData);
+  }
+  
+  /**
+   * Check pending notes for newly available anchor elements
+   * Called by MutationObserver when DOM changes
+   */
+  checkPendingNotes() {
+    if (this.pendingNotes.size === 0) return;
+    
+    const resolved = [];
+    
+    this.pendingNotes.forEach((pending, noteId) => {
+      const { noteData } = pending;
+      
+      // Try to find the anchor element
+      let anchorElement = document.querySelector(noteData.selector);
+      
+      // Try fuzzy matching if not found
+      if (!anchorElement) {
+        anchorElement = this.selectorEngine.findBestMatch(noteData.selector, {
+          textContent: noteData.anchorText || ''
+        });
+        
+        if (anchorElement) {
+          log.debug(`Found pending note anchor via fuzzy matching: ${noteId}`);
+          this.handleReanchor(noteId, anchorElement);
+        }
+      }
+      
+      if (anchorElement) {
+        log.debug(`Pending note anchor found: ${noteId}`);
+        resolved.push({ noteId, pending, anchorElement });
+      }
+    });
+    
+    // Create notes for resolved pending entries
+    resolved.forEach(({ noteId, pending }) => {
+      // Clear timeout
+      clearTimeout(pending.timeoutId);
+      this.pendingNotes.delete(noteId);
+      
+      // Create the note (will find anchor on retry)
+      this.createNoteFromData(pending.noteData);
+    });
+  }
+  
+  /**
+   * Clear all pending notes (e.g., on URL change)
+   */
+  clearPendingNotes() {
+    this.pendingNotes.forEach((pending) => {
+      clearTimeout(pending.timeoutId);
+    });
+    this.pendingNotes.clear();
   }
   
   /**
@@ -82,12 +172,19 @@ export class NoteManager {
       return;
     }
     
+    // Check if already pending
+    if (this.pendingNotes.has(noteData.id)) {
+      log.debug('Note already pending, skipping:', noteData.id);
+      return;
+    }
+    
     // Find the anchor element
     let anchorElement = document.querySelector(noteData.selector);
     
     // If not found, try fuzzy matching
+    // Note: Using debug level since in SPAs elements may be injected later
     if (!anchorElement) {
-      log.warn(`Anchor element not found for selector: ${noteData.selector}`);
+      log.debug(`Anchor element not found for selector: ${noteData.selector}`);
       
       // Try fuzzy matching
       anchorElement = this.selectorEngine.findBestMatch(noteData.selector, {
@@ -99,8 +196,8 @@ export class NoteManager {
         // Update the selector
         this.handleReanchor(noteData.id, anchorElement);
       } else {
-        // Show re-anchor UI
-        this.showReanchorUI(noteData);
+        // Add to pending notes - element may appear later (SPA)
+        this.addPendingNote(noteData);
         return;
       }
     }
@@ -579,6 +676,11 @@ export class NoteManager {
     
     // Reset custom position so note positions relative to anchor
     note.customPosition = null;
+    // Persist the position change to storage (reset to default anchor position)
+    // This ensures the cleared customPosition is saved, preventing
+    // the old custom position from being restored on page reload
+    note.position = { anchor: 'top-right' };
+    note.onPositionChange(note.position);
     
     // Wait for scroll animation to complete before positioning
     // This ensures the note is positioned relative to anchor's final position
@@ -603,5 +705,8 @@ export class NoteManager {
       note.destroy();
     });
     this.notes.clear();
+    
+    // Also clear pending notes
+    this.clearPendingNotes();
   }
 }
