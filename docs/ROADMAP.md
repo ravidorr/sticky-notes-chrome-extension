@@ -219,6 +219,9 @@ Unplanned feature ideas for future consideration:
 - [] Note content length validation (e.g., 10,000-50,000 chars) for UX, performance, and cost control
 - [] Image support in notes (Pro feature - requires Firebase Storage, upload flow, cost considerations)
 - [] RichEditor enhancements: code/monospace, strikethrough, checkboxes, blockquotes
+- [] Inline sharing via email detection in note content:
+  - Option A: Auto-detect emails and prompt to share (Pro: seamless; Con: accidental shares, ambiguous intent)
+  - Option B: Explicit mention syntax like @email or +email (Pro: clear intent; Con: learning curve)
 
 ---
 
