@@ -8,6 +8,7 @@
     "build": "node scripts/build.js",
     "build:site": "node scripts/build-site.js",
     "preview": "vite preview",
+    "serve:test": "npx serve tests/fixtures -l 3000",
     "lint": "npm run lint:js && npm run lint:css && npm run lint:html",
     "lint:js": "eslint src/",
     "lint:js:fix": "eslint src/ --fix",
