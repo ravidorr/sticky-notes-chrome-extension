@@ -201,18 +201,127 @@ export class RichEditor {
       return;
     }
     
-    // Prompt for URL
-    const url = prompt('Enter URL:', 'https://');
+    // Save selection range before showing input
+    const range = selection.getRangeAt(0).cloneRange();
     
-    if (url && url !== 'https://') {
-      if (selectedText) {
-        document.execCommand('createLink', false, url);
-      } else {
-        // Insert link with URL as text
-        const link = `<a href="${escapeHtml(url)}" target="_blank">${escapeHtml(url)}</a>`;
-        document.execCommand('insertHTML', false, link);
-      }
+    // Show inline URL input
+    this.showLinkInput(range, selectedText);
+  }
+  
+  /**
+   * Show inline link input popup
+   * @param {Range} range - Selection range to restore
+   * @param {string} selectedText - Selected text to link
+   */
+  showLinkInput(range, selectedText) {
+    // Remove any existing link input
+    const existingInput = this.element.querySelector('.sn-link-input-popup');
+    if (existingInput) {
+      existingInput.remove();
     }
+    
+    // Create inline input popup
+    const popup = document.createElement('div');
+    popup.className = 'sn-link-input-popup';
+    popup.style.cssText = `
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 100;
+      display: flex;
+      gap: 6px;
+    `;
+    
+    const input = document.createElement('input');
+    input.type = 'url';
+    input.placeholder = 'Enter URL...';
+    input.value = 'https://';
+    input.style.cssText = `
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 13px;
+      outline: none;
+    `;
+    
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = 'Add';
+    confirmBtn.style.cssText = `
+      padding: 6px 12px;
+      background: #fbbf24;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 500;
+    `;
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = `
+      padding: 6px 12px;
+      background: #e5e7eb;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+    `;
+    
+    const cleanup = () => {
+      popup.remove();
+      this.editor.focus();
+    };
+    
+    const insertLink = () => {
+      const url = input.value.trim();
+      if (url && url !== 'https://') {
+        // Restore selection
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        
+        if (selectedText) {
+          document.execCommand('createLink', false, url);
+        } else {
+          // Insert link with URL as text
+          const link = `<a href="${escapeHtml(url)}" target="_blank">${escapeHtml(url)}</a>`;
+          document.execCommand('insertHTML', false, link);
+        }
+      }
+      cleanup();
+    };
+    
+    confirmBtn.addEventListener('click', insertLink);
+    cancelBtn.addEventListener('click', cleanup);
+    
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        insertLink();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cleanup();
+      }
+    });
+    
+    popup.appendChild(input);
+    popup.appendChild(confirmBtn);
+    popup.appendChild(cancelBtn);
+    
+    // Position relative to toolbar
+    this.toolbar.style.position = 'relative';
+    this.toolbar.appendChild(popup);
+    
+    // Focus input and select the "https://" part after the protocol
+    input.focus();
+    input.setSelectionRange(8, 8);
   }
   
   /**
