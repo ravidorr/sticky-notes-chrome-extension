@@ -697,16 +697,10 @@ export class StickyNote {
         break;
     }
     
-    // Collision detection - keep note in viewport
-    const maxX = scrollX + viewportWidth - noteRect.width - 20;
-    const maxY = scrollY + viewportHeight - noteRect.height - 20;
-    
-    // Ensure note stays within visible bounds
-    const finalX = Math.max(scrollX + 10, Math.min(x, maxX));
-    const finalY = Math.max(scrollY + 10, Math.min(y, maxY));
-    
-    this.element.style.left = `${finalX}px`;
-    this.element.style.top = `${finalY}px`;
+    // Note follows anchor element - no collision detection
+    // VisibilityManager will hide the note when anchor goes off-screen
+    this.element.style.left = `${x}px`;
+    this.element.style.top = `${y}px`;
   }
   
   /**
