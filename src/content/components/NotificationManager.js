@@ -189,7 +189,9 @@ export class NotificationManager {
         if (e.key === 'Escape') {
           e.preventDefault();
           cleanup({ confirmed: false });
-        } else if (e.key === 'Enter' && inputEl && document.activeElement === inputEl) {
+        } else if (e.key === 'Enter' && inputEl && e.target === inputEl) {
+          // Use e.target instead of document.activeElement because in shadow DOM,
+          // document.activeElement returns the shadow host, not the focused element
           e.preventDefault();
           cleanup({ confirmed: true, value: inputEl.value });
         }
