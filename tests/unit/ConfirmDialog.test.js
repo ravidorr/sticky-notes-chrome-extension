@@ -361,12 +361,13 @@ describe('ConfirmDialog', () => {
       expect(styles).toContain('.sn-confirm-danger');
     });
     
-    it('includes animation keyframes', () => {
+    it('includes animation references', () => {
       const styles = ConfirmDialog.getStyles();
-      expect(styles).toContain('@keyframes sn-fade-in');
-      expect(styles).toContain('@keyframes sn-fade-out');
-      expect(styles).toContain('@keyframes sn-scale-in');
-      expect(styles).toContain('@keyframes sn-scale-out');
+      // ConfirmDialog references shared animations from styles.js
+      expect(styles).toContain('animation: sn-fade-in');
+      expect(styles).toContain('animation: sn-fade-out');
+      expect(styles).toContain('animation: sn-scale-in');
+      expect(styles).toContain('animation: sn-scale-out');
     });
   });
   

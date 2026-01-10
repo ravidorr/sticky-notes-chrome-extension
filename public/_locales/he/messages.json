@@ -145,6 +145,18 @@
     "message": "ביטול",
     "description": "Cancel button text"
   },
+  "confirm": {
+    "message": "אישור",
+    "description": "Generic confirm button text"
+  },
+  "add": {
+    "message": "הוסף",
+    "description": "Add button text"
+  },
+  "linkUrlPlaceholder": {
+    "message": "הזן כתובת URL...",
+    "description": "Placeholder for link URL input"
+  },
   "shareButton": {
     "message": "שתף",
     "description": "Share button text in modal"

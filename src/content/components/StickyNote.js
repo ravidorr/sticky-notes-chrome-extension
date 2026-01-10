@@ -779,44 +779,47 @@ export class StickyNote {
     // Create modal overlay
     const overlay = document.createElement('div');
     overlay.className = 'sn-modal-overlay';
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 2147483647;
-    `;
     
     // Create modal content
     const modal = document.createElement('div');
     modal.className = 'sn-modal';
-    modal.style.cssText = `
-      background: white;
-      border-radius: 12px;
-      padding: 24px;
-      width: 320px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `;
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
     
-    modal.innerHTML = `
-      <h3 style="margin: 0 0 16px; font-size: 18px; color: #1f2937;">${t('shareNote')}</h3>
-      <p style="margin: 0 0 16px; font-size: 14px; color: #6b7280;">
-        ${t('shareDescription')}
-      </p>
-      <input type="email" placeholder="${t('emailPlaceholder')}" 
-        style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; margin-bottom: 16px; box-sizing: border-box;">
-      <div style="display: flex; gap: 8px; justify-content: flex-end;">
-        <button class="sn-modal-cancel" style="padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #374151; cursor: pointer; font-size: 14px;">${t('cancel')}</button>
-        <button class="sn-modal-share" style="padding: 8px 16px; border: none; border-radius: 6px; background: #facc15; color: #713f12; cursor: pointer; font-size: 14px; font-weight: 500;">${t('shareButton')}</button>
-      </div>
-    `;
+    // Build modal with CSS classes
+    const title = document.createElement('h3');
+    title.className = 'sn-modal-title';
+    title.textContent = t('shareNote');
     
+    const description = document.createElement('p');
+    description.className = 'sn-modal-message';
+    description.textContent = t('shareDescription');
+    
+    const emailInput = document.createElement('input');
+    emailInput.className = 'sn-modal-input';
+    emailInput.type = 'email';
+    emailInput.placeholder = t('emailPlaceholder');
+    
+    const actions = document.createElement('div');
+    actions.className = 'sn-modal-actions';
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'sn-btn sn-btn-secondary';
+    cancelBtn.type = 'button';
+    cancelBtn.textContent = t('cancel');
+    
+    const shareBtn = document.createElement('button');
+    shareBtn.className = 'sn-btn sn-btn-primary';
+    shareBtn.type = 'button';
+    shareBtn.textContent = t('shareButton');
+    
+    actions.appendChild(cancelBtn);
+    actions.appendChild(shareBtn);
+    
+    modal.appendChild(title);
+    modal.appendChild(description);
+    modal.appendChild(emailInput);
+    modal.appendChild(actions);
     overlay.appendChild(modal);
     
     // Get parent container (shadow root)
@@ -824,13 +827,20 @@ export class StickyNote {
     container.appendChild(overlay);
     
     // Focus email input
-    const emailInput = modal.querySelector('input');
     emailInput.focus();
     
+    // Cleanup function
+    const cleanup = () => {
+      overlay.classList.add('sn-closing');
+      setTimeout(() => {
+        if (overlay.parentNode === container) {
+          container.removeChild(overlay);
+        }
+      }, 150);
+    };
+    
     // Handle cancel
-    modal.querySelector('.sn-modal-cancel').addEventListener('click', () => {
-      container.removeChild(overlay);
-    });
+    cancelBtn.addEventListener('click', cleanup);
     
     // Share handler function
     const handleShare = async () => {
@@ -859,7 +869,7 @@ export class StickyNote {
         log.debug('Share response:', response);
         
         if (response && response.success) {
-          container.removeChild(overlay);
+          cleanup();
           this.showToast(t('noteShared'));
         } else {
           const errorMsg = response?.error || t('failedToShare');
@@ -873,31 +883,25 @@ export class StickyNote {
     };
     
     // Handle share button click
-    modal.querySelector('.sn-modal-share').addEventListener('click', handleShare);
+    shareBtn.addEventListener('click', handleShare);
     
     // Handle Enter key in email input
     emailInput.addEventListener('keydown', (keyEvent) => {
       if (keyEvent.key === 'Enter') {
         keyEvent.preventDefault();
         handleShare();
+      } else if (keyEvent.key === 'Escape') {
+        keyEvent.preventDefault();
+        cleanup();
       }
     });
     
     // Close on overlay click
     overlay.addEventListener('click', (clickEvent) => {
       if (clickEvent.target === overlay) {
-        container.removeChild(overlay);
+        cleanup();
       }
     });
-    
-    // Close on escape
-    const handleEscape = (keyEvent) => {
-      if (keyEvent.key === 'Escape') {
-        container.removeChild(overlay);
-        document.removeEventListener('keydown', handleEscape);
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
   }
   
   /**
@@ -908,30 +912,27 @@ export class StickyNote {
   showToast(message, type = 'success') {
     const container = this.element.parentNode;
     
+    // Remove existing toast
+    const existing = container.querySelector('.sn-toast');
+    if (existing) {
+      existing.remove();
+    }
+    
     const toast = document.createElement('div');
-    toast.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 12px 24px;
-      background: ${type === 'error' ? '#ef4444' : '#22c55e'};
-      color: white;
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      z-index: 2147483647;
-      animation: slideUp 0.3s ease;
-    `;
+    toast.className = `sn-toast sn-toast-${type}`;
     toast.textContent = message;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'polite');
     
     container.appendChild(toast);
     
     setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transition = 'opacity 0.3s ease';
-      setTimeout(() => container.removeChild(toast), 300);
+      toast.classList.add('sn-toast-hiding');
+      setTimeout(() => {
+        if (toast.parentNode === container) {
+          container.removeChild(toast);
+        }
+      }, 300);
     }, TIMEOUTS.TOAST_DISPLAY);
   }
   

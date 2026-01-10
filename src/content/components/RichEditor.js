@@ -5,6 +5,7 @@
  */
 
 import { escapeHtml } from '../../shared/utils.js';
+import { t } from '../../shared/i18n.js';
 
 export class RichEditor {
   /**
@@ -215,64 +216,28 @@ export class RichEditor {
    */
   showLinkInput(range, selectedText) {
     // Remove any existing link input
-    const existingInput = this.element.querySelector('.sn-link-input-popup');
+    const existingInput = this.element.querySelector('.sn-inline-popup');
     if (existingInput) {
       existingInput.remove();
     }
     
-    // Create inline input popup
+    // Create inline input popup using CSS classes
     const popup = document.createElement('div');
-    popup.className = 'sn-link-input-popup';
-    popup.style.cssText = `
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: white;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      padding: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 100;
-      display: flex;
-      gap: 6px;
-    `;
+    popup.className = 'sn-inline-popup';
     
     const input = document.createElement('input');
+    input.className = 'sn-inline-popup-input';
     input.type = 'url';
-    input.placeholder = 'Enter URL...';
+    input.placeholder = t('linkUrlPlaceholder');
     input.value = 'https://';
-    input.style.cssText = `
-      flex: 1;
-      padding: 6px 10px;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
-      font-size: 13px;
-      outline: none;
-    `;
     
     const confirmBtn = document.createElement('button');
-    confirmBtn.textContent = 'Add';
-    confirmBtn.style.cssText = `
-      padding: 6px 12px;
-      background: #fbbf24;
-      border: none;
-      border-radius: 4px;
-      font-size: 13px;
-      cursor: pointer;
-      font-weight: 500;
-    `;
+    confirmBtn.className = 'sn-btn sn-btn-primary sn-btn-sm';
+    confirmBtn.textContent = t('add');
     
     const cancelBtn = document.createElement('button');
-    cancelBtn.textContent = 'Cancel';
-    cancelBtn.style.cssText = `
-      padding: 6px 12px;
-      background: #e5e7eb;
-      border: none;
-      border-radius: 4px;
-      font-size: 13px;
-      cursor: pointer;
-    `;
+    cancelBtn.className = 'sn-btn sn-btn-secondary sn-btn-sm';
+    cancelBtn.textContent = t('cancel');
     
     const cleanup = () => {
       popup.remove();

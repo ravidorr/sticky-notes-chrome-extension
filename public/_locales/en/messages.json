@@ -145,6 +145,18 @@
     "message": "Cancel",
     "description": "Cancel button text"
   },
+  "confirm": {
+    "message": "Confirm",
+    "description": "Generic confirm button text"
+  },
+  "add": {
+    "message": "Add",
+    "description": "Add button text"
+  },
+  "linkUrlPlaceholder": {
+    "message": "Enter URL...",
+    "description": "Placeholder for link URL input"
+  },
   "shareButton": {
     "message": "Share",
     "description": "Share button text in modal"

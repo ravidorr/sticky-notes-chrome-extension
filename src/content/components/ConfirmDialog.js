@@ -164,7 +164,7 @@ export class ConfirmDialog {
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(0, 0, 0, 0.4);
+        background: var(--sn-color-backdrop, rgba(0, 0, 0, 0.4));
         backdrop-filter: blur(2px);
         animation: sn-fade-in 0.15s ease;
       }
@@ -173,28 +173,15 @@ export class ConfirmDialog {
         animation: sn-fade-out 0.15s ease forwards;
       }
       
-      @keyframes sn-fade-in {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      
-      @keyframes sn-fade-out {
-        from { opacity: 1; }
-        to { opacity: 0; }
-      }
-      
-      /* Confirm dialog box */
+      /* Confirm dialog box - uses yellow sticky note theme */
       .sn-confirm-dialog {
-        background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%);
-        border-radius: 8px;
+        background: var(--sn-color-bg-yellow, linear-gradient(135deg, #fef9c3 0%, #fef08a 100%));
+        border-radius: var(--sn-radius-lg, 8px);
         padding: 20px;
         min-width: 280px;
         max-width: 360px;
-        box-shadow: 
-          0 20px 25px -5px rgba(0, 0, 0, 0.1),
-          0 10px 10px -5px rgba(0, 0, 0, 0.04),
-          0 0 0 1px rgba(0, 0, 0, 0.05);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        box-shadow: var(--sn-shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1));
+        font-family: var(--sn-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
         animation: sn-scale-in 0.15s ease;
         pointer-events: auto;
         position: relative;
@@ -204,33 +191,11 @@ export class ConfirmDialog {
         animation: sn-scale-out 0.15s ease forwards;
       }
       
-      @keyframes sn-scale-in {
-        from { 
-          opacity: 0;
-          transform: scale(0.95);
-        }
-        to { 
-          opacity: 1;
-          transform: scale(1);
-        }
-      }
-      
-      @keyframes sn-scale-out {
-        from { 
-          opacity: 1;
-          transform: scale(1);
-        }
-        to { 
-          opacity: 0;
-          transform: scale(0.95);
-        }
-      }
-      
       /* Message text */
       .sn-confirm-message {
         font-size: 14px;
         font-weight: 500;
-        color: #713f12;
+        color: var(--sn-color-text-dark, #713f12);
         text-align: center;
         margin-bottom: 20px;
         line-height: 1.5;
@@ -243,11 +208,11 @@ export class ConfirmDialog {
         justify-content: center;
       }
       
-      /* Buttons */
+      /* Buttons - extend base .sn-btn styles */
       .sn-confirm-btn {
         padding: 8px 16px;
         border: none;
-        border-radius: 6px;
+        border-radius: var(--sn-radius-md, 6px);
         font-size: 13px;
         font-weight: 500;
         font-family: inherit;
@@ -259,13 +224,13 @@ export class ConfirmDialog {
       }
       
       .sn-confirm-btn:focus {
-        outline: 2px solid #facc15;
+        outline: 2px solid var(--sn-color-primary, #facc15);
         outline-offset: 2px;
       }
       
       .sn-confirm-cancel {
         background: rgba(255, 255, 255, 0.6);
-        color: #713f12;
+        color: var(--sn-color-text-dark, #713f12);
       }
       
       .sn-confirm-cancel:hover {
@@ -273,25 +238,25 @@ export class ConfirmDialog {
       }
       
       .sn-confirm-ok {
-        background: #facc15;
-        color: #713f12;
+        background: var(--sn-color-primary, #facc15);
+        color: var(--sn-color-text-dark, #713f12);
       }
       
       .sn-confirm-ok:hover {
-        background: #eab308;
+        background: var(--sn-color-primary-dark, #eab308);
       }
       
       .sn-confirm-danger {
-        background: #ef4444;
+        background: var(--sn-color-error, #ef4444);
         color: white;
       }
       
       .sn-confirm-danger:hover {
-        background: #dc2626;
+        background: var(--sn-color-error-dark, #dc2626);
       }
       
       .sn-confirm-danger:focus {
-        outline-color: #ef4444;
+        outline-color: var(--sn-color-error, #ef4444);
       }
     `;
   }

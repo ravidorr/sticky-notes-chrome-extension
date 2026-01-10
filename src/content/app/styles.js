@@ -13,6 +13,430 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js';
  */
 export function getShadowStyles() {
   return `
+    /* ==========================================
+       CSS Variables - Unified Design System
+       ========================================== */
+    :host {
+      --sn-color-success: #22c55e;
+      --sn-color-success-dark: #16a34a;
+      --sn-color-error: #ef4444;
+      --sn-color-error-dark: #dc2626;
+      --sn-color-warning: #f59e0b;
+      --sn-color-warning-dark: #d97706;
+      --sn-color-primary: #facc15;
+      --sn-color-primary-dark: #eab308;
+      --sn-color-text-dark: #713f12;
+      --sn-color-text-body: #1f2937;
+      --sn-color-text-muted: #6b7280;
+      --sn-color-text-light: #9ca3af;
+      --sn-color-bg-yellow: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%);
+      --sn-color-bg-yellow-header: linear-gradient(135deg, #facc15 0%, #eab308 100%);
+      --sn-color-bg-white: #ffffff;
+      --sn-color-bg-gray: #f3f4f6;
+      --sn-color-border: #d1d5db;
+      --sn-color-backdrop: rgba(0, 0, 0, 0.5);
+      --sn-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --sn-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --sn-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+      --sn-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      --sn-radius-sm: 4px;
+      --sn-radius-md: 6px;
+      --sn-radius-lg: 8px;
+      --sn-radius-xl: 12px;
+      --sn-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      --sn-z-max: 2147483647;
+    }
+
+    /* ==========================================
+       Unified Button Styles
+       ========================================== */
+    .sn-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 16px;
+      border: none;
+      border-radius: var(--sn-radius-md);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--sn-font-family);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      min-width: 80px;
+    }
+
+    .sn-btn:focus {
+      outline: 2px solid var(--sn-color-primary);
+      outline-offset: 2px;
+    }
+
+    .sn-btn-primary {
+      background: var(--sn-color-primary);
+      color: var(--sn-color-text-dark);
+    }
+
+    .sn-btn-primary:hover {
+      background: var(--sn-color-primary-dark);
+    }
+
+    .sn-btn-secondary {
+      background: var(--sn-color-bg-gray);
+      color: var(--sn-color-text-muted);
+    }
+
+    .sn-btn-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .sn-btn-danger {
+      background: var(--sn-color-error);
+      color: white;
+    }
+
+    .sn-btn-danger:hover {
+      background: var(--sn-color-error-dark);
+    }
+
+    .sn-btn-danger:focus {
+      outline-color: var(--sn-color-error);
+    }
+
+    .sn-btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      min-width: auto;
+    }
+
+    /* ==========================================
+       Toast Notifications
+       ========================================== */
+    .sn-toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: var(--sn-radius-lg);
+      font-size: 14px;
+      font-family: var(--sn-font-family);
+      font-weight: 500;
+      color: white;
+      box-shadow: var(--sn-shadow-lg);
+      z-index: var(--sn-z-max);
+      animation: sn-toast-slide-in 0.3s ease;
+      max-width: 320px;
+    }
+
+    .sn-toast-success {
+      background: var(--sn-color-success);
+    }
+
+    .sn-toast-error {
+      background: var(--sn-color-error);
+    }
+
+    .sn-toast-warning {
+      background: var(--sn-color-warning);
+      color: var(--sn-color-text-dark);
+    }
+
+    .sn-toast-hiding {
+      animation: sn-toast-fade-out 0.3s ease forwards;
+    }
+
+    @keyframes sn-toast-slide-in {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes sn-toast-fade-out {
+      from {
+        opacity: 1;
+      }
+      to {
+        opacity: 0;
+      }
+    }
+
+    /* ==========================================
+       Modal Overlay & Content
+       ========================================== */
+    .sn-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--sn-color-backdrop);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: var(--sn-z-max);
+      animation: sn-fade-in 0.15s ease;
+    }
+
+    .sn-modal-overlay.sn-closing {
+      animation: sn-fade-out 0.15s ease forwards;
+    }
+
+    .sn-modal {
+      background: var(--sn-color-bg-white);
+      border-radius: var(--sn-radius-xl);
+      padding: 24px;
+      min-width: 280px;
+      max-width: 360px;
+      box-shadow: var(--sn-shadow-xl);
+      font-family: var(--sn-font-family);
+      animation: sn-scale-in 0.15s ease;
+    }
+
+    .sn-modal-overlay.sn-closing .sn-modal {
+      animation: sn-scale-out 0.15s ease forwards;
+    }
+
+    .sn-modal-yellow {
+      background: var(--sn-color-bg-yellow);
+    }
+
+    .sn-modal-title {
+      margin: 0 0 16px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--sn-color-text-body);
+    }
+
+    .sn-modal-yellow .sn-modal-title {
+      color: var(--sn-color-text-dark);
+    }
+
+    .sn-modal-message {
+      font-size: 14px;
+      color: var(--sn-color-text-muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .sn-modal-yellow .sn-modal-message {
+      color: var(--sn-color-text-dark);
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .sn-modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .sn-modal-yellow .sn-modal-actions {
+      justify-content: center;
+    }
+
+    .sn-modal-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--sn-color-border);
+      border-radius: var(--sn-radius-lg);
+      font-size: 14px;
+      font-family: var(--sn-font-family);
+      margin-bottom: 16px;
+      box-sizing: border-box;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .sn-modal-input:focus {
+      border-color: var(--sn-color-primary);
+    }
+
+    /* ==========================================
+       Banner Notifications (Actionable)
+       ========================================== */
+    .sn-banner {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--sn-color-bg-white);
+      border-radius: var(--sn-radius-xl);
+      padding: 16px;
+      width: 300px;
+      box-shadow: var(--sn-shadow-lg);
+      font-family: var(--sn-font-family);
+      z-index: var(--sn-z-max);
+      animation: sn-toast-slide-in 0.3s ease;
+    }
+
+    .sn-banner-warning {
+      border-left: 4px solid var(--sn-color-warning);
+    }
+
+    .sn-banner-hiding {
+      animation: sn-toast-fade-out 0.3s ease forwards;
+    }
+
+    .sn-banner-content {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .sn-banner-icon {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      background: #fef3c7;
+      border-radius: var(--sn-radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sn-banner-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--sn-color-warning);
+    }
+
+    .sn-banner-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sn-banner-title {
+      font-weight: 600;
+      color: var(--sn-color-text-body);
+      margin-bottom: 4px;
+    }
+
+    .sn-banner-message {
+      font-size: 13px;
+      color: var(--sn-color-text-muted);
+      margin-bottom: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sn-banner-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ==========================================
+       Inline Input Popup (e.g., Link Input)
+       ========================================== */
+    .sn-inline-popup {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--sn-color-bg-white);
+      border: 1px solid var(--sn-color-border);
+      border-radius: var(--sn-radius-md);
+      padding: 8px;
+      box-shadow: var(--sn-shadow-md);
+      z-index: 100;
+      display: flex;
+      gap: 6px;
+      animation: sn-fade-in 0.15s ease;
+    }
+
+    .sn-inline-popup-input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid var(--sn-color-border);
+      border-radius: var(--sn-radius-sm);
+      font-size: 13px;
+      font-family: var(--sn-font-family);
+      outline: none;
+    }
+
+    .sn-inline-popup-input:focus {
+      border-color: var(--sn-color-primary);
+    }
+
+    /* ==========================================
+       Instruction Tooltip (Center Screen)
+       ========================================== */
+    .sn-instruction-tooltip {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--sn-color-text-body);
+      color: white;
+      padding: 16px 24px;
+      border-radius: var(--sn-radius-xl);
+      font-size: 14px;
+      font-family: var(--sn-font-family);
+      z-index: var(--sn-z-max);
+      text-align: center;
+      box-shadow: var(--sn-shadow-xl);
+      animation: sn-scale-in 0.15s ease;
+    }
+
+    .sn-instruction-tooltip-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .sn-instruction-tooltip-hint {
+      opacity: 0.8;
+    }
+
+    .sn-instruction-tooltip-escape {
+      margin-top: 12px;
+      font-size: 12px;
+      opacity: 0.6;
+    }
+
+    .sn-instruction-tooltip-hiding {
+      animation: sn-fade-out 0.5s ease forwards;
+    }
+
+    /* ==========================================
+       Shared Animations
+       ========================================== */
+    @keyframes sn-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes sn-fade-out {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    @keyframes sn-scale-in {
+      from { 
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to { 
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes sn-scale-out {
+      from { 
+        opacity: 1;
+        transform: scale(1);
+      }
+      to { 
+        opacity: 0;
+        transform: scale(0.95);
+      }
+    }
+
+    /* ==========================================
+       Sticky Note Container
+       ========================================== */
     /* Sticky note container */
     /* Note: z-index is set dynamically via inline style for bring-to-front functionality */
     .sn-note {

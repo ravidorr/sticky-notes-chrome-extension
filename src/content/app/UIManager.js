@@ -144,75 +144,84 @@ export class UIManager {
    * @param {Object} noteData - Note data
    */
   showReanchorUI(noteData) {
-    // Create floating notification
-    const notification = document.createElement('div');
-    notification.className = 'sn-reanchor-notification';
-    notification.dataset.noteId = noteData.id;
-    notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      width: 300px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      z-index: 2147483647;
-      border-left: 4px solid #f59e0b;
-    `;
+    // Remove existing banner
+    const existing = this.container.querySelector('.sn-banner');
+    if (existing) {
+      existing.remove();
+    }
     
-    notification.innerHTML = `
-      <div style="display: flex; align-items: start; gap: 12px;">
-        <div style="flex-shrink: 0; width: 32px; height: 32px; background: #fef3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+    // Create banner notification using CSS classes
+    const banner = document.createElement('div');
+    banner.className = 'sn-banner sn-banner-warning';
+    banner.dataset.noteId = noteData.id;
+    
+    const contentPreview = (noteData.content || '').substring(0, 50);
+    const ellipsis = noteData.content?.length > 50 ? '...' : '';
+    
+    banner.innerHTML = `
+      <div class="sn-banner-content">
+        <div class="sn-banner-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="8" x2="12" y2="12"/>
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
         </div>
-        <div style="flex: 1; min-width: 0;">
-          <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">${t('noteAnchorNotFound')}</div>
-          <div style="font-size: 13px; color: #6b7280; margin-bottom: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            "${escapeHtml((noteData.content || '').substring(0, 50))}${noteData.content?.length > 50 ? '...' : ''}"
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <button class="sn-reanchor-btn" style="flex: 1; padding: 8px 12px; background: #facc15; color: #713f12; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;">
-              ${t('reanchor')}
-            </button>
-            <button class="sn-dismiss-btn" style="padding: 8px 12px; background: #f3f4f6; color: #6b7280; border: none; border-radius: 6px; font-size: 13px; cursor: pointer;">
-              ${t('dismiss')}
-            </button>
-          </div>
+        <div class="sn-banner-body">
+          <div class="sn-banner-title">${t('noteAnchorNotFound')}</div>
+          <div class="sn-banner-message">"${escapeHtml(contentPreview)}${ellipsis}"</div>
+          <div class="sn-banner-actions"></div>
         </div>
       </div>
     `;
     
-    this.container.appendChild(notification);
+    // Add action buttons
+    const actionsContainer = banner.querySelector('.sn-banner-actions');
+    
+    const reanchorBtn = document.createElement('button');
+    reanchorBtn.className = 'sn-btn sn-btn-primary sn-btn-sm';
+    reanchorBtn.textContent = t('reanchor');
+    reanchorBtn.style.flex = '1';
+    
+    const dismissBtn = document.createElement('button');
+    dismissBtn.className = 'sn-btn sn-btn-secondary sn-btn-sm';
+    dismissBtn.textContent = t('dismiss');
+    
+    actionsContainer.appendChild(reanchorBtn);
+    actionsContainer.appendChild(dismissBtn);
+    
+    this.container.appendChild(banner);
     
     // Handle re-anchor button
-    notification.querySelector('.sn-reanchor-btn').addEventListener('click', () => {
-      this.container.removeChild(notification);
+    reanchorBtn.addEventListener('click', () => {
+      this.dismissBanner(banner);
       this.startReanchorMode(noteData);
     });
     
     // Handle dismiss button
-    notification.querySelector('.sn-dismiss-btn').addEventListener('click', () => {
-      this.container.removeChild(notification);
+    dismissBtn.addEventListener('click', () => {
+      this.dismissBanner(banner);
     });
     
     // Auto-dismiss after 10 seconds
     setTimeout(() => {
-      if (notification.parentNode === this.container) {
-        notification.style.opacity = '0';
-        notification.style.transition = 'opacity 0.3s ease';
-        setTimeout(() => {
-          if (notification.parentNode === this.container) {
-            this.container.removeChild(notification);
-          }
-        }, 300);
-      }
+      this.dismissBanner(banner);
     }, 10000);
+  }
+  
+  /**
+   * Dismiss a banner with animation
+   * @param {HTMLElement} banner - Banner to dismiss
+   */
+  dismissBanner(banner) {
+    if (!banner || banner.parentNode !== this.container) return;
+    
+    banner.classList.add('sn-banner-hiding');
+    setTimeout(() => {
+      if (banner.parentNode === this.container) {
+        this.container.removeChild(banner);
+      }
+    }, 300);
   }
   
   /**
@@ -223,38 +232,28 @@ export class UIManager {
     this.pendingReanchor = noteData;
     this.enableSelectionMode();
     
-    // Show instruction tooltip
+    // Remove existing tooltip
+    const existingTooltip = this.container.querySelector('.sn-instruction-tooltip');
+    if (existingTooltip) {
+      existingTooltip.remove();
+    }
+    
+    // Show instruction tooltip using CSS classes
     const tooltip = document.createElement('div');
-    tooltip.className = 'sn-reanchor-tooltip';
-    tooltip.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: #1f2937;
-      color: white;
-      padding: 16px 24px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      z-index: 2147483647;
-      text-align: center;
-      box-shadow: 0 20px 25px rgba(0, 0, 0, 0.2);
-    `;
+    tooltip.className = 'sn-instruction-tooltip';
     tooltip.innerHTML = `
-      <div style="font-weight: 600; margin-bottom: 8px;">${t('selectNewAnchor')}</div>
-      <div style="opacity: 0.8;">${t('selectNewAnchorHint')}</div>
-      <div style="margin-top: 12px; font-size: 12px; opacity: 0.6;">${t('pressEscToCancel')}</div>
+      <div class="sn-instruction-tooltip-title">${t('selectNewAnchor')}</div>
+      <div class="sn-instruction-tooltip-hint">${t('selectNewAnchorHint')}</div>
+      <div class="sn-instruction-tooltip-escape">${t('pressEscToCancel')}</div>
     `;
     
     this.container.appendChild(tooltip);
     this.reanchorTooltip = tooltip;
     
-    // Remove tooltip after a few seconds
+    // Remove tooltip after a few seconds with fade
     setTimeout(() => {
       if (tooltip.parentNode === this.container) {
-        tooltip.style.opacity = '0';
-        tooltip.style.transition = 'opacity 0.5s ease';
+        tooltip.classList.add('sn-instruction-tooltip-hiding');
         setTimeout(() => {
           if (tooltip.parentNode === this.container) {
             this.container.removeChild(tooltip);
