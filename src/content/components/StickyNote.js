@@ -890,7 +890,12 @@ export class StickyNote {
       if (keyEvent.key === 'Enter') {
         keyEvent.preventDefault();
         handleShare();
-      } else if (keyEvent.key === 'Escape') {
+      }
+    });
+    
+    // Handle Escape key anywhere in modal (accessibility)
+    overlay.addEventListener('keydown', (keyEvent) => {
+      if (keyEvent.key === 'Escape') {
         keyEvent.preventDefault();
         cleanup();
       }
