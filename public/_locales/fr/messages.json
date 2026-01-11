@@ -29,6 +29,14 @@
     "message": "Se deconnecter",
     "description": "Sign out button tooltip"
   },
+  "signingIn": {
+    "message": "Connexion en cours...",
+    "description": "Text shown while signing in"
+  },
+  "loginFailed": {
+    "message": "Echec de la connexion. Veuillez reessayer.",
+    "description": "Error message when login fails"
+  },
   "userName": {
     "message": "Nom d'utilisateur",
     "description": "Default placeholder for user name"

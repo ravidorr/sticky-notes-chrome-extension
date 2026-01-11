@@ -149,12 +149,87 @@ export function createHandlers(deps = {}) {
   }
 
   /**
+   * Migrate local notes to Firebase after user login
+   * @param {Object} user - The logged in user
+   * @returns {Promise<Object>} Migration result with count of migrated notes
+   */
+  async function migrateLocalNotesToFirebase(user) {
+    if (!isFirebaseConfigured() || !user) {
+      return { migrated: 0 };
+    }
+    
+    try {
+      // Get all notes from local storage
+      const result = await chromeStorage.local.get(['notes']);
+      const localNotes = result.notes || [];
+      
+      if (localNotes.length === 0) {
+        log.debug('No local notes to migrate');
+        return { migrated: 0 };
+      }
+      
+      log.debug(`Found ${localNotes.length} local notes to migrate`);
+      
+      let migratedCount = 0;
+      const failedNotes = [];
+      
+      // Migrate each note to Firebase
+      for (const note of localNotes) {
+        try {
+          // Create note in Firebase with the user's ID
+          // Remove the old local ID so Firebase generates a new one
+          const noteToMigrate = {
+            url: note.url,
+            selector: note.selector,
+            content: note.content,
+            theme: note.theme || 'yellow',
+            position: note.position || { anchor: 'top-right' },
+            anchorText: note.anchorText || '',
+            metadata: note.metadata || {},
+            createdAt: note.createdAt || new Date().toISOString()
+          };
+          
+          await createNote(noteToMigrate, user.uid);
+          migratedCount++;
+          log.debug(`Migrated note: ${note.id}`);
+        } catch (error) {
+          log.error(`Failed to migrate note ${note.id}:`, error);
+          failedNotes.push(note);
+        }
+      }
+      
+      // Clear local notes only if all migrations succeeded
+      if (failedNotes.length === 0) {
+        await chromeStorage.local.remove(['notes']);
+        log.debug('Cleared local notes after successful migration');
+      } else {
+        // Keep only the failed notes in local storage
+        await chromeStorage.local.set({ notes: failedNotes });
+        log.warn(`Kept ${failedNotes.length} notes in local storage due to migration failures`);
+      }
+      
+      log.debug(`Migration complete: ${migratedCount} notes migrated`);
+      return { migrated: migratedCount, failed: failedNotes.length };
+    } catch (error) {
+      log.error('Migration error:', error);
+      return { migrated: 0, error: error.message };
+    }
+  }
+  
+  /**
    * Handle login
    */
   async function handleLogin() {
     try {
       const user = await signInWithGoogle();
-      return { success: true, user };
+      
+      // Migrate local notes to Firebase after successful login
+      const migrationResult = await migrateLocalNotesToFirebase(user);
+      if (migrationResult.migrated > 0) {
+        log.debug(`Migrated ${migrationResult.migrated} local notes to Firebase`);
+      }
+      
+      return { success: true, user, migration: migrationResult };
     } catch (error) {
       log.error('Login error:', error);
       return { success: false, error: error.message };

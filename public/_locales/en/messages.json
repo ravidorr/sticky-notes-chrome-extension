@@ -29,6 +29,14 @@
     "message": "Sign out",
     "description": "Sign out button tooltip"
   },
+  "signingIn": {
+    "message": "Signing in...",
+    "description": "Text shown while signing in"
+  },
+  "loginFailed": {
+    "message": "Sign in failed. Please try again.",
+    "description": "Error message when login fails"
+  },
   "userName": {
     "message": "User Name",
     "description": "Default placeholder for user name"

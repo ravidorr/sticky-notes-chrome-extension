@@ -349,6 +349,20 @@
 | 4 | Grant permissions | Auth completes |
 | 5 | Popup updates | Shows user email/name, logout button appears |
 
+### TEST-8.1b: Local Notes Migration on First Login
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Ensure NOT logged in | Logout if necessary |
+| 2 | Create 2-3 notes on different pages | Notes stored in local storage |
+| 3 | Verify notes exist | Notes visible on respective pages |
+| 4 | Sign in with Google | Authentication completes |
+| 5 | Check notes on original pages | Notes still visible (now in Firebase) |
+| 6 | Open DevTools > Application > Local Storage | `notes` key should be empty or removed |
+| 7 | Sign out | User logged out |
+| 8 | Check notes on original pages | Notes NOT visible (stored in Firebase, not local) |
+| 9 | Sign in again | Notes visible again (loaded from Firebase) |
+
 ### TEST-8.2: User Profile Display
 
 | Step | Action | Expected Result |

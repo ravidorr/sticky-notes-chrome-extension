@@ -21,6 +21,7 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 - **Firebase Integration**: Sync notes to the cloud
 - **Google Authentication**: Sign in with Google to access your notes anywhere
 - **Offline Support**: Works offline with Firestore persistence
+- **Automatic Migration**: Notes created before login are automatically migrated to your account
 
 ### Collaboration Features (Phase 3)
 - **Note Sharing**: Share notes with other users by email

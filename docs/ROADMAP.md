@@ -46,6 +46,7 @@
 - [x] Cloud sync with Firestore
 - [x] Note sharing between users (by email)
 - [x] Offline persistence (Firestore cache)
+- [x] Automatic migration of local notes to cloud on first login
 
 ---
 
@@ -229,7 +230,7 @@ Unplanned feature ideas for future consideration:
 
 ### Major
 
-- [] Note position relative to element (top/bottom + right/left) isn't always working correctly
+- [x] ~~Note position relative to element (top/bottom + right/left) isn't always working correctly~~ (Fixed: notes now use viewport coordinates and follow anchor elements when scrolling)
 - [] On some pages, notes fail to attach to elements at all
 - [] On pages with repeated content structures (e.g., live news feeds), notes may attach to the wrong instance of an element due to non-unique CSS selectors
 

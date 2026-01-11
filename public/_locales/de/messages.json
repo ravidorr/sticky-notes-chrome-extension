@@ -29,6 +29,14 @@
     "message": "Abmelden",
     "description": "Sign out button tooltip"
   },
+  "signingIn": {
+    "message": "Anmeldung...",
+    "description": "Text shown while signing in"
+  },
+  "loginFailed": {
+    "message": "Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "description": "Error message when login fails"
+  },
   "userName": {
     "message": "Benutzername",
     "description": "Default placeholder for user name"

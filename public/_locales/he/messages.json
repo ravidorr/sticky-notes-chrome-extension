@@ -29,6 +29,14 @@
     "message": "התנתק",
     "description": "Sign out button tooltip"
   },
+  "signingIn": {
+    "message": "מתחבר...",
+    "description": "Text shown while signing in"
+  },
+  "loginFailed": {
+    "message": "ההתחברות נכשלה. אנא נסה שוב.",
+    "description": "Error message when login fails"
+  },
   "userName": {
     "message": "שם משתמש",
     "description": "Default placeholder for user name"

@@ -115,9 +115,25 @@ function renderNotesList(notes) {
  * Handle login button click
  */
 async function onLogin() {
-  const result = await handlers.handleLogin();
-  if (result.success) {
-    showUserSection(result.user);
+  // Disable button and show loading state
+  loginBtn.disabled = true;
+  const originalText = loginBtn.innerHTML;
+  loginBtn.innerHTML = `<span class="spinner"></span> ${t('signingIn')}`;
+  
+  try {
+    const result = await handlers.handleLogin();
+    if (result.success) {
+      showUserSection(result.user);
+    } else {
+      // Show error to user
+      showToast(result.error || t('loginFailed'), 'error');
+    }
+  } catch (error) {
+    showToast(error.message || t('loginFailed'), 'error');
+  } finally {
+    // Restore button state
+    loginBtn.disabled = false;
+    loginBtn.innerHTML = originalText;
   }
 }
 

@@ -144,6 +144,7 @@ describe('Background Handlers', () => {
   describe('handleLogin', () => {
     it('should return user on successful login', async () => {
       localThis.deps.signInWithGoogle.mockResolvedValue(localThis.mockUser);
+      localThis.mockChromeStorage.local.get.mockResolvedValue({ notes: [] });
       
       const result = await localThis.handlers.handleLogin();
       
@@ -159,6 +160,79 @@ describe('Background Handlers', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Auth failed');
       expect(localThis.mockLog.error).toHaveBeenCalled();
+    });
+    
+    it('should migrate local notes to Firebase on successful login', async () => {
+      localThis.deps.signInWithGoogle.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.createNote.mockResolvedValue({ id: 'firebase-note-1' });
+      localThis.mockChromeStorage.local.get.mockResolvedValue({
+        notes: [
+          { id: 'local-1', url: 'https://example.com', content: 'Test note 1', selector: '#el1' },
+          { id: 'local-2', url: 'https://example.com', content: 'Test note 2', selector: '#el2' }
+        ]
+      });
+      localThis.mockChromeStorage.local.remove = jest.fn().mockResolvedValue();
+      
+      const result = await localThis.handlers.handleLogin();
+      
+      expect(result.success).toBe(true);
+      expect(result.migration.migrated).toBe(2);
+      expect(localThis.deps.createNote).toHaveBeenCalledTimes(2);
+      expect(localThis.mockChromeStorage.local.remove).toHaveBeenCalledWith(['notes']);
+    });
+    
+    it('should not migrate when no local notes exist', async () => {
+      localThis.deps.signInWithGoogle.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.mockChromeStorage.local.get.mockResolvedValue({ notes: [] });
+      
+      const result = await localThis.handlers.handleLogin();
+      
+      expect(result.success).toBe(true);
+      expect(result.migration.migrated).toBe(0);
+      expect(localThis.deps.createNote).not.toHaveBeenCalled();
+    });
+    
+    it('should not migrate when Firebase is not configured', async () => {
+      localThis.deps.signInWithGoogle.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      localThis.mockChromeStorage.local.get.mockResolvedValue({
+        notes: [{ id: 'local-1', url: 'https://example.com', content: 'Test' }]
+      });
+      
+      const result = await localThis.handlers.handleLogin();
+      
+      expect(result.success).toBe(true);
+      expect(result.migration.migrated).toBe(0);
+      expect(localThis.deps.createNote).not.toHaveBeenCalled();
+    });
+    
+    it('should keep failed notes in local storage', async () => {
+      localThis.deps.signInWithGoogle.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.createNote
+        .mockResolvedValueOnce({ id: 'firebase-1' })
+        .mockRejectedValueOnce(new Error('Firebase error'));
+      localThis.mockChromeStorage.local.get.mockResolvedValue({
+        notes: [
+          { id: 'local-1', url: 'https://example.com', content: 'Note 1', selector: '#el1' },
+          { id: 'local-2', url: 'https://example.com', content: 'Note 2', selector: '#el2' }
+        ]
+      });
+      localThis.mockChromeStorage.local.set.mockResolvedValue();
+      
+      const result = await localThis.handlers.handleLogin();
+      
+      expect(result.success).toBe(true);
+      expect(result.migration.migrated).toBe(1);
+      expect(result.migration.failed).toBe(1);
+      // Should keep the failed note in local storage
+      expect(localThis.mockChromeStorage.local.set).toHaveBeenCalledWith({
+        notes: expect.arrayContaining([
+          expect.objectContaining({ id: 'local-2' })
+        ])
+      });
     });
   });
 
