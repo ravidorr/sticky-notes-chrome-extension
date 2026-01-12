@@ -23,8 +23,13 @@
     --c-slate-950: #020617;
 
     /* Blue Accent */
+    --c-blue-200: #bfdbfe;
+    --c-blue-300: #93c5fd;
+    --c-blue-400: #60a5fa;
     --c-blue-500: #3b82f6;
     --c-blue-600: #2563eb;
+    --c-blue-700: #1d4ed8;
+    --c-blue-800: #1e40af;
 
     /* Yellow (Primary Brand) */
     --c-yellow-50: rgba(254, 252, 232, 0.5);
@@ -33,7 +38,10 @@
     --c-yellow-300: #fde047;
     --c-yellow-400: #facc15;
     --c-yellow-500: #eab308;
+    --c-yellow-600: #ca8a04;
+    --c-yellow-700: #a16207;
     --c-yellow-800: #854d0e;
+    --c-yellow-900: #713f12;
 
     /* Semantic Colors (Light Mode) */
     --color-bg: #ffffff;
@@ -55,7 +63,6 @@
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
     --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
     --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-    --shadow-yellow: 0 2px 8px rgba(234, 179, 8, 0.3);
     --shadow-yellow-lg: 0 4px 12px rgba(234, 179, 8, 0.4);
 
     /* Border Radius */
@@ -227,35 +234,23 @@ img {
 .flex-col { flex-direction: column; }
 .items-center { align-items: center; }
 .justify-between { justify-content: space-between; }
-.justify-center { justify-content: center; }
 .gap-2 { gap: 0.5rem; }
 .gap-3 { gap: 0.75rem; }
 .gap-4 { gap: 1rem; }
-.gap-6 { gap: 1.5rem; }
 .gap-8 { gap: 2rem; }
-.gap-12 { gap: 3rem; }
 .grid { display: grid; }
 .hidden { display: none !important; }
 .relative { position: relative; }
-.absolute { position: absolute; }
 .text-center { text-align: center; }
 .w-full { width: 100%; }
-.mx-auto { margin-left: auto; margin-right: auto; }
-.mb-4 { margin-bottom: 1rem; }
 .mb-8 { margin-bottom: 2rem; }
-.mb-10 { margin-bottom: 2.5rem; }
-.mb-16 { margin-bottom: 4rem; }
-.mt-6 { margin-top: 1.5rem; }
 .mr-4 { margin-right: 1rem; }
 .p-2 { padding: 0.5rem; }
 .opacity-50 { opacity: 0.5; }
 
 /* --- Typography --- */
-.font-hand { font-family: var(--font-hand); }
 .text-sm { font-size: 0.875rem; }
 .text-lg { font-size: 1.125rem; }
-.text-xl { font-size: 1.25rem; }
-.font-bold { font-weight: 700; }
 
 .h1-hero {
     font-size: 3rem;
@@ -284,6 +279,13 @@ img {
 [data-theme="dark"] .text-subtle {
     color: var(--c-slate-400);
 }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .text-subtle {
+        color: var(--c-slate-400);
+    }
+}
+
 .text-body { color: var(--color-text-secondary); }
 
 /* --- Components: Buttons --- */
@@ -504,20 +506,6 @@ img {
     background: rgba(250, 204, 21, 0.1);
 }
 
-.badge-new {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background-color: var(--c-yellow-100);
-    color: var(--c-yellow-800);
-    padding: 0.25rem 0.75rem;
-    border-radius: var(--radius-full);
-    font-size: 0.875rem;
-    font-weight: 600;
-    border: 1px solid var(--c-yellow-200);
-    margin-bottom: 1.5rem;
-}
-
 .text-highlight {
     position: relative;
     display: inline-block;
@@ -711,12 +699,6 @@ svg.editor-btn {
     min-height: 3rem;
 }
 
-.note-placeholder {
-    color: #a16207;
-    opacity: 0.6;
-    font-family: var(--font-sans);
-}
-
 .note-text {
     font-family: var(--font-sans);
     color: #78350f;
@@ -744,21 +726,6 @@ svg.editor-btn {
     color: #92400e;
     font-size: 0.625rem;
     opacity: 0.7;
-}
-
-/* Legacy static note (keep for backwards compatibility) */
-.static-note {
-    position: absolute;
-    top: -1rem;
-    right: -1rem;
-    width: 12rem;
-    background: var(--c-yellow-300);
-    padding: 0.75rem;
-    border-radius: var(--radius-lg);
-    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.1);
-    transform: rotate(2deg);
-    border-top: 1px solid var(--c-yellow-100);
-    animation: notePop 0.5s ease-out;
 }
 
 /* --- Unified Card System --- */
@@ -1145,15 +1112,6 @@ svg.editor-btn {
     margin: 0 auto 4rem;
 }
 
-.section-label {
-    color: var(--c-blue-600);
-    font-weight: 600;
-    font-size: 0.875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.5rem;
-}
-
 .features-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -1167,9 +1125,6 @@ svg.editor-btn {
 @media (min-width: 1024px) {
     .features-grid { grid-template-columns: repeat(3, 1fr); }
 }
-
-/* Legacy class alias - use .card .card--accent-blue instead */
-.feature-card { /* Deprecated - see .card */ }
 
 /* --- How it Works --- */
 .section-steps {
@@ -1188,9 +1143,6 @@ svg.editor-btn {
 @media (min-width: 768px) {
     .steps-grid { grid-template-columns: repeat(3, 1fr); }
 }
-
-/* Legacy class alias - use .card .card--accent-yellow instead */
-.step-card { /* Deprecated - see .card */ }
 
 /* Step icon number styling */
 .card-icon span {
@@ -1679,7 +1631,6 @@ svg.editor-btn {
         transform: none;
     }
     
-    .static-note,
     .static-note-real {
         right: 0;
         width: 11rem;
