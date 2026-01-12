@@ -354,6 +354,101 @@ describe('site/scripts.js', () => {
             expect(typeof cleanup).toBe('function');
             expect(() => cleanup()).not.toThrow();
         });
+
+        it('should update aria-expanded attribute on click', () => {
+            localThis.menuButton.setAttribute('aria-expanded', 'false');
+            initMobileMenu(localThis.menuButton, localThis.mobileMenu);
+            
+            localThis.menuButton.click();
+            expect(localThis.menuButton.getAttribute('aria-expanded')).toBe('true');
+            
+            localThis.menuButton.click();
+            expect(localThis.menuButton.getAttribute('aria-expanded')).toBe('false');
+        });
+
+        it('should update aria-hidden attribute on mobile menu', () => {
+            localThis.mobileMenu.setAttribute('aria-hidden', 'true');
+            initMobileMenu(localThis.menuButton, localThis.mobileMenu);
+            
+            localThis.menuButton.click();
+            expect(localThis.mobileMenu.getAttribute('aria-hidden')).toBe('false');
+            
+            localThis.menuButton.click();
+            expect(localThis.mobileMenu.getAttribute('aria-hidden')).toBe('true');
+        });
+
+        it('should update aria-label on menu button click', () => {
+            localThis.menuButton.setAttribute('aria-label', 'Open navigation menu');
+            initMobileMenu(localThis.menuButton, localThis.mobileMenu);
+            
+            localThis.menuButton.click();
+            expect(localThis.menuButton.getAttribute('aria-label')).toBe('Close navigation menu');
+            
+            localThis.menuButton.click();
+            expect(localThis.menuButton.getAttribute('aria-label')).toBe('Open navigation menu');
+        });
+
+        it('should close menu on Escape key press', () => {
+            initMobileMenu(localThis.menuButton, localThis.mobileMenu);
+            
+            // Open the menu first
+            localThis.menuButton.click();
+            expect(localThis.mobileMenu.classList.contains('hidden')).toBe(false);
+            
+            // Press Escape
+            const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' });
+            document.dispatchEvent(escapeEvent);
+            
+            expect(localThis.mobileMenu.classList.contains('hidden')).toBe(true);
+            expect(localThis.menuButton.getAttribute('aria-expanded')).toBe('false');
+            expect(localThis.mobileMenu.getAttribute('aria-hidden')).toBe('true');
+        });
+
+        it('should not close menu on Escape when already hidden', () => {
+            initMobileMenu(localThis.menuButton, localThis.mobileMenu);
+            
+            // Menu starts hidden
+            expect(localThis.mobileMenu.classList.contains('hidden')).toBe(true);
+            
+            // Press Escape - should not throw or change state
+            const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' });
+            document.dispatchEvent(escapeEvent);
+            
+            expect(localThis.mobileMenu.classList.contains('hidden')).toBe(true);
+        });
+
+        it('should focus menu button after closing with Escape', () => {
+            initMobileMenu(localThis.menuButton, localThis.mobileMenu);
+            
+            // Open the menu
+            localThis.menuButton.click();
+            
+            // Mock focus
+            const focusSpy = jest.spyOn(localThis.menuButton, 'focus');
+            
+            // Press Escape
+            const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' });
+            document.dispatchEvent(escapeEvent);
+            
+            expect(focusSpy).toHaveBeenCalled();
+        });
+
+        it('should remove keydown listener on cleanup', () => {
+            const cleanup = initMobileMenu(localThis.menuButton, localThis.mobileMenu);
+            
+            // Open the menu
+            localThis.menuButton.click();
+            expect(localThis.mobileMenu.classList.contains('hidden')).toBe(false);
+            
+            // Cleanup
+            cleanup();
+            
+            // Press Escape - should not close menu since listener is removed
+            const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' });
+            document.dispatchEvent(escapeEvent);
+            
+            expect(localThis.mobileMenu.classList.contains('hidden')).toBe(false);
+        });
     });
 
     describe('initSmoothScroll', () => {
@@ -636,6 +731,80 @@ describe('site/scripts.js', () => {
             
             expect(typeof control.cleanup).toBe('function');
             expect(() => control.cleanup()).not.toThrow();
+        });
+
+        it('should create note when Enter key pressed on target in selection mode', () => {
+            initDemo();
+            
+            // Activate selection mode
+            document.getElementById('demo-activate-btn').click();
+            
+            // Press Enter on target
+            const target = document.querySelector('.demo-target');
+            const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+            target.dispatchEvent(enterEvent);
+            
+            expect(demoState.notes.has('1')).toBe(true);
+            expect(document.querySelector('.sticky-note')).not.toBeNull();
+        });
+
+        it('should create note when Space key pressed on target in selection mode', () => {
+            initDemo();
+            
+            // Activate selection mode
+            document.getElementById('demo-activate-btn').click();
+            
+            // Press Space on target
+            const target = document.querySelector('.demo-target');
+            const spaceEvent = new KeyboardEvent('keydown', { key: ' ', bubbles: true });
+            target.dispatchEvent(spaceEvent);
+            
+            expect(demoState.notes.has('1')).toBe(true);
+            expect(document.querySelector('.sticky-note')).not.toBeNull();
+        });
+
+        it('should not create note on keydown when not in selection mode', () => {
+            initDemo();
+            
+            // Press Enter without activating selection mode
+            const target = document.querySelector('.demo-target');
+            const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+            target.dispatchEvent(enterEvent);
+            
+            expect(demoState.notes.size).toBe(0);
+            expect(document.querySelector('.sticky-note')).toBeNull();
+        });
+
+        it('should prevent default on Enter/Space in selection mode', () => {
+            initDemo();
+            
+            // Activate selection mode
+            document.getElementById('demo-activate-btn').click();
+            
+            // Press Enter on target
+            const target = document.querySelector('.demo-target');
+            const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+            const preventDefaultSpy = jest.spyOn(enterEvent, 'preventDefault');
+            target.dispatchEvent(enterEvent);
+            
+            expect(preventDefaultSpy).toHaveBeenCalled();
+        });
+
+        it('should not respond to other keys in selection mode', () => {
+            initDemo();
+            
+            // Activate selection mode
+            document.getElementById('demo-activate-btn').click();
+            
+            // Press a different key
+            const target = document.querySelector('.demo-target');
+            const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true });
+            target.dispatchEvent(tabEvent);
+            
+            expect(demoState.notes.size).toBe(0);
+            expect(document.querySelector('.sticky-note')).toBeNull();
+            // Selection mode should still be active
+            expect(demoState.activeMode).toBe(true);
         });
     });
 });
