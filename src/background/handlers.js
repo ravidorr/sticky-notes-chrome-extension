@@ -50,6 +50,7 @@ export function createHandlers(deps = {}) {
    * @returns {Promise<Object>} Response
    */
   async function handleMessage(message, sender) {
+    log.debug('Handling message action:', message.action);
     switch (message.action) {
       case 'login':
         return handleLogin();
@@ -109,6 +110,7 @@ export function createHandlers(deps = {}) {
         return updateOrphanedBadge(message.count, sender);
       
       default:
+        log.warn('Unknown action received:', message.action, 'Full message:', JSON.stringify(message));
         return { success: false, error: t('unknownAction') };
     }
   }
