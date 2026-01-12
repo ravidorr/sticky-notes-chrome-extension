@@ -1,4 +1,6 @@
 <!-- htmlhint doctype-first:false -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
     <!-- Navigation -->
     <nav id="navbar" class="navbar">
         <div class="container flex justify-between items-center">
@@ -38,10 +40,10 @@
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                     </svg>
                 </button>
-                <button class="btn btn-primary gap-2">
+                <a href="https://chrome.google.com/webstore/detail/miahokcndajlgenbmbdfnbaampbfmneh" class="btn btn-primary gap-2">
                     <img src="chrome-logo.svg" width="16" height="16" alt="" aria-hidden="true">
                     Add to Chrome
-                </button>
+                </a>
             </div>
 
             <!-- Mobile Menu Button -->
@@ -64,7 +66,7 @@
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                     </svg>
                 </button>
-                <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Toggle menu">
+                <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-menu">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="3" y1="12" x2="21" y2="12"></line>
                         <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -75,16 +77,16 @@
         </div>
 
         <!-- Mobile Dropdown -->
-        <div id="mobile-menu" class="mobile-dropdown hidden flex">
+        <div id="mobile-menu" class="mobile-dropdown hidden flex" role="menu" aria-hidden="true">
             <a href="{{BASE_URL}}#features" class="nav-link">Features</a>
             <a href="{{BASE_URL}}#preview" class="nav-link">Preview</a>
             <a href="{{BASE_URL}}#how-it-works" class="nav-link">How it Works</a>
             <a href="{{BASE_URL}}#pricing" class="nav-link">Pricing</a>
             <a href="https://github.com/ravidorr/sticky-notes-chrome-extension" target="_blank" rel="noopener" class="nav-link">GitHub</a>
-            <button class="btn btn-primary gap-2 w-full">
+            <a href="https://chrome.google.com/webstore/detail/miahokcndajlgenbmbdfnbaampbfmneh" class="btn btn-primary gap-2 w-full">
                 <img src="chrome-logo.svg" width="16" height="16" alt="" aria-hidden="true">
                 Add to Chrome
-            </button>
+            </a>
         </div>
     </nav>
 

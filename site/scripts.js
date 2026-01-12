@@ -206,13 +206,32 @@ function initMobileMenu(menuButton, mobileMenu) {
     }
 
     const handleClick = () => {
+        const isHidden = mobileMenu.classList.contains('hidden');
         mobileMenu.classList.toggle('hidden');
+        menuButton.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+        mobileMenu.setAttribute('aria-hidden', isHidden ? 'false' : 'true');
+        menuButton.setAttribute('aria-label', isHidden ? 'Close navigation menu' : 'Open navigation menu');
+    };
+
+    // Close menu on Escape key
+    const handleKeydown = (event) => {
+        if (event.key === 'Escape' && !mobileMenu.classList.contains('hidden')) {
+            mobileMenu.classList.add('hidden');
+            menuButton.setAttribute('aria-expanded', 'false');
+            mobileMenu.setAttribute('aria-hidden', 'true');
+            menuButton.setAttribute('aria-label', 'Open navigation menu');
+            menuButton.focus();
+        }
     };
 
     menuButton.addEventListener('click', handleClick);
+    document.addEventListener('keydown', handleKeydown);
 
     // Return cleanup function
-    return () => menuButton.removeEventListener('click', handleClick);
+    return () => {
+        menuButton.removeEventListener('click', handleClick);
+        document.removeEventListener('keydown', handleKeydown);
+    };
 }
 
 // ============================================
@@ -396,8 +415,18 @@ function initDemo(selectors = {}) {
             updateDemoUI(elements, demoState);
         };
 
+        // Keyboard handler for accessibility
+        const handleKeydown = (event) => {
+            if ((event.key === 'Enter' || event.key === ' ') && demoState.activeMode) {
+                event.preventDefault();
+                handleTargetClick(event);
+            }
+        };
+
         target.addEventListener('click', handleTargetClick);
+        target.addEventListener('keydown', handleKeydown);
         handlers.push({ element: target, event: 'click', handler: handleTargetClick });
+        handlers.push({ element: target, event: 'keydown', handler: handleKeydown });
     });
 
     // Return control object
