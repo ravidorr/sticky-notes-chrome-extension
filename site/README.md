@@ -123,8 +123,19 @@ The landing page includes an interactive demo that lets visitors try the element
 - Note creation on clicked elements
 - Note deletion
 - State management
+- Keyboard support (Enter/Space keys for accessibility)
 
 Unit tests for the demo are in `tests/unit/site-scripts.test.js`.
+
+### Accessibility Features
+
+The site includes accessibility enhancements:
+
+- **Skip link**: Allows keyboard users to bypass navigation
+- **ARIA attributes**: Mobile menu has proper `aria-expanded`, `aria-hidden`, and `aria-controls`
+- **Keyboard navigation**: Mobile menu closes with Escape key, demo targets respond to Enter/Space
+- **Focus states**: Visible focus indicators on all interactive elements
+- **Screen reader support**: Comparison table has a visually hidden caption
 
 ### Adding Analytics
 
@@ -143,9 +154,9 @@ Add before `</head>`:
 
 ## TODO
 
-- [ ] Add actual Chrome Web Store link once published
+- [x] Add actual Chrome Web Store link once published
 - [ ] Add real screenshots/demo GIF
-- [ ] Create Privacy Policy page
-- [ ] Create Terms of Service page
+- [x] Create Privacy Policy page
+- [x] Create Terms of Service page
 - [ ] Add actual social meta images (`og-image.png`)
-- [ ] Update GitHub repository URL in nav and footer links
+- [x] Update GitHub repository URL in nav and footer links
