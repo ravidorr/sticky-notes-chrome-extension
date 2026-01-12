@@ -4,6 +4,7 @@
  * Functions for the landing page interactivity:
  * - Theme toggle (dark/light mode)
  * - Navigation scroll effect
+ * - Active nav link indicator
  * - Mobile menu toggle
  * - Interactive demo
  * - Smooth scrolling
@@ -190,6 +191,55 @@ function initNavScroll(navbar, threshold = 20) {
     handleScroll();
 
     // Return cleanup function
+    return () => window.removeEventListener('scroll', handleScroll);
+}
+
+/**
+ * Initialize active nav link indicator based on scroll position
+ * Updates 'active' class on nav links when their corresponding section is in view
+ * @returns {Function} Cleanup function to remove event listener
+ */
+function initActiveNavIndicator() {
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('.nav-link[href^="#"], .nav-link[href*="#"]');
+    
+    if (sections.length === 0 || navLinks.length === 0) {
+        return () => {};
+    }
+
+    const handleScroll = () => {
+        const scrollPos = window.scrollY + 100; // Offset for navbar height
+        
+        let currentSection = '';
+        
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            const sectionHeight = section.offsetHeight;
+            
+            if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                currentSection = section.getAttribute('id');
+            }
+        });
+
+        navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            const sectionId = href.includes('#') ? href.split('#')[1] : '';
+            
+            if (sectionId === currentSection) {
+                link.classList.add('active');
+                link.setAttribute('aria-current', 'true');
+            } else {
+                link.classList.remove('active');
+                link.removeAttribute('aria-current');
+            }
+        });
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    
+    // Initial check
+    handleScroll();
+
     return () => window.removeEventListener('scroll', handleScroll);
 }
 
@@ -465,6 +515,9 @@ function init() {
     const navbar = document.getElementById('navbar');
     cleanups.navScroll = initNavScroll(navbar);
 
+    // Initialize active nav indicator
+    cleanups.activeNav = initActiveNavIndicator();
+
     // Initialize mobile menu
     const menuButton = document.getElementById('mobile-menu-btn');
     const mobileMenu = document.getElementById('mobile-menu');
@@ -517,6 +570,7 @@ export {
     initTheme,
     // Navigation
     initNavScroll,
+    initActiveNavIndicator,
     initMobileMenu,
     initSmoothScroll,
     // Demo

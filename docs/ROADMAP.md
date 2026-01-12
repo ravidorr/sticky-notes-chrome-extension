@@ -214,7 +214,8 @@ Unplanned feature ideas for future consideration:
 - [] Edge browser support (Chromium-based, should be straightforward)
 - [] Firefox browser support (requires WebExtensions API adaptation)
 - [] Test data cleanup feature (delete all notes for testing purposes)
-- [] WCAG 2.1 AA accessibility compliance
+- [x] WCAG 2.1 AA accessibility compliance (landing page) - skip links, focus states, heading hierarchy, aria labels, prefers-reduced-motion, touch targets
+- [] WCAG 2.1 AA accessibility compliance (extension UI)
 - [] Additional note positions: Center Left, Center Right, Top Center, Bottom Center
 - [] Auto position: smart positioning based on available viewport space
 - [] Note content length validation (e.g., 10,000-50,000 chars) for UX, performance, and cost control

@@ -17,6 +17,7 @@ import {
     initTheme,
     // Navigation
     initNavScroll,
+    initActiveNavIndicator,
     initMobileMenu,
     initSmoothScroll,
     // Demo
@@ -312,6 +313,130 @@ describe('site/scripts.js', () => {
             initNavScroll(localThis.navbar, 20);
             
             expect(localThis.navbar.classList.contains('scrolled')).toBe(true);
+        });
+    });
+
+    describe('initActiveNavIndicator', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <nav>
+                    <a href="#features" class="nav-link">Features</a>
+                    <a href="#pricing" class="nav-link">Pricing</a>
+                    <a href="#faq" class="nav-link">FAQ</a>
+                </nav>
+                <section id="features" style="height: 500px;"></section>
+                <section id="pricing" style="height: 500px;"></section>
+                <section id="faq" style="height: 500px;"></section>
+            `;
+            localThis.navLinks = document.querySelectorAll('.nav-link');
+            localThis.featuresSection = document.getElementById('features');
+            localThis.pricingSection = document.getElementById('pricing');
+            
+            // Mock offsetTop and offsetHeight for sections
+            Object.defineProperty(localThis.featuresSection, 'offsetTop', { value: 0, configurable: true });
+            Object.defineProperty(localThis.featuresSection, 'offsetHeight', { value: 500, configurable: true });
+            Object.defineProperty(localThis.pricingSection, 'offsetTop', { value: 500, configurable: true });
+            Object.defineProperty(localThis.pricingSection, 'offsetHeight', { value: 500, configurable: true });
+        });
+
+        it('should add active class to nav link when section is in view', () => {
+            initActiveNavIndicator();
+            
+            // Scroll to features section
+            Object.defineProperty(window, 'scrollY', { value: 50 });
+            window.dispatchEvent(new Event('scroll'));
+            
+            const featuresLink = document.querySelector('a[href="#features"]');
+            expect(featuresLink.classList.contains('active')).toBe(true);
+        });
+
+        it('should set aria-current attribute on active link', () => {
+            initActiveNavIndicator();
+            
+            Object.defineProperty(window, 'scrollY', { value: 50 });
+            window.dispatchEvent(new Event('scroll'));
+            
+            const featuresLink = document.querySelector('a[href="#features"]');
+            expect(featuresLink.getAttribute('aria-current')).toBe('true');
+        });
+
+        it('should remove active class and aria-current from other links', () => {
+            initActiveNavIndicator();
+            
+            // Start at features
+            Object.defineProperty(window, 'scrollY', { value: 50 });
+            window.dispatchEvent(new Event('scroll'));
+            
+            const featuresLink = document.querySelector('a[href="#features"]');
+            const pricingLink = document.querySelector('a[href="#pricing"]');
+            
+            expect(featuresLink.classList.contains('active')).toBe(true);
+            expect(pricingLink.classList.contains('active')).toBe(false);
+            expect(pricingLink.hasAttribute('aria-current')).toBe(false);
+        });
+
+        it('should update active link when scrolling to different section', () => {
+            initActiveNavIndicator();
+            
+            // Scroll to pricing section
+            Object.defineProperty(window, 'scrollY', { value: 550 });
+            window.dispatchEvent(new Event('scroll'));
+            
+            const featuresLink = document.querySelector('a[href="#features"]');
+            const pricingLink = document.querySelector('a[href="#pricing"]');
+            
+            expect(featuresLink.classList.contains('active')).toBe(false);
+            expect(pricingLink.classList.contains('active')).toBe(true);
+        });
+
+        it('should return cleanup function that removes event listener', () => {
+            const cleanup = initActiveNavIndicator();
+            
+            expect(typeof cleanup).toBe('function');
+            
+            // Set up active state
+            Object.defineProperty(window, 'scrollY', { value: 50 });
+            window.dispatchEvent(new Event('scroll'));
+            
+            const featuresLink = document.querySelector('a[href="#features"]');
+            expect(featuresLink.classList.contains('active')).toBe(true);
+            
+            // Cleanup
+            cleanup();
+            featuresLink.classList.remove('active');
+            
+            // Scroll should no longer update active state
+            Object.defineProperty(window, 'scrollY', { value: 50 });
+            window.dispatchEvent(new Event('scroll'));
+            
+            expect(featuresLink.classList.contains('active')).toBe(false);
+        });
+
+        it('should handle pages with no sections gracefully', () => {
+            document.body.innerHTML = '<a href="#test" class="nav-link">Test</a>';
+            
+            const cleanup = initActiveNavIndicator();
+            
+            expect(typeof cleanup).toBe('function');
+            expect(() => cleanup()).not.toThrow();
+        });
+
+        it('should handle pages with no nav links gracefully', () => {
+            document.body.innerHTML = '<section id="test"></section>';
+            
+            const cleanup = initActiveNavIndicator();
+            
+            expect(typeof cleanup).toBe('function');
+            expect(() => cleanup()).not.toThrow();
+        });
+
+        it('should check scroll position on initialization', () => {
+            Object.defineProperty(window, 'scrollY', { value: 50 });
+            
+            initActiveNavIndicator();
+            
+            const featuresLink = document.querySelector('a[href="#features"]');
+            expect(featuresLink.classList.contains('active')).toBe(true);
         });
     });
 
