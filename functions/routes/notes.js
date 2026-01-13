@@ -13,7 +13,7 @@ const NOTES_COLLECTION = 'notes';
 
 /**
  * GET /api/notes
- * List notes for the authenticated user
+ * List notes for the authenticated user (owned + shared with them)
  * Query params:
  *   - url: Filter by URL (optional)
  *   - limit: Max results (default 50, max 100)
@@ -21,35 +21,60 @@ const NOTES_COLLECTION = 'notes';
  */
 router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
-    const { userId } = req.apiKey;
+    const { userId, userEmail } = req.apiKey;
     const { url, limit = '50', offset = '0' } = req.query;
     
     const limitNum = Math.min(Math.max(1, parseInt(limit, 10) || 50), 100);
     const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
     
     const db = getFirestore();
-    let query = db.collection(NOTES_COLLECTION)
-      .where('ownerId', '==', userId)
-      .orderBy('createdAt', 'desc');
+    const normalizedEmail = userEmail?.toLowerCase();
     
-    // Filter by URL if provided
+    // Build queries for owned and shared notes
+    let ownedQuery;
+    let sharedQuery;
+    
     if (url) {
       const normalizedUrl = normalizeUrl(url);
-      query = db.collection(NOTES_COLLECTION)
+      ownedQuery = db.collection(NOTES_COLLECTION)
         .where('ownerId', '==', userId)
         .where('url', '==', normalizedUrl)
         .orderBy('createdAt', 'desc');
+      
+      if (normalizedEmail) {
+        sharedQuery = db.collection(NOTES_COLLECTION)
+          .where('sharedWith', 'array-contains', normalizedEmail)
+          .where('url', '==', normalizedUrl)
+          .orderBy('createdAt', 'desc');
+      }
+    } else {
+      ownedQuery = db.collection(NOTES_COLLECTION)
+        .where('ownerId', '==', userId)
+        .orderBy('createdAt', 'desc');
+      
+      if (normalizedEmail) {
+        sharedQuery = db.collection(NOTES_COLLECTION)
+          .where('sharedWith', 'array-contains', normalizedEmail)
+          .orderBy('createdAt', 'desc');
+      }
     }
     
-    // Apply pagination
-    query = query.limit(limitNum + 1).offset(offsetNum);
+    // Execute queries in parallel
+    const queries = [ownedQuery.get()];
+    if (sharedQuery) {
+      queries.push(sharedQuery.get());
+    }
     
-    const snapshot = await query.get();
+    const [ownedSnap, sharedSnap] = await Promise.all(queries);
+    
+    // Merge and dedupe notes
     const notes = [];
-    let hasMore = false;
+    const seenIds = new Set();
     
-    snapshot.forEach((doc, index) => {
-      if (notes.length < limitNum) {
+    // Add owned notes first
+    ownedSnap.forEach(doc => {
+      if (!seenIds.has(doc.id)) {
+        seenIds.add(doc.id);
         const data = doc.data();
         notes.push({
           id: doc.id,
@@ -60,16 +85,45 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
           position: data.position,
           metadata: data.metadata,
           sharedWith: data.sharedWith || [],
+          isShared: false,
           createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
           updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
         });
-      } else {
-        hasMore = true;
       }
     });
     
+    // Add shared notes
+    if (sharedSnap) {
+      sharedSnap.forEach(doc => {
+        if (!seenIds.has(doc.id)) {
+          seenIds.add(doc.id);
+          const data = doc.data();
+          notes.push({
+            id: doc.id,
+            url: data.url,
+            selector: data.selector,
+            content: data.content,
+            theme: data.theme,
+            position: data.position,
+            metadata: data.metadata,
+            sharedWith: data.sharedWith || [],
+            isShared: true,
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+          });
+        }
+      });
+    }
+    
+    // Sort all notes by createdAt desc
+    notes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    // Apply pagination
+    const paginatedNotes = notes.slice(offsetNum, offsetNum + limitNum);
+    const hasMore = notes.length > offsetNum + limitNum;
+    
     res.json({
-      notes,
+      notes: paginatedNotes,
       pagination: {
         limit: limitNum,
         offset: offsetNum,
@@ -88,14 +142,14 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
 
 /**
  * GET /api/notes/search
- * Search notes by content
+ * Search notes by content (owned + shared)
  * Query params:
  *   - q: Search query (required)
  *   - limit: Max results (default 50, max 100)
  */
 router.get('/search', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
-    const { userId } = req.apiKey;
+    const { userId, userEmail } = req.apiKey;
     const { q, limit = '50' } = req.query;
     
     if (!q || typeof q !== 'string' || q.trim().length === 0) {
@@ -107,18 +161,33 @@ router.get('/search', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
     
     const searchQuery = q.trim().toLowerCase();
     const limitNum = Math.min(Math.max(1, parseInt(limit, 10) || 50), 100);
+    const normalizedEmail = userEmail?.toLowerCase();
     
     const db = getFirestore();
     
-    // Get all user's notes (Firestore doesn't support full-text search natively)
-    const query = db.collection(NOTES_COLLECTION)
+    // Build queries for owned and shared notes
+    const ownedQuery = db.collection(NOTES_COLLECTION)
       .where('ownerId', '==', userId)
       .orderBy('createdAt', 'desc');
     
-    const snapshot = await query.get();
-    const results = [];
+    const queries = [ownedQuery.get()];
     
-    snapshot.forEach(doc => {
+    if (normalizedEmail) {
+      const sharedQuery = db.collection(NOTES_COLLECTION)
+        .where('sharedWith', 'array-contains', normalizedEmail)
+        .orderBy('createdAt', 'desc');
+      queries.push(sharedQuery.get());
+    }
+    
+    const [ownedSnap, sharedSnap] = await Promise.all(queries);
+    
+    const results = [];
+    const seenIds = new Set();
+    
+    // Helper to process search results
+    const processDoc = (doc, isShared) => {
+      if (seenIds.has(doc.id)) return;
+      
       const data = doc.data();
       
       // Search in content, url, and selector
@@ -127,12 +196,14 @@ router.get('/search', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
       const selectorMatch = (data.selector || '').toLowerCase().includes(searchQuery);
       
       if (contentMatch || urlMatch || selectorMatch) {
+        seenIds.add(doc.id);
         results.push({
           id: doc.id,
           url: data.url,
           selector: data.selector,
           content: data.content,
           theme: data.theme,
+          isShared,
           matchedIn: [
             contentMatch && 'content',
             urlMatch && 'url',
@@ -142,9 +213,18 @@ router.get('/search', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
           updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
         });
       }
-    });
+    };
     
-    // Limit results
+    // Process owned notes
+    ownedSnap.forEach(doc => processDoc(doc, false));
+    
+    // Process shared notes
+    if (sharedSnap) {
+      sharedSnap.forEach(doc => processDoc(doc, true));
+    }
+    
+    // Sort by createdAt desc and limit results
+    results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     const limitedResults = results.slice(0, limitNum);
     
     res.json({
@@ -164,27 +244,43 @@ router.get('/search', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
 
 /**
  * GET /api/notes/export
- * Export all notes as JSON
+ * Export all notes as JSON (owned + shared)
  * Query params:
  *   - format: Export format (json only for now)
  *   - includeComments: Whether to include comments (default false)
  */
 router.get('/export', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
-    const { userId } = req.apiKey;
+    const { userId, userEmail } = req.apiKey;
     const { includeComments = 'false' } = req.query;
     
     const db = getFirestore();
+    const normalizedEmail = userEmail?.toLowerCase();
     
-    // Get all user's notes
-    const query = db.collection(NOTES_COLLECTION)
+    // Build queries for owned and shared notes
+    const ownedQuery = db.collection(NOTES_COLLECTION)
       .where('ownerId', '==', userId)
       .orderBy('createdAt', 'desc');
     
-    const snapshot = await query.get();
-    const notes = [];
+    const queries = [ownedQuery.get()];
     
-    for (const doc of snapshot.docs) {
+    if (normalizedEmail) {
+      const sharedQuery = db.collection(NOTES_COLLECTION)
+        .where('sharedWith', 'array-contains', normalizedEmail)
+        .orderBy('createdAt', 'desc');
+      queries.push(sharedQuery.get());
+    }
+    
+    const [ownedSnap, sharedSnap] = await Promise.all(queries);
+    
+    const notes = [];
+    const seenIds = new Set();
+    
+    // Helper to process a note document
+    const processDoc = async (doc, isShared) => {
+      if (seenIds.has(doc.id)) return;
+      seenIds.add(doc.id);
+      
       const data = doc.data();
       const note = {
         id: doc.id,
@@ -195,6 +291,7 @@ router.get('/export', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
         position: data.position,
         metadata: data.metadata,
         sharedWith: data.sharedWith || [],
+        isShared,
         createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
         updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
       };
@@ -221,7 +318,22 @@ router.get('/export', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
       }
       
       notes.push(note);
+    };
+    
+    // Process owned notes
+    for (const doc of ownedSnap.docs) {
+      await processDoc(doc, false);
     }
+    
+    // Process shared notes
+    if (sharedSnap) {
+      for (const doc of sharedSnap.docs) {
+        await processDoc(doc, true);
+      }
+    }
+    
+    // Sort by createdAt desc
+    notes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     
     const exportData = {
       exportedAt: new Date().toISOString(),
@@ -246,12 +358,13 @@ router.get('/export', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
 
 /**
  * GET /api/notes/:id
- * Get a specific note by ID
+ * Get a specific note by ID (owned or shared)
  */
 router.get('/:id', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
-    const { userId } = req.apiKey;
+    const { userId, userEmail } = req.apiKey;
     const { id } = req.params;
+    const normalizedEmail = userEmail?.toLowerCase();
     
     const db = getFirestore();
     const docRef = db.collection(NOTES_COLLECTION).doc(id);
@@ -266,8 +379,11 @@ router.get('/:id', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res)
     
     const data = doc.data();
     
-    // Check ownership
-    if (data.ownerId !== userId) {
+    // Check ownership or shared access
+    const isOwner = data.ownerId === userId;
+    const isSharedWithUser = normalizedEmail && (data.sharedWith || []).includes(normalizedEmail);
+    
+    if (!isOwner && !isSharedWithUser) {
       return res.status(403).json({
         error: 'Forbidden',
         message: 'You do not have access to this note'
@@ -283,6 +399,7 @@ router.get('/:id', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res)
       position: data.position,
       metadata: data.metadata,
       sharedWith: data.sharedWith || [],
+      isShared: !isOwner,
       createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
       updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
     });

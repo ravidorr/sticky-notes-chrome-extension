@@ -162,6 +162,7 @@ export function apiKeyAuth(options = {}) {
       req.apiKey = {
         id: keyDoc.id,
         userId: keyData.userId,
+        userEmail: keyData.userEmail,
         scopes: keyData.scopes,
         name: keyData.name
       };

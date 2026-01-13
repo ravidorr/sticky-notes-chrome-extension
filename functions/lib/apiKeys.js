@@ -99,15 +99,17 @@ export function hasScope(keyScopes, requiredScope) {
  * Create API key document for Firestore
  * @param {Object} options - Key options
  * @param {string} options.userId - Owner's user ID
+ * @param {string} options.userEmail - Owner's email (for shared notes lookup)
  * @param {string} options.name - Key name/description
  * @param {string[]} options.scopes - Key scopes
  * @param {string} options.hash - Hashed key
  * @param {string} options.prefix - Key prefix for display
  * @returns {Object} Firestore document data
  */
-export function createApiKeyDocument({ userId, name, scopes, hash, prefix }) {
+export function createApiKeyDocument({ userId, userEmail, name, scopes, hash, prefix }) {
   return {
     userId,
+    userEmail: userEmail?.toLowerCase() || null,
     name: name || 'API Key',
     scopes,
     keyHash: hash,

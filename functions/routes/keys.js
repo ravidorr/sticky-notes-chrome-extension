@@ -104,9 +104,10 @@ router.post('/', firebaseAuth(), async (req, res) => {
     // Generate new API key
     const { key, hash, prefix } = generateApiKey();
     
-    // Create document
+    // Create document - include user email for shared notes lookup
     const keyDoc = createApiKeyDocument({
       userId: uid,
+      userEmail: req.user.email,
       name: keyName,
       scopes: scopesArray,
       hash,
