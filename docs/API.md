@@ -503,6 +503,313 @@ curl -X DELETE "https://us-central1-PROJECT.cloudfunctions.net/api/notes/note123
 
 ---
 
+## Sharing
+
+### Share a Note
+
+Share a note with another user by email.
+
+```http
+POST /notes/:id/share
+Authorization: Bearer sk_live_...
+Content-Type: application/json
+```
+
+**Request Body:**
+
+```json
+{
+  "email": "colleague@example.com"
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "message": "Note shared successfully",
+  "sharedWith": ["colleague@example.com"]
+}
+```
+
+### Unshare a Note
+
+Remove a user from a note's shared list.
+
+```http
+DELETE /notes/:id/share/:email
+Authorization: Bearer sk_live_...
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "message": "User removed from shared list",
+  "sharedWith": []
+}
+```
+
+---
+
+## Comments
+
+### List Comments
+
+Get all comments on a note.
+
+```http
+GET /notes/:noteId/comments
+Authorization: Bearer sk_live_...
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "comments": [
+    {
+      "id": "comment123",
+      "authorId": "user123",
+      "authorName": "John Doe",
+      "content": "Great observation!",
+      "parentId": null,
+      "createdAt": "2025-01-13T10:00:00.000Z",
+      "updatedAt": "2025-01-13T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+### Add a Comment
+
+```http
+POST /notes/:noteId/comments
+Authorization: Bearer sk_live_...
+Content-Type: application/json
+```
+
+**Request Body:**
+
+```json
+{
+  "content": "This is my comment",
+  "parentId": null
+}
+```
+
+Set `parentId` to another comment's ID to create a reply (max 1 level of nesting).
+
+**Response (201 Created):**
+
+```json
+{
+  "id": "comment456",
+  "authorId": "user123",
+  "authorName": "API User",
+  "content": "This is my comment",
+  "parentId": null,
+  "createdAt": "2025-01-13T10:00:00.000Z",
+  "updatedAt": "2025-01-13T10:00:00.000Z"
+}
+```
+
+### Update a Comment
+
+Only the author can update their comment.
+
+```http
+PUT /notes/:noteId/comments/:commentId
+Authorization: Bearer sk_live_...
+Content-Type: application/json
+```
+
+**Request Body:**
+
+```json
+{
+  "content": "Updated comment text"
+}
+```
+
+### Delete a Comment
+
+Comment author or note owner can delete comments.
+
+```http
+DELETE /notes/:noteId/comments/:commentId
+Authorization: Bearer sk_live_...
+```
+
+**Response:** `204 No Content`
+
+---
+
+## Bulk Operations
+
+### Bulk Create Notes
+
+Create multiple notes in a single request (max 50).
+
+```http
+POST /notes/bulk
+Authorization: Bearer sk_live_...
+Content-Type: application/json
+```
+
+**Request Body:**
+
+```json
+{
+  "notes": [
+    {
+      "url": "https://example.com/page1",
+      "selector": "h1",
+      "content": "Note 1",
+      "theme": "yellow"
+    },
+    {
+      "url": "https://example.com/page2",
+      "selector": ".main",
+      "content": "Note 2",
+      "theme": "blue"
+    }
+  ]
+}
+```
+
+**Response (201 Created):**
+
+```json
+{
+  "message": "Successfully created 2 notes",
+  "notes": [
+    { "id": "note1", "url": "...", "selector": "...", "content": "...", "theme": "..." },
+    { "id": "note2", "url": "...", "selector": "...", "content": "...", "theme": "..." }
+  ]
+}
+```
+
+### Bulk Delete Notes
+
+Delete multiple notes in a single request (max 50).
+
+```http
+DELETE /notes/bulk
+Authorization: Bearer sk_live_...
+Content-Type: application/json
+```
+
+**Request Body:**
+
+```json
+{
+  "ids": ["note123", "note456", "note789"]
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "message": "Deleted 3 notes",
+  "deleted": ["note123", "note456", "note789"],
+  "errors": []
+}
+```
+
+---
+
+## Search
+
+Search notes by content, URL, or selector.
+
+```http
+GET /notes/search?q=keyword&limit=50
+Authorization: Bearer sk_live_...
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `q` | string | Search query (required) |
+| `limit` | number | Max results (default: 50, max: 100) |
+
+**Response (200 OK):**
+
+```json
+{
+  "query": "keyword",
+  "total": 5,
+  "results": [
+    {
+      "id": "note123",
+      "url": "https://example.com",
+      "selector": "h1",
+      "content": "Contains keyword here",
+      "theme": "yellow",
+      "matchedIn": ["content"],
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ]
+}
+```
+
+---
+
+## Export
+
+Export all your notes as JSON.
+
+```http
+GET /notes/export?includeComments=true
+Authorization: Bearer sk_live_...
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `includeComments` | boolean | Include comments in export (default: false) |
+
+**Response (200 OK):**
+
+The response includes a `Content-Disposition` header for downloading.
+
+```json
+{
+  "exportedAt": "2025-01-13T10:00:00.000Z",
+  "noteCount": 25,
+  "notes": [
+    {
+      "id": "note123",
+      "url": "https://example.com",
+      "selector": "h1",
+      "content": "Note content",
+      "theme": "yellow",
+      "position": { "anchor": "top-right" },
+      "metadata": null,
+      "sharedWith": [],
+      "createdAt": "...",
+      "updatedAt": "...",
+      "comments": [
+        {
+          "id": "comment1",
+          "authorName": "John",
+          "content": "A comment",
+          "parentId": null,
+          "createdAt": "..."
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
 ## Deployment
 
 To deploy the API to your Firebase project:
