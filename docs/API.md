@@ -1,0 +1,538 @@
+# Sticky Notes REST API
+
+The Sticky Notes API allows you to programmatically create, read, update, and delete notes from external applications.
+
+## Base URL
+
+```
+https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/api
+```
+
+Replace `YOUR_PROJECT_ID` with your Firebase project ID.
+
+## Authentication
+
+The API uses two authentication methods:
+
+### 1. API Keys (for notes operations)
+
+API keys are used for all notes-related operations. Include the key in the `Authorization` header:
+
+```
+Authorization: Bearer sk_live_abc123...
+```
+
+### 2. Firebase ID Tokens (for key management)
+
+To generate or manage API keys, use a Firebase ID token:
+
+```
+Authorization: Bearer eyJhbGciOiJSUzI1NiIs...
+```
+
+You can obtain a Firebase ID token by signing in with the Chrome extension or using the Firebase Auth SDK.
+
+---
+
+## API Keys Management
+
+### Generate an API Key
+
+Create a new API key for your account.
+
+```http
+POST /keys
+Authorization: Bearer <firebase-id-token>
+Content-Type: application/json
+```
+
+**Request Body:**
+
+```json
+{
+  "name": "My Integration",
+  "scopes": ["notes:read", "notes:write"]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | No | A friendly name for the key (max 100 chars) |
+| `scopes` | string[] | No | Permissions: `notes:read`, `notes:write`. Defaults to both. |
+
+**Response (201 Created):**
+
+```json
+{
+  "id": "abc123",
+  "key": "sk_live_a1b2c3d4e5f6...",
+  "name": "My Integration",
+  "keyPrefix": "sk_live_a1b2c3d4",
+  "scopes": ["notes:read", "notes:write"],
+  "isActive": true,
+  "createdAt": "2025-01-13T10:00:00.000Z",
+  "warning": "Store this key securely. It will not be shown again."
+}
+```
+
+**Important:** The full API key is only shown once at creation time. Store it securely.
+
+### List API Keys
+
+List all API keys for your account.
+
+```http
+GET /keys
+Authorization: Bearer <firebase-id-token>
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "keys": [
+    {
+      "id": "abc123",
+      "name": "My Integration",
+      "keyPrefix": "sk_live_a1b2c3d4",
+      "scopes": ["notes:read", "notes:write"],
+      "isActive": true,
+      "createdAt": "2025-01-13T10:00:00.000Z",
+      "lastUsedAt": "2025-01-13T12:30:00.000Z"
+    }
+  ]
+}
+```
+
+### Revoke an API Key
+
+Permanently deactivate an API key.
+
+```http
+DELETE /keys/:keyId
+Authorization: Bearer <firebase-id-token>
+```
+
+**Response:** `204 No Content`
+
+### Update an API Key
+
+Update the name or scopes of an API key.
+
+```http
+PATCH /keys/:keyId
+Authorization: Bearer <firebase-id-token>
+Content-Type: application/json
+```
+
+**Request Body:**
+
+```json
+{
+  "name": "Updated Name",
+  "scopes": ["notes:read"]
+}
+```
+
+**Response (200 OK):** Returns the updated key object.
+
+---
+
+## Notes
+
+### List Notes
+
+Get all notes for your account, optionally filtered by URL.
+
+```http
+GET /notes
+Authorization: Bearer sk_live_...
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `url` | string | Filter notes by URL |
+| `limit` | number | Max results (default: 50, max: 100) |
+| `offset` | number | Pagination offset (default: 0) |
+
+**Example:**
+
+```bash
+curl "https://us-central1-PROJECT.cloudfunctions.net/api/notes?url=https://example.com&limit=10" \
+  -H "Authorization: Bearer sk_live_..."
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "notes": [
+    {
+      "id": "note123",
+      "url": "https://example.com/page",
+      "selector": "#main-content",
+      "content": "<p>Remember to check this section</p>",
+      "theme": "yellow",
+      "position": { "anchor": "top-right" },
+      "metadata": null,
+      "sharedWith": [],
+      "createdAt": "2025-01-13T10:00:00.000Z",
+      "updatedAt": "2025-01-13T10:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "limit": 50,
+    "offset": 0,
+    "hasMore": false
+  }
+}
+```
+
+### Get a Note
+
+Retrieve a specific note by ID.
+
+```http
+GET /notes/:id
+Authorization: Bearer sk_live_...
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "id": "note123",
+  "url": "https://example.com/page",
+  "selector": "#main-content",
+  "content": "<p>Remember to check this section</p>",
+  "theme": "yellow",
+  "position": { "anchor": "top-right" },
+  "metadata": null,
+  "sharedWith": [],
+  "createdAt": "2025-01-13T10:00:00.000Z",
+  "updatedAt": "2025-01-13T10:00:00.000Z"
+}
+```
+
+### Create a Note
+
+Create a new sticky note.
+
+```http
+POST /notes
+Authorization: Bearer sk_live_...
+Content-Type: application/json
+```
+
+**Request Body:**
+
+```json
+{
+  "url": "https://example.com/page",
+  "selector": "#main-content",
+  "content": "<p>This is my note</p>",
+  "theme": "yellow",
+  "position": { "anchor": "top-right" },
+  "metadata": {
+    "source": "api",
+    "custom_field": "value"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `url` | string | Yes | The page URL where the note should appear |
+| `selector` | string | Yes | CSS selector for the target element |
+| `content` | string | No | HTML content of the note |
+| `theme` | string | No | Color theme: `yellow`, `blue`, `green`, `pink` |
+| `position` | object | No | Position relative to element |
+| `metadata` | object | No | Custom metadata (stored but not processed) |
+
+**Response (201 Created):**
+
+```json
+{
+  "id": "note456",
+  "url": "https://example.com/page",
+  "selector": "#main-content",
+  "content": "<p>This is my note</p>",
+  "theme": "yellow",
+  "position": { "anchor": "top-right" },
+  "metadata": { "source": "api" },
+  "sharedWith": [],
+  "createdAt": "2025-01-13T10:00:00.000Z",
+  "updatedAt": "2025-01-13T10:00:00.000Z"
+}
+```
+
+**Example with curl:**
+
+```bash
+curl -X POST "https://us-central1-PROJECT.cloudfunctions.net/api/notes" \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/page",
+    "selector": "#main-content",
+    "content": "Remember to review this section",
+    "theme": "yellow"
+  }'
+```
+
+### Update a Note
+
+Update an existing note.
+
+```http
+PUT /notes/:id
+Authorization: Bearer sk_live_...
+Content-Type: application/json
+```
+
+**Request Body:**
+
+```json
+{
+  "content": "<p>Updated content</p>",
+  "theme": "blue"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `content` | string | New note content |
+| `theme` | string | New color theme |
+| `position` | object | New position |
+| `selector` | string | New CSS selector |
+
+**Response (200 OK):** Returns the updated note object.
+
+### Delete a Note
+
+Permanently delete a note.
+
+```http
+DELETE /notes/:id
+Authorization: Bearer sk_live_...
+```
+
+**Response:** `204 No Content`
+
+---
+
+## Rate Limiting
+
+The API enforces rate limits per API key:
+
+- **100 requests per minute** per API key
+
+Rate limit headers are included in every response:
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1704110400
+```
+
+When the limit is exceeded, the API returns `429 Too Many Requests`:
+
+```json
+{
+  "error": "Too Many Requests",
+  "message": "Rate limit exceeded. Try again later.",
+  "retryAfter": 45
+}
+```
+
+---
+
+## Error Responses
+
+All errors follow a consistent format:
+
+```json
+{
+  "error": "Error Type",
+  "message": "Human-readable description",
+  "details": ["Optional array of specific issues"]
+}
+```
+
+### Common Error Codes
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| 400 | Bad Request | Invalid request body or parameters |
+| 401 | Unauthorized | Missing or invalid API key |
+| 403 | Forbidden | Valid key but insufficient permissions |
+| 404 | Not Found | Resource doesn't exist |
+| 429 | Too Many Requests | Rate limit exceeded |
+| 500 | Internal Server Error | Server-side error |
+
+---
+
+## Scopes
+
+API keys can be scoped to limit their permissions:
+
+| Scope | Description |
+|-------|-------------|
+| `notes:read` | Read notes (GET operations) |
+| `notes:write` | Create, update, delete notes |
+
+Example: A read-only integration key:
+
+```json
+{
+  "name": "Dashboard Reader",
+  "scopes": ["notes:read"]
+}
+```
+
+---
+
+## Examples
+
+### Python
+
+```python
+import requests
+
+API_KEY = "sk_live_..."
+BASE_URL = "https://us-central1-PROJECT.cloudfunctions.net/api"
+
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json"
+}
+
+# Create a note
+response = requests.post(
+    f"{BASE_URL}/notes",
+    headers=headers,
+    json={
+        "url": "https://example.com/page",
+        "selector": "#main-content",
+        "content": "API-created note",
+        "theme": "blue"
+    }
+)
+note = response.json()
+print(f"Created note: {note['id']}")
+
+# List notes
+response = requests.get(f"{BASE_URL}/notes", headers=headers)
+notes = response.json()["notes"]
+print(f"Found {len(notes)} notes")
+```
+
+### JavaScript/Node.js
+
+```javascript
+const API_KEY = 'sk_live_...';
+const BASE_URL = 'https://us-central1-PROJECT.cloudfunctions.net/api';
+
+// Create a note
+async function createNote() {
+  const response = await fetch(`${BASE_URL}/notes`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      url: 'https://example.com/page',
+      selector: '#main-content',
+      content: 'API-created note',
+      theme: 'green'
+    })
+  });
+  
+  const note = await response.json();
+  console.log('Created note:', note.id);
+}
+
+// List notes for a URL
+async function getNotes(url) {
+  const response = await fetch(
+    `${BASE_URL}/notes?url=${encodeURIComponent(url)}`,
+    {
+      headers: { 'Authorization': `Bearer ${API_KEY}` }
+    }
+  );
+  
+  const data = await response.json();
+  return data.notes;
+}
+```
+
+### cURL
+
+```bash
+# Generate an API key (using Firebase ID token)
+curl -X POST "https://us-central1-PROJECT.cloudfunctions.net/api/keys" \
+  -H "Authorization: Bearer <firebase-id-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My Script", "scopes": ["notes:read", "notes:write"]}'
+
+# Create a note
+curl -X POST "https://us-central1-PROJECT.cloudfunctions.net/api/notes" \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "selector": "body",
+    "content": "Hello from the API!"
+  }'
+
+# List all notes
+curl "https://us-central1-PROJECT.cloudfunctions.net/api/notes" \
+  -H "Authorization: Bearer sk_live_..."
+
+# Get notes for a specific URL
+curl "https://us-central1-PROJECT.cloudfunctions.net/api/notes?url=https://example.com" \
+  -H "Authorization: Bearer sk_live_..."
+
+# Delete a note
+curl -X DELETE "https://us-central1-PROJECT.cloudfunctions.net/api/notes/note123" \
+  -H "Authorization: Bearer sk_live_..."
+```
+
+---
+
+## Deployment
+
+To deploy the API to your Firebase project:
+
+1. Install Firebase CLI:
+   ```bash
+   npm install -g firebase-tools
+   ```
+
+2. Login to Firebase:
+   ```bash
+   firebase login
+   ```
+
+3. Initialize your project (if not already done):
+   ```bash
+   firebase init functions
+   ```
+
+4. Install dependencies:
+   ```bash
+   cd functions && npm install
+   ```
+
+5. Deploy:
+   ```bash
+   firebase deploy --only functions
+   ```
+
+The API URL will be displayed after deployment:
+```
+Function URL (api): https://us-central1-YOUR_PROJECT.cloudfunctions.net/api
+```

@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Notes collection
+    match /notes/{noteId} {
+      // Allow read if user owns the note OR is in sharedWith array (by email)
+      allow read: if request.auth != null && (
+        resource.data.ownerId == request.auth.uid ||
+        request.auth.token.email in resource.data.sharedWith
+      );
+      
+      // Allow create if user is authenticated and sets themselves as owner
+      allow create: if request.auth != null && 
+        request.resource.data.ownerId == request.auth.uid;
+      
+      // Allow update if user owns the note OR is in sharedWith array
+      allow update: if request.auth != null && (
+        resource.data.ownerId == request.auth.uid ||
+        request.auth.token.email in resource.data.sharedWith
+      );
+      
+      // Allow delete only for owner
+      allow delete: if request.auth != null && 
+        resource.data.ownerId == request.auth.uid;
+      
+      // Comments subcollection
+      match /comments/{commentId} {
+        // Helper function to check note access
+        function hasNoteAccess() {
+          let note = get(/databases/$(database)/documents/notes/$(noteId)).data;
+          return note.ownerId == request.auth.uid || 
+                 request.auth.token.email in note.sharedWith;
+        }
+        
+        // Read: anyone with note access
+        allow read: if request.auth != null && hasNoteAccess();
+        
+        // Create: anyone with note access who sets themselves as author
+        allow create: if request.auth != null && 
+          hasNoteAccess() &&
+          request.resource.data.authorId == request.auth.uid;
+        
+        // Update: only comment author
+        allow update: if request.auth != null && 
+          resource.data.authorId == request.auth.uid;
+        
+        // Delete: comment author OR note owner
+        allow delete: if request.auth != null && (
+          resource.data.authorId == request.auth.uid ||
+          get(/databases/$(database)/documents/notes/$(noteId)).data.ownerId == request.auth.uid
+        );
+      }
+    }
+    
+    // API Keys collection - users can only access their own keys
+    match /apiKeys/{keyId} {
+      // Users can read their own API keys
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      
+      // Users can create API keys for themselves
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own API keys (e.g., update lastUsedAt)
+      allow update: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own API keys
+      allow delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+  }
+}
