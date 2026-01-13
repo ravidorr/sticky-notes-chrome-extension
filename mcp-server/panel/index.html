@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sticky Notes Panel</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Sticky Notes</h1>
+      <div class="controls">
+        <label class="auto-refresh">
+          <input type="checkbox" id="autoRefresh">
+          Auto-refresh
+        </label>
+        <button id="settingsBtn" class="btn btn-secondary" title="Change API Key">Settings</button>
+      </div>
+    </header>
+
+    <!-- API Key Setup Section -->
+    <div id="apiKeySection" class="api-key-section" style="display: none;">
+      <div class="api-key-card">
+        <h3>API Key Required</h3>
+        <p>Enter your Sticky Notes API key to view notes:</p>
+        <div class="api-key-input-container">
+          <input 
+            type="password" 
+            id="apiKeyInput" 
+            placeholder="sk_live_..."
+            class="api-key-input"
+          >
+          <button id="saveApiKeyBtn" class="btn btn-primary">Save Key</button>
+        </div>
+        <p class="api-key-hint">Your API key is stored locally in your browser.</p>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent">
+      <div class="url-input-container">
+        <input 
+          type="text" 
+          id="urlInput" 
+          placeholder="Enter URL to view notes..."
+          class="url-input"
+        >
+        <button id="loadBtn" class="btn btn-primary">Load Notes</button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div id="notesList" class="notes-list">
+        <p class="empty-state">Enter a URL above to view notes</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE_URL = 'https://us-central1-sticky-notes-chrome-extension.cloudfunctions.net/api';
+    
+    // Get API key from localStorage
+    let API_KEY = localStorage.getItem('sticky_notes_api_key');
+    
+    // DOM elements
+    const apiKeySection = document.getElementById('apiKeySection');
+    const mainContent = document.getElementById('mainContent');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const urlInput = document.getElementById('urlInput');
+    const loadBtn = document.getElementById('loadBtn');
+    const notesList = document.getElementById('notesList');
+    const status = document.getElementById('status');
+    const autoRefreshCheckbox = document.getElementById('autoRefresh');
+    
+    let refreshInterval = null;
+
+    // Check for URL in query params
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialUrl = urlParams.get('url');
+    if (initialUrl) {
+      urlInput.value = initialUrl;
+    }
+
+    // Show API key section if not set
+    function checkApiKey() {
+      if (!API_KEY) {
+        showApiKeySection();
+      } else {
+        hideApiKeySection();
+        if (initialUrl) {
+          loadNotes();
+        }
+      }
+    }
+
+    function showApiKeySection() {
+      apiKeySection.style.display = 'block';
+      mainContent.style.opacity = '0.3';
+      mainContent.style.pointerEvents = 'none';
+      apiKeyInput.focus();
+    }
+
+    function hideApiKeySection() {
+      apiKeySection.style.display = 'none';
+      mainContent.style.opacity = '1';
+      mainContent.style.pointerEvents = 'auto';
+    }
+
+    function saveApiKey() {
+      const key = apiKeyInput.value.trim();
+      if (key) {
+        API_KEY = key;
+        localStorage.setItem('sticky_notes_api_key', key);
+        hideApiKeySection();
+        showStatus('API key saved!', 'success');
+        if (urlInput.value) {
+          loadNotes();
+        }
+      } else {
+        showStatus('Please enter a valid API key', 'error');
+      }
+    }
+
+    async function loadNotes() {
+      const url = urlInput.value.trim();
+      if (!url) {
+        showStatus('Please enter a URL', 'error');
+        return;
+      }
+
+      if (!API_KEY) {
+        showApiKeySection();
+        return;
+      }
+
+      showStatus('Loading notes...', 'loading');
+
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/notes?url=${encodeURIComponent(url)}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${API_KEY}`
+            }
+          }
+        );
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            localStorage.removeItem('sticky_notes_api_key');
+            API_KEY = null;
+            showStatus('Invalid API key. Please enter a valid key.', 'error');
+            showApiKeySection();
+            return;
+          }
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        renderNotes(data.notes || []);
+        showStatus(`Found ${data.notes?.length || 0} notes`, 'success');
+      } catch (error) {
+        console.error('Error loading notes:', error);
+        showStatus(`Error: ${error.message}`, 'error');
+      }
+    }
+
+    function renderNotes(notes) {
+      if (notes.length === 0) {
+        notesList.innerHTML = '<p class="empty-state">No notes found for this URL</p>';
+        return;
+      }
+
+      notesList.innerHTML = notes.map((note, index) => `
+        <div class="note-card theme-${note.theme || 'yellow'}">
+          <div class="note-header">
+            <span class="note-number">#${index + 1}</span>
+            <span class="note-theme">${note.theme || 'yellow'}</span>
+            <code class="note-selector">${escapeHtml(note.selector)}</code>
+          </div>
+          <div class="note-content">
+            ${note.content || '<em class="no-content">No content</em>'}
+          </div>
+          <div class="note-footer">
+            <span class="note-date" title="${note.createdAt}">
+              ${formatDate(note.createdAt)}
+            </span>
+            <span class="note-id" title="Note ID: ${note.id}">
+              ${note.id.substring(0, 8)}...
+            </span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatDate(dateString) {
+      if (!dateString) return 'Unknown date';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function showStatus(message, type) {
+      status.textContent = message;
+      status.className = `status status-${type}`;
+    }
+
+    // Event listeners
+    saveApiKeyBtn.addEventListener('click', saveApiKey);
+    
+    apiKeyInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        saveApiKey();
+      }
+    });
+
+    loadBtn.addEventListener('click', loadNotes);
+    
+    urlInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        loadNotes();
+      }
+    });
+
+    autoRefreshCheckbox.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        refreshInterval = setInterval(loadNotes, 5000);
+      } else {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+      }
+    });
+
+    settingsBtn.addEventListener('click', () => {
+      apiKeyInput.value = API_KEY || '';
+      showApiKeySection();
+    });
+
+    // Initialize
+    checkApiKey();
+  </script>
+</body>
+</html>

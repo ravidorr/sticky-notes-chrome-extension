@@ -210,6 +210,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
         },
       },
+      {
+        name: 'show_notes_panel',
+        description: 'Get a formatted display of notes for a URL. Returns nicely formatted markdown instead of raw JSON.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            url: {
+              type: 'string',
+              description: 'URL to show notes for',
+            },
+          },
+          required: ['url'],
+        },
+      },
     ],
   };
 });
@@ -341,6 +355,48 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'show_notes_panel': {
+        const params = new URLSearchParams();
+        params.set('url', args.url);
+        const result = await apiRequest(`/notes?${params.toString()}`);
+        const notes = result.notes || [];
+        
+        // Format as markdown
+        const hostname = new URL(args.url).hostname;
+        let markdown = `## Notes for ${hostname} (${notes.length} note${notes.length !== 1 ? 's' : ''})\n\n`;
+        
+        if (notes.length === 0) {
+          markdown += '_No notes found for this URL._\n';
+          markdown += `\n**Panel URL:** http://localhost:3002?url=${encodeURIComponent(args.url)}`;
+        } else {
+          notes.forEach((note, index) => {
+            const theme = note.theme || 'yellow';
+            const themeEmoji = { yellow: '🟡', blue: '🔵', green: '🟢', pink: '🔴' }[theme] || '⚪';
+            const content = note.content ? note.content.replace(/<[^>]*>/g, '').trim() : '_No content_';
+            const date = note.createdAt ? new Date(note.createdAt).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            }) : 'Unknown date';
+            
+            markdown += `### ${index + 1}. ${themeEmoji} [${theme}] on \`${note.selector}\`\n`;
+            markdown += `> ${content.substring(0, 200)}${content.length > 200 ? '...' : ''}\n\n`;
+            markdown += `_Created: ${date} | ID: ${note.id}_\n\n`;
+          });
+          
+          markdown += `---\n**Panel URL:** http://localhost:3002?url=${encodeURIComponent(args.url)}`;
+        }
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: markdown,
             },
           ],
         };

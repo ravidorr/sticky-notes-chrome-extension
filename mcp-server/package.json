@@ -1,11 +1,12 @@
 {
   "name": "sticky-notes-mcp-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MCP server for Sticky Notes API",
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "panel": "npx serve panel -l 3002"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0"
