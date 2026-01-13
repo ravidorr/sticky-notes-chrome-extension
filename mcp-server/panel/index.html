@@ -182,7 +182,7 @@
             <code class="note-selector">${escapeHtml(note.selector)}</code>
           </div>
           <div class="note-content">
-            ${note.content || '<em class="no-content">No content</em>'}
+            ${escapeHtml(stripHtml(note.content)) || '<em class="no-content">No content</em>'}
           </div>
           <div class="note-footer">
             <span class="note-date" title="${note.createdAt}">
@@ -200,6 +200,12 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    function stripHtml(html) {
+      if (!html) return '';
+      // Strip HTML tags to prevent XSS (matches approach in popup/handlers.js and mcp-server/index.js)
+      return html.replace(/<[^>]*>/g, '').trim();
     }
 
     function formatDate(dateString) {

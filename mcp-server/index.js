@@ -11,6 +11,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import process from 'process';
 
 const API_BASE_URL = process.env.STICKY_NOTES_API_URL || 
   'https://us-central1-sticky-notes-chrome-extension.cloudfunctions.net/api';
@@ -376,7 +377,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         } else {
           notes.forEach((note, index) => {
             const theme = note.theme || 'yellow';
-            const themeEmoji = { yellow: '🟡', blue: '🔵', green: '🟢', pink: '🔴' }[theme] || '⚪';
+            const themeMarker = { yellow: '[Y]', blue: '[B]', green: '[G]', pink: '[P]' }[theme] || '[?]';
             const content = note.content ? note.content.replace(/<[^>]*>/g, '').trim() : '_No content_';
             const date = note.createdAt ? new Date(note.createdAt).toLocaleDateString('en-US', {
               month: 'short',
@@ -384,7 +385,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               year: 'numeric'
             }) : 'Unknown date';
             
-            markdown += `### ${index + 1}. ${themeEmoji} [${theme}] on \`${note.selector}\`\n`;
+            markdown += `### ${index + 1}. ${themeMarker} ${theme} on \`${note.selector}\`\n`;
             markdown += `> ${content.substring(0, 200)}${content.length > 200 ? '...' : ''}\n\n`;
             markdown += `_Created: ${date} | ID: ${note.id}_\n\n`;
           });
