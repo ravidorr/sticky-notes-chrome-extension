@@ -69,13 +69,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: 'list_notes',
-        description: 'List all sticky notes, optionally filtered by URL',
+        description: 'List all sticky notes, optionally filtered by URL or domain',
         inputSchema: {
           type: 'object',
           properties: {
             url: {
               type: 'string',
-              description: 'Filter notes by URL (optional)',
+              description: 'Filter notes by exact URL (optional)',
+            },
+            domain: {
+              type: 'string',
+              description: 'Filter notes by domain - matches all pages on that domain (e.g., "example.com" or "https://example.com"). More flexible than url filter.',
             },
             limit: {
               type: 'number',
@@ -238,6 +242,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'list_notes': {
         const params = new URLSearchParams();
         if (args?.url) params.set('url', args.url);
+        if (args?.domain) params.set('domain', args.domain);
         if (args?.limit) params.set('limit', args.limit.toString());
         const queryString = params.toString();
         const endpoint = queryString ? `/notes?${queryString}` : '/notes';

@@ -70,6 +70,33 @@ export function normalizeUrl(url) {
 }
 
 /**
+ * Normalize domain input to a URL prefix for filtering
+ * Handles inputs like "example.com", "https://example.com", "example.com/path"
+ * @param {string} domain - Domain or URL to normalize
+ * @returns {string} Normalized URL prefix (origin only, no trailing slash)
+ */
+export function normalizeDomain(domain) {
+  if (!domain || typeof domain !== 'string') {
+    return null;
+  }
+  
+  let url = domain.trim();
+  
+  // Add protocol if missing
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+  }
+  
+  try {
+    const parsed = new URL(url);
+    // Return origin without trailing slash for prefix matching
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Validate URL format
  * @param {string} url - URL to validate
  * @returns {boolean} True if valid URL

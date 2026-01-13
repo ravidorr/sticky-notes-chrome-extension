@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { apiKeyAuth } from '../middleware/auth.js';
-import { validateNoteData, normalizeUrl, VALID_THEMES } from '../lib/utils.js';
+import { validateNoteData, normalizeUrl, normalizeDomain, VALID_THEMES } from '../lib/utils.js';
 
 const router = Router();
 const NOTES_COLLECTION = 'notes';
@@ -15,14 +15,15 @@ const NOTES_COLLECTION = 'notes';
  * GET /api/notes
  * List notes for the authenticated user (owned + shared with them)
  * Query params:
- *   - url: Filter by URL (optional)
+ *   - url: Filter by exact URL (optional)
+ *   - domain: Filter by domain/origin prefix - matches all pages on that domain (optional)
  *   - limit: Max results (default 50, max 100)
  *   - offset: Pagination offset (default 0)
  */
 router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
     const { userId, userEmail } = req.apiKey;
-    const { url, limit = '50', offset = '0' } = req.query;
+    const { url, domain, limit = '50', offset = '0' } = req.query;
     
     const limitNum = Math.min(Math.max(1, parseInt(limit, 10) || 50), 100);
     const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
@@ -35,6 +36,7 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
     let sharedQuery;
     
     if (url) {
+      // Exact URL matching
       const normalizedUrl = normalizeUrl(url);
       ownedQuery = db.collection(NOTES_COLLECTION)
         .where('ownerId', '==', userId)
@@ -47,7 +49,38 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
           .where('url', '==', normalizedUrl)
           .orderBy('createdAt', 'desc');
       }
+    } else if (domain) {
+      // Domain prefix matching - find all notes for a domain
+      const normalizedDomainPrefix = normalizeDomain(domain);
+      
+      if (!normalizedDomainPrefix) {
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: 'Invalid domain format'
+        });
+      }
+      
+      // Use Firestore range query for prefix matching
+      // URLs starting with the domain origin (e.g., "https://example.com")
+      const domainEnd = normalizedDomainPrefix + '\uffff';
+      
+      ownedQuery = db.collection(NOTES_COLLECTION)
+        .where('ownerId', '==', userId)
+        .where('url', '>=', normalizedDomainPrefix)
+        .where('url', '<', domainEnd)
+        .orderBy('url')
+        .orderBy('createdAt', 'desc');
+      
+      if (normalizedEmail) {
+        sharedQuery = db.collection(NOTES_COLLECTION)
+          .where('sharedWith', 'array-contains', normalizedEmail)
+          .where('url', '>=', normalizedDomainPrefix)
+          .where('url', '<', domainEnd)
+          .orderBy('url')
+          .orderBy('createdAt', 'desc');
+      }
     } else {
+      // No filter - return all notes
       ownedQuery = db.collection(NOTES_COLLECTION)
         .where('ownerId', '==', userId)
         .orderBy('createdAt', 'desc');
