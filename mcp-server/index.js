@@ -35,6 +35,11 @@ async function apiRequest(endpoint, options = {}) {
     },
   });
   
+  // Handle 204 No Content responses (e.g., DELETE operations)
+  if (response.status === 204) {
+    return null;
+  }
+  
   const data = await response.json();
   
   if (!response.ok) {
