@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate Sticky Notes API Key</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    h1 { color: #333; margin-bottom: 8px; }
+    p { color: #666; }
+    button {
+      background: #facc15;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 8px 8px 8px 0;
+    }
+    button:hover { background: #eab308; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    button.secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+    button.secondary:hover { background: #d1d5db; }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+    }
+    pre {
+      background: #1f2937;
+      color: #10b981;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+    .error { color: #ef4444; }
+    .success { color: #22c55e; }
+    .hidden { display: none; }
+    label { display: block; font-weight: 500; margin-bottom: 4px; color: #374151; }
+    .warning {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Generate API Key</h1>
+    <p>Sign in with Google to generate an API key for the Sticky Notes API.</p>
+    
+    <div id="step1">
+      <button id="signInBtn">Sign in with Google</button>
+      <p id="userInfo" class="hidden"></p>
+    </div>
+    
+    <div id="step2" class="hidden">
+      <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+      <h3>Create API Key</h3>
+      
+      <label for="keyName">Key Name</label>
+      <input type="text" id="keyName" placeholder="My Integration" value="My Integration">
+      
+      <label for="scopes">Permissions</label>
+      <select id="scopes">
+        <option value="both">Read & Write (notes:read, notes:write)</option>
+        <option value="read">Read Only (notes:read)</option>
+        <option value="write">Write Only (notes:write)</option>
+      </select>
+      
+      <button id="generateBtn">Generate API Key</button>
+    </div>
+  </div>
+  
+  <div id="result" class="card hidden">
+    <h3>Your API Key</h3>
+    <div class="warning">
+      Save this key now - it won't be shown again!
+    </div>
+    <pre id="apiKey"></pre>
+    <button class="secondary" onclick="copyKey()">Copy to Clipboard</button>
+    
+    <h4 style="margin-top: 24px;">Test your key:</h4>
+    <pre id="curlExample"></pre>
+  </div>
+  
+  <div id="error" class="card hidden">
+    <p class="error" id="errorMsg"></p>
+  </div>
+
+  <script type="module">
+    // REPLACE THESE WITH YOUR FIREBASE CONFIG
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+    // Your Firebase config - update these values!
+    const firebaseConfig = {
+      apiKey: "AIzaSyCqdVVAamQ9yrUkbCWRtPPtevdOK0_PrRM",
+      authDomain: "sticky-notes-chrome-extension.firebaseapp.com",
+      projectId: "sticky-notes-chrome-extension",
+      storageBucket: "sticky-notes-chrome-extension.firebasestorage.app",
+      messagingSenderId: "413613230006",
+      appId: "1:413613230006:web:1bb39d70bd4976e95ae317"
+    };
+
+    const API_URL = 'https://us-central1-sticky-notes-chrome-extension.cloudfunctions.net/api';
+
+    let app, auth, currentUser, idToken;
+
+    try {
+      app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+    } catch (e) {
+      showError('Firebase config error. Please update the config in this file.');
+    }
+
+    document.getElementById('signInBtn').addEventListener('click', async () => {
+      try {
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        currentUser = result.user;
+        idToken = await currentUser.getIdToken();
+        
+        document.getElementById('userInfo').textContent = `Signed in as: ${currentUser.email}`;
+        document.getElementById('userInfo').classList.remove('hidden');
+        document.getElementById('signInBtn').textContent = 'Signed In';
+        document.getElementById('signInBtn').disabled = true;
+        document.getElementById('step2').classList.remove('hidden');
+      } catch (error) {
+        showError('Sign in failed: ' + error.message);
+      }
+    });
+
+    document.getElementById('generateBtn').addEventListener('click', async () => {
+      const name = document.getElementById('keyName').value || 'API Key';
+      const scopeChoice = document.getElementById('scopes').value;
+      
+      let scopes;
+      if (scopeChoice === 'read') scopes = ['notes:read'];
+      else if (scopeChoice === 'write') scopes = ['notes:write'];
+      else scopes = ['notes:read', 'notes:write'];
+
+      try {
+        const response = await fetch(`${API_URL}/keys`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, scopes })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to generate key');
+        }
+
+        document.getElementById('apiKey').textContent = data.key;
+        document.getElementById('curlExample').textContent = 
+          `curl "${API_URL}/notes" \\\n  -H "Authorization: Bearer ${data.key}"`;
+        document.getElementById('result').classList.remove('hidden');
+        document.getElementById('error').classList.add('hidden');
+        
+        window.generatedKey = data.key;
+      } catch (error) {
+        showError('Failed to generate key: ' + error.message);
+      }
+    });
+
+    function showError(msg) {
+      document.getElementById('errorMsg').textContent = msg;
+      document.getElementById('error').classList.remove('hidden');
+    }
+
+    window.copyKey = function() {
+      navigator.clipboard.writeText(window.generatedKey);
+      alert('Copied to clipboard!');
+    };
+  </script>
+</body>
+</html>

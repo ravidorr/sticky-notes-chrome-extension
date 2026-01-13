@@ -77,10 +77,11 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
       }
     });
   } catch (error) {
-    console.error('Error listing notes:', error);
+    console.error('Error listing notes:', error.message, error.stack);
     res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to list notes'
+      message: 'Failed to list notes',
+      debug: error.message
     });
   }
 });
