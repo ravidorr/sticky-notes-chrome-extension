@@ -694,46 +694,56 @@ export function getShadowStyles() {
     }
     
     /* ==========================================
-       Minimized State
+       Minimized State & Animation
        ========================================== */
+    .sn-note {
+      transition: width 0.5s ease;
+    }
+    
     .sn-note.sn-minimized {
       min-height: auto;
       width: auto;
-    }
-    
-    .sn-note.sn-minimized .sn-note-content,
-    .sn-note.sn-minimized .sn-comment-section,
-    .sn-note.sn-minimized .sn-note-footer {
-      display: none;
     }
     
     .sn-note.sn-minimized .sn-note-header {
       border-radius: 4px;
     }
     
-    .sn-note.sn-minimized .sn-note-header-title,
-    .sn-note.sn-minimized .sn-note-header-actions {
-      display: none;
+    /* Header elements with animation */
+    .sn-note .sn-note-header-title,
+    .sn-note .sn-note-header-actions {
+      opacity: 1;
+      transition: opacity 0.5s ease;
     }
     
-    /* ==========================================
-       Expand/Collapse Animation
-       ========================================== */
+    .sn-note.sn-minimized .sn-note-header-title,
+    .sn-note.sn-minimized .sn-note-header-actions {
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    
+    /* Expandable sections with animation */
     .sn-note .sn-note-content,
     .sn-note .sn-comment-section,
     .sn-note .sn-note-footer {
-      animation: sn-expand-in 0.2s ease-out;
+      overflow: hidden;
+      max-height: 1000px;
+      opacity: 1;
+      transform: translateY(0);
+      transition: max-height 0.5s ease, opacity 0.5s ease, transform 0.5s ease;
     }
     
-    @keyframes sn-expand-in {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    .sn-note.sn-minimized .sn-note-content,
+    .sn-note.sn-minimized .sn-comment-section,
+    .sn-note.sn-minimized .sn-note-footer {
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-10px);
+      padding-top: 0;
+      padding-bottom: 0;
+      margin: 0;
     }
     
     ${RichEditor.getStyles()}
