@@ -166,38 +166,28 @@ body {
 .theme-legend {
   display: flex;
   justify-content: center;
-  gap: 20px;
-  flex-wrap: wrap;
+  gap: 12px;
 }
 
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  color: #999;
+.legend-count {
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
-.legend-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
+.legend-count.yellow {
+  color: #ffd93d;
 }
 
-.legend-color.yellow {
-  background-color: #ffd93d;
+.legend-count.blue {
+  color: #6cb6ff;
 }
 
-.legend-color.blue {
-  background-color: #6cb6ff;
+.legend-count.green {
+  color: #3fb950;
 }
 
-.legend-color.green {
-  background-color: #3fb950;
-}
-
-.legend-color.pink {
-  background-color: #f778ba;
+.legend-count.pink {
+  color: #f778ba;
 }
 
 /* Filter Tabs */
