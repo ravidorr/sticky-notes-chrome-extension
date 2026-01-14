@@ -704,8 +704,10 @@ export function getShadowStyles() {
     .sn-note.sn-minimized .sn-note-header {
       border-radius: 4px;
       padding: 8px;
+      justify-content: center;
+      width: fit-content;
     }
-    
+
     /* Hide header elements when minimized */
     .sn-note.sn-minimized .sn-note-header-title,
     .sn-note.sn-minimized .sn-note-header-actions {
