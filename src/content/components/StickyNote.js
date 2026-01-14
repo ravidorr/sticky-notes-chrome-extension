@@ -780,20 +780,24 @@ export class StickyNote {
     
     // Handle custom drag position (stored relative to anchor)
     if (this.customPosition) {
+      const noteRect = this.element.getBoundingClientRect();
+      let x, y;
+      
       if (this.customPosition.offsetX !== undefined) {
         // Position relative to anchor element (viewport coordinates)
         const anchorRect = this.anchor.getBoundingClientRect();
-        const x = anchorRect.left + this.customPosition.offsetX;
-        const y = anchorRect.top + this.customPosition.offsetY;
-        this.element.style.left = `${x}px`;
-        this.element.style.top = `${y}px`;
+        x = anchorRect.left + this.customPosition.offsetX;
+        y = anchorRect.top + this.customPosition.offsetY;
       } else {
         // Legacy: absolute document position - convert to viewport coordinates
-        const x = this.customPosition.x - window.scrollX;
-        const y = this.customPosition.y - window.scrollY;
-        this.element.style.left = `${x}px`;
-        this.element.style.top = `${y}px`;
+        x = this.customPosition.x - window.scrollX;
+        y = this.customPosition.y - window.scrollY;
       }
+      
+      // Clamp to viewport to ensure note is fully visible
+      const clamped = this.clampToViewport(x, y, noteRect.width, noteRect.height);
+      this.element.style.left = `${clamped.x}px`;
+      this.element.style.top = `${clamped.y}px`;
       return;
     }
     
@@ -841,10 +845,40 @@ export class StickyNote {
         break;
     }
     
-    // Note follows anchor element - no collision detection
-    // VisibilityManager will hide the note when anchor goes off-screen
-    this.element.style.left = `${x}px`;
-    this.element.style.top = `${y}px`;
+    // Clamp to viewport to ensure note is fully visible
+    const clamped = this.clampToViewport(x, y, noteRect.width, noteRect.height);
+    this.element.style.left = `${clamped.x}px`;
+    this.element.style.top = `${clamped.y}px`;
+  }
+  
+  /**
+   * Clamp position to keep note fully within viewport
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   * @param {number} noteWidth - Note width
+   * @param {number} noteHeight - Note height
+   * @returns {Object} Clamped { x, y }
+   */
+  clampToViewport(x, y, noteWidth, noteHeight) {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const padding = 10; // Small padding from edges
+    
+    // Clamp horizontal
+    if (x < padding) {
+      x = padding;
+    } else if (x + noteWidth > viewportWidth - padding) {
+      x = viewportWidth - noteWidth - padding;
+    }
+    
+    // Clamp vertical
+    if (y < padding) {
+      y = padding;
+    } else if (y + noteHeight > viewportHeight - padding) {
+      y = viewportHeight - noteHeight - padding;
+    }
+    
+    return { x, y };
   }
   
   /**
@@ -890,20 +924,24 @@ export class StickyNote {
     const posX = event.clientX - this.dragOffset.x;
     const posY = event.clientY - this.dragOffset.y;
     
-    // Apply position immediately for smooth dragging (viewport coordinates)
-    this.element.style.left = `${posX}px`;
-    this.element.style.top = `${posY}px`;
+    // Clamp to viewport to prevent dragging note off-screen
+    const noteRect = this.element.getBoundingClientRect();
+    const clamped = this.clampToViewport(posX, posY, noteRect.width, noteRect.height);
+    
+    // Apply clamped position for smooth dragging (viewport coordinates)
+    this.element.style.left = `${clamped.x}px`;
+    this.element.style.top = `${clamped.y}px`;
     
     // Store position relative to anchor for persistence
     if (this.anchor) {
       const anchorRect = this.anchor.getBoundingClientRect();
       this.customPosition = {
-        offsetX: posX - anchorRect.left,
-        offsetY: posY - anchorRect.top
+        offsetX: clamped.x - anchorRect.left,
+        offsetY: clamped.y - anchorRect.top
       };
     } else {
       // Fallback: store absolute document position (for legacy compatibility)
-      this.customPosition = { x: posX + window.scrollX, y: posY + window.scrollY };
+      this.customPosition = { x: clamped.x + window.scrollX, y: clamped.y + window.scrollY };
     }
   }
   

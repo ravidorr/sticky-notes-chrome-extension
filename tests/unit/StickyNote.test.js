@@ -912,6 +912,115 @@ describe('StickyNote', () => {
     });
   });
 
+  describe('clampToViewport', () => {
+    it('should have clampToViewport method', () => {
+      expect(typeof note.clampToViewport).toBe('function');
+    });
+
+    it('should not modify position within viewport bounds', () => {
+      const localThis = {};
+      localThis.originalInnerWidth = window.innerWidth;
+      localThis.originalInnerHeight = window.innerHeight;
+      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 768, writable: true, configurable: true });
+      
+      const result = note.clampToViewport(100, 100, 200, 150);
+      
+      expect(result.x).toBe(100);
+      expect(result.y).toBe(100);
+      
+      Object.defineProperty(window, 'innerWidth', { value: localThis.originalInnerWidth, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: localThis.originalInnerHeight, writable: true, configurable: true });
+    });
+
+    it('should clamp position when note extends beyond left edge', () => {
+      const localThis = {};
+      localThis.originalInnerWidth = window.innerWidth;
+      localThis.originalInnerHeight = window.innerHeight;
+      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 768, writable: true, configurable: true });
+      
+      const result = note.clampToViewport(-50, 100, 200, 150);
+      
+      // Should clamp to padding (10px from edge)
+      expect(result.x).toBe(10);
+      expect(result.y).toBe(100);
+      
+      Object.defineProperty(window, 'innerWidth', { value: localThis.originalInnerWidth, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: localThis.originalInnerHeight, writable: true, configurable: true });
+    });
+
+    it('should clamp position when note extends beyond right edge', () => {
+      const localThis = {};
+      localThis.originalInnerWidth = window.innerWidth;
+      localThis.originalInnerHeight = window.innerHeight;
+      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 768, writable: true, configurable: true });
+      
+      // Note at x=900 with width=200 would extend to 1100, beyond 1024
+      const result = note.clampToViewport(900, 100, 200, 150);
+      
+      // Should clamp to viewport - noteWidth - padding = 1024 - 200 - 10 = 814
+      expect(result.x).toBe(814);
+      expect(result.y).toBe(100);
+      
+      Object.defineProperty(window, 'innerWidth', { value: localThis.originalInnerWidth, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: localThis.originalInnerHeight, writable: true, configurable: true });
+    });
+
+    it('should clamp position when note extends beyond top edge', () => {
+      const localThis = {};
+      localThis.originalInnerWidth = window.innerWidth;
+      localThis.originalInnerHeight = window.innerHeight;
+      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 768, writable: true, configurable: true });
+      
+      const result = note.clampToViewport(100, -30, 200, 150);
+      
+      // Should clamp to padding (10px from edge)
+      expect(result.x).toBe(100);
+      expect(result.y).toBe(10);
+      
+      Object.defineProperty(window, 'innerWidth', { value: localThis.originalInnerWidth, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: localThis.originalInnerHeight, writable: true, configurable: true });
+    });
+
+    it('should clamp position when note extends beyond bottom edge', () => {
+      const localThis = {};
+      localThis.originalInnerWidth = window.innerWidth;
+      localThis.originalInnerHeight = window.innerHeight;
+      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 768, writable: true, configurable: true });
+      
+      // Note at y=700 with height=150 would extend to 850, beyond 768
+      const result = note.clampToViewport(100, 700, 200, 150);
+      
+      // Should clamp to viewport - noteHeight - padding = 768 - 150 - 10 = 608
+      expect(result.x).toBe(100);
+      expect(result.y).toBe(608);
+      
+      Object.defineProperty(window, 'innerWidth', { value: localThis.originalInnerWidth, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: localThis.originalInnerHeight, writable: true, configurable: true });
+    });
+
+    it('should clamp position on multiple edges simultaneously', () => {
+      const localThis = {};
+      localThis.originalInnerWidth = window.innerWidth;
+      localThis.originalInnerHeight = window.innerHeight;
+      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 768, writable: true, configurable: true });
+      
+      // Note at corner extending beyond both right and bottom
+      const result = note.clampToViewport(900, 700, 200, 150);
+      
+      expect(result.x).toBe(814); // 1024 - 200 - 10
+      expect(result.y).toBe(608); // 768 - 150 - 10
+      
+      Object.defineProperty(window, 'innerWidth', { value: localThis.originalInnerWidth, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: localThis.originalInnerHeight, writable: true, configurable: true });
+    });
+  });
+
   describe('handleWindowResize', () => {
     it('should update position on resize for anchor-based position', () => {
       const updateSpy = jest.spyOn(note, 'updatePosition');

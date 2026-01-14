@@ -727,7 +727,7 @@ export function getShadowStyles() {
        ========================================== */
     .sn-note.sn-minimized {
       min-height: auto;
-      width: auto;
+      width: fit-content;
     }
     
     .sn-note.sn-minimized .sn-note-header {
