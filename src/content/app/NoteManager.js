@@ -45,6 +45,10 @@ export class NoteManager {
     
     // Track orphaned notes (anchor element not found, user can view centered)
     this.orphanedNotes = new Map();
+    
+    // Track notes created in this session (should start maximized)
+    // Used to handle race condition between direct creation and real-time sync
+    this.sessionCreatedNoteIds = new Set();
   }
   
   /**
@@ -545,6 +549,11 @@ export class NoteManager {
       });
       
       if (response.success) {
+        // Track this note as created in current session (for real-time sync race condition)
+        this.sessionCreatedNoteIds.add(response.note.id);
+        // Clean up after a short delay
+        setTimeout(() => this.sessionCreatedNoteIds.delete(response.note.id), 5000);
+        
         // Create the note UI - new notes start maximized
         this.createNoteFromData(response.note, { isNewNote: true });
       } else {
@@ -594,6 +603,11 @@ export class NoteManager {
       });
       
       if (response.success) {
+        // Track this note as created in current session (for real-time sync race condition)
+        this.sessionCreatedNoteIds.add(response.note.id);
+        // Clean up after a short delay
+        setTimeout(() => this.sessionCreatedNoteIds.delete(response.note.id), 5000);
+        
         // Create the note UI - new notes start maximized
         this.createNoteFromData(response.note, { isNewNote: true });
         log.debug('Created note at element from context menu');
@@ -652,8 +666,10 @@ export class NoteManager {
         }
       } else {
         // Create new note
-        this.createNoteFromData(noteData);
-        log.debug('Created new note from real-time update:', noteData.id);
+        // Check if this note was created in current session (race condition handling)
+        const isNewNote = this.sessionCreatedNoteIds.has(noteData.id);
+        this.createNoteFromData(noteData, { isNewNote });
+        log.debug('Created new note from real-time update:', noteData.id, 'isNewNote:', isNewNote);
       }
     });
   }
@@ -888,7 +904,8 @@ export class NoteManager {
     });
     this.notes.clear();
     
-    // Also clear pending notes
+    // Also clear pending notes and session tracking
     this.clearPendingNotes();
+    this.sessionCreatedNoteIds.clear();
   }
 }
