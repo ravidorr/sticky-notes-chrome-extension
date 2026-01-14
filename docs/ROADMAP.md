@@ -15,7 +15,7 @@
 
 ---
 
-## Current Status (MVP) [x]
+## Current Status (MVP) - DONE
 
 - [x] Note creation anchored to DOM elements
 - [x] Robust CSS selector generation with fuzzy matching
@@ -29,7 +29,7 @@
 - [x] Re-anchor UI when elements not found
 - [x] Extension context invalidation handling
 
-### Code Quality [x]
+### Code Quality - DONE
 - [x] ESLint configuration with pre-commit hooks
 - [x] Unit test coverage (739 tests, ~65% coverage)
 - [x] Shared utility functions for testability
@@ -40,7 +40,7 @@
 
 ---
 
-## Phase 1: Authentication & Cloud Sync [x]
+## Phase 1: Authentication & Cloud Sync - DONE
 
 - [x] Firebase Authentication (Google Sign-In)
 - [x] Cloud sync with Firestore
@@ -50,7 +50,7 @@
 
 ---
 
-## Phase 2: Threaded Discussions & Real-time Sync [x]
+## Phase 2: Threaded Discussions & Real-time Sync - DONE
 
 Add comment threads to notes for Q&A and discussions.
 
@@ -191,13 +191,13 @@ Internal tools for managing users, subscriptions, and analytics.
 
 ---
 
-## Quick Wins to Validate [x]
+## Quick Wins to Validate - DONE
 
 Low-effort features to test market fit:
 
-1. ~~**"Copy as Markdown" button**~~ [x] - Bug report template with URL + selector
-2. ~~**"Copy screenshot" button**~~ [x] - One-click annotated screenshot (highlights element)
-3. ~~**Metadata display**~~ [x] - Collapsible footer showing URL, browser, viewport, timestamp
+1. ~~**"Copy as Markdown" button**~~ - Bug report template with URL + selector - DONE
+2. ~~**"Copy screenshot" button**~~ - One-click annotated screenshot (highlights element) - DONE
+3. ~~**Metadata display**~~ - Collapsible footer showing URL, browser, viewport, timestamp - DONE
 
 ---
 
@@ -224,6 +224,11 @@ Unplanned feature ideas for future consideration:
 - [] Inline sharing via email detection in note content:
   - Option A: Auto-detect emails and prompt to share (Pro: seamless; Con: accidental shares, ambiguous intent)
   - Option B: Explicit mention syntax like @email or +email (Pro: clear intent; Con: learning curve)
+- [] Manage sticky notes from popup (needs refinement):
+  - View full note content in popup (expand/preview mode)
+  - Delete notes on current page from popup
+  - View and delete notes from other pages (cross-page note management)
+  - Potential UI: list view with page grouping, search/filter capabilities
 
 ---
 
