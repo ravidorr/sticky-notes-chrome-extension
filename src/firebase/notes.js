@@ -44,10 +44,11 @@ const defaultFirestoreDeps = {
  * Create a new note in Firestore
  * @param {Object} noteData - Note data
  * @param {string} userId - Owner's user ID
+ * @param {string} userEmail - Owner's email address
  * @param {Object} deps - Optional dependencies for testing
  * @returns {Promise<Object>} Created note with ID
  */
-export async function createNote(noteData, userId, deps = {}) {
+export async function createNote(noteData, userId, userEmail, deps = {}) {
   const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
@@ -82,6 +83,7 @@ export async function createNote(noteData, userId, deps = {}) {
     position: noteData.position || { anchor: 'top-right' },
     metadata: noteData.metadata || null,
     ownerId: userId,
+    ownerEmail: userEmail || null,
     sharedWith: [],
     createdAt: firebaseDeps.serverTimestamp(),
     updatedAt: firebaseDeps.serverTimestamp()

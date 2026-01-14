@@ -496,4 +496,20 @@ describe('formatRelativeTime', () => {
     // Check for either translated text or i18n key
     expect(utils.formatRelativeTime(dateStr)).toMatch(/^(2 hours ago|hoursAgo)$/);
   });
+
+  it('should handle Firestore Timestamp objects', () => {
+    // Mock Firestore Timestamp object with toDate() method
+    const mockTimestamp = {
+      toDate: () => new Date(localThis.now.getTime() - 4 * 60 * 60 * 1000) // 4 hours ago
+    };
+    // Check for either translated text or i18n key
+    expect(utils.formatRelativeTime(mockTimestamp)).toMatch(/^(4 hours ago|hoursAgo)$/);
+  });
+
+  it('should return "just now" for invalid dates', () => {
+    // Check for either translated text or i18n key
+    expect(utils.formatRelativeTime('invalid-date')).toMatch(/^(just now|justNow)$/);
+    expect(utils.formatRelativeTime(null)).toMatch(/^(just now|justNow)$/);
+    expect(utils.formatRelativeTime(undefined)).toMatch(/^(just now|justNow)$/);
+  });
 });

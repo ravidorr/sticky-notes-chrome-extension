@@ -383,7 +383,7 @@ describe('Background Handlers', () => {
       
       expect(result.success).toBe(true);
       expect(result.note).toEqual(savedNote);
-      expect(localThis.deps.createNote).toHaveBeenCalledWith(noteData, 'user-123');
+      expect(localThis.deps.createNote).toHaveBeenCalledWith(noteData, 'user-123', 'test@example.com');
     });
 
     it('should fall back to local storage when Firebase fails', async () => {

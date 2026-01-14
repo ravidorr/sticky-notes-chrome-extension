@@ -300,12 +300,30 @@ export function generateBugReportMarkdown(options) {
 
 /**
  * Format relative time (e.g., "2 hours ago")
- * @param {string|Date} date - Date to format
+ * @param {string|Date|Object} date - Date to format (can be string, Date, or Firestore Timestamp)
  * @returns {string} Relative time string
  */
 export function formatRelativeTime(date) {
   const now = new Date();
-  const then = new Date(date);
+  
+  // Handle null/undefined
+  if (date === null || date === undefined) {
+    return t('justNow');
+  }
+  
+  // Handle Firestore Timestamp objects (they have a toDate method)
+  let then;
+  if (typeof date.toDate === 'function') {
+    then = date.toDate();
+  } else {
+    then = new Date(date);
+  }
+  
+  // Check for invalid date
+  if (isNaN(then.getTime())) {
+    return t('justNow');
+  }
+  
   const diffMs = now - then;
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);

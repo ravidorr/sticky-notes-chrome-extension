@@ -86,40 +86,41 @@ describe('Firebase Notes', () => {
       
       localThis.deps.addDoc.mockResolvedValue({ id: 'new-note-123' });
       
-      const result = await createNote(noteData, 'user-123', localThis.deps);
+      const result = await createNote(noteData, 'user-123', 'user@example.com', localThis.deps);
       
       expect(result.id).toBe('new-note-123');
       expect(result.url).toBe('https://example.com/page');
       expect(result.selector).toBe('#main-content');
       expect(result.theme).toBe('blue');
       expect(result.ownerId).toBe('user-123');
+      expect(result.ownerEmail).toBe('user@example.com');
       expect(result.sharedWith).toEqual([]);
     });
 
     it('should throw error when Firebase is not configured', async () => {
       localThis.deps.isFirebaseConfigured = jest.fn(() => false);
       
-      await expect(createNote({ url: 'https://example.com' }, 'user-123', localThis.deps))
+      await expect(createNote({ url: 'https://example.com' }, 'user-123', 'user@example.com', localThis.deps))
         .rejects.toThrow('Firebase is not configured');
     });
 
     it('should throw error when db is null', async () => {
       localThis.deps.db = null;
       
-      await expect(createNote({ url: 'https://example.com' }, 'user-123', localThis.deps))
+      await expect(createNote({ url: 'https://example.com' }, 'user-123', 'user@example.com', localThis.deps))
         .rejects.toThrow('Firebase is not configured');
     });
 
     it('should throw error for invalid URL', async () => {
-      await expect(createNote({ url: null, selector: '#main' }, 'user-123', localThis.deps))
+      await expect(createNote({ url: null, selector: '#main' }, 'user-123', 'user@example.com', localThis.deps))
         .rejects.toThrow('Invalid URL');
       
-      await expect(createNote({ url: 123, selector: '#main' }, 'user-123', localThis.deps))
+      await expect(createNote({ url: 123, selector: '#main' }, 'user-123', 'user@example.com', localThis.deps))
         .rejects.toThrow('Invalid URL');
     });
 
     it('should throw error when selector is missing', async () => {
-      await expect(createNote({ url: 'https://example.com' }, 'user-123', localThis.deps))
+      await expect(createNote({ url: 'https://example.com' }, 'user-123', 'user@example.com', localThis.deps))
         .rejects.toThrow('Selector is required');
     });
 
@@ -127,7 +128,7 @@ describe('Firebase Notes', () => {
       await expect(createNote({ 
         url: 'https://example.com', 
         selector: '<script>alert("xss")</script>' 
-      }, 'user-123', localThis.deps)).rejects.toThrow('Invalid selector');
+      }, 'user-123', 'user@example.com', localThis.deps)).rejects.toThrow('Invalid selector');
     });
 
     it('should default to yellow theme for invalid theme', async () => {
@@ -137,7 +138,7 @@ describe('Firebase Notes', () => {
         url: 'https://example.com',
         selector: '#main',
         theme: 'invalid-theme'
-      }, 'user-123', localThis.deps);
+      }, 'user-123', 'user@example.com', localThis.deps);
       
       expect(result.theme).toBe('yellow');
     });
@@ -149,7 +150,7 @@ describe('Firebase Notes', () => {
         url: 'https://example.com',
         selector: '#main',
         theme: 'green'
-      }, 'user-123', localThis.deps);
+      }, 'user-123', 'user@example.com', localThis.deps);
       
       expect(result.theme).toBe('green');
     });

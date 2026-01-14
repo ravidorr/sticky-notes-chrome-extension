@@ -70,7 +70,9 @@ export class StickyNote {
     // Capture metadata at creation time, or use provided metadata
     this.metadata = options.metadata || getPageMetadata();
     this.createdAt = options.createdAt || new Date().toISOString();
-    
+    this.ownerEmail = options.ownerEmail || null;
+    this.ownerId = options.ownerId || null;
+
     this.element = null;
     this.textarea = null;
     this.commentSection = null;
@@ -184,6 +186,14 @@ export class StickyNote {
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataElement')}</span>
             <span class="sn-metadata-value sn-metadata-selector" title="${escapeHtml(this.selector)}">${escapeHtml(this.truncateSelector(this.selector))}</span>
+          </div>
+          <div class="sn-metadata-row">
+            <span class="sn-metadata-label">${t('metadataOwner')}</span>
+            <span class="sn-metadata-value sn-metadata-owner" title="${escapeHtml(this.ownerEmail || '')}">${escapeHtml(this.ownerEmail || t('anonymous'))}</span>
+          </div>
+          <div class="sn-metadata-row">
+            <span class="sn-metadata-label">${t('metadataOwnerId')}</span>
+            <span class="sn-metadata-value sn-metadata-owner-id" title="${escapeHtml(this.ownerId || '')}">${escapeHtml(this.ownerId || t('notAvailable'))}</span>
           </div>
         </div>
       </div>

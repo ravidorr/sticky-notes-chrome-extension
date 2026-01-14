@@ -191,7 +191,7 @@ export function createHandlers(deps = {}) {
             createdAt: note.createdAt || new Date().toISOString()
           };
           
-          await createNote(noteToMigrate, user.uid);
+          await createNote(noteToMigrate, user.uid, user.email);
           migratedCount++;
           log.debug(`Migrated note: ${note.id}`);
         } catch (error) {
@@ -327,7 +327,7 @@ export function createHandlers(deps = {}) {
       // Try Firestore first if configured and user is logged in
       if (isFirebaseConfigured() && user) {
         try {
-          const newNote = await createNote(note, user.uid);
+          const newNote = await createNote(note, user.uid, user.email);
           return { success: true, note: newNote };
         } catch (error) {
           log.error('Firestore save failed, falling back to local storage:', error);
@@ -343,6 +343,7 @@ export function createHandlers(deps = {}) {
         ...note,
         id: generateId('note'),
         ownerId: user?.uid || 'local',
+        ownerEmail: user?.email || null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

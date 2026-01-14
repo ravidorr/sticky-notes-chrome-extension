@@ -221,6 +221,18 @@
     "message": "אלמנט",
     "description": "Metadata label for element selector"
   },
+  "metadataOwner": {
+    "message": "בעלים",
+    "description": "Metadata label for note owner"
+  },
+  "metadataOwnerId": {
+    "message": "מזהה בעלים",
+    "description": "Metadata label for note owner Firebase UID"
+  },
+  "notAvailable": {
+    "message": "לא זמין",
+    "description": "Placeholder when data is not available"
+  },
 
   "extensionUpdated": {
     "message": "התוסף עודכן",

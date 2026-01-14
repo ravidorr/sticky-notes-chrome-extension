@@ -221,6 +221,18 @@
     "message": "Element",
     "description": "Metadata label for element selector"
   },
+  "metadataOwner": {
+    "message": "Proprietaire",
+    "description": "Metadata label for note owner"
+  },
+  "metadataOwnerId": {
+    "message": "UID Proprietaire",
+    "description": "Metadata label for note owner Firebase UID"
+  },
+  "notAvailable": {
+    "message": "N/D",
+    "description": "Placeholder when data is not available"
+  },
 
   "extensionUpdated": {
     "message": "Extension mise a jour",
