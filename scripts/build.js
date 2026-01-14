@@ -1,17 +1,33 @@
 /**
  * Build script for Chrome extension
  * Runs separate Vite builds for content, background, and popup
+ * 
+ * Usage:
+ *   npm run build      - Production build (Chrome Web Store OAuth client)
+ *   npm run build:dev  - Development build (local OAuth client)
  */
 
 import { build } from 'vite';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { copyFileSync, mkdirSync, existsSync, rmSync, readdirSync, createWriteStream } from 'fs';
+import { copyFileSync, mkdirSync, existsSync, rmSync, readdirSync, createWriteStream, readFileSync, writeFileSync } from 'fs';
 import archiver from 'archiver';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = resolve(__dirname, '..');
+
+// OAuth client IDs for different environments
+const OAUTH_CLIENTS = {
+  development: '413613230006-c8044e50sohrq813h1ejfjdojfcsfa2n.apps.googleusercontent.com',
+  production: '413613230006-ukaectcb0rd3gq1jjnthc0kd4444ccg3.apps.googleusercontent.com'
+};
+
+// Determine build environment from command line args or env var
+// Default is production; use --development flag or BUILD_ENV=development for dev builds
+const isDevelopment = process.argv.includes('--development') || process.env.BUILD_ENV === 'development';
+const buildEnv = isDevelopment ? 'development' : 'production';
+const oauthClientId = OAUTH_CLIENTS[buildEnv];
 
 // Output to dist/chrome for browser-specific builds
 const distBaseDir = resolve(rootDir, 'dist');
@@ -27,10 +43,18 @@ mkdirSync(distDir, { recursive: true });
 function copyStaticFiles() {
   const publicDir = resolve(rootDir, 'public');
   
-  // Copy manifest
-  copyFileSync(
-    resolve(publicDir, 'manifest.json'),
-    resolve(distDir, 'manifest.json')
+  // Copy and transform manifest with correct OAuth client ID
+  const manifestPath = resolve(publicDir, 'manifest.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+  
+  // Update OAuth client ID based on build environment
+  if (manifest.oauth2) {
+    manifest.oauth2.client_id = oauthClientId;
+  }
+  
+  writeFileSync(
+    resolve(distDir, 'manifest.json'),
+    JSON.stringify(manifest, null, 2)
   );
   
   // Copy icons
@@ -75,6 +99,7 @@ function copyLocalesFolder(src, dest) {
 // Common build options
 const commonOptions = {
   configFile: false,
+  publicDir: false, // Disable automatic copying from public/ - we handle it manually
   resolve: {
     alias: {
       '@': resolve(rootDir, 'src')
@@ -217,7 +242,8 @@ async function createZipFile() {
 
 // Run all builds
 async function main() {
-  console.log('Building Chrome extension...\n');
+  console.log(`Building Chrome extension (${buildEnv.toUpperCase()})...\n`);
+  console.log(`OAuth Client: ${buildEnv === 'production' ? 'Chrome Web Store' : 'Local Development'}\n`);
   
   try {
     copyStaticFiles();

@@ -43,7 +43,7 @@
     }
   ],
   "oauth2": {
-    "client_id": "413613230006-ukaectcb0rd3gq1jjnthc0kd4444ccg3.apps.googleusercontent.com",
+    "client_id": "413613230006-c8044e50sohrq813h1ejfjdojfcsfa2n.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile"

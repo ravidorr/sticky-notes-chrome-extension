@@ -4,8 +4,9 @@
   "description": "Element-anchored sticky notes for annotating any website",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/build.js && vite build --watch",
+    "dev": "node scripts/build.js --development && vite build --watch",
     "build": "node scripts/build.js",
+    "build:dev": "node scripts/build.js --development",
     "build:site": "node scripts/build-site.js",
     "preview": "vite preview",
     "serve:test": "npx serve tests/fixtures -l 3000",
