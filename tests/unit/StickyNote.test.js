@@ -135,6 +135,78 @@ describe('StickyNote', () => {
       const deleteBtn = note.element.querySelector('.sn-delete-btn');
       expect(deleteBtn).not.toBeNull();
     });
+
+    it('should create metadata panel', () => {
+      const metadataPanel = note.element.querySelector('.sn-metadata-panel');
+      expect(metadataPanel).not.toBeNull();
+    });
+
+    it('should display note ID in metadata', () => {
+      const noteIdElement = note.element.querySelector('.sn-metadata-note-id');
+      expect(noteIdElement).not.toBeNull();
+      expect(noteIdElement.textContent).toBe('test-note-1');
+    });
+
+    it('should display owner email when provided', () => {
+      const localThis = {};
+      localThis.noteWithOwner = new StickyNote({
+        id: 'test-note-owner',
+        anchor: anchor,
+        container: container,
+        content: 'Test content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        ownerEmail: 'test@example.com',
+        ownerId: 'uid123',
+        onSave: onSave,
+        onThemeChange: onThemeChange,
+        onDelete: onDelete
+      });
+
+      localThis.ownerElement = localThis.noteWithOwner.element.querySelector('.sn-metadata-owner');
+      expect(localThis.ownerElement).not.toBeNull();
+      expect(localThis.ownerElement.textContent).toBe('test@example.com');
+
+      localThis.noteWithOwner.destroy();
+    });
+
+    it('should display owner UID when provided', () => {
+      const localThis = {};
+      localThis.noteWithOwner = new StickyNote({
+        id: 'test-note-uid',
+        anchor: anchor,
+        container: container,
+        content: 'Test content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        ownerEmail: 'test@example.com',
+        ownerId: 'uid123abc',
+        onSave: onSave,
+        onThemeChange: onThemeChange,
+        onDelete: onDelete
+      });
+
+      localThis.ownerIdElement = localThis.noteWithOwner.element.querySelector('.sn-metadata-owner-id');
+      expect(localThis.ownerIdElement).not.toBeNull();
+      expect(localThis.ownerIdElement.textContent).toBe('uid123abc');
+
+      localThis.noteWithOwner.destroy();
+    });
+
+    it('should show fallback text when owner info not provided', () => {
+      // The default note doesn't have ownerEmail or ownerId
+      const localThis = {};
+      localThis.ownerElement = note.element.querySelector('.sn-metadata-owner');
+      localThis.ownerIdElement = note.element.querySelector('.sn-metadata-owner-id');
+      localThis.noteIdElement = note.element.querySelector('.sn-metadata-note-id');
+
+      // Owner should show 'anonymous' (i18n key)
+      expect(localThis.ownerElement.textContent).toBe('anonymous');
+      // Owner ID should show 'notAvailable' (i18n key)
+      expect(localThis.ownerIdElement.textContent).toBe('notAvailable');
+      // Note ID should still show the actual ID
+      expect(localThis.noteIdElement.textContent).toBe('test-note-1');
+    });
   });
   
   describe('show/hide', () => {
@@ -870,9 +942,9 @@ describe('StickyNote', () => {
   });
   
   describe('minimize/maximize', () => {
-    it('should start minimized by default', () => {
-      expect(note.isMinimized).toBe(true);
-      expect(note.element.classList.contains('sn-minimized')).toBe(true);
+    it('should start maximized by default', () => {
+      expect(note.isMinimized).toBe(false);
+      expect(note.element.classList.contains('sn-minimized')).toBe(false);
     });
     
     it('should create minimize button', () => {
@@ -885,35 +957,35 @@ describe('StickyNote', () => {
     });
     
     it('should toggle minimized state when toggleMinimize is called', () => {
-      // Starts minimized
+      // Starts maximized
+      expect(note.isMinimized).toBe(false);
+      expect(note.element.classList.contains('sn-minimized')).toBe(false);
+
+      // Toggle to minimized
+      note.toggleMinimize();
       expect(note.isMinimized).toBe(true);
       expect(note.element.classList.contains('sn-minimized')).toBe(true);
-      
-      // Toggle to expanded
+
+      // Toggle back to maximized
       note.toggleMinimize();
       expect(note.isMinimized).toBe(false);
       expect(note.element.classList.contains('sn-minimized')).toBe(false);
-      
-      // Toggle back to minimized
-      note.toggleMinimize();
-      expect(note.isMinimized).toBe(true);
-      expect(note.element.classList.contains('sn-minimized')).toBe(true);
     });
     
     it('should update button title based on state', () => {
       const localThis = {};
       localThis.minimizeBtn = note.element.querySelector('.sn-minimize-btn');
-      
-      // When minimized, title should be "expand"
+
+      // When maximized (default), title should be "minimize"
+      expect(localThis.minimizeBtn.title).toBe('minimize');
+
+      // After minimizing
+      note.toggleMinimize();
       expect(localThis.minimizeBtn.title).toBe('expand');
-      
-      // After expanding
+
+      // After maximizing again
       note.toggleMinimize();
       expect(localThis.minimizeBtn.title).toBe('minimize');
-      
-      // After minimizing again
-      note.toggleMinimize();
-      expect(localThis.minimizeBtn.title).toBe('expand');
     });
     
     it('should call toggleMinimize when minimize button is clicked', () => {
@@ -940,20 +1012,20 @@ describe('StickyNote', () => {
     it('should update button icon when toggling', () => {
       const localThis = {};
       localThis.minimizeBtn = note.element.querySelector('.sn-minimize-btn');
-      
-      // Get initial SVG (up arrow for expand)
+
+      // Get initial SVG (down arrow for minimize - note starts maximized)
       localThis.initialSvg = localThis.minimizeBtn.innerHTML;
-      expect(localThis.initialSvg).toContain('6 15 12 9 18 15'); // up arrow points
-      
-      // Toggle to expanded state
-      note.toggleMinimize();
-      localThis.expandedSvg = localThis.minimizeBtn.innerHTML;
-      expect(localThis.expandedSvg).toContain('6 9 12 15 18 9'); // down arrow points
-      
-      // Toggle back to minimized
+      expect(localThis.initialSvg).toContain('6 9 12 15 18 9'); // down arrow points
+
+      // Toggle to minimized state
       note.toggleMinimize();
       localThis.minimizedSvg = localThis.minimizeBtn.innerHTML;
       expect(localThis.minimizedSvg).toContain('6 15 12 9 18 15'); // up arrow points
+
+      // Toggle back to maximized
+      note.toggleMinimize();
+      localThis.maximizedSvg = localThis.minimizeBtn.innerHTML;
+      expect(localThis.maximizedSvg).toContain('6 9 12 15 18 9'); // down arrow points
     });
   });
 });

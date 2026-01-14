@@ -229,6 +229,10 @@
     "message": "מזהה בעלים",
     "description": "Metadata label for note owner Firebase UID"
   },
+  "metadataNoteId": {
+    "message": "מזהה פתקית",
+    "description": "Metadata label for sticky note ID"
+  },
   "notAvailable": {
     "message": "לא זמין",
     "description": "Placeholder when data is not available"

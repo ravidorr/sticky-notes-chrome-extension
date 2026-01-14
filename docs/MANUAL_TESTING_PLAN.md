@@ -754,7 +754,8 @@
 | 6 | Verify element | Shows CSS selector for anchored element |
 | 7 | Verify owner | Shows owner email (or "Anonymous" if not logged in) |
 | 8 | Verify owner UID | Shows Firebase UID (or "N/A" if not available) |
-| 9 | Verify timestamp | Shows creation time (relative, e.g., "2 hours ago") |
+| 9 | Verify note ID | Shows the note's unique identifier |
+| 10 | Verify timestamp | Shows creation time (relative, e.g., "2 hours ago") |
 
 ---
 

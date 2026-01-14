@@ -229,6 +229,10 @@
     "message": "UID Proprietaire",
     "description": "Metadata label for note owner Firebase UID"
   },
+  "metadataNoteId": {
+    "message": "ID de la note",
+    "description": "Metadata label for sticky note ID"
+  },
   "notAvailable": {
     "message": "N/D",
     "description": "Placeholder when data is not available"

@@ -83,7 +83,7 @@ export class StickyNote {
     this.customPosition = this.position.custom || null;
     this.saveTimeout = null;
     this.isMetadataExpanded = false;
-    this.isMinimized = true; // Notes start minimized by default
+    this.isMinimized = false; // Notes start maximized by default
     
     // Store bound event handlers to allow proper removal
     this.boundHandleDragMove = this.handleDragMove.bind(this);
@@ -100,16 +100,16 @@ export class StickyNote {
    */
   render() {
     this.element = document.createElement('div');
-    this.element.className = `sn-note sn-theme-${this.theme} sn-hidden sn-minimized`;
+    this.element.className = `sn-note sn-theme-${this.theme} sn-hidden`;
     this.element.dataset.noteId = this.id;
     // Set initial z-index (will be increased when clicked for bring-to-front)
     this.element.style.zIndex = StickyNote.baseZIndex;
     
     this.element.innerHTML = `
       <div class="sn-note-header">
-        <button class="sn-note-btn sn-minimize-btn" title="${t('expand')}">
+        <button class="sn-note-btn sn-minimize-btn" title="${t('minimize')}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="6 15 12 9 18 15"/>
+            <polyline points="6 9 12 15 18 9"/>
           </svg>
         </button>
         <span class="sn-note-header-title"></span>
@@ -194,6 +194,10 @@ export class StickyNote {
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataOwnerId')}</span>
             <span class="sn-metadata-value sn-metadata-owner-id" title="${escapeHtml(this.ownerId || '')}">${escapeHtml(this.ownerId || t('notAvailable'))}</span>
+          </div>
+          <div class="sn-metadata-row">
+            <span class="sn-metadata-label">${t('metadataNoteId')}</span>
+            <span class="sn-metadata-value sn-metadata-note-id" title="${escapeHtml(this.id || '')}">${escapeHtml(this.id || t('notAvailable'))}</span>
           </div>
         </div>
       </div>
