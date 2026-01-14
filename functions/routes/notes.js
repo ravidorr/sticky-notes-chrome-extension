@@ -475,6 +475,7 @@ router.get('/commented', apiKeyAuth({ requiredScope: 'notes:read' }), async (req
     if (noteIds.size === 0) {
       return res.json({
         notes: [],
+        totalCommentedNotes: 0,
         pagination: {
           limit: limitNum,
           offset: offsetNum,
