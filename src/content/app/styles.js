@@ -442,6 +442,7 @@ export function getShadowStyles() {
     .sn-note {
       position: absolute;
       width: 280px;
+      max-width: 280px;
       min-height: 120px;
       background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%);
       border-radius: 4px;
@@ -451,7 +452,7 @@ export function getShadowStyles() {
         0 0 0 1px rgba(0, 0, 0, 0.05);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
       font-size: 14px;
-      transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+      transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, max-width 0.3s ease-in-out, width 0.3s ease-in-out;
       pointer-events: auto;
     }
 
@@ -727,14 +728,15 @@ export function getShadowStyles() {
        ========================================== */
     .sn-note.sn-minimized {
       min-height: auto;
-      width: fit-content;
+      width: 40px;
+      max-width: 40px;
     }
     
     .sn-note.sn-minimized .sn-note-header {
       border-radius: 4px;
       padding: 8px;
       justify-content: center;
-      width: fit-content;
+      width: auto;
     }
 
     /* Hide header elements when minimized */
@@ -749,19 +751,20 @@ export function getShadowStyles() {
     .sn-note .sn-note-footer {
       overflow: hidden;
       max-height: 1000px;
+      max-width: 280px;
       opacity: 1;
       transform: translateY(0);
-      transition: max-height 0.5s ease, opacity 0.5s ease, transform 0.5s ease;
+      transition: max-height 0.3s ease, max-width 0.3s ease, opacity 0.3s ease, transform 0.3s ease, padding 0.3s ease;
     }
     
     .sn-note.sn-minimized .sn-note-content,
     .sn-note.sn-minimized .sn-comment-section,
     .sn-note.sn-minimized .sn-note-footer {
       max-height: 0;
+      max-width: 0;
       opacity: 0;
       transform: translateY(-10px);
-      padding-top: 0;
-      padding-bottom: 0;
+      padding: 0;
       margin: 0;
     }
     
