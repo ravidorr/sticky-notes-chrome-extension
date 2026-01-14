@@ -88,13 +88,33 @@ export function bootstrap() {
   });
 
   // Handle context menu click
-  chrome.contextMenus.onClicked.addListener((info, tab) => {
+  chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === 'create-sticky-note' && tab?.id) {
-      chrome.tabs.sendMessage(tab.id, {
-        action: 'createNoteAtClick'
-      }).catch(error => {
-        log.warn('Failed to send createNoteAtClick message:', error);
-      });
+      // Use frameId to target the correct frame (main page or iframe)
+      const options = info.frameId !== undefined ? { frameId: info.frameId } : {};
+      
+      try {
+        await chrome.tabs.sendMessage(tab.id, { action: 'createNoteAtClick' }, options);
+      } catch (error) {
+        // Content script not in this frame - inject it dynamically (for iframes created after page load)
+        if (info.frameId !== undefined && info.frameId !== 0) {
+          try {
+            // Inject content script into the specific frame
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id, frameIds: [info.frameId] },
+              files: ['src/content/content.js']
+            });
+            
+            // Wait a moment for the script to initialize, then retry
+            await new Promise(resolve => setTimeout(resolve, 100));
+            await chrome.tabs.sendMessage(tab.id, { action: 'createNoteAtClick' }, options);
+          } catch (injectError) {
+            log.warn('Failed to inject content script into frame:', injectError);
+          }
+        } else {
+          log.warn('Failed to send createNoteAtClick message:', error);
+        }
+      }
     }
   });
 

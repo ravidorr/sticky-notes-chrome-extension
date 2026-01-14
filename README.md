@@ -12,6 +12,7 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 ### Core Features (Phase 1 - MVP)
 - **Element Selection Mode**: Click the "Add Note" button, then click any element on the page to anchor a note
 - **Right-Click Context Menu**: Right-click any element and select "Create Sticky Note Here" for quick note creation
+- **Iframe Support**: Attach notes to elements inside iframes (including cross-origin iframes like Figma, embedded apps)
 - **Smart CSS Selector Generation**: Automatically generates robust selectors using semantic attributes
 - **Visibility Intelligence**: Notes only appear when their anchor element is in view (IntersectionObserver)
 - **Local Persistence**: Notes are saved to Chrome's local storage with auto-save

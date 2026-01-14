@@ -525,6 +525,7 @@ export class NoteManager {
     
     // Create new note with metadata
     const browserInfo = getBrowserInfo();
+    const isTopFrame = window.self === window.top;
     const noteData = {
       url: this.getCurrentUrl(),
       selector: selector,
@@ -537,7 +538,9 @@ export class NoteManager {
         title: document.title,
         browser: `${browserInfo.browser}${browserInfo.version ? ' ' + browserInfo.version : ''}`,
         viewport: `${window.innerWidth}x${window.innerHeight}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        isTopFrame: isTopFrame,
+        frameUrl: isTopFrame ? null : window.location.href
       }
     };
     
@@ -579,6 +582,7 @@ export class NoteManager {
     
     // Create new note with metadata
     const browserInfo = getBrowserInfo();
+    const isTopFrame = window.self === window.top;
     const noteData = {
       url: this.getCurrentUrl(),
       selector: selector,
@@ -591,7 +595,9 @@ export class NoteManager {
         title: document.title,
         browser: `${browserInfo.browser}${browserInfo.version ? ' ' + browserInfo.version : ''}`,
         viewport: `${window.innerWidth}x${window.innerHeight}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        isTopFrame: isTopFrame,
+        frameUrl: isTopFrame ? null : window.location.href
       }
     };
     

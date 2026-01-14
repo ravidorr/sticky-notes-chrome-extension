@@ -1092,4 +1092,261 @@ describe('Content Script Logic', () => {
       expect(localThis.orphanedNotes.size).toBe(0);
     });
   });
+  
+  describe('iframe initialization guards', () => {
+    it('should skip initialization for about: URLs', () => {
+      function shouldInitialize(url, isTopFrame, innerWidth, innerHeight) {
+        // Skip non-persistent URL schemes
+        if (url.startsWith('about:') || url.startsWith('blob:') || url.startsWith('data:')) {
+          return false;
+        }
+        // For iframes, skip tiny frames
+        if (!isTopFrame) {
+          const minSize = 50;
+          if (innerWidth < minSize || innerHeight < minSize) {
+            return false;
+          }
+        }
+        return true;
+      }
+      
+      expect(shouldInitialize('about:blank', true, 800, 600)).toBe(false);
+      expect(shouldInitialize('about:srcdoc', false, 800, 600)).toBe(false);
+    });
+    
+    it('should skip initialization for blob: URLs', () => {
+      function shouldInitialize(url, isTopFrame, innerWidth, innerHeight) {
+        if (url.startsWith('about:') || url.startsWith('blob:') || url.startsWith('data:')) {
+          return false;
+        }
+        if (!isTopFrame) {
+          const minSize = 50;
+          if (innerWidth < minSize || innerHeight < minSize) {
+            return false;
+          }
+        }
+        return true;
+      }
+      
+      expect(shouldInitialize('blob:https://example.com/uuid', true, 800, 600)).toBe(false);
+      expect(shouldInitialize('blob:null/uuid', false, 800, 600)).toBe(false);
+    });
+    
+    it('should skip initialization for data: URLs', () => {
+      function shouldInitialize(url, isTopFrame, innerWidth, innerHeight) {
+        if (url.startsWith('about:') || url.startsWith('blob:') || url.startsWith('data:')) {
+          return false;
+        }
+        if (!isTopFrame) {
+          const minSize = 50;
+          if (innerWidth < minSize || innerHeight < minSize) {
+            return false;
+          }
+        }
+        return true;
+      }
+      
+      expect(shouldInitialize('data:text/html,<h1>Test</h1>', true, 800, 600)).toBe(false);
+    });
+    
+    it('should skip initialization for tiny iframes', () => {
+      function shouldInitialize(url, isTopFrame, innerWidth, innerHeight) {
+        if (url.startsWith('about:') || url.startsWith('blob:') || url.startsWith('data:')) {
+          return false;
+        }
+        if (!isTopFrame) {
+          const minSize = 50;
+          if (innerWidth < minSize || innerHeight < minSize) {
+            return false;
+          }
+        }
+        return true;
+      }
+      
+      // Tiny iframe (tracking pixel)
+      expect(shouldInitialize('https://tracker.com/pixel', false, 1, 1)).toBe(false);
+      // Small iframe (ad)
+      expect(shouldInitialize('https://ads.com/banner', false, 49, 100)).toBe(false);
+      expect(shouldInitialize('https://ads.com/banner', false, 100, 49)).toBe(false);
+    });
+    
+    it('should allow initialization for normal iframes', () => {
+      function shouldInitialize(url, isTopFrame, innerWidth, innerHeight) {
+        if (url.startsWith('about:') || url.startsWith('blob:') || url.startsWith('data:')) {
+          return false;
+        }
+        if (!isTopFrame) {
+          const minSize = 50;
+          if (innerWidth < minSize || innerHeight < minSize) {
+            return false;
+          }
+        }
+        return true;
+      }
+      
+      // Normal sized iframe
+      expect(shouldInitialize('https://app.figma.com/embed', false, 800, 600)).toBe(true);
+      // Minimum valid size
+      expect(shouldInitialize('https://example.com/iframe', false, 50, 50)).toBe(true);
+    });
+    
+    it('should allow initialization for main frame regardless of size', () => {
+      function shouldInitialize(url, isTopFrame, innerWidth, innerHeight) {
+        if (url.startsWith('about:') || url.startsWith('blob:') || url.startsWith('data:')) {
+          return false;
+        }
+        if (!isTopFrame) {
+          const minSize = 50;
+          if (innerWidth < minSize || innerHeight < minSize) {
+            return false;
+          }
+        }
+        return true;
+      }
+      
+      // Main frame - size check doesn't apply
+      expect(shouldInitialize('https://example.com', true, 800, 600)).toBe(true);
+      // Even small main frame (popup window)
+      expect(shouldInitialize('https://example.com', true, 30, 30)).toBe(true);
+    });
+    
+    it('should allow initialization for normal http/https pages', () => {
+      function shouldInitialize(url, isTopFrame, innerWidth, innerHeight) {
+        if (url.startsWith('about:') || url.startsWith('blob:') || url.startsWith('data:')) {
+          return false;
+        }
+        if (!isTopFrame) {
+          const minSize = 50;
+          if (innerWidth < minSize || innerHeight < minSize) {
+            return false;
+          }
+        }
+        return true;
+      }
+      
+      expect(shouldInitialize('https://www.google.com', true, 1920, 1080)).toBe(true);
+      expect(shouldInitialize('http://localhost:3000', true, 800, 600)).toBe(true);
+      expect(shouldInitialize('file:///Users/test/page.html', true, 800, 600)).toBe(true);
+    });
+  });
+  
+  describe('context menu frameId handling', () => {
+    it('should include frameId in message options when available', () => {
+      const localThis = {};
+      localThis.messages = [];
+      
+      function handleContextMenuClick(info, tab, sendMessage) {
+        if (info.menuItemId === 'create-sticky-note' && tab?.id) {
+          const options = info.frameId !== undefined ? { frameId: info.frameId } : {};
+          sendMessage(tab.id, { action: 'createNoteAtClick' }, options);
+        }
+      }
+      
+      const sendMessage = (tabId, message, options) => {
+        localThis.messages.push({ tabId, message, options });
+      };
+      
+      // Context menu clicked in an iframe (frameId = 123)
+      handleContextMenuClick(
+        { menuItemId: 'create-sticky-note', frameId: 123 },
+        { id: 1 },
+        sendMessage
+      );
+      
+      expect(localThis.messages).toHaveLength(1);
+      expect(localThis.messages[0].options).toEqual({ frameId: 123 });
+    });
+    
+    it('should send to main frame when frameId is 0', () => {
+      const localThis = {};
+      localThis.messages = [];
+      
+      function handleContextMenuClick(info, tab, sendMessage) {
+        if (info.menuItemId === 'create-sticky-note' && tab?.id) {
+          const options = info.frameId !== undefined ? { frameId: info.frameId } : {};
+          sendMessage(tab.id, { action: 'createNoteAtClick' }, options);
+        }
+      }
+      
+      const sendMessage = (tabId, message, options) => {
+        localThis.messages.push({ tabId, message, options });
+      };
+      
+      // Context menu clicked in main frame (frameId = 0)
+      handleContextMenuClick(
+        { menuItemId: 'create-sticky-note', frameId: 0 },
+        { id: 1 },
+        sendMessage
+      );
+      
+      expect(localThis.messages).toHaveLength(1);
+      expect(localThis.messages[0].options).toEqual({ frameId: 0 });
+    });
+    
+    it('should send without frameId option when frameId is undefined', () => {
+      const localThis = {};
+      localThis.messages = [];
+      
+      function handleContextMenuClick(info, tab, sendMessage) {
+        if (info.menuItemId === 'create-sticky-note' && tab?.id) {
+          const options = info.frameId !== undefined ? { frameId: info.frameId } : {};
+          sendMessage(tab.id, { action: 'createNoteAtClick' }, options);
+        }
+      }
+      
+      const sendMessage = (tabId, message, options) => {
+        localThis.messages.push({ tabId, message, options });
+      };
+      
+      // Context menu clicked without frameId info (older Chrome versions)
+      handleContextMenuClick(
+        { menuItemId: 'create-sticky-note' },
+        { id: 1 },
+        sendMessage
+      );
+      
+      expect(localThis.messages).toHaveLength(1);
+      expect(localThis.messages[0].options).toEqual({});
+    });
+  });
+  
+  describe('note metadata with frame context', () => {
+    it('should include isTopFrame and frameUrl in note metadata for main frame', () => {
+      function createNoteMetadata(url, title, isTopFrame) {
+        return {
+          url: url,
+          title: title,
+          browser: 'Test Browser',
+          viewport: '800x600',
+          timestamp: new Date().toISOString(),
+          isTopFrame: isTopFrame,
+          frameUrl: isTopFrame ? null : url
+        };
+      }
+      
+      const metadata = createNoteMetadata('https://example.com', 'Example', true);
+      
+      expect(metadata.isTopFrame).toBe(true);
+      expect(metadata.frameUrl).toBeNull();
+    });
+    
+    it('should include frameUrl in note metadata for iframes', () => {
+      function createNoteMetadata(url, title, isTopFrame) {
+        return {
+          url: url,
+          title: title,
+          browser: 'Test Browser',
+          viewport: '800x600',
+          timestamp: new Date().toISOString(),
+          isTopFrame: isTopFrame,
+          frameUrl: isTopFrame ? null : url
+        };
+      }
+      
+      const metadata = createNoteMetadata('https://app.figma.com/embed/123', 'Figma', false);
+      
+      expect(metadata.isTopFrame).toBe(false);
+      expect(metadata.frameUrl).toBe('https://app.figma.com/embed/123');
+    });
+  });
 });
