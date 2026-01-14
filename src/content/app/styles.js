@@ -693,6 +693,35 @@ export function getShadowStyles() {
       font-size: 10px;
     }
     
+    .sn-metadata-copy-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: #9ca3af;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s ease, color 0.15s ease;
+    }
+    
+    .sn-metadata-row:hover .sn-metadata-copy-btn {
+      opacity: 1;
+    }
+    
+    .sn-metadata-copy-btn:hover {
+      color: #4b5563;
+    }
+    
+    .sn-metadata-copy-btn svg {
+      width: 12px;
+      height: 12px;
+    }
+    
     /* ==========================================
        Minimized State & Animation
        ========================================== */

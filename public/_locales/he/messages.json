@@ -574,5 +574,9 @@
   "noteCreated": {
     "message": "הפתק נוצר",
     "description": "Toast message after creating a note from context menu"
+  },
+  "copyMetadata": {
+    "message": "העתק ללוח",
+    "description": "Tooltip for copy button in metadata panel"
   }
 }

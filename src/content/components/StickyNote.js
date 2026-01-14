@@ -175,30 +175,72 @@ export class StickyNote {
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataUrl')}</span>
             <span class="sn-metadata-value sn-metadata-url" title="${escapeHtml(this.metadata.url)}">${escapeHtml(this.truncateUrl(this.metadata.url))}</span>
+            <button class="sn-metadata-copy-btn" data-copy-value="${escapeHtml(this.metadata.url)}" title="${t('copyMetadata')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+            </button>
           </div>
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataBrowser')}</span>
             <span class="sn-metadata-value">${escapeHtml(this.metadata.browser)}</span>
+            <button class="sn-metadata-copy-btn" data-copy-value="${escapeHtml(this.metadata.browser)}" title="${t('copyMetadata')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+            </button>
           </div>
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataViewport')}</span>
             <span class="sn-metadata-value">${escapeHtml(this.metadata.viewport)}</span>
+            <button class="sn-metadata-copy-btn" data-copy-value="${escapeHtml(this.metadata.viewport)}" title="${t('copyMetadata')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+            </button>
           </div>
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataElement')}</span>
             <span class="sn-metadata-value sn-metadata-selector" title="${escapeHtml(this.selector)}">${escapeHtml(this.truncateSelector(this.selector))}</span>
+            <button class="sn-metadata-copy-btn" data-copy-value="${escapeHtml(this.selector)}" title="${t('copyMetadata')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+            </button>
           </div>
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataOwner')}</span>
             <span class="sn-metadata-value sn-metadata-owner" title="${escapeHtml(this.ownerEmail || '')}">${escapeHtml(this.ownerEmail || t('anonymous'))}</span>
+            <button class="sn-metadata-copy-btn" data-copy-value="${escapeHtml(this.ownerEmail || '')}" title="${t('copyMetadata')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+            </button>
           </div>
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataOwnerId')}</span>
             <span class="sn-metadata-value sn-metadata-owner-id" title="${escapeHtml(this.ownerId || '')}">${escapeHtml(this.ownerId || t('notAvailable'))}</span>
+            <button class="sn-metadata-copy-btn" data-copy-value="${escapeHtml(this.ownerId || '')}" title="${t('copyMetadata')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+            </button>
           </div>
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataNoteId')}</span>
             <span class="sn-metadata-value sn-metadata-note-id" title="${escapeHtml(this.id || '')}">${escapeHtml(this.id || t('notAvailable'))}</span>
+            <button class="sn-metadata-copy-btn" data-copy-value="${escapeHtml(this.id || '')}" title="${t('copyMetadata')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
@@ -296,6 +338,12 @@ export class StickyNote {
     // Metadata toggle
     const metadataToggle = this.element.querySelector('.sn-metadata-toggle');
     metadataToggle.addEventListener('click', this.toggleMetadata.bind(this));
+    
+    // Metadata copy buttons
+    const copyButtons = this.element.querySelectorAll('.sn-metadata-copy-btn');
+    copyButtons.forEach(btn => {
+      btn.addEventListener('click', this.handleMetadataCopy.bind(this));
+    });
     
     // Minimize button
     const minimizeBtn = this.element.querySelector('.sn-minimize-btn');
@@ -471,6 +519,30 @@ export class StickyNote {
     } else {
       panel.classList.add('sn-hidden');
       chevron.style.transform = '';
+    }
+  }
+  
+  /**
+   * Handle metadata copy button click
+   * @param {MouseEvent} event - Click event
+   */
+  async handleMetadataCopy(event) {
+    event.stopPropagation();
+    
+    const button = event.currentTarget;
+    const value = button.dataset.copyValue;
+    
+    if (!value) {
+      this.showToast(t('failedToCopy'), 'error');
+      return;
+    }
+    
+    try {
+      await navigator.clipboard.writeText(value);
+      this.showToast(t('copiedToClipboard'));
+    } catch (error) {
+      log.error('Failed to copy metadata:', error);
+      this.showToast(t('failedToCopy'), 'error');
     }
   }
   

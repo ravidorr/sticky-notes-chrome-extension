@@ -574,5 +574,9 @@
   "noteCreated": {
     "message": "Note creee",
     "description": "Toast message after creating a note from context menu"
+  },
+  "copyMetadata": {
+    "message": "Copier dans le presse-papiers",
+    "description": "Tooltip for copy button in metadata panel"
   }
 }

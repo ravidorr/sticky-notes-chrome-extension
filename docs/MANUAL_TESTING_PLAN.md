@@ -757,6 +757,33 @@
 | 9 | Verify note ID | Shows the note's unique identifier |
 | 10 | Verify timestamp | Shows creation time (relative, e.g., "2 hours ago") |
 
+### TEST-14.4: Metadata Copy Buttons
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create note and expand metadata panel | Metadata visible |
+| 2 | Hover over any metadata row | Copy icon appears on the right |
+| 3 | Click copy icon next to URL | "Copied to clipboard" toast appears |
+| 4 | Paste in text editor | Full URL copied (not truncated) |
+| 5 | Repeat for Browser | Browser string copied |
+| 6 | Repeat for Viewport | Viewport dimensions copied |
+| 7 | Repeat for Element | Full CSS selector copied (not truncated) |
+| 8 | Repeat for Owner | Owner email copied |
+| 9 | Repeat for Owner UID | Firebase UID copied |
+| 10 | Repeat for Note ID | Note ID copied |
+
+### TEST-14.5: Metadata Copy - Edge Cases
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create note without being logged in | Note exists |
+| 2 | Expand metadata, click copy on Owner | Empty string copied (or graceful handling) |
+| 3 | Click copy on Owner UID | Empty string copied (or graceful handling) |
+| 4 | Create note with very long URL | URL truncated in display |
+| 5 | Click copy on URL | Full URL copied (not truncated version) |
+| 6 | Create note with complex CSS selector | Selector truncated in display |
+| 7 | Click copy on Element | Full selector copied (not truncated version) |
+
 ---
 
 ## 15. Internationalization (i18n)

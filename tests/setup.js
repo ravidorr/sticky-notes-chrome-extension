@@ -160,6 +160,17 @@ global.cancelAnimationFrame = jest.fn(id => clearTimeout(id));
 // Mock document.execCommand (deprecated but still used)
 document.execCommand = jest.fn(() => true);
 
+// Mock navigator.clipboard
+Object.defineProperty(navigator, 'clipboard', {
+  value: {
+    writeText: jest.fn(() => Promise.resolve()),
+    readText: jest.fn(() => Promise.resolve('')),
+    write: jest.fn(() => Promise.resolve()),
+    read: jest.fn(() => Promise.resolve([]))
+  },
+  writable: true
+});
+
 // Mock window.getSelection
 window.getSelection = jest.fn(() => ({
   rangeCount: 0,

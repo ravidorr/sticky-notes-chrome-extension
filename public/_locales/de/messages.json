@@ -574,5 +574,9 @@
   "noteCreated": {
     "message": "Haftnotiz erstellt",
     "description": "Toast message after creating a note from context menu"
+  },
+  "copyMetadata": {
+    "message": "In Zwischenablage kopieren",
+    "description": "Tooltip for copy button in metadata panel"
   }
 }

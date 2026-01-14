@@ -574,5 +574,9 @@
   "noteCreated": {
     "message": "Sticky note created",
     "description": "Toast message after creating a note from context menu"
+  },
+  "copyMetadata": {
+    "message": "Copy to clipboard",
+    "description": "Tooltip for copy button in metadata panel"
   }
 }

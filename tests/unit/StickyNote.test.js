@@ -51,6 +51,9 @@ describe('StickyNote', () => {
       onThemeChange: onThemeChange,
       onDelete: onDelete
     });
+    
+    // Append note element to container for showToast to work
+    container.appendChild(note.element);
   });
   
   afterEach(() => {
@@ -206,6 +209,171 @@ describe('StickyNote', () => {
       expect(localThis.ownerIdElement.textContent).toBe('notAvailable');
       // Note ID should still show the actual ID
       expect(localThis.noteIdElement.textContent).toBe('test-note-1');
+    });
+
+    it('should create copy buttons for each metadata row', () => {
+      const localThis = {};
+      localThis.copyButtons = note.element.querySelectorAll('.sn-metadata-copy-btn');
+      // 7 metadata rows: URL, Browser, Viewport, Element, Owner, Owner UID, Note ID
+      expect(localThis.copyButtons.length).toBe(7);
+    });
+
+    it('should have data-copy-value attribute on copy buttons', () => {
+      const localThis = {};
+      localThis.copyButtons = note.element.querySelectorAll('.sn-metadata-copy-btn');
+      localThis.copyButtons.forEach(btn => {
+        expect(btn.hasAttribute('data-copy-value')).toBe(true);
+      });
+    });
+
+    it('should have tooltip on copy buttons', () => {
+      const localThis = {};
+      localThis.copyButtons = note.element.querySelectorAll('.sn-metadata-copy-btn');
+      localThis.copyButtons.forEach(btn => {
+        expect(btn.getAttribute('title')).toBe('copyMetadata');
+      });
+    });
+
+    it('should have SVG icon in copy buttons', () => {
+      const localThis = {};
+      localThis.copyButtons = note.element.querySelectorAll('.sn-metadata-copy-btn');
+      localThis.copyButtons.forEach(btn => {
+        expect(btn.querySelector('svg')).not.toBeNull();
+      });
+    });
+  });
+
+  describe('handleMetadataCopy', () => {
+    it('should copy metadata value to clipboard', async () => {
+      const localThis = {};
+      localThis.copyButton = note.element.querySelector('.sn-metadata-copy-btn[data-copy-value="test-note-1"]');
+      expect(localThis.copyButton).not.toBeNull();
+
+      await localThis.copyButton.click();
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('test-note-1');
+    });
+
+    it('should show success toast after copying', async () => {
+      const localThis = {};
+      localThis.showToastSpy = jest.spyOn(note, 'showToast');
+      localThis.copyButton = note.element.querySelector('.sn-metadata-copy-btn[data-copy-value="test-note-1"]');
+
+      await localThis.copyButton.click();
+
+      expect(localThis.showToastSpy).toHaveBeenCalledWith('copiedToClipboard');
+      localThis.showToastSpy.mockRestore();
+    });
+
+    it('should show error toast when clipboard write fails', async () => {
+      const localThis = {};
+      localThis.showToastSpy = jest.spyOn(note, 'showToast');
+      navigator.clipboard.writeText.mockRejectedValueOnce(new Error('Clipboard error'));
+
+      localThis.copyButton = note.element.querySelector('.sn-metadata-copy-btn[data-copy-value="test-note-1"]');
+      await localThis.copyButton.click();
+
+      expect(localThis.showToastSpy).toHaveBeenCalledWith('failedToCopy', 'error');
+      localThis.showToastSpy.mockRestore();
+    });
+
+    it('should show error toast when copy value is empty', async () => {
+      const localThis = {};
+      localThis.showToastSpy = jest.spyOn(note, 'showToast');
+      // Find a copy button with empty value (e.g., owner email when not provided)
+      localThis.copyButton = note.element.querySelector('.sn-metadata-copy-btn[data-copy-value=""]');
+      
+      if (localThis.copyButton) {
+        await localThis.copyButton.click();
+        expect(localThis.showToastSpy).toHaveBeenCalledWith('failedToCopy', 'error');
+      }
+      localThis.showToastSpy.mockRestore();
+    });
+
+    it('should stop event propagation when copy button is clicked', async () => {
+      const localThis = {};
+      localThis.copyButton = note.element.querySelector('.sn-metadata-copy-btn[data-copy-value="test-note-1"]');
+      localThis.stopPropagationCalled = false;
+
+      localThis.copyButton.addEventListener('click', (e) => {
+        // Check if stopPropagation was called by checking if event bubbles
+        localThis.originalStopPropagation = e.stopPropagation;
+        e.stopPropagation = () => {
+          localThis.stopPropagationCalled = true;
+          localThis.originalStopPropagation.call(e);
+        };
+      }, { capture: true });
+
+      await localThis.copyButton.click();
+      expect(localThis.stopPropagationCalled).toBe(true);
+    });
+
+    it('should copy full URL value not truncated display value', async () => {
+      const localThis = {};
+      localThis.fullUrl = 'https://example.com/very/long/path/that/would/be/truncated/in/display';
+      localThis.noteWithLongUrl = new StickyNote({
+        id: 'test-note-url',
+        anchor: anchor,
+        content: 'Test content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        metadata: {
+          url: localThis.fullUrl,
+          browser: 'Chrome 120',
+          viewport: '1920x1080'
+        },
+        onSave: onSave,
+        onThemeChange: onThemeChange,
+        onDelete: onDelete
+      });
+      container.appendChild(localThis.noteWithLongUrl.element);
+
+      // Find the URL copy button (first one)
+      localThis.copyButtons = localThis.noteWithLongUrl.element.querySelectorAll('.sn-metadata-copy-btn');
+      localThis.urlCopyButton = localThis.copyButtons[0];
+
+      await localThis.urlCopyButton.click();
+
+      // Should copy the full URL, not truncated
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(localThis.fullUrl);
+
+      localThis.noteWithLongUrl.destroy();
+    });
+
+    it('should copy correct values for all metadata fields', async () => {
+      const localThis = {};
+      localThis.noteWithAllMetadata = new StickyNote({
+        id: 'test-note-all-meta',
+        anchor: anchor,
+        selector: '#my-element > .child',
+        content: 'Test content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        metadata: {
+          url: 'https://test.com/page',
+          browser: 'Firefox 121',
+          viewport: '1280x720'
+        },
+        ownerEmail: 'owner@test.com',
+        ownerId: 'uid-abc-123',
+        onSave: onSave,
+        onThemeChange: onThemeChange,
+        onDelete: onDelete
+      });
+      container.appendChild(localThis.noteWithAllMetadata.element);
+
+      localThis.copyButtons = localThis.noteWithAllMetadata.element.querySelectorAll('.sn-metadata-copy-btn');
+      
+      // Test each copy button has the correct value
+      expect(localThis.copyButtons[0].dataset.copyValue).toBe('https://test.com/page'); // URL
+      expect(localThis.copyButtons[1].dataset.copyValue).toBe('Firefox 121'); // Browser
+      expect(localThis.copyButtons[2].dataset.copyValue).toBe('1280x720'); // Viewport
+      expect(localThis.copyButtons[3].dataset.copyValue).toBe('#my-element > .child'); // Element selector
+      expect(localThis.copyButtons[4].dataset.copyValue).toBe('owner@test.com'); // Owner email
+      expect(localThis.copyButtons[5].dataset.copyValue).toBe('uid-abc-123'); // Owner UID
+      expect(localThis.copyButtons[6].dataset.copyValue).toBe('test-note-all-meta'); // Note ID
+
+      localThis.noteWithAllMetadata.destroy();
     });
   });
   
