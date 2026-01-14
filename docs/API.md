@@ -195,6 +195,7 @@ curl "https://us-central1-PROJECT.cloudfunctions.net/api/notes?domain=github.com
       "sharedWith": [],
       "isShared": false,
       "ownerEmail": "owner@example.com",
+      "commentCount": 3,
       "createdAt": "2025-01-13T10:00:00.000Z",
       "updatedAt": "2025-01-13T10:00:00.000Z"
     }
@@ -231,6 +232,7 @@ Authorization: Bearer sk_live_...
   "sharedWith": [],
   "isShared": false,
   "ownerEmail": "owner@example.com",
+  "commentCount": 3,
   "createdAt": "2025-01-13T10:00:00.000Z",
   "updatedAt": "2025-01-13T10:00:00.000Z"
 }

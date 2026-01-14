@@ -10,6 +10,39 @@ import { validateNoteData, normalizeUrl, normalizeDomain, VALID_THEMES } from '.
 
 const router = Router();
 const NOTES_COLLECTION = 'notes';
+const COMMENTS_SUBCOLLECTION = 'comments';
+
+/**
+ * Get comment counts for multiple notes
+ * @param {FirebaseFirestore.Firestore} db - Firestore instance
+ * @param {string[]} noteIds - Array of note IDs
+ * @returns {Promise<Map<string, number>>} Map of noteId to comment count
+ */
+async function getCommentCounts(db, noteIds) {
+  if (noteIds.length === 0) {
+    return new Map();
+  }
+  
+  const counts = new Map();
+  
+  // Query comment counts in parallel (batch of 10 to avoid overwhelming Firestore)
+  const batchSize = 10;
+  for (let i = 0; i < noteIds.length; i += batchSize) {
+    const batch = noteIds.slice(i, i + batchSize);
+    const countPromises = batch.map(async (noteId) => {
+      const commentsRef = db.collection(NOTES_COLLECTION).doc(noteId).collection(COMMENTS_SUBCOLLECTION);
+      const snapshot = await commentsRef.count().get();
+      return { noteId, count: snapshot.data().count };
+    });
+    
+    const results = await Promise.all(countPromises);
+    results.forEach(({ noteId, count }) => {
+      counts.set(noteId, count);
+    });
+  }
+  
+  return counts;
+}
 
 /**
  * GET /api/notes
@@ -202,8 +235,18 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
     const paginatedNotes = notes.slice(offsetNum, offsetNum + limitNum);
     const hasMore = notes.length > offsetNum + limitNum;
     
+    // Get comment counts for paginated notes
+    const noteIds = paginatedNotes.map(note => note.id);
+    const commentCounts = await getCommentCounts(db, noteIds);
+    
+    // Add comment counts to notes
+    const notesWithComments = paginatedNotes.map(note => ({
+      ...note,
+      commentCount: commentCounts.get(note.id) || 0
+    }));
+    
     res.json({
-      notes: paginatedNotes,
+      notes: notesWithComments,
       filter: filterValue,
       pagination: {
         limit: limitNum,
@@ -705,6 +748,11 @@ router.get('/:id', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res)
       });
     }
     
+    // Get comment count for this note
+    const commentsRef = db.collection(NOTES_COLLECTION).doc(id).collection(COMMENTS_SUBCOLLECTION);
+    const commentCountSnapshot = await commentsRef.count().get();
+    const commentCount = commentCountSnapshot.data().count;
+    
     res.json({
       id: doc.id,
       url: data.url,
@@ -716,6 +764,7 @@ router.get('/:id', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res)
       sharedWith: data.sharedWith || [],
       isShared: !isOwner,
       ownerEmail: data.ownerEmail,
+      commentCount,
       createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
       updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
     });

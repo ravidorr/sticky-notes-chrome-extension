@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sticky Notes Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
   <div class="container">
@@ -337,7 +337,29 @@
         }
 
         const data = await response.json();
-        const notes = data.notes || [];
+        let notes = data.notes || [];
+        
+        // If viewing commented notes, fetch comments for each note
+        if (currentFilter === 'commented' && notes.length > 0) {
+          const notesWithComments = await Promise.all(
+            notes.map(async (note) => {
+              try {
+                const commentsRes = await fetch(`${API_BASE_URL}/notes/${note.id}/comments`, {
+                  headers: { 'Authorization': `Bearer ${API_KEY}` }
+                });
+                if (commentsRes.ok) {
+                  const commentsData = await commentsRes.json();
+                  return { ...note, comments: commentsData.comments || [] };
+                }
+              } catch (e) {
+                console.error('Error fetching comments for note:', note.id, e);
+              }
+              return { ...note, comments: [] };
+            })
+          );
+          notes = notesWithComments;
+        }
+        
         renderNotes(notes);
         
         const filterLabel = {
@@ -361,7 +383,7 @@
       }
 
       notesList.innerHTML = notes.map((note) => `
-        <div class="note-card theme-${note.theme || 'yellow'}" data-note-id="${note.id}">
+        <div class="note-card theme-${note.theme || 'yellow'}">
           <div class="note-header">
             ${note.isShared ? `<span class="note-badge shared" title="Shared by ${escapeHtml(note.ownerEmail || 'unknown')}">Shared by ${escapeHtml(note.ownerEmail || 'unknown')}</span>` : ''}
             <code class="note-selector">${escapeHtml(note.selector)}</code>
@@ -377,23 +399,25 @@
           <div class="note-content">
             ${escapeHtml(stripHtml(note.content)) || '<em class="no-content">No content</em>'}
           </div>
+          ${note.comments && note.comments.length > 0 ? `
+          <div class="note-comments">
+            <div class="comments-header">Comments (${note.comments.length})</div>
+            ${note.comments.map(comment => `
+              <div class="comment ${comment.parentId ? 'comment-reply' : ''}">
+                <span class="comment-author">${escapeHtml(comment.authorName || 'Unknown')}</span>
+                <span class="comment-date">${formatDate(comment.createdAt)}</span>
+                <div class="comment-content">${escapeHtml(comment.content)}</div>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
           <div class="note-footer">
             <span class="note-date" title="${note.createdAt}">
               ${formatDate(note.createdAt)}
             </span>
-            <button class="btn-reply" onclick="toggleComments('${note.id}')">Reply</button>
             <span class="note-id" title="Note ID: ${note.id}">
               ${note.id.substring(0, 8)}...
             </span>
-          </div>
-          <div class="comments-section" id="comments-${note.id}" style="display: none;">
-            <div class="comments-list" id="comments-list-${note.id}">
-              <span class="loading-comments">Loading comments...</span>
-            </div>
-            <div class="comment-input-row">
-              <input type="text" class="comment-input" id="comment-input-${note.id}" placeholder="Write a reply..." onkeypress="handleCommentKeypress(event, '${note.id}')">
-              <button class="btn-send" onclick="postComment('${note.id}')">Send</button>
-            </div>
           </div>
         </div>
       `).join('');
@@ -425,103 +449,9 @@
       });
     }
 
-    function getInitials(name) {
-      if (!name) return '?';
-      const words = name.trim().split(/\s+/);
-      if (words.length === 1) {
-        return words[0].substring(0, 2).toUpperCase();
-      }
-      return (words[0][0] + words[words.length - 1][0]).toUpperCase();
-    }
-
-    function getAvatarColor(name) {
-      const colors = ['#6cb6ff', '#3fb950', '#f778ba', '#ffd93d', '#a371f7', '#f0883e'];
-      let hash = 0;
-      for (let i = 0; i < (name || '').length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
-      }
-      return colors[Math.abs(hash) % colors.length];
-    }
-
     function showStatus(message, type) {
       status.textContent = message;
       status.className = `status status-${type}`;
-    }
-
-    // Comments functionality
-    async function toggleComments(noteId) {
-      const section = document.getElementById(`comments-${noteId}`);
-      const isVisible = section.style.display !== 'none';
-      
-      if (isVisible) {
-        section.style.display = 'none';
-      } else {
-        section.style.display = 'block';
-        await loadComments(noteId);
-      }
-    }
-
-    async function loadComments(noteId) {
-      const listEl = document.getElementById(`comments-list-${noteId}`);
-      
-      try {
-        const response = await fetch(`${API_BASE_URL}/notes/${noteId}/comments`, {
-          headers: { 'Authorization': `Bearer ${API_KEY}` }
-        });
-        
-        if (!response.ok) throw new Error('Failed to load comments');
-        
-        const data = await response.json();
-        const comments = data.comments || [];
-        
-        if (comments.length === 0) {
-          listEl.innerHTML = '<span class="no-comments">No comments yet</span>';
-        } else {
-          listEl.innerHTML = comments.map(comment => `
-            <div class="comment">
-              <span class="comment-avatar" style="background-color: ${getAvatarColor(comment.authorName)}">${getInitials(comment.authorName)}</span>
-              <div class="comment-body">
-                <span class="comment-author">${escapeHtml(comment.authorName)}</span>
-                <span class="comment-text">${escapeHtml(comment.content)}</span>
-                <span class="comment-date">${formatDate(comment.createdAt)}</span>
-              </div>
-            </div>
-          `).join('');
-        }
-      } catch (error) {
-        listEl.innerHTML = '<span class="error-comments">Failed to load comments</span>';
-      }
-    }
-
-    async function postComment(noteId) {
-      const inputEl = document.getElementById(`comment-input-${noteId}`);
-      const content = inputEl.value.trim();
-      
-      if (!content) return;
-      
-      try {
-        const response = await fetch(`${API_BASE_URL}/notes/${noteId}/comments`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ content })
-        });
-        
-        if (!response.ok) throw new Error('Failed to post comment');
-        
-        inputEl.value = '';
-        await loadComments(noteId);
-      } catch (error) {
-        showStatus('Failed to post comment', 'error');
-      }
-    }
-
-    function handleCommentKeypress(event, noteId) {
-      if (event.key === 'Enter') {
-        postComment(noteId);
-      }
     }
 
     // Event listeners
