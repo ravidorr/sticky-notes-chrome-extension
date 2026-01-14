@@ -114,6 +114,7 @@ Create a new sticky note on a webpage.
 ### get_note_stats
 
 Get statistics about your notes. Returns:
+- User info (email, uid)
 - Total notes count (owned + shared)
 - Breakdown by theme
 - Number of domains

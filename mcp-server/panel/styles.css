@@ -54,6 +54,16 @@ body {
   cursor: pointer;
 }
 
+.key-indicator {
+  font-family: 'SF Mono', Consolas, monospace;
+  font-size: 0.75rem;
+  color: #666;
+  background-color: #252525;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: none;
+}
+
 /* Stats Dashboard */
 .stats-dashboard {
   display: grid;

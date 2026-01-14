@@ -11,6 +11,7 @@
     <header class="header">
       <h1>Sticky Notes Dashboard</h1>
       <div class="controls">
+        <span id="keyIndicator" class="key-indicator" title="Connected API key"></span>
         <label class="auto-refresh">
           <input type="checkbox" id="autoRefresh">
           Auto-refresh
@@ -121,6 +122,17 @@
     const status = document.getElementById('status');
     const autoRefreshCheckbox = document.getElementById('autoRefresh');
     const filterTabs = document.querySelectorAll('.filter-tab');
+    const keyIndicator = document.getElementById('keyIndicator');
+    
+    // Update key indicator display
+    function updateKeyIndicator() {
+      if (API_KEY && API_KEY.length > 16) {
+        keyIndicator.textContent = `Key: ${API_KEY.substring(0, 12)}...${API_KEY.slice(-4)}`;
+        keyIndicator.style.display = 'inline';
+      } else {
+        keyIndicator.style.display = 'none';
+      }
+    }
     
     let refreshInterval = null;
 
@@ -133,6 +145,7 @@
 
     // Show API key section if not set
     function checkApiKey() {
+      updateKeyIndicator();
       if (!API_KEY) {
         showApiKeySection();
       } else {
@@ -160,6 +173,7 @@
       if (key) {
         API_KEY = key;
         localStorage.setItem('sticky_notes_api_key', key);
+        updateKeyIndicator();
         hideApiKeySection();
         showStatus('API key saved!', 'success');
         loadStats();
@@ -200,6 +214,13 @@
         document.getElementById('legendBlue').textContent = themes.blue || 0;
         document.getElementById('legendGreen').textContent = themes.green || 0;
         document.getElementById('legendPink').textContent = themes.pink || 0;
+        
+        // Update key indicator with user email
+        if (stats.user?.email) {
+          keyIndicator.textContent = stats.user.email;
+          keyIndicator.title = `Connected as ${stats.user.email}`;
+          keyIndicator.style.display = 'inline';
+        }
         
       } catch (error) {
         console.error('Error loading stats:', error);

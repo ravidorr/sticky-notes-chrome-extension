@@ -789,6 +789,10 @@ Authorization: Bearer sk_live_...
 
 ```json
 {
+  "user": {
+    "email": "user@example.com",
+    "uid": "abc123xyz"
+  },
   "total": 42,
   "owned": 35,
   "shared": 7,
@@ -806,6 +810,9 @@ Authorization: Bearer sk_live_...
 
 | Field | Description |
 |-------|-------------|
+| `user` | Authenticated user info |
+| `user.email` | User's email address |
+| `user.uid` | User's Firebase UID |
 | `total` | Total notes (owned + shared) |
 | `owned` | Notes you created |
 | `shared` | Notes shared with you by others |

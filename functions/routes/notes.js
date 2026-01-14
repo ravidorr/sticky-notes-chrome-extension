@@ -418,6 +418,10 @@ router.get('/stats', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, re
     stats.total = stats.owned + stats.shared;
     
     res.json({
+      user: {
+        email: req.user.email,
+        uid: req.user.uid
+      },
       total: stats.total,
       owned: stats.owned,
       shared: stats.shared,
