@@ -250,10 +250,15 @@ async function main() {
     await buildContent();
     await buildBackground();
     await buildPopup();
-    await createZipFile();
     
-    console.log('\nBuild complete! Output in dist/chrome/');
-    console.log('Zip file ready for upload: dist/chrome.zip');
+    // Only create zip for production builds
+    if (!isDevelopment) {
+      await createZipFile();
+      console.log('\nBuild complete! Output in dist/chrome/');
+      console.log('Zip file ready for upload: dist/chrome.zip');
+    } else {
+      console.log('\nBuild complete! Output in dist/chrome/');
+    }
   } catch (error) {
     console.error('Build failed:', error);
     process.exit(1);
