@@ -421,7 +421,7 @@ describe('Firebase Notes', () => {
     });
 
     it('should throw error when max shares reached', async () => {
-      const maxSharedWith = Array(50).fill('user@example.com').map((e, i) => `user${i}@example.com`);
+      const maxSharedWith = Array(50).fill('user@example.com').map((_email, index) => `user${index}@example.com`);
       
       localThis.deps.getDoc.mockResolvedValue({
         exists: () => true,

@@ -185,22 +185,22 @@ export class NotificationManager {
       });
 
       // Keyboard handling
-      const handleKeydown = (e) => {
-        if (e.key === 'Escape') {
-          e.preventDefault();
+      const handleKeydown = (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
           cleanup({ confirmed: false });
-        } else if (e.key === 'Enter' && inputEl && e.target === inputEl) {
+        } else if (event.key === 'Enter' && inputEl && event.target === inputEl) {
           // Use e.target instead of document.activeElement because in shadow DOM,
           // document.activeElement returns the shadow host, not the focused element
-          e.preventDefault();
+          event.preventDefault();
           cleanup({ confirmed: true, value: inputEl.value });
         }
       };
       overlay.addEventListener('keydown', handleKeydown);
 
       // Close on backdrop click
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
           cleanup({ confirmed: false });
         }
       });
@@ -448,14 +448,16 @@ export class NotificationManager {
       cleanup();
     });
 
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
         if (onConfirm) onConfirm(input.value);
         cleanup();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        if (onCancel) onCancel();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        if (onCancel) {
+          onCancel();
+        }
         cleanup();
       }
     });

@@ -61,6 +61,7 @@ describe('i18n Module', () => {
       const result = t('greetUser', ['John']);
       
       expect(localThis.mockGetMessage).toHaveBeenCalledWith('greetUser', ['John']);
+      expect(result).toBe('Hello John');
     });
 
     it('should return key when chrome.i18n throws', () => {

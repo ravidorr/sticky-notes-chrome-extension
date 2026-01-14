@@ -139,11 +139,11 @@ function initTheme(toggleSelectors = ['#theme-toggle', '#theme-toggle-mobile']) 
     let mediaQueryHandler = null;
     if (typeof window !== 'undefined' && window.matchMedia) {
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        mediaQueryHandler = (e) => {
+        mediaQueryHandler = (event) => {
             // Only auto-switch if user hasn't set a manual preference
             const stored = localStorage.getItem(THEME_STORAGE_KEY);
             if (!stored) {
-                applyTheme(e.matches ? THEME_DARK : THEME_LIGHT);
+                applyTheme(event.matches ? THEME_DARK : THEME_LIGHT);
             }
         };
         mediaQuery.addEventListener('change', mediaQueryHandler);
@@ -298,13 +298,13 @@ function initSmoothScroll(selector = 'a[href^="#"]') {
     const handlers = [];
 
     links.forEach(link => {
-        const handleClick = (e) => {
+        const handleClick = (event) => {
             const href = link.getAttribute('href');
             if (href === '#') return;
             
             const target = document.querySelector(href);
             if (target) {
-                e.preventDefault();
+                event.preventDefault();
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         };
@@ -388,12 +388,12 @@ function createNote(parent, id, state, onDelete) {
     `;
 
     // Stop propagation to prevent re-triggering selection
-    noteDiv.addEventListener('click', (e) => e.stopPropagation());
+    noteDiv.addEventListener('click', (event) => event.stopPropagation());
 
     // Handle close button
     const closeBtn = noteDiv.querySelector('.note-close');
-    closeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
+    closeBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
         noteDiv.remove();
         state.notes.delete(id);
         if (onDelete) onDelete();

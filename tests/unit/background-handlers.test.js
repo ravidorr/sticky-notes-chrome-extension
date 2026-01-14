@@ -340,8 +340,8 @@ describe('Background Handlers', () => {
       
       expect(result.success).toBe(true);
       expect(result.notes).toHaveLength(2);
-      expect(result.notes.map(n => n.id)).toContain('1');
-      expect(result.notes.map(n => n.id)).toContain('3');
+      expect(result.notes.map((note) => note.id)).toContain('1');
+      expect(result.notes.map((note) => note.id)).toContain('3');
     });
 
     it('should handle invalid note URLs gracefully', async () => {

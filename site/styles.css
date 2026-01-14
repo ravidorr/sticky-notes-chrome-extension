@@ -1862,13 +1862,6 @@ svg.editor-btn {
     padding-left: 1.75rem;
 }
 
-/* --- Comparison Table Accessibility --- */
-.comparison-table td .icon-yes + span,
-.comparison-table td .icon-no + span,
-.comparison-table td .icon-partial + span {
-    /* Text labels next to icons are visible */
-}
-
 /* Mobile demo simplification */
 @media (max-width: 480px) {
     .demo-container {

@@ -294,9 +294,9 @@ export class StickyNote {
     }
     
     // Bring to front when clicking anywhere on the note
-    this.element.addEventListener('click', (e) => {
+    this.element.addEventListener('click', (event) => {
       // Don't bring to front if clicking inside a confirm dialog
-      if (e.target.closest('.sn-confirm-backdrop')) return;
+      if (event.target.closest('.sn-confirm-backdrop')) return;
       this.bringToFront();
     });
   }
@@ -660,7 +660,6 @@ export class StickyNote {
     const anchorRect = this.anchor.getBoundingClientRect();
     const noteRect = this.element.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
     
     // For wide elements (more than 70% of viewport), use a smarter positioning
     const isWideElement = anchorRect.width > viewportWidth * 0.7;

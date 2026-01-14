@@ -266,12 +266,12 @@ export class RichEditor {
     confirmBtn.addEventListener('click', insertLink);
     cancelBtn.addEventListener('click', cleanup);
     
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
         insertLink();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
         cleanup();
       }
     });

@@ -432,8 +432,8 @@ describe('Content Script Logic', () => {
     it('should track last right-clicked element', () => {
       let lastRightClickedElement = null;
       
-      document.addEventListener('contextmenu', (e) => {
-        lastRightClickedElement = e.target;
+      document.addEventListener('contextmenu', (event) => {
+        lastRightClickedElement = event.target;
       }, true);
       
       const element = document.getElementById('title');
@@ -449,8 +449,8 @@ describe('Content Script Logic', () => {
     it('should update tracked element on subsequent right-clicks', () => {
       let lastRightClickedElement = null;
       
-      const handler = (e) => {
-        lastRightClickedElement = e.target;
+      const handler = (event) => {
+        lastRightClickedElement = event .target;
       };
       document.addEventListener('contextmenu', handler, true);
       
@@ -489,7 +489,7 @@ describe('Content Script Logic', () => {
     });
     
     it('should not create note without right-clicked element', async () => {
-      let lastRightClickedElement = null;
+      const lastRightClickedElement = null;
       let noteCreated = false;
       
       async function createNoteAtClick() {
@@ -507,7 +507,7 @@ describe('Content Script Logic', () => {
     });
     
     it('should create note with tracked element', async () => {
-      let lastRightClickedElement = document.getElementById('title');
+      const lastRightClickedElement = document.getElementById('title');
       let createdSelector = null;
       
       function generateSelector(element) {
@@ -955,8 +955,8 @@ describe('Content Script Logic', () => {
       const notes = getAllNotesWithOrphanStatus();
       
       expect(notes).toHaveLength(2);
-      expect(notes.find(n => n.id === 'active-1').isOrphaned).toBe(false);
-      expect(notes.find(n => n.id === 'orphan-1').isOrphaned).toBe(true);
+      expect(notes.find((note) => note.id === 'active-1').isOrphaned).toBe(false);
+      expect(notes.find((note) => note.id === 'orphan-1').isOrphaned).toBe(true);
     });
     
     it('should position orphaned note centered on viewport', () => {

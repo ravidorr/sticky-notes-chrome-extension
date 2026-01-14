@@ -149,7 +149,7 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
     }
     
     // Sort all notes by createdAt desc
-    notes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    notes.sort((noteA, noteB) => new Date(noteB.createdAt) - new Date(noteA.createdAt));
     
     // Apply pagination
     const paginatedNotes = notes.slice(offsetNum, offsetNum + limitNum);
@@ -257,7 +257,7 @@ router.get('/search', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
     }
     
     // Sort by createdAt desc and limit results
-    results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    results.sort((resultA, resultB) => new Date(resultB.createdAt) - new Date(resultA.createdAt));
     const limitedResults = results.slice(0, limitNum);
     
     res.json({
@@ -366,7 +366,7 @@ router.get('/export', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
     }
     
     // Sort by createdAt desc
-    notes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    notes.sort((noteA, noteB) => new Date(noteB.createdAt) - new Date(noteA.createdAt));
     
     const exportData = {
       exportedAt: new Date().toISOString(),
@@ -826,7 +826,7 @@ router.delete('/:id/share/:email', apiKeyAuth({ requiredScope: 'notes:write' }),
       });
     }
     
-    const sharedWith = (data.sharedWith || []).filter(e => e !== normalizedEmail);
+    const sharedWith = (data.sharedWith || []).filter(email => email !== normalizedEmail);
     
     await docRef.update({
       sharedWith,

@@ -86,34 +86,34 @@ export class ConfirmDialog {
       
       // Event handlers - use mouseup instead of click for more reliable capture
       // Also stop propagation to prevent document-level handlers from interfering
-      const handleButtonMouseDown = (e) => {
-        e.stopPropagation();
-        e.stopImmediatePropagation();
+      const handleButtonMouseDown = (event) => {
+        event.stopPropagation();
+        event.stopImmediatePropagation();
       };
       
       confirmBtn.addEventListener('mousedown', handleButtonMouseDown);
       cancelBtn.addEventListener('mousedown', handleButtonMouseDown);
       
-      confirmBtn.addEventListener('mouseup', (e) => {
-        e.stopPropagation();
-        e.stopImmediatePropagation();
+      confirmBtn.addEventListener('mouseup', (event) => {
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         cleanup(true);
       });
-      cancelBtn.addEventListener('mouseup', (e) => {
-        e.stopPropagation();
-        e.stopImmediatePropagation();
+      cancelBtn.addEventListener('mouseup', (event) => {
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         cleanup(false);
       });
       
       // Also keep click handlers as backup
-      confirmBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        e.stopImmediatePropagation();
+      confirmBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         cleanup(true);
       });
-      cancelBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        e.stopImmediatePropagation();
+      cancelBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         cleanup(false);
       });
       
