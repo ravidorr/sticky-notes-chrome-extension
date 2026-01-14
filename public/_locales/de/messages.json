@@ -107,6 +107,14 @@
     "message": "Loschen",
     "description": "Tooltip for delete button"
   },
+  "minimize": {
+    "message": "Notiz minimieren",
+    "description": "Tooltip for minimize button when note is expanded"
+  },
+  "expand": {
+    "message": "Notiz erweitern",
+    "description": "Tooltip for expand button when note is minimized"
+  },
 
   "notePlaceholder": {
     "message": "Schreiben Sie hier Ihre Notiz...",

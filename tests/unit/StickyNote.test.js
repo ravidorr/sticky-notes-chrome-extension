@@ -868,4 +868,92 @@ describe('StickyNote', () => {
       expect(localThis.updatePositionSpy).toHaveBeenCalled();
     });
   });
+  
+  describe('minimize/maximize', () => {
+    it('should start minimized by default', () => {
+      expect(note.isMinimized).toBe(true);
+      expect(note.element.classList.contains('sn-minimized')).toBe(true);
+    });
+    
+    it('should create minimize button', () => {
+      const minimizeBtn = note.element.querySelector('.sn-minimize-btn');
+      expect(minimizeBtn).not.toBeNull();
+    });
+    
+    it('should have toggleMinimize method', () => {
+      expect(typeof note.toggleMinimize).toBe('function');
+    });
+    
+    it('should toggle minimized state when toggleMinimize is called', () => {
+      // Starts minimized
+      expect(note.isMinimized).toBe(true);
+      expect(note.element.classList.contains('sn-minimized')).toBe(true);
+      
+      // Toggle to expanded
+      note.toggleMinimize();
+      expect(note.isMinimized).toBe(false);
+      expect(note.element.classList.contains('sn-minimized')).toBe(false);
+      
+      // Toggle back to minimized
+      note.toggleMinimize();
+      expect(note.isMinimized).toBe(true);
+      expect(note.element.classList.contains('sn-minimized')).toBe(true);
+    });
+    
+    it('should update button title based on state', () => {
+      const localThis = {};
+      localThis.minimizeBtn = note.element.querySelector('.sn-minimize-btn');
+      
+      // When minimized, title should be "expand"
+      expect(localThis.minimizeBtn.title).toBe('expand');
+      
+      // After expanding
+      note.toggleMinimize();
+      expect(localThis.minimizeBtn.title).toBe('minimize');
+      
+      // After minimizing again
+      note.toggleMinimize();
+      expect(localThis.minimizeBtn.title).toBe('expand');
+    });
+    
+    it('should call toggleMinimize when minimize button is clicked', () => {
+      const localThis = {};
+      localThis.toggleMinimizeSpy = jest.spyOn(note, 'toggleMinimize');
+      localThis.minimizeBtn = note.element.querySelector('.sn-minimize-btn');
+      
+      localThis.minimizeBtn.click();
+      
+      expect(localThis.toggleMinimizeSpy).toHaveBeenCalled();
+    });
+    
+    it('should stop propagation when minimize button is clicked', () => {
+      const localThis = {};
+      localThis.minimizeBtn = note.element.querySelector('.sn-minimize-btn');
+      localThis.clickEvent = new MouseEvent('click', { bubbles: true });
+      localThis.stopPropagationSpy = jest.spyOn(localThis.clickEvent, 'stopPropagation');
+      
+      localThis.minimizeBtn.dispatchEvent(localThis.clickEvent);
+      
+      expect(localThis.stopPropagationSpy).toHaveBeenCalled();
+    });
+    
+    it('should update button icon when toggling', () => {
+      const localThis = {};
+      localThis.minimizeBtn = note.element.querySelector('.sn-minimize-btn');
+      
+      // Get initial SVG (up arrow for expand)
+      localThis.initialSvg = localThis.minimizeBtn.innerHTML;
+      expect(localThis.initialSvg).toContain('6 15 12 9 18 15'); // up arrow points
+      
+      // Toggle to expanded state
+      note.toggleMinimize();
+      localThis.expandedSvg = localThis.minimizeBtn.innerHTML;
+      expect(localThis.expandedSvg).toContain('6 9 12 15 18 9'); // down arrow points
+      
+      // Toggle back to minimized
+      note.toggleMinimize();
+      localThis.minimizedSvg = localThis.minimizeBtn.innerHTML;
+      expect(localThis.minimizedSvg).toContain('6 15 12 9 18 15'); // up arrow points
+    });
+  });
 });

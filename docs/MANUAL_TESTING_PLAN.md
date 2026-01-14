@@ -295,6 +295,43 @@
 | 2 | Resize browser window | Note updates position relative to anchor |
 | 3 | Note stays visible | Does not go off-screen |
 
+### TEST-6.6: Minimize/Maximize - Default State
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create a new note | Note appears |
+| 2 | Observe note state | Note is minimized by default (only header visible) |
+| 3 | Content, comments, footer | Hidden when minimized |
+
+### TEST-6.7: Minimize/Maximize - Expand Note
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Find minimized note | Note shows only header with up arrow button |
+| 2 | Click the up arrow button | Note expands to full size |
+| 3 | Content area visible | Editor, comments section, and footer appear |
+| 4 | Button icon changes | Now shows down arrow |
+| 5 | Button tooltip | Shows "Minimize note" |
+
+### TEST-6.8: Minimize/Maximize - Collapse Note
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Find expanded note | Note shows full content with down arrow button |
+| 2 | Click the down arrow button | Note collapses to header only |
+| 3 | Content hidden | Editor, comments, footer disappear |
+| 4 | Button icon changes | Now shows up arrow |
+| 5 | Button tooltip | Shows "Expand note" |
+
+### TEST-6.9: Minimize/Maximize - Multiple Notes
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create 3 notes on page | All notes minimized by default |
+| 2 | Expand one note | Only that note expands, others stay minimized |
+| 3 | Expand another note | Both notes now expanded |
+| 4 | Page remains readable | Minimized notes reduce clutter |
+
 ---
 
 ## 7. Note Persistence (Local Storage)

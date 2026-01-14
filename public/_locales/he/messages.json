@@ -107,6 +107,14 @@
     "message": "מחק",
     "description": "Tooltip for delete button"
   },
+  "minimize": {
+    "message": "מזער פתקית",
+    "description": "Tooltip for minimize button when note is expanded"
+  },
+  "expand": {
+    "message": "הרחב פתקית",
+    "description": "Tooltip for expand button when note is minimized"
+  },
 
   "notePlaceholder": {
     "message": "כתבו את הפתקית שלכם כאן...",

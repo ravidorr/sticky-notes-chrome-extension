@@ -688,6 +688,23 @@ export function getShadowStyles() {
       font-size: 10px;
     }
     
+    /* ==========================================
+       Minimized State
+       ========================================== */
+    .sn-note.sn-minimized {
+      min-height: auto;
+    }
+    
+    .sn-note.sn-minimized .sn-note-content,
+    .sn-note.sn-minimized .sn-comment-section,
+    .sn-note.sn-minimized .sn-note-footer {
+      display: none;
+    }
+    
+    .sn-note.sn-minimized .sn-note-header {
+      border-radius: 4px;
+    }
+    
     ${RichEditor.getStyles()}
     
     ${CommentSection.getStyles()}

@@ -208,9 +208,11 @@ See `.cursor/rules/i18n.mdc` for detailed i18n guidelines.
 
 5. **Repositioning**: Click the position button to snap the note to a different corner, or drag the header to position freely.
 
-6. **Sharing**: Click the share button and enter a collaborator's email address.
+6. **Minimizing Notes**: Notes start minimized by default to reduce visual clutter. Click the up arrow to expand a note, or the down arrow to minimize it again.
 
-7. **Deleting**: Click the trash icon to delete a note.
+7. **Sharing**: Click the share button and enter a collaborator's email address.
+
+8. **Deleting**: Click the trash icon to delete a note.
 
 ## Tech Stack
 

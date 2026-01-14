@@ -107,6 +107,14 @@
     "message": "Supprimer",
     "description": "Tooltip for delete button"
   },
+  "minimize": {
+    "message": "Reduire la note",
+    "description": "Tooltip for minimize button when note is expanded"
+  },
+  "expand": {
+    "message": "Agrandir la note",
+    "description": "Tooltip for expand button when note is minimized"
+  },
 
   "notePlaceholder": {
     "message": "Ecrivez votre note ici...",

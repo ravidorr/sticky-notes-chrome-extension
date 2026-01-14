@@ -81,6 +81,7 @@ export class StickyNote {
     this.customPosition = this.position.custom || null;
     this.saveTimeout = null;
     this.isMetadataExpanded = false;
+    this.isMinimized = true; // Notes start minimized by default
     
     // Store bound event handlers to allow proper removal
     this.boundHandleDragMove = this.handleDragMove.bind(this);
@@ -97,7 +98,7 @@ export class StickyNote {
    */
   render() {
     this.element = document.createElement('div');
-    this.element.className = `sn-note sn-theme-${this.theme} sn-hidden`;
+    this.element.className = `sn-note sn-theme-${this.theme} sn-hidden sn-minimized`;
     this.element.dataset.noteId = this.id;
     // Set initial z-index (will be increased when clicked for bring-to-front)
     this.element.style.zIndex = StickyNote.baseZIndex;
@@ -106,6 +107,11 @@ export class StickyNote {
       <div class="sn-note-header">
         <span class="sn-note-header-title"></span>
         <div class="sn-note-header-actions">
+          <button class="sn-note-btn sn-minimize-btn" title="${t('expand')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 15 12 9 18 15"/>
+            </svg>
+          </button>
           <button class="sn-note-btn sn-copy-md-btn" title="${t('copyAsMarkdown')}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M8 4l2 2M16 4l-2 2"/>
@@ -275,6 +281,10 @@ export class StickyNote {
     // Metadata toggle
     const metadataToggle = this.element.querySelector('.sn-metadata-toggle');
     metadataToggle.addEventListener('click', this.toggleMetadata.bind(this));
+    
+    // Minimize button
+    const minimizeBtn = this.element.querySelector('.sn-minimize-btn');
+    minimizeBtn.addEventListener('click', this.handleMinimizeClick.bind(this));
     
     // Global mouse events for dragging (use stored bound handlers for proper removal)
     document.addEventListener('mousemove', this.boundHandleDragMove);
@@ -446,6 +456,44 @@ export class StickyNote {
     } else {
       panel.classList.add('sn-hidden');
       chevron.style.transform = '';
+    }
+  }
+  
+  /**
+   * Handle minimize button click
+   * @param {MouseEvent} event - Click event
+   */
+  handleMinimizeClick(event) {
+    event.stopPropagation();
+    this.toggleMinimize();
+  }
+  
+  /**
+   * Toggle minimized state
+   */
+  toggleMinimize() {
+    this.isMinimized = !this.isMinimized;
+    
+    const minimizeBtn = this.element.querySelector('.sn-minimize-btn');
+    
+    if (this.isMinimized) {
+      this.element.classList.add('sn-minimized');
+      // Update button to show expand icon (up arrow)
+      minimizeBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 15 12 9 18 15"/>
+        </svg>
+      `;
+      minimizeBtn.title = t('expand');
+    } else {
+      this.element.classList.remove('sn-minimized');
+      // Update button to show minimize icon (down arrow)
+      minimizeBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      `;
+      minimizeBtn.title = t('minimize');
     }
   }
   
