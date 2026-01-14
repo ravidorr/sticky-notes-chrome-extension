@@ -142,6 +142,12 @@ export class StickyNotesApp {
       throw new Error('Extension context invalidated');
     }
     
+    // Check if chrome.runtime is available (becomes undefined when context is invalidated)
+    if (!chrome?.runtime?.sendMessage) {
+      this.handleContextInvalidated();
+      throw new Error('Extension context invalidated');
+    }
+    
     try {
       return await chrome.runtime.sendMessage(message);
     } catch (error) {

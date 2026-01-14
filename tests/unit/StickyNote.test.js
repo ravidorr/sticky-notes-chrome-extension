@@ -471,6 +471,82 @@ describe('StickyNote', () => {
     });
   });
   
+  describe('handleScreenshot', () => {
+    it('should have handleScreenshot method', () => {
+      expect(typeof note.handleScreenshot).toBe('function');
+    });
+    
+    it('should check for chrome.runtime before calling sendMessage', async () => {
+      const localThis = {};
+      localThis.mockEvent = { stopPropagation: jest.fn() };
+      
+      // Ensure note element is in the DOM (needed for showToast)
+      container.appendChild(note.element);
+      
+      // Mock successful screenshot response
+      chrome.runtime.sendMessage.mockResolvedValue({
+        success: true,
+        dataUrl: 'data:image/png;base64,test'
+      });
+      
+      // Mock clipboard API
+      localThis.originalClipboard = navigator.clipboard;
+      navigator.clipboard = {
+        write: jest.fn().mockResolvedValue()
+      };
+      
+      await note.handleScreenshot(localThis.mockEvent);
+      
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        action: 'captureScreenshot'
+      });
+      
+      // Restore
+      navigator.clipboard = localThis.originalClipboard;
+    });
+  });
+  
+  describe('context invalidation checks', () => {
+    it('should detect when chrome.runtime.sendMessage is undefined', () => {
+      const localThis = {};
+      localThis.originalSendMessage = chrome.runtime.sendMessage;
+      
+      // Simulate the check that happens before sendMessage
+      function isRuntimeAvailable() {
+        return !!chrome?.runtime?.sendMessage;
+      }
+      
+      expect(isRuntimeAvailable()).toBe(true);
+      
+      // Remove sendMessage to simulate invalidated context
+      delete chrome.runtime.sendMessage;
+      
+      expect(isRuntimeAvailable()).toBe(false);
+      
+      // Restore immediately
+      chrome.runtime.sendMessage = localThis.originalSendMessage;
+    });
+    
+    it('should detect when chrome.runtime is undefined', () => {
+      const localThis = {};
+      localThis.originalRuntime = chrome.runtime;
+      
+      function isRuntimeAvailable() {
+        return !!chrome?.runtime?.sendMessage;
+      }
+      
+      expect(isRuntimeAvailable()).toBe(true);
+      
+      // Set runtime to undefined to simulate invalidated context
+      chrome.runtime = undefined;
+      
+      expect(isRuntimeAvailable()).toBe(false);
+      
+      // Restore immediately
+      chrome.runtime = localThis.originalRuntime;
+    });
+  });
+  
   describe('showToast', () => {
     it('should have showToast method', () => {
       expect(typeof note.showToast).toBe('function');

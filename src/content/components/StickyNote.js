@@ -375,6 +375,11 @@ export class StickyNote {
       // Small delay to ensure the UI updates
       await new Promise(resolve => setTimeout(resolve, 100));
       
+      // Check if extension context is still valid
+      if (!chrome?.runtime?.sendMessage) {
+        throw new Error('Extension context invalidated');
+      }
+      
       // Request screenshot from background script
       const response = await chrome.runtime.sendMessage({
         action: 'captureScreenshot'
@@ -892,6 +897,11 @@ export class StickyNote {
       }
       
       try {
+        // Check if extension context is still valid
+        if (!chrome?.runtime?.sendMessage) {
+          throw new Error('Extension context invalidated');
+        }
+        
         log.debug('Sharing note:', this.id, 'with:', email);
         const response = await chrome.runtime.sendMessage({
           action: 'shareNote',

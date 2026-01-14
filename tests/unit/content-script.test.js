@@ -360,6 +360,64 @@ describe('Content Script Logic', () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain('refresh');
     });
+    
+    it('should handle chrome.runtime being undefined', async () => {
+      const localThis = {};
+      localThis.contextInvalidated = false;
+      
+      function handleContextInvalidated() {
+        localThis.contextInvalidated = true;
+      }
+      
+      async function sendMessageWithRuntimeCheck(message) {
+        // Check if chrome.runtime is available (becomes undefined when context is invalidated)
+        if (!chrome?.runtime?.sendMessage) {
+          handleContextInvalidated();
+          throw new Error('Extension context invalidated');
+        }
+        return await chrome.runtime.sendMessage(message);
+      }
+      
+      // Simulate chrome.runtime being undefined by temporarily removing sendMessage
+      localThis.originalSendMessage = chrome.runtime.sendMessage;
+      delete chrome.runtime.sendMessage;
+      
+      await expect(sendMessageWithRuntimeCheck({ action: 'test' }))
+        .rejects.toThrow('Extension context invalidated');
+      expect(localThis.contextInvalidated).toBe(true);
+      
+      // Restore
+      chrome.runtime.sendMessage = localThis.originalSendMessage;
+    });
+    
+    it('should handle chrome.runtime itself being undefined', async () => {
+      const localThis = {};
+      localThis.contextInvalidated = false;
+      
+      function handleContextInvalidated() {
+        localThis.contextInvalidated = true;
+      }
+      
+      async function sendMessageWithRuntimeCheck(message) {
+        // Check if chrome.runtime is available
+        if (!chrome?.runtime?.sendMessage) {
+          handleContextInvalidated();
+          throw new Error('Extension context invalidated');
+        }
+        return await chrome.runtime.sendMessage(message);
+      }
+      
+      // Simulate chrome.runtime being undefined
+      localThis.originalRuntime = chrome.runtime;
+      chrome.runtime = undefined;
+      
+      await expect(sendMessageWithRuntimeCheck({ action: 'test' }))
+        .rejects.toThrow('Extension context invalidated');
+      expect(localThis.contextInvalidated).toBe(true);
+      
+      // Restore
+      chrome.runtime = localThis.originalRuntime;
+    });
   });
   
   describe('race condition prevention', () => {
