@@ -86,11 +86,16 @@
 
       <!-- URL/Domain Filter -->
       <div class="url-input-container">
+        <select id="domainSelect" class="domain-select">
+          <option value="">All domains</option>
+          <option value="__custom__">Custom URL...</option>
+        </select>
         <input 
           type="text" 
           id="urlInput" 
-          placeholder="Filter by URL or domain (optional)..."
+          placeholder="Enter full URL..."
           class="url-input"
+          style="display: none;"
         >
         <button id="loadBtn" class="btn btn-primary">Load Notes</button>
       </div>
@@ -123,6 +128,7 @@
     const autoRefreshCheckbox = document.getElementById('autoRefresh');
     const filterTabs = document.querySelectorAll('.filter-tab');
     const keyIndicator = document.getElementById('keyIndicator');
+    const domainSelect = document.getElementById('domainSelect');
     
     // Update key indicator display
     function updateKeyIndicator() {
@@ -140,7 +146,9 @@
     const urlParams = new URLSearchParams(window.location.search);
     const initialUrl = urlParams.get('url');
     if (initialUrl) {
+      domainSelect.value = '__custom__';
       urlInput.value = initialUrl;
+      urlInput.style.display = 'block';
     }
 
     // Show API key section if not set
@@ -222,10 +230,49 @@
           keyIndicator.style.display = 'inline';
         }
         
+        // Populate domain dropdown
+        populateDomainDropdown(stats.domains || []);
+        
       } catch (error) {
         console.error('Error loading stats:', error);
       }
     }
+    
+    function populateDomainDropdown(domains) {
+      // Remember current selection
+      const currentValue = domainSelect.value;
+      
+      // Remove old domain options (keep "All domains" and "Custom URL...")
+      while (domainSelect.options.length > 2) {
+        domainSelect.remove(1);
+      }
+      
+      // Add domain options (sorted alphabetically)
+      domains.sort().forEach(domain => {
+        const option = document.createElement('option');
+        option.value = domain;
+        option.textContent = domain;
+        // Insert before "Custom URL..." option
+        domainSelect.insertBefore(option, domainSelect.lastElementChild);
+      });
+      
+      // Restore selection if it still exists
+      if (currentValue && Array.from(domainSelect.options).some(o => o.value === currentValue)) {
+        domainSelect.value = currentValue;
+      }
+    }
+    
+    // Handle domain select change
+    domainSelect.addEventListener('change', () => {
+      if (domainSelect.value === '__custom__') {
+        urlInput.style.display = 'block';
+        urlInput.focus();
+      } else {
+        urlInput.style.display = 'none';
+        urlInput.value = '';
+        loadNotes();
+      }
+    });
 
     async function loadNotes() {
       if (!API_KEY) {
@@ -238,7 +285,10 @@
       try {
         let endpoint;
         const params = new URLSearchParams();
-        const urlOrDomain = urlInput.value.trim();
+        
+        // Get domain/URL filter
+        const selectedDomain = domainSelect.value;
+        const customUrl = urlInput.value.trim();
         
         if (currentFilter === 'commented') {
           endpoint = `${API_BASE_URL}/notes/commented`;
@@ -249,13 +299,17 @@
           }
         }
         
-        if (urlOrDomain) {
-          // Detect if it's a full URL or just a domain
-          if (urlOrDomain.startsWith('http://') || urlOrDomain.startsWith('https://')) {
-            params.set('url', urlOrDomain);
+        // Apply domain or URL filter
+        if (selectedDomain === '__custom__' && customUrl) {
+          // Custom URL entered
+          if (customUrl.startsWith('http://') || customUrl.startsWith('https://')) {
+            params.set('url', customUrl);
           } else {
-            params.set('domain', urlOrDomain);
+            params.set('domain', customUrl);
           }
+        } else if (selectedDomain && selectedDomain !== '__custom__') {
+          // Domain selected from dropdown
+          params.set('domain', selectedDomain);
         }
         
         const queryString = params.toString();

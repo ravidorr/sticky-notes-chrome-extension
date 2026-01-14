@@ -247,6 +247,29 @@ body {
   color: #666;
 }
 
+.domain-select {
+  min-width: 180px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  background-color: #2d2d2d;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  color: #ffffff;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.domain-select:focus {
+  border-color: #0078d4;
+}
+
+.domain-select option {
+  background-color: #2d2d2d;
+  color: #ffffff;
+  padding: 8px;
+}
+
 /* Buttons */
 .btn {
   padding: 10px 18px;
@@ -592,6 +615,10 @@ body {
 
   .url-input-container {
     flex-direction: column;
+  }
+
+  .domain-select {
+    width: 100%;
   }
 
   .btn {
