@@ -1145,15 +1145,100 @@ describe('Background Handlers', () => {
 
     it('should clean up existing subscription before creating new one', async () => {
       const oldUnsubscribe = jest.fn();
-      localThis.deps.noteSubscriptions.set(123, { unsubscribe: oldUnsubscribe });
+      // Use composite key: tabId-frameId (frameId defaults to 0 for main frame)
+      localThis.deps.noteSubscriptions.set('123-0', { unsubscribe: oldUnsubscribe });
       localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
       localThis.deps.isFirebaseConfigured.mockReturnValue(true);
       localThis.deps.subscribeToNotesForUrl.mockReturnValue(jest.fn());
       
-      const sender = { tab: { id: 123 } };
+      const sender = { tab: { id: 123 }, frameId: 0 };
       await localThis.handlers.subscribeNotes('https://example.com', sender);
       
       expect(oldUnsubscribe).toHaveBeenCalled();
+    });
+
+    it('should use composite key with frameId for subscriptions', async () => {
+      const mockUnsubscribe = jest.fn();
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.subscribeToNotesForUrl.mockReturnValue(mockUnsubscribe);
+      
+      // Main frame subscription (frameId = 0)
+      const mainFrameSender = { tab: { id: 123 }, frameId: 0 };
+      await localThis.handlers.subscribeNotes('https://example.com', mainFrameSender);
+      
+      // iframe subscription (frameId = 456)
+      const iframeSender = { tab: { id: 123 }, frameId: 456 };
+      await localThis.handlers.subscribeNotes('https://example.com/iframe', iframeSender);
+      
+      // Both subscriptions should exist independently
+      expect(localThis.deps.noteSubscriptions.has('123-0')).toBe(true);
+      expect(localThis.deps.noteSubscriptions.has('123-456')).toBe(true);
+    });
+
+    it('should default frameId to 0 when not provided', async () => {
+      const mockUnsubscribe = jest.fn();
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.subscribeToNotesForUrl.mockReturnValue(mockUnsubscribe);
+      
+      // Sender without explicit frameId
+      const sender = { tab: { id: 123 } };
+      await localThis.handlers.subscribeNotes('https://example.com', sender);
+      
+      // Should use '123-0' as the key
+      expect(localThis.deps.noteSubscriptions.has('123-0')).toBe(true);
+    });
+
+    it('should send updates to specific frame using frameId option', async () => {
+      let notesCallback;
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.subscribeToNotesForUrl.mockImplementation((url, uid, email, onNotes) => {
+        notesCallback = onNotes;
+        return jest.fn();
+      });
+      localThis.mockChromeTabs.sendMessage.mockResolvedValue({});
+      
+      // Subscribe from an iframe (frameId = 456)
+      const sender = { tab: { id: 123 }, frameId: 456 };
+      await localThis.handlers.subscribeNotes('https://example.com', sender);
+      
+      // Simulate a notes update
+      const mockNotes = [{ id: 'note-1', content: 'Test' }];
+      notesCallback(mockNotes);
+      
+      // Verify sendMessage was called with frameId option
+      expect(localThis.mockChromeTabs.sendMessage).toHaveBeenCalledWith(
+        123,
+        { action: 'notesUpdated', notes: mockNotes },
+        { frameId: 456 }
+      );
+    });
+
+    it('should send error to specific frame using frameId option', async () => {
+      let errorCallback;
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.subscribeToNotesForUrl.mockImplementation((url, uid, email, onNotes, onError) => {
+        errorCallback = onError;
+        return jest.fn();
+      });
+      localThis.mockChromeTabs.sendMessage.mockResolvedValue({});
+      
+      // Subscribe from an iframe (frameId = 789)
+      const sender = { tab: { id: 123 }, frameId: 789 };
+      await localThis.handlers.subscribeNotes('https://example.com', sender);
+      
+      // Simulate an error
+      errorCallback(new Error('Subscription failed'));
+      
+      // Verify sendMessage was called with frameId option
+      expect(localThis.mockChromeTabs.sendMessage).toHaveBeenCalledWith(
+        123,
+        { action: 'subscriptionError', type: 'notes', error: 'Subscription failed' },
+        { frameId: 789 }
+      );
     });
 
     it('should be routable via handleMessage', async () => {
@@ -1179,18 +1264,19 @@ describe('Background Handlers', () => {
 
     it('should unsubscribe successfully', async () => {
       const mockUnsubscribe = jest.fn();
-      localThis.deps.noteSubscriptions.set(123, { unsubscribe: mockUnsubscribe });
+      // Use composite key: tabId-frameId
+      localThis.deps.noteSubscriptions.set('123-0', { unsubscribe: mockUnsubscribe });
       
-      const sender = { tab: { id: 123 } };
+      const sender = { tab: { id: 123 }, frameId: 0 };
       const result = await localThis.handlers.unsubscribeNotes(sender);
       
       expect(result.success).toBe(true);
       expect(mockUnsubscribe).toHaveBeenCalled();
-      expect(localThis.deps.noteSubscriptions.has(123)).toBe(false);
+      expect(localThis.deps.noteSubscriptions.has('123-0')).toBe(false);
     });
 
     it('should return success even when no subscription exists', async () => {
-      const sender = { tab: { id: 123 } };
+      const sender = { tab: { id: 123 }, frameId: 0 };
       const result = await localThis.handlers.unsubscribeNotes(sender);
       
       expect(result.success).toBe(true);
@@ -1204,13 +1290,44 @@ describe('Background Handlers', () => {
     });
 
     it('should be routable via handleMessage', async () => {
-      const sender = { tab: { id: 123 } };
+      const sender = { tab: { id: 123 }, frameId: 0 };
       const result = await localThis.handlers.handleMessage(
         { action: 'unsubscribeFromNotes' },
         sender
       );
       
       expect(result.success).toBe(true);
+    });
+
+    it('should only unsubscribe the specific frame', async () => {
+      const mainFrameUnsubscribe = jest.fn();
+      const iframeUnsubscribe = jest.fn();
+      localThis.deps.noteSubscriptions.set('123-0', { unsubscribe: mainFrameUnsubscribe });
+      localThis.deps.noteSubscriptions.set('123-456', { unsubscribe: iframeUnsubscribe });
+      
+      // Unsubscribe only the iframe
+      const iframeSender = { tab: { id: 123 }, frameId: 456 };
+      const result = await localThis.handlers.unsubscribeNotes(iframeSender);
+      
+      expect(result.success).toBe(true);
+      expect(iframeUnsubscribe).toHaveBeenCalled();
+      expect(mainFrameUnsubscribe).not.toHaveBeenCalled();
+      // Main frame subscription should still exist
+      expect(localThis.deps.noteSubscriptions.has('123-0')).toBe(true);
+      expect(localThis.deps.noteSubscriptions.has('123-456')).toBe(false);
+    });
+
+    it('should default frameId to 0 when not provided', async () => {
+      const mockUnsubscribe = jest.fn();
+      localThis.deps.noteSubscriptions.set('123-0', { unsubscribe: mockUnsubscribe });
+      
+      // Sender without explicit frameId
+      const sender = { tab: { id: 123 } };
+      const result = await localThis.handlers.unsubscribeNotes(sender);
+      
+      expect(result.success).toBe(true);
+      expect(mockUnsubscribe).toHaveBeenCalled();
+      expect(localThis.deps.noteSubscriptions.has('123-0')).toBe(false);
     });
   });
 

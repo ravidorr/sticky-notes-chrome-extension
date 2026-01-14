@@ -640,6 +640,7 @@ export function createHandlers(deps = {}) {
   async function subscribeNotes(url, sender) {
     try {
       const tabId = sender?.tab?.id;
+      const frameId = sender?.frameId ?? 0;
       if (!tabId) {
         return { success: false, error: 'Tab ID not available' };
       }
@@ -658,8 +659,11 @@ export function createHandlers(deps = {}) {
         return { success: false, error: 'Subscription service not available' };
       }
       
-      // Clean up existing subscription for this tab
-      const existingSub = noteSubscriptions.get(tabId);
+      // Use composite key to handle multiple frames (main frame + iframes)
+      const subKey = `${tabId}-${frameId}`;
+      
+      // Clean up existing subscription for this tab/frame
+      const existingSub = noteSubscriptions.get(subKey);
       if (existingSub) {
         existingSub.unsubscribe();
       }
@@ -670,19 +674,19 @@ export function createHandlers(deps = {}) {
         user.uid,
         user.email,
         (notes) => {
-          // Push updates to the tab
+          // Push updates to the specific frame only
           if (chromeTabs) {
             chromeTabs.sendMessage(tabId, {
               action: 'notesUpdated',
               notes
-            }).catch(() => {
-              // Tab might be closed, clean up subscription
+            }, { frameId }).catch(() => {
+              // Tab/frame might be closed, clean up subscription
               try {
                 unsubscribe();
               } catch (error) {
                 log.error('Error during unsubscribe:', error);
               }
-              noteSubscriptions.delete(tabId);
+              noteSubscriptions.delete(subKey);
             });
           }
         },
@@ -693,13 +697,13 @@ export function createHandlers(deps = {}) {
               action: 'subscriptionError',
               type: 'notes',
               error: error.message
-            }).catch(() => {});
+            }, { frameId }).catch(() => {});
           }
         }
       );
       
-      noteSubscriptions.set(tabId, { url, unsubscribe });
-      log.debug('Subscribed to notes for tab', tabId, 'url', url);
+      noteSubscriptions.set(subKey, { url, frameId, unsubscribe });
+      log.debug('Subscribed to notes for tab', tabId, 'frame', frameId, 'url', url);
       
       return { success: true };
     } catch (error) {
@@ -716,15 +720,17 @@ export function createHandlers(deps = {}) {
   async function unsubscribeNotes(sender) {
     try {
       const tabId = sender?.tab?.id;
+      const frameId = sender?.frameId ?? 0;
       if (!tabId) {
         return { success: false, error: 'Tab ID not available' };
       }
       
-      const sub = noteSubscriptions.get(tabId);
+      const subKey = `${tabId}-${frameId}`;
+      const sub = noteSubscriptions.get(subKey);
       if (sub) {
         sub.unsubscribe();
-        noteSubscriptions.delete(tabId);
-        log.debug('Unsubscribed from notes for tab', tabId);
+        noteSubscriptions.delete(subKey);
+        log.debug('Unsubscribed from notes for tab', tabId, 'frame', frameId);
       }
       
       return { success: true };
