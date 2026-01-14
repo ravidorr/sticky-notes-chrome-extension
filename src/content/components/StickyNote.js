@@ -105,13 +105,13 @@ export class StickyNote {
     
     this.element.innerHTML = `
       <div class="sn-note-header">
+        <button class="sn-note-btn sn-minimize-btn" title="${t('expand')}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 15 12 9 18 15"/>
+          </svg>
+        </button>
         <span class="sn-note-header-title"></span>
         <div class="sn-note-header-actions">
-          <button class="sn-note-btn sn-minimize-btn" title="${t('expand')}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 15 12 9 18 15"/>
-            </svg>
-          </button>
           <button class="sn-note-btn sn-copy-md-btn" title="${t('copyAsMarkdown')}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M8 4l2 2M16 4l-2 2"/>

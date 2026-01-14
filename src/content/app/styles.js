@@ -477,6 +477,11 @@ export function getShadowStyles() {
       border-radius: 4px 4px 0 0;
       cursor: move;
       user-select: none;
+      gap: 8px;
+    }
+    
+    .sn-note-header > .sn-minimize-btn {
+      flex-shrink: 0;
     }
 
     .sn-note-header-title {
@@ -693,6 +698,7 @@ export function getShadowStyles() {
        ========================================== */
     .sn-note.sn-minimized {
       min-height: auto;
+      width: auto;
     }
     
     .sn-note.sn-minimized .sn-note-content,
@@ -703,6 +709,31 @@ export function getShadowStyles() {
     
     .sn-note.sn-minimized .sn-note-header {
       border-radius: 4px;
+    }
+    
+    .sn-note.sn-minimized .sn-note-header-title,
+    .sn-note.sn-minimized .sn-note-header-actions {
+      display: none;
+    }
+    
+    /* ==========================================
+       Expand/Collapse Animation
+       ========================================== */
+    .sn-note .sn-note-content,
+    .sn-note .sn-comment-section,
+    .sn-note .sn-note-footer {
+      animation: sn-expand-in 0.2s ease-out;
+    }
+    
+    @keyframes sn-expand-in {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
     
     ${RichEditor.getStyles()}
