@@ -23,7 +23,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist',
+    outDir: 'dist/chrome',
     minify: false,
     sourcemap: true
   }
