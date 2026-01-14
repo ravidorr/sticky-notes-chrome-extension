@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sticky Notes Panel</title>
+  <title>Sticky Notes Dashboard</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
     <header class="header">
-      <h1>Sticky Notes</h1>
+      <h1>Sticky Notes Dashboard</h1>
       <div class="controls">
         <label class="auto-refresh">
           <input type="checkbox" id="autoRefresh">
@@ -39,11 +39,56 @@
 
     <!-- Main Content -->
     <div id="mainContent">
+      <!-- Stats Dashboard -->
+      <div id="statsDashboard" class="stats-dashboard">
+        <div class="stat-card stat-total">
+          <span class="stat-value" id="statTotal">-</span>
+          <span class="stat-label">Total Notes</span>
+        </div>
+        <div class="stat-card stat-owned">
+          <span class="stat-value" id="statOwned">-</span>
+          <span class="stat-label">My Notes</span>
+        </div>
+        <div class="stat-card stat-shared">
+          <span class="stat-value" id="statShared">-</span>
+          <span class="stat-label">Shared With Me</span>
+        </div>
+        <div class="stat-card stat-domains">
+          <span class="stat-value" id="statDomains">-</span>
+          <span class="stat-label">Domains</span>
+        </div>
+      </div>
+
+      <!-- Theme Breakdown -->
+      <div id="themeBreakdown" class="theme-breakdown">
+        <div class="theme-bar">
+          <div class="theme-segment theme-yellow" id="themeYellow" style="flex: 0"></div>
+          <div class="theme-segment theme-blue" id="themeBlue" style="flex: 0"></div>
+          <div class="theme-segment theme-green" id="themeGreen" style="flex: 0"></div>
+          <div class="theme-segment theme-pink" id="themePink" style="flex: 0"></div>
+        </div>
+        <div class="theme-legend">
+          <span class="legend-item"><span class="legend-color yellow"></span> Yellow <span id="legendYellow">0</span></span>
+          <span class="legend-item"><span class="legend-color blue"></span> Blue <span id="legendBlue">0</span></span>
+          <span class="legend-item"><span class="legend-color green"></span> Green <span id="legendGreen">0</span></span>
+          <span class="legend-item"><span class="legend-color pink"></span> Pink <span id="legendPink">0</span></span>
+        </div>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all">All Notes</button>
+        <button class="filter-tab" data-filter="owned">My Notes</button>
+        <button class="filter-tab" data-filter="shared">Shared With Me</button>
+        <button class="filter-tab" data-filter="commented">Commented</button>
+      </div>
+
+      <!-- URL/Domain Filter -->
       <div class="url-input-container">
         <input 
           type="text" 
           id="urlInput" 
-          placeholder="Enter URL to view notes..."
+          placeholder="Filter by URL or domain (optional)..."
           class="url-input"
         >
         <button id="loadBtn" class="btn btn-primary">Load Notes</button>
@@ -52,7 +97,7 @@
       <div id="status" class="status"></div>
 
       <div id="notesList" class="notes-list">
-        <p class="empty-state">Enter a URL above to view notes</p>
+        <p class="empty-state">Loading notes...</p>
       </div>
     </div>
   </div>
@@ -62,6 +107,7 @@
     
     // Get API key from localStorage
     let API_KEY = localStorage.getItem('sticky_notes_api_key');
+    let currentFilter = 'all';
     
     // DOM elements
     const apiKeySection = document.getElementById('apiKeySection');
@@ -74,6 +120,7 @@
     const notesList = document.getElementById('notesList');
     const status = document.getElementById('status');
     const autoRefreshCheckbox = document.getElementById('autoRefresh');
+    const filterTabs = document.querySelectorAll('.filter-tab');
     
     let refreshInterval = null;
 
@@ -90,14 +137,13 @@
         showApiKeySection();
       } else {
         hideApiKeySection();
-        if (initialUrl) {
-          loadNotes();
-        }
+        loadStats();
+        loadNotes();
       }
     }
 
     function showApiKeySection() {
-      apiKeySection.style.display = 'block';
+      apiKeySection.style.display = 'flex';
       mainContent.style.opacity = '0.3';
       mainContent.style.pointerEvents = 'none';
       apiKeyInput.focus();
@@ -116,21 +162,51 @@
         localStorage.setItem('sticky_notes_api_key', key);
         hideApiKeySection();
         showStatus('API key saved!', 'success');
-        if (urlInput.value) {
-          loadNotes();
-        }
+        loadStats();
+        loadNotes();
       } else {
         showStatus('Please enter a valid API key', 'error');
       }
     }
 
-    async function loadNotes() {
-      const url = urlInput.value.trim();
-      if (!url) {
-        showStatus('Please enter a URL', 'error');
-        return;
+    async function loadStats() {
+      if (!API_KEY) return;
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/notes/stats`, {
+          headers: { 'Authorization': `Bearer ${API_KEY}` }
+        });
+        
+        if (!response.ok) return;
+        
+        const stats = await response.json();
+        
+        // Update stat cards
+        document.getElementById('statTotal').textContent = stats.total;
+        document.getElementById('statOwned').textContent = stats.owned;
+        document.getElementById('statShared').textContent = stats.shared;
+        document.getElementById('statDomains').textContent = stats.domainCount;
+        
+        // Update theme breakdown
+        const total = stats.total || 1;
+        const themes = stats.byTheme || {};
+        
+        document.getElementById('themeYellow').style.flex = themes.yellow || 0;
+        document.getElementById('themeBlue').style.flex = themes.blue || 0;
+        document.getElementById('themeGreen').style.flex = themes.green || 0;
+        document.getElementById('themePink').style.flex = themes.pink || 0;
+        
+        document.getElementById('legendYellow').textContent = themes.yellow || 0;
+        document.getElementById('legendBlue').textContent = themes.blue || 0;
+        document.getElementById('legendGreen').textContent = themes.green || 0;
+        document.getElementById('legendPink').textContent = themes.pink || 0;
+        
+      } catch (error) {
+        console.error('Error loading stats:', error);
       }
+    }
 
+    async function loadNotes() {
       if (!API_KEY) {
         showApiKeySection();
         return;
@@ -139,14 +215,34 @@
       showStatus('Loading notes...', 'loading');
 
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/notes?url=${encodeURIComponent(url)}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${API_KEY}`
-            }
+        let endpoint;
+        const params = new URLSearchParams();
+        const urlOrDomain = urlInput.value.trim();
+        
+        if (currentFilter === 'commented') {
+          endpoint = `${API_BASE_URL}/notes/commented`;
+        } else {
+          endpoint = `${API_BASE_URL}/notes`;
+          if (currentFilter !== 'all') {
+            params.set('filter', currentFilter);
           }
-        );
+        }
+        
+        if (urlOrDomain) {
+          // Detect if it's a full URL or just a domain
+          if (urlOrDomain.startsWith('http://') || urlOrDomain.startsWith('https://')) {
+            params.set('url', urlOrDomain);
+          } else {
+            params.set('domain', urlOrDomain);
+          }
+        }
+        
+        const queryString = params.toString();
+        const fullUrl = queryString ? `${endpoint}?${queryString}` : endpoint;
+        
+        const response = await fetch(fullUrl, {
+          headers: { 'Authorization': `Bearer ${API_KEY}` }
+        });
 
         if (!response.ok) {
           if (response.status === 401) {
@@ -160,8 +256,17 @@
         }
 
         const data = await response.json();
-        renderNotes(data.notes || []);
-        showStatus(`Found ${data.notes?.length || 0} notes`, 'success');
+        const notes = data.notes || [];
+        renderNotes(notes);
+        
+        const filterLabel = {
+          'all': 'all',
+          'owned': 'your',
+          'shared': 'shared',
+          'commented': 'commented'
+        }[currentFilter];
+        
+        showStatus(`Found ${notes.length} ${filterLabel} note${notes.length !== 1 ? 's' : ''}`, 'success');
       } catch (error) {
         console.error('Error loading notes:', error);
         showStatus(`Error: ${error.message}`, 'error');
@@ -170,7 +275,7 @@
 
     function renderNotes(notes) {
       if (notes.length === 0) {
-        notesList.innerHTML = '<p class="empty-state">No notes found for this URL</p>';
+        notesList.innerHTML = '<p class="empty-state">No notes found</p>';
         return;
       }
 
@@ -179,8 +284,10 @@
           <div class="note-header">
             <span class="note-number">#${index + 1}</span>
             <span class="note-theme">${note.theme || 'yellow'}</span>
+            ${note.isShared ? '<span class="note-badge shared">Shared</span>' : ''}
             <code class="note-selector">${escapeHtml(note.selector)}</code>
           </div>
+          <div class="note-url">${escapeHtml(note.url)}</div>
           <div class="note-content">
             ${escapeHtml(stripHtml(note.content)) || '<em class="no-content">No content</em>'}
           </div>
@@ -197,6 +304,7 @@
     }
 
     function escapeHtml(text) {
+      if (!text) return '';
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
@@ -204,7 +312,6 @@
 
     function stripHtml(html) {
       if (!html) return '';
-      // Use DOM to strip HTML and decode entities (matches src/shared/utils.js)
       const div = document.createElement('div');
       div.innerHTML = html;
       return div.textContent || div.innerText || '';
@@ -231,22 +338,31 @@
     saveApiKeyBtn.addEventListener('click', saveApiKey);
     
     apiKeyInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        saveApiKey();
-      }
+      if (e.key === 'Enter') saveApiKey();
     });
 
     loadBtn.addEventListener('click', loadNotes);
     
     urlInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter') loadNotes();
+    });
+
+    // Filter tabs
+    filterTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        filterTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentFilter = tab.dataset.filter;
         loadNotes();
-      }
+      });
     });
 
     autoRefreshCheckbox.addEventListener('change', (e) => {
       if (e.target.checked) {
-        refreshInterval = setInterval(loadNotes, 5000);
+        refreshInterval = setInterval(() => {
+          loadStats();
+          loadNotes();
+        }, 5000);
       } else {
         clearInterval(refreshInterval);
         refreshInterval = null;

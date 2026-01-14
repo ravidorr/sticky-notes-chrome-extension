@@ -17,33 +17,44 @@ const NOTES_COLLECTION = 'notes';
  * Query params:
  *   - url: Filter by exact URL (optional)
  *   - domain: Filter by domain/origin prefix - matches all pages on that domain (optional)
+ *   - filter: Filter by ownership - 'owned', 'shared', or 'all' (default: 'all')
  *   - limit: Max results (default 50, max 100)
  *   - offset: Pagination offset (default 0)
  */
 router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
     const { userId, userEmail } = req.apiKey;
-    const { url, domain, limit = '50', offset = '0' } = req.query;
+    const { url, domain, filter = 'all', limit = '50', offset = '0' } = req.query;
     
     const limitNum = Math.min(Math.max(1, parseInt(limit, 10) || 50), 100);
     const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
     
+    // Validate filter parameter
+    const validFilters = ['owned', 'shared', 'all'];
+    const filterValue = validFilters.includes(filter) ? filter : 'all';
+    
     const db = getFirestore();
     const normalizedEmail = userEmail?.toLowerCase();
     
+    // Determine which queries to build based on filter
+    const includeOwned = filterValue === 'owned' || filterValue === 'all';
+    const includeShared = (filterValue === 'shared' || filterValue === 'all') && normalizedEmail;
+    
     // Build queries for owned and shared notes
-    let ownedQuery;
-    let sharedQuery;
+    let ownedQuery = null;
+    let sharedQuery = null;
     
     if (url) {
       // Exact URL matching
       const normalizedUrl = normalizeUrl(url);
-      ownedQuery = db.collection(NOTES_COLLECTION)
-        .where('ownerId', '==', userId)
-        .where('url', '==', normalizedUrl)
-        .orderBy('createdAt', 'desc');
+      if (includeOwned) {
+        ownedQuery = db.collection(NOTES_COLLECTION)
+          .where('ownerId', '==', userId)
+          .where('url', '==', normalizedUrl)
+          .orderBy('createdAt', 'desc');
+      }
       
-      if (normalizedEmail) {
+      if (includeShared) {
         sharedQuery = db.collection(NOTES_COLLECTION)
           .where('sharedWith', 'array-contains', normalizedEmail)
           .where('url', '==', normalizedUrl)
@@ -64,14 +75,16 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
       // URLs starting with the domain origin (e.g., "https://example.com")
       const domainEnd = normalizedDomainPrefix + '\uffff';
       
-      ownedQuery = db.collection(NOTES_COLLECTION)
-        .where('ownerId', '==', userId)
-        .where('url', '>=', normalizedDomainPrefix)
-        .where('url', '<', domainEnd)
-        .orderBy('url')
-        .orderBy('createdAt', 'desc');
+      if (includeOwned) {
+        ownedQuery = db.collection(NOTES_COLLECTION)
+          .where('ownerId', '==', userId)
+          .where('url', '>=', normalizedDomainPrefix)
+          .where('url', '<', domainEnd)
+          .orderBy('url')
+          .orderBy('createdAt', 'desc');
+      }
       
-      if (normalizedEmail) {
+      if (includeShared) {
         sharedQuery = db.collection(NOTES_COLLECTION)
           .where('sharedWith', 'array-contains', normalizedEmail)
           .where('url', '>=', normalizedDomainPrefix)
@@ -80,12 +93,14 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
           .orderBy('createdAt', 'desc');
       }
     } else {
-      // No filter - return all notes
-      ownedQuery = db.collection(NOTES_COLLECTION)
-        .where('ownerId', '==', userId)
-        .orderBy('createdAt', 'desc');
+      // No URL/domain filter - return notes based on ownership filter
+      if (includeOwned) {
+        ownedQuery = db.collection(NOTES_COLLECTION)
+          .where('ownerId', '==', userId)
+          .orderBy('createdAt', 'desc');
+      }
       
-      if (normalizedEmail) {
+      if (includeShared) {
         sharedQuery = db.collection(NOTES_COLLECTION)
           .where('sharedWith', 'array-contains', normalizedEmail)
           .orderBy('createdAt', 'desc');
@@ -93,37 +108,67 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
     }
     
     // Execute queries in parallel
-    const queries = [ownedQuery.get()];
+    const queries = [];
+    if (ownedQuery) {
+      queries.push(ownedQuery.get());
+    }
     if (sharedQuery) {
       queries.push(sharedQuery.get());
     }
     
-    const [ownedSnap, sharedSnap] = await Promise.all(queries);
+    // Handle case where no queries to execute (e.g., filter=shared but no email)
+    if (queries.length === 0) {
+      return res.json({
+        notes: [],
+        filter: filterValue,
+        pagination: {
+          limit: limitNum,
+          offset: offsetNum,
+          hasMore: false
+        }
+      });
+    }
+    
+    const snapshots = await Promise.all(queries);
+    
+    // Track which snapshot is which based on what queries were built
+    let ownedSnap = null;
+    let sharedSnap = null;
+    let snapIndex = 0;
+    
+    if (ownedQuery) {
+      ownedSnap = snapshots[snapIndex++];
+    }
+    if (sharedQuery) {
+      sharedSnap = snapshots[snapIndex++];
+    }
     
     // Merge and dedupe notes
     const notes = [];
     const seenIds = new Set();
     
     // Add owned notes first
-    ownedSnap.forEach(doc => {
-      if (!seenIds.has(doc.id)) {
-        seenIds.add(doc.id);
-        const data = doc.data();
-        notes.push({
-          id: doc.id,
-          url: data.url,
-          selector: data.selector,
-          content: data.content,
-          theme: data.theme,
-          position: data.position,
-          metadata: data.metadata,
-          sharedWith: data.sharedWith || [],
-          isShared: false,
-          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
-        });
-      }
-    });
+    if (ownedSnap) {
+      ownedSnap.forEach(doc => {
+        if (!seenIds.has(doc.id)) {
+          seenIds.add(doc.id);
+          const data = doc.data();
+          notes.push({
+            id: doc.id,
+            url: data.url,
+            selector: data.selector,
+            content: data.content,
+            theme: data.theme,
+            position: data.position,
+            metadata: data.metadata,
+            sharedWith: data.sharedWith || [],
+            isShared: false,
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+          });
+        }
+      });
+    }
     
     // Add shared notes
     if (sharedSnap) {
@@ -157,6 +202,7 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
     
     res.json({
       notes: paginatedNotes,
+      filter: filterValue,
       pagination: {
         limit: limitNum,
         offset: offsetNum,
@@ -270,6 +316,232 @@ router.get('/search', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to search notes',
+      debug: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/notes/stats
+ * Get statistics about the user's notes
+ */
+router.get('/stats', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
+  try {
+    const { userId, userEmail } = req.apiKey;
+    const normalizedEmail = userEmail?.toLowerCase();
+    
+    const db = getFirestore();
+    
+    // Build queries for owned and shared notes
+    const ownedQuery = db.collection(NOTES_COLLECTION)
+      .where('ownerId', '==', userId);
+    
+    const queries = [ownedQuery.get()];
+    
+    if (normalizedEmail) {
+      const sharedQuery = db.collection(NOTES_COLLECTION)
+        .where('sharedWith', 'array-contains', normalizedEmail);
+      queries.push(sharedQuery.get());
+    }
+    
+    const [ownedSnap, sharedSnap] = await Promise.all(queries);
+    
+    // Calculate statistics
+    const stats = {
+      total: 0,
+      owned: ownedSnap.size,
+      shared: 0,
+      byTheme: {
+        yellow: 0,
+        blue: 0,
+        green: 0,
+        pink: 0
+      },
+      domains: new Set(),
+      recentlyUpdated: 0
+    };
+    
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    // Process owned notes
+    ownedSnap.forEach(doc => {
+      const data = doc.data();
+      const theme = data.theme || 'yellow';
+      if (stats.byTheme[theme] !== undefined) {
+        stats.byTheme[theme]++;
+      }
+      
+      // Extract domain from URL
+      try {
+        const url = new URL(data.url);
+        stats.domains.add(url.hostname);
+      } catch {
+        // Invalid URL, skip
+      }
+      
+      // Check if recently updated
+      const updatedAt = data.updatedAt?.toDate?.() || new Date(data.updatedAt);
+      if (updatedAt > oneWeekAgo) {
+        stats.recentlyUpdated++;
+      }
+    });
+    
+    // Process shared notes
+    if (sharedSnap) {
+      const seenIds = new Set(ownedSnap.docs.map(doc => doc.id));
+      
+      sharedSnap.forEach(doc => {
+        if (!seenIds.has(doc.id)) {
+          stats.shared++;
+          const data = doc.data();
+          const theme = data.theme || 'yellow';
+          if (stats.byTheme[theme] !== undefined) {
+            stats.byTheme[theme]++;
+          }
+          
+          try {
+            const url = new URL(data.url);
+            stats.domains.add(url.hostname);
+          } catch {
+            // Invalid URL, skip
+          }
+          
+          const updatedAt = data.updatedAt?.toDate?.() || new Date(data.updatedAt);
+          if (updatedAt > oneWeekAgo) {
+            stats.recentlyUpdated++;
+          }
+        }
+      });
+    }
+    
+    stats.total = stats.owned + stats.shared;
+    
+    res.json({
+      total: stats.total,
+      owned: stats.owned,
+      shared: stats.shared,
+      byTheme: stats.byTheme,
+      domainCount: stats.domains.size,
+      domains: Array.from(stats.domains).slice(0, 20), // Return up to 20 domains
+      recentlyUpdated: stats.recentlyUpdated
+    });
+  } catch (error) {
+    console.error('Error getting stats:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to get note statistics',
+      debug: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/notes/commented
+ * Get all notes where the user has written at least one comment
+ * Uses collection group query on comments subcollection
+ * Query params:
+ *   - limit: Max results (default 50, max 100)
+ *   - offset: Pagination offset (default 0)
+ */
+router.get('/commented', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
+  try {
+    const { userId, userEmail } = req.apiKey;
+    const { limit = '50', offset = '0' } = req.query;
+    
+    const limitNum = Math.min(Math.max(1, parseInt(limit, 10) || 50), 100);
+    const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
+    const normalizedEmail = userEmail?.toLowerCase();
+    
+    const db = getFirestore();
+    
+    // Collection group query to find all comments by this user
+    const commentsQuery = db.collectionGroup('comments')
+      .where('authorId', '==', userId)
+      .orderBy('createdAt', 'desc');
+    
+    const commentsSnap = await commentsQuery.get();
+    
+    // Extract unique note IDs from comment document paths
+    const noteIds = new Set();
+    commentsSnap.forEach(doc => {
+      // Path is: notes/{noteId}/comments/{commentId}
+      const pathParts = doc.ref.path.split('/');
+      if (pathParts.length >= 2) {
+        noteIds.add(pathParts[1]); // noteId is at index 1
+      }
+    });
+    
+    if (noteIds.size === 0) {
+      return res.json({
+        notes: [],
+        pagination: {
+          limit: limitNum,
+          offset: offsetNum,
+          hasMore: false
+        }
+      });
+    }
+    
+    // Fetch the actual notes (only those user has access to)
+    const noteIdsArray = Array.from(noteIds);
+    const notes = [];
+    
+    // Batch fetch notes (Firestore getAll supports up to 100 refs)
+    const batchSize = 100;
+    for (let i = 0; i < noteIdsArray.length; i += batchSize) {
+      const batch = noteIdsArray.slice(i, i + batchSize);
+      const noteRefs = batch.map(id => db.collection(NOTES_COLLECTION).doc(id));
+      const noteDocs = await db.getAll(...noteRefs);
+      
+      for (const doc of noteDocs) {
+        if (!doc.exists) continue;
+        
+        const data = doc.data();
+        
+        // Check if user has access (owner or shared with)
+        const isOwner = data.ownerId === userId;
+        const isSharedWithUser = normalizedEmail && (data.sharedWith || []).includes(normalizedEmail);
+        
+        if (isOwner || isSharedWithUser) {
+          notes.push({
+            id: doc.id,
+            url: data.url,
+            selector: data.selector,
+            content: data.content,
+            theme: data.theme,
+            position: data.position,
+            metadata: data.metadata,
+            sharedWith: data.sharedWith || [],
+            isShared: !isOwner,
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+          });
+        }
+      }
+    }
+    
+    // Sort by updatedAt desc (most recently updated first)
+    notes.sort((noteA, noteB) => new Date(noteB.updatedAt) - new Date(noteA.updatedAt));
+    
+    // Apply pagination
+    const paginatedNotes = notes.slice(offsetNum, offsetNum + limitNum);
+    const hasMore = notes.length > offsetNum + limitNum;
+    
+    res.json({
+      notes: paginatedNotes,
+      totalCommentedNotes: notes.length,
+      pagination: {
+        limit: limitNum,
+        offset: offsetNum,
+        hasMore
+      }
+    });
+  } catch (error) {
+    console.error('Error getting commented notes:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to get commented notes',
       debug: error.message
     });
   }

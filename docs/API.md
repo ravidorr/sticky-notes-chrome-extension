@@ -142,7 +142,7 @@ Content-Type: application/json
 
 ### List Notes
 
-Get all notes for your account, optionally filtered by URL.
+Get all notes for your account with flexible filtering options.
 
 ```http
 GET /notes
@@ -153,14 +153,29 @@ Authorization: Bearer sk_live_...
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `url` | string | Filter notes by URL |
+| `filter` | string | Filter by ownership: `owned` (your notes), `shared` (shared with you), `all` (default) |
+| `url` | string | Filter notes by exact URL |
+| `domain` | string | Filter notes by domain (e.g., `example.com`) |
 | `limit` | number | Max results (default: 50, max: 100) |
 | `offset` | number | Pagination offset (default: 0) |
 
-**Example:**
+**Examples:**
 
 ```bash
-curl "https://us-central1-PROJECT.cloudfunctions.net/api/notes?url=https://example.com&limit=10" \
+# Get all notes
+curl "https://us-central1-PROJECT.cloudfunctions.net/api/notes" \
+  -H "Authorization: Bearer sk_live_..."
+
+# Get only notes you own
+curl "https://us-central1-PROJECT.cloudfunctions.net/api/notes?filter=owned" \
+  -H "Authorization: Bearer sk_live_..."
+
+# Get notes shared with you
+curl "https://us-central1-PROJECT.cloudfunctions.net/api/notes?filter=shared" \
+  -H "Authorization: Bearer sk_live_..."
+
+# Get notes for a specific domain
+curl "https://us-central1-PROJECT.cloudfunctions.net/api/notes?domain=github.com" \
   -H "Authorization: Bearer sk_live_..."
 ```
 
@@ -178,10 +193,12 @@ curl "https://us-central1-PROJECT.cloudfunctions.net/api/notes?url=https://examp
       "position": { "anchor": "top-right" },
       "metadata": null,
       "sharedWith": [],
+      "isShared": false,
       "createdAt": "2025-01-13T10:00:00.000Z",
       "updatedAt": "2025-01-13T10:00:00.000Z"
     }
   ],
+  "filter": "all",
   "pagination": {
     "limit": 50,
     "offset": 0,
@@ -754,6 +771,89 @@ Authorization: Bearer sk_live_...
       "updatedAt": "..."
     }
   ]
+}
+```
+
+---
+
+## Statistics
+
+Get statistics about your notes.
+
+```http
+GET /notes/stats
+Authorization: Bearer sk_live_...
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "total": 42,
+  "owned": 35,
+  "shared": 7,
+  "byTheme": {
+    "yellow": 20,
+    "blue": 10,
+    "green": 8,
+    "pink": 4
+  },
+  "domainCount": 12,
+  "domains": ["github.com", "stackoverflow.com", "docs.google.com"],
+  "recentlyUpdated": 5
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `total` | Total notes (owned + shared) |
+| `owned` | Notes you created |
+| `shared` | Notes shared with you by others |
+| `byTheme` | Breakdown by color theme |
+| `domainCount` | Number of unique domains |
+| `domains` | List of domains (up to 20) |
+| `recentlyUpdated` | Notes updated in last 7 days |
+
+---
+
+## Commented Notes
+
+Get all notes where you have written at least one comment.
+
+```http
+GET /notes/commented
+Authorization: Bearer sk_live_...
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | number | Max results (default: 50, max: 100) |
+| `offset` | number | Pagination offset (default: 0) |
+
+**Response (200 OK):**
+
+```json
+{
+  "notes": [
+    {
+      "id": "note123",
+      "url": "https://example.com/page",
+      "selector": "#main-content",
+      "content": "Note content here",
+      "theme": "yellow",
+      "isShared": false,
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ],
+  "totalCommentedNotes": 15,
+  "pagination": {
+    "limit": 50,
+    "offset": 0,
+    "hasMore": false
+  }
 }
 ```
 

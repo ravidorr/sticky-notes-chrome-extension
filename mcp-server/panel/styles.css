@@ -1,4 +1,4 @@
-/* Sticky Notes Panel - Dark Theme */
+/* Sticky Notes Dashboard - Dark Theme */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -14,7 +14,7 @@ body {
 }
 
 .container {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -52,6 +52,162 @@ body {
 
 .auto-refresh input {
   cursor: pointer;
+}
+
+/* Stats Dashboard */
+.stats-dashboard {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background-color: #2d2d2d;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  border-left: 3px solid #555;
+}
+
+.stat-card.stat-total {
+  border-left-color: #0078d4;
+}
+
+.stat-card.stat-owned {
+  border-left-color: #ffd93d;
+}
+
+.stat-card.stat-shared {
+  border-left-color: #6cb6ff;
+}
+
+.stat-card.stat-domains {
+  border-left-color: #3fb950;
+}
+
+.stat-value {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+/* Theme Breakdown */
+.theme-breakdown {
+  background-color: #2d2d2d;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.theme-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #1e1e1e;
+  margin-bottom: 12px;
+}
+
+.theme-segment {
+  transition: flex 0.3s ease;
+}
+
+.theme-segment.theme-yellow {
+  background-color: #ffd93d;
+}
+
+.theme-segment.theme-blue {
+  background-color: #6cb6ff;
+}
+
+.theme-segment.theme-green {
+  background-color: #3fb950;
+}
+
+.theme-segment.theme-pink {
+  background-color: #f778ba;
+}
+
+.theme-legend {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.legend-color.yellow {
+  background-color: #ffd93d;
+}
+
+.legend-color.blue {
+  background-color: #6cb6ff;
+}
+
+.legend-color.green {
+  background-color: #3fb950;
+}
+
+.legend-color.pink {
+  background-color: #f778ba;
+}
+
+/* Filter Tabs */
+.filter-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  background-color: #252525;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.filter-tab {
+  flex: 1;
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-tab:hover {
+  color: #cccccc;
+  background-color: #333;
+}
+
+.filter-tab.active {
+  background-color: #0078d4;
+  color: #ffffff;
 }
 
 /* URL Input */
@@ -176,7 +332,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
 
@@ -213,6 +369,19 @@ body {
   color: #f778ba;
 }
 
+.note-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.note-badge.shared {
+  background-color: rgba(108, 182, 255, 0.2);
+  color: #6cb6ff;
+}
+
 .note-selector {
   font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 0.75rem;
@@ -221,6 +390,15 @@ body {
   border-radius: 4px;
   color: #999;
   max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-url {
+  font-size: 0.75rem;
+  color: #666;
+  margin-bottom: 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -338,6 +516,20 @@ body {
 }
 
 /* Responsive */
+@media (max-width: 768px) {
+  .stats-dashboard {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .filter-tabs {
+    flex-wrap: wrap;
+  }
+  
+  .filter-tab {
+    flex: 1 1 45%;
+  }
+}
+
 @media (max-width: 600px) {
   .container {
     padding: 15px;
@@ -348,6 +540,14 @@ body {
     align-items: flex-start;
     gap: 10px;
   }
+  
+  .stats-dashboard {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+  }
 
   .url-input-container {
     flex-direction: column;
@@ -355,5 +555,9 @@ body {
 
   .btn {
     width: 100%;
+  }
+  
+  .theme-legend {
+    gap: 12px;
   }
 }
