@@ -395,13 +395,44 @@ body {
   white-space: nowrap;
 }
 
-.note-url {
-  font-size: 0.75rem;
-  color: #666;
+.note-url-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 10px;
+}
+
+.note-url-link {
+  flex: 1;
+  font-size: 0.75rem;
+  color: #6cb6ff;
+  text-decoration: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.note-url-link:hover {
+  color: #8fcaff;
+  text-decoration: underline;
+}
+
+.btn-open {
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  background-color: #333;
+  color: #cccccc;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-open:hover {
+  background-color: #0078d4;
+  color: #ffffff;
 }
 
 .note-content {

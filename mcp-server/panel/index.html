@@ -287,7 +287,14 @@
             ${note.isShared ? '<span class="note-badge shared">Shared</span>' : ''}
             <code class="note-selector">${escapeHtml(note.selector)}</code>
           </div>
-          <div class="note-url">${escapeHtml(note.url)}</div>
+          <div class="note-url-row">
+            <a href="${escapeHtml(note.url)}" target="_blank" rel="noopener noreferrer" class="note-url-link" title="Open in new tab">
+              ${escapeHtml(note.url)}
+            </a>
+            <a href="${escapeHtml(note.url)}" target="_blank" rel="noopener noreferrer" class="btn-open" title="Open page">
+              Open
+            </a>
+          </div>
           <div class="note-content">
             ${escapeHtml(stripHtml(note.content)) || '<em class="no-content">No content</em>'}
           </div>
