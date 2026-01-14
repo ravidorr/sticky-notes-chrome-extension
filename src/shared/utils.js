@@ -315,6 +315,10 @@ export function formatRelativeTime(date) {
   let then;
   if (typeof date.toDate === 'function') {
     then = date.toDate();
+  } else if (typeof date === 'object' && date.seconds !== undefined) {
+    // Handle serialized Firestore Timestamp (sent through Chrome messaging API)
+    // These have {seconds, nanoseconds} but lose the toDate() method during serialization
+    then = new Date(date.seconds * 1000);
   } else {
     then = new Date(date);
   }

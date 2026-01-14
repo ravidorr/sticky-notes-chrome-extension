@@ -506,6 +506,19 @@ describe('formatRelativeTime', () => {
     expect(utils.formatRelativeTime(mockTimestamp)).toMatch(/^(4 hours ago|hoursAgo)$/);
   });
 
+  it('should handle serialized Firestore Timestamps (from Chrome messaging)', () => {
+    // When Firestore Timestamps are sent through Chrome messaging API,
+    // they lose the toDate() method and become plain objects with seconds/nanoseconds
+    const fourHoursAgoSeconds = Math.floor((localThis.now.getTime() - 4 * 60 * 60 * 1000) / 1000);
+    const serializedTimestamp = {
+      type: 'firestore/timestamp/1.0',
+      seconds: fourHoursAgoSeconds,
+      nanoseconds: 0
+    };
+    // Check for either translated text or i18n key
+    expect(utils.formatRelativeTime(serializedTimestamp)).toMatch(/^(4 hours ago|hoursAgo)$/);
+  });
+
   it('should return "just now" for invalid dates', () => {
     // Check for either translated text or i18n key
     expect(utils.formatRelativeTime('invalid-date')).toMatch(/^(just now|justNow)$/);
