@@ -90,7 +90,7 @@ npm run build
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable "Developer mode" (toggle in top right)
 3. Click "Load unpacked"
-4. Select the `dist` folder
+4. Select the `dist/chrome` folder
 
 ### Development Commands
 

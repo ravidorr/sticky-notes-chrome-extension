@@ -72,6 +72,43 @@ export function normalizeUrl(url) {
 }
 
 /**
+ * Marker used to identify iframe URLs in composite URLs
+ */
+const IFRAME_URL_MARKER = '#iframe:';
+
+/**
+ * Create a composite URL for iframe support
+ * Combines the main page URL with the iframe URL for notes created in iframes
+ * @param {string} tabUrl - The main page (tab) URL
+ * @param {string} frameUrl - The iframe URL (or same as tabUrl for top frame)
+ * @param {boolean} isTopFrame - Whether this is the top-level frame
+ * @returns {string} Composite URL for storage/lookup
+ */
+export function createCompositeUrl(tabUrl, frameUrl, isTopFrame) {
+  if (isTopFrame) {
+    return normalizeUrl(tabUrl);
+  }
+  return `${normalizeUrl(tabUrl)}${IFRAME_URL_MARKER}${normalizeUrl(frameUrl)}`;
+}
+
+/**
+ * Parse a composite URL to extract tab and frame URLs
+ * @param {string} compositeUrl - The composite URL to parse
+ * @returns {Object} Object with tabUrl, frameUrl, and isTopFrame properties
+ */
+export function parseCompositeUrl(compositeUrl) {
+  const idx = compositeUrl.indexOf(IFRAME_URL_MARKER);
+  if (idx === -1) {
+    return { tabUrl: compositeUrl, frameUrl: null, isTopFrame: true };
+  }
+  return {
+    tabUrl: compositeUrl.substring(0, idx),
+    frameUrl: compositeUrl.substring(idx + IFRAME_URL_MARKER.length),
+    isTopFrame: false
+  };
+}
+
+/**
  * Debounce a function
  * @param {Function} func - Function to debounce
  * @param {number} wait - Wait time in milliseconds

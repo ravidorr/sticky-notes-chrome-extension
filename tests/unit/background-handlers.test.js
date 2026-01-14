@@ -1534,4 +1534,51 @@ describe('Background Handlers', () => {
       expect(chrome.action.setBadgeText).toHaveBeenCalled();
     });
   });
+  
+  describe('getTabUrl', () => {
+    it('should return tab URL from sender', () => {
+      const handlers = createHandlers(localThis.deps);
+      const sender = { tab: { url: 'https://example.com/page' } };
+      
+      const result = handlers.getTabUrl(sender);
+      
+      expect(result.success).toBe(true);
+      expect(result.url).toBe('https://example.com/page');
+    });
+    
+    it('should return error when tab URL not available', () => {
+      const handlers = createHandlers(localThis.deps);
+      const sender = { tab: {} }; // No URL
+      
+      const result = handlers.getTabUrl(sender);
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Tab URL not available');
+    });
+    
+    it('should return error when no tab in sender', () => {
+      const handlers = createHandlers(localThis.deps);
+      const sender = {}; // No tab
+      
+      const result = handlers.getTabUrl(sender);
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Tab URL not available');
+    });
+  });
+  
+  describe('handleMessage getTabUrl', () => {
+    it('should route getTabUrl message to getTabUrl handler', async () => {
+      const handlers = createHandlers(localThis.deps);
+      const sender = { tab: { url: 'https://example.com/iframe-test' } };
+      
+      const result = await handlers.handleMessage(
+        { action: 'getTabUrl' },
+        sender
+      );
+      
+      expect(result.success).toBe(true);
+      expect(result.url).toBe('https://example.com/iframe-test');
+    });
+  });
 });

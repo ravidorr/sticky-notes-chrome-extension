@@ -117,6 +117,91 @@ describe('normalizeUrl', () => {
   });
 });
 
+describe('createCompositeUrl', () => {
+  it('should return normalized URL for top frame', () => {
+    const result = utils.createCompositeUrl(
+      'https://example.com/page?foo=bar',
+      'https://example.com/page?foo=bar',
+      true
+    );
+    expect(result).toBe('https://example.com/page');
+  });
+
+  it('should create composite URL for iframe', () => {
+    const result = utils.createCompositeUrl(
+      'https://example.com/page',
+      'https://widget.com/embed?token=123',
+      false
+    );
+    expect(result).toBe('https://example.com/page#iframe:https://widget.com/embed');
+  });
+
+  it('should normalize both URLs in composite', () => {
+    const result = utils.createCompositeUrl(
+      'https://example.com/page?query=1#hash',
+      'https://widget.com/embed?token=abc#section',
+      false
+    );
+    expect(result).toBe('https://example.com/page#iframe:https://widget.com/embed');
+  });
+
+  it('should handle same-origin iframes', () => {
+    const result = utils.createCompositeUrl(
+      'https://example.com/main',
+      'https://example.com/iframe-content',
+      false
+    );
+    expect(result).toBe('https://example.com/main#iframe:https://example.com/iframe-content');
+  });
+});
+
+describe('parseCompositeUrl', () => {
+  it('should parse top frame URL', () => {
+    const result = utils.parseCompositeUrl('https://example.com/page');
+    expect(result).toEqual({
+      tabUrl: 'https://example.com/page',
+      frameUrl: null,
+      isTopFrame: true
+    });
+  });
+
+  it('should parse composite iframe URL', () => {
+    const result = utils.parseCompositeUrl('https://example.com/page#iframe:https://widget.com/embed');
+    expect(result).toEqual({
+      tabUrl: 'https://example.com/page',
+      frameUrl: 'https://widget.com/embed',
+      isTopFrame: false
+    });
+  });
+
+  it('should handle URL with regular hash (not iframe marker)', () => {
+    const result = utils.parseCompositeUrl('https://example.com/page#section');
+    expect(result).toEqual({
+      tabUrl: 'https://example.com/page#section',
+      frameUrl: null,
+      isTopFrame: true
+    });
+  });
+
+  it('should roundtrip with createCompositeUrl for top frame', () => {
+    const original = 'https://example.com/page';
+    const composite = utils.createCompositeUrl(original, original, true);
+    const parsed = utils.parseCompositeUrl(composite);
+    expect(parsed.isTopFrame).toBe(true);
+    expect(parsed.tabUrl).toBe(original);
+  });
+
+  it('should roundtrip with createCompositeUrl for iframe', () => {
+    const tabUrl = 'https://example.com/page';
+    const frameUrl = 'https://widget.com/embed';
+    const composite = utils.createCompositeUrl(tabUrl, frameUrl, false);
+    const parsed = utils.parseCompositeUrl(composite);
+    expect(parsed.isTopFrame).toBe(false);
+    expect(parsed.tabUrl).toBe(tabUrl);
+    expect(parsed.frameUrl).toBe(frameUrl);
+  });
+});
+
 describe('generateId', () => {
   it('should generate unique IDs', () => {
     const id1 = utils.generateId();

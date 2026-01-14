@@ -47,6 +47,7 @@ function initStickyNotes() {
     
     // Check if we should initialize in this frame
     if (!shouldInitialize()) {
+      setupDeferredIframeInit({ initFn: initStickyNotes });
       return;
     }
     
@@ -63,13 +64,74 @@ function initStickyNotes() {
 
 log.debug(' Content script loaded, readyState:', document.readyState);
 
-if (document.readyState === 'loading') {
-  log.debug(' Document still loading, adding DOMContentLoaded listener');
-  document.addEventListener('DOMContentLoaded', initStickyNotes);
-} else {
-  log.debug(' Document ready, initializing immediately');
-  initStickyNotes();
+// Only auto-initialize in non-test environment
+if (typeof globalThis.__JEST__ === 'undefined') {
+  if (document.readyState === 'loading') {
+    log.debug(' Document still loading, adding DOMContentLoaded listener');
+    document.addEventListener('DOMContentLoaded', initStickyNotes);
+  } else {
+    log.debug(' Document ready, initializing immediately');
+    initStickyNotes();
+  }
 }
 
 // Export for testing
 export { shouldInitialize };
+export { setupDeferredIframeInit };
+
+/**
+ * If this iframe is temporarily 0x0 at load time, defer init until it has a real size.
+ * This fixes cases where the "real" iframe content is created/resized after initial load.
+ * Exported for unit testing.
+ * @param {Object} options
+ * @param {number} [options.minSize=50]
+ * @param {Function} options.initFn
+ * @returns {{deferred: boolean}}
+ */
+function setupDeferredIframeInit({ minSize = 50, initFn } = {}) {
+  try {
+    const url = window.location.href;
+    const isTopFrame = window.self === window.top;
+    const isPersistentUrl = !(url.startsWith('about:') || url.startsWith('blob:') || url.startsWith('data:'));
+    const isTemporarilyTinyIframe =
+      !isTopFrame && isPersistentUrl && (window.innerWidth < minSize || window.innerHeight < minSize);
+
+    if (!isTemporarilyTinyIframe) return { deferred: false };
+    if (window.__stickyNotesDeferredInit) return { deferred: true };
+
+    window.__stickyNotesDeferredInit = true;
+
+    let resizeObserver = null;
+    const tryInit = () => {
+      if (window.__stickyNotesInitialized) return true;
+      if (window.innerWidth >= minSize && window.innerHeight >= minSize) {
+        if (typeof initFn === 'function') initFn();
+        return true;
+      }
+      return false;
+    };
+
+    const cleanup = () => {
+      window.removeEventListener('resize', onResize);
+      if (resizeObserver) resizeObserver.disconnect();
+      window.__stickyNotesDeferredInit = false;
+    };
+
+    const onResize = () => {
+      if (tryInit()) cleanup();
+    };
+
+    window.addEventListener('resize', onResize);
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(onResize);
+      resizeObserver.observe(document.documentElement);
+    }
+
+    // Attempt once in case size is already updated.
+    onResize();
+
+    return { deferred: true };
+  } catch {
+    return { deferred: false };
+  }
+}

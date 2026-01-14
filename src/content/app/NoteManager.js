@@ -22,7 +22,10 @@ export class NoteManager {
    * @param {Function} options.sendMessage - Function to send messages
    * @param {Function} options.isContextInvalidatedError - Function to check context errors
    * @param {Function} options.getCurrentUser - Function to get current user
-   * @param {Function} options.getCurrentUrl - Function to get current URL
+   * @param {Function} options.getCurrentUrl - Function to get current (composite) URL
+   * @param {Function} options.getTabUrl - Function to get the tab URL
+   * @param {Function} options.getFrameUrl - Function to get the frame URL
+   * @param {Function} options.isTopFrame - Function to check if this is the top frame
    * @param {Function} options.subscribeToComments - Function to subscribe to comments
    * @param {Function} options.unsubscribeFromComments - Function to unsubscribe from comments
    * @param {Function} options.showReanchorUI - Function to show reanchor UI
@@ -36,6 +39,9 @@ export class NoteManager {
     this.isContextInvalidatedError = options.isContextInvalidatedError;
     this.getCurrentUser = options.getCurrentUser;
     this.getCurrentUrl = options.getCurrentUrl;
+    this.getTabUrl = options.getTabUrl;
+    this.getFrameUrl = options.getFrameUrl;
+    this.isTopFrame = options.isTopFrame;
     this.subscribeToComments = options.subscribeToComments;
     this.unsubscribeFromComments = options.unsubscribeFromComments;
     this.showReanchorUI = options.showReanchorUI;
@@ -46,9 +52,10 @@ export class NoteManager {
     // Track orphaned notes (anchor element not found, user can view centered)
     this.orphanedNotes = new Map();
     
-    // Track notes created in this session (should start maximized)
-    // Used to handle race condition between direct creation and real-time sync
-    this.sessionCreatedNoteIds = new Set();
+    // Track notes created in this session (should start maximized).
+    // Used to handle race conditions between direct creation and real-time sync.
+    // Map<noteId, createdAtMs>
+    this.sessionCreatedNoteIds = new Map();
   }
   
   /**
@@ -199,6 +206,12 @@ export class NoteManager {
   createNoteFromData(noteData, options = {}) {
     // Check if note already exists to prevent duplicates
     if (this.notes.has(noteData.id)) {
+      // If this is a newly created note (context menu / selection flow) but a race already created it
+      // via real-time updates, ensure it is expanded.
+      const existingNote = this.notes.get(noteData.id);
+      if (options.isNewNote && existingNote?.isMinimized) {
+        existingNote.toggleMinimize();
+      }
       log.debug('Note already exists, skipping creation:', noteData.id);
       return;
     }
@@ -210,7 +223,32 @@ export class NoteManager {
     }
     
     // Find the anchor element
-    let anchorElement = document.querySelector(noteData.selector);
+    let anchorElement = null;
+    let selectorMatches = [];
+    try {
+      selectorMatches = Array.from(document.querySelectorAll(noteData.selector));
+      anchorElement = selectorMatches[0] || null;
+    } catch {
+      selectorMatches = [];
+      anchorElement = null;
+    }
+
+    // If selector matches multiple elements, disambiguate using anchorText (when available).
+    // This prevents anchoring to the "first" sibling when multiple identical elements exist.
+    if (selectorMatches.length > 1) {
+      const anchorText = (noteData.anchorText || '').trim();
+      if (anchorText) {
+        const byText = selectorMatches.find((el) => (el.textContent || '').trim() === anchorText);
+        if (byText) {
+          anchorElement = byText;
+        } else {
+          const best = this.selectorEngine.findBestMatch(noteData.selector, { textContent: anchorText });
+          if (best) {
+            anchorElement = best;
+          }
+        }
+      }
+    }
     
     // If not found, try fuzzy matching
     // Note: Using debug level since in SPAs elements may be injected later
@@ -267,6 +305,10 @@ export class NoteManager {
     this.container.appendChild(note.element);
     this.notes.set(noteData.id, note);
     
+    // Ensure initial positioning happens after the element is connected to the DOM.
+    // This avoids a visible "jump" caused by measuring 0x0 before attachment.
+    note.updatePosition();
+
     // Setup visibility observer
     this.visibilityManager.observe(anchorElement, note);
   }
@@ -525,7 +567,9 @@ export class NoteManager {
     
     // Create new note with metadata
     const browserInfo = getBrowserInfo();
-    const isTopFrame = window.self === window.top;
+    const isTopFrame = this.isTopFrame();
+    const tabUrl = this.getTabUrl();
+    const frameUrl = this.getFrameUrl();
     const noteData = {
       url: this.getCurrentUrl(),
       selector: selector,
@@ -534,13 +578,14 @@ export class NoteManager {
       position: { anchor: 'top-right' },
       anchorText: element.textContent?.trim().substring(0, 100) || '',
       metadata: {
-        url: window.location.href,
+        url: frameUrl,
+        tabUrl: tabUrl,
         title: document.title,
         browser: `${browserInfo.browser}${browserInfo.version ? ' ' + browserInfo.version : ''}`,
         viewport: `${window.innerWidth}x${window.innerHeight}`,
         timestamp: new Date().toISOString(),
         isTopFrame: isTopFrame,
-        frameUrl: isTopFrame ? null : window.location.href
+        frameUrl: isTopFrame ? null : frameUrl
       }
     };
     
@@ -553,9 +598,7 @@ export class NoteManager {
       
       if (response.success) {
         // Track this note as created in current session (for real-time sync race condition)
-        this.sessionCreatedNoteIds.add(response.note.id);
-        // Clean up after a short delay
-        setTimeout(() => this.sessionCreatedNoteIds.delete(response.note.id), 5000);
+        this.sessionCreatedNoteIds.set(response.note.id, Date.now());
         
         // Create the note UI - new notes start maximized
         this.createNoteFromData(response.note, { isNewNote: true });
@@ -582,7 +625,9 @@ export class NoteManager {
     
     // Create new note with metadata
     const browserInfo = getBrowserInfo();
-    const isTopFrame = window.self === window.top;
+    const isTopFrame = this.isTopFrame();
+    const tabUrl = this.getTabUrl();
+    const frameUrl = this.getFrameUrl();
     const noteData = {
       url: this.getCurrentUrl(),
       selector: selector,
@@ -591,16 +636,17 @@ export class NoteManager {
       position: { anchor: 'top-right' },
       anchorText: element.textContent?.trim().substring(0, 100) || '',
       metadata: {
-        url: window.location.href,
+        url: frameUrl,
+        tabUrl: tabUrl,
         title: document.title,
         browser: `${browserInfo.browser}${browserInfo.version ? ' ' + browserInfo.version : ''}`,
         viewport: `${window.innerWidth}x${window.innerHeight}`,
         timestamp: new Date().toISOString(),
         isTopFrame: isTopFrame,
-        frameUrl: isTopFrame ? null : window.location.href
+        frameUrl: isTopFrame ? null : frameUrl
       }
     };
-    
+
     try {
       // Save to storage
       const response = await this.sendMessage({
@@ -610,9 +656,7 @@ export class NoteManager {
       
       if (response.success) {
         // Track this note as created in current session (for real-time sync race condition)
-        this.sessionCreatedNoteIds.add(response.note.id);
-        // Clean up after a short delay
-        setTimeout(() => this.sessionCreatedNoteIds.delete(response.note.id), 5000);
+        this.sessionCreatedNoteIds.set(response.note.id, Date.now());
         
         // Create the note UI - new notes start maximized
         this.createNoteFromData(response.note, { isNewNote: true });
@@ -633,6 +677,15 @@ export class NoteManager {
    */
   handleRealtimeNotesUpdate(updatedNotes) {
     if (!updatedNotes) return;
+
+    // Purge old "session created" markers opportunistically (no timers).
+    const now = Date.now();
+    const creationGraceMs = 15000;
+    for (const [id, createdAt] of this.sessionCreatedNoteIds.entries()) {
+      if (now - createdAt > creationGraceMs) {
+        this.sessionCreatedNoteIds.delete(id);
+      }
+    }
     
     // Create sets for efficient lookup
     const currentIds = new Set(this.notes.keys());
@@ -641,6 +694,11 @@ export class NoteManager {
     // Remove notes that no longer exist
     currentIds.forEach(id => {
       if (!updatedIds.has(id)) {
+        // If we just created the note, avoid removing it due to a real-time sync lag.
+        if (this.sessionCreatedNoteIds.has(id)) {
+          return;
+        }
+
         const note = this.notes.get(id);
         if (note) {
           this.visibilityManager.unobserve(note.anchor);

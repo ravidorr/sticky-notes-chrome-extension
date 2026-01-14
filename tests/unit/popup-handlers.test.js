@@ -40,7 +40,15 @@ describe('Popup Handlers', () => {
         get: jest.fn()
       }
     };
-    
+
+    // Mock chrome.webNavigation globally (used directly in handleAddNote)
+    globalThis.chrome = {
+      ...globalThis.chrome,
+      webNavigation: {
+        getAllFrames: jest.fn().mockResolvedValue([{ frameId: 0 }])
+      }
+    };
+
     localThis.mockWindowClose = jest.fn();
     localThis.mockShowErrorToast = jest.fn();
     
@@ -162,55 +170,61 @@ describe('Popup Handlers', () => {
       expect(localThis.mockWindowClose).toHaveBeenCalled();
     });
 
-    it('should inject content script when not loaded', async () => {
+    it('should send to all frames even if some fail', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      globalThis.chrome.webNavigation.getAllFrames.mockResolvedValue([
+        { frameId: 0 },
+        { frameId: 1 },
+        { frameId: 2 }
+      ]);
+
+      // Some frames succeed, some fail - that's okay
+      localThis.mockChromeTabs.sendMessage
+        .mockResolvedValueOnce({ success: true })
+        .mockRejectedValueOnce(new Error('Frame not available'))
+        .mockResolvedValueOnce({ success: true })
+        .mockResolvedValueOnce({ success: true }); // fallback without frameId
+
+      const result = await localThis.handlers.handleAddNote();
+
+      expect(result.success).toBe(true);
+      expect(localThis.mockWindowClose).toHaveBeenCalled();
+    });
+
+    it('should inject content script when getAllFrames fails', async () => {
       localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
       
-      // First call fails (content script not loaded)
-      localThis.mockChromeTabs.sendMessage
-        .mockRejectedValueOnce(new Error('Receiving end does not exist'))
-        .mockResolvedValueOnce({ success: true });
+      // getAllFrames throws an error
+      globalThis.chrome.webNavigation.getAllFrames.mockRejectedValue(new Error('Receiving end does not exist'));
       
+      // After injection, sendMessage succeeds
+      localThis.mockChromeTabs.sendMessage.mockResolvedValue({ success: true });
       localThis.mockChromeScripting.executeScript.mockResolvedValue([{ result: true }]);
-      
+
       const result = await localThis.handlers.handleAddNote();
-      
+
       expect(result.success).toBe(true);
       expect(localThis.mockChromeScripting.executeScript).toHaveBeenCalled();
     });
 
-    it('should retry after injection', async () => {
-      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
-      
-      // First call fails, then succeeds after injection
-      localThis.mockChromeTabs.sendMessage
-        .mockRejectedValueOnce(new Error('Receiving end does not exist'))
-        .mockRejectedValueOnce(new Error('Still not ready'))
-        .mockResolvedValueOnce({ success: true });
-      
-      localThis.mockChromeScripting.executeScript.mockResolvedValue([{ result: true }]);
-      
-      const result = await localThis.handlers.handleAddNote();
-      
-      expect(result.success).toBe(true);
-    });
-
     it('should handle injection failure', async () => {
       localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      globalThis.chrome.webNavigation.getAllFrames.mockRejectedValue(new Error('Receiving end does not exist'));
       localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('Receiving end does not exist'));
       localThis.mockChromeScripting.executeScript.mockRejectedValue(new Error('Cannot inject'));
-      
+
       const result = await localThis.handlers.handleAddNote();
-      
+
       expect(result.success).toBe(false);
       expect(localThis.mockShowErrorToast).toHaveBeenCalled();
     });
 
     it('should handle non-injection errors', async () => {
       localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
-      localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('Unknown error'));
-      
+      globalThis.chrome.webNavigation.getAllFrames.mockRejectedValue(new Error('Unknown error'));
+
       const result = await localThis.handlers.handleAddNote();
-      
+
       expect(result.success).toBe(false);
       expect(localThis.mockShowErrorToast).toHaveBeenCalled();
     });

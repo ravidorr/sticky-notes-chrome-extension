@@ -28,6 +28,7 @@ import { initializeFirebase, isFirebaseConfigured } from '../firebase/config.js'
 import { generateId, isValidEmail } from '../shared/utils.js';
 import { backgroundLogger as log } from '../shared/logger.js';
 import { createHandlers } from './handlers.js';
+import { getUrlChangedMessageFromHistoryUpdate } from './navigation.js';
 
 // Track active subscriptions by tab ID
 const noteSubscriptions = new Map(); // tabId -> { url: string, unsubscribe: Function }
@@ -90,30 +91,26 @@ export function bootstrap() {
   // Handle context menu click
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === 'create-sticky-note' && tab?.id) {
-      // Use frameId to target the correct frame (main page or iframe)
-      const options = info.frameId !== undefined ? { frameId: info.frameId } : {};
+      log.debug('Context menu clicked, frameId:', info.frameId, 'frameUrl:', info.frameUrl, 'pageUrl:', info.pageUrl);
       
+      // Send to all frames - each frame will check if it has the right-clicked element
+      // This is necessary because Chrome's frameId may not match where the contextmenu event was captured
       try {
-        await chrome.tabs.sendMessage(tab.id, { action: 'createNoteAtClick' }, options);
-      } catch (error) {
-        // Content script not in this frame - inject it dynamically (for iframes created after page load)
-        if (info.frameId !== undefined && info.frameId !== 0) {
+        // First try the specific frame that Chrome reports
+        if (info.frameId !== undefined) {
           try {
-            // Inject content script into the specific frame
-            await chrome.scripting.executeScript({
-              target: { tabId: tab.id, frameIds: [info.frameId] },
-              files: ['src/content/content.js']
-            });
-            
-            // Wait a moment for the script to initialize, then retry
-            await new Promise(resolve => setTimeout(resolve, 100));
-            await chrome.tabs.sendMessage(tab.id, { action: 'createNoteAtClick' }, options);
-          } catch (injectError) {
-            log.warn('Failed to inject content script into frame:', injectError);
+            await chrome.tabs.sendMessage(tab.id, { action: 'createNoteAtClick' }, { frameId: info.frameId });
+            return; // Success, we're done
+          } catch (frameError) {
+            log.debug('Specific frame failed, trying all frames:', frameError.message);
           }
-        } else {
-          log.warn('Failed to send createNoteAtClick message:', error);
         }
+        
+        // If specific frame failed or frameId not available, broadcast to all frames
+        // Each content script will check if it has lastRightClickedElement
+        await chrome.tabs.sendMessage(tab.id, { action: 'createNoteAtClick' });
+      } catch (error) {
+        log.warn('Failed to send createNoteAtClick message:', error);
       }
     }
   });
@@ -141,10 +138,10 @@ export function bootstrap() {
 
   // Listen for history state updates (SPA navigation)
   chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
-    chrome.tabs.sendMessage(details.tabId, { 
-      action: 'urlChanged', 
-      url: details.url 
-    }).catch(() => {
+    const payload = getUrlChangedMessageFromHistoryUpdate(details);
+    if (!payload) return;
+
+    chrome.tabs.sendMessage(payload.tabId, payload.message).catch(() => {
       // Content script might not be loaded yet
     });
   });

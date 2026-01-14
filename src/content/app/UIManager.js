@@ -74,7 +74,9 @@ export class UIManager {
    * Enable element selection mode
    */
   enableSelectionMode() {
-    log.debug(' enableSelectionMode() called, current state:', this.isSelectionMode);
+    const isTopFrame = window.self === window.top;
+    log.debug(' enableSelectionMode() called, current state:', this.isSelectionMode, 
+      'isTopFrame:', isTopFrame, 'frameUrl:', window.location.href.substring(0, 50));
     
     if (this.isSelectionMode) {
       log.debug(' Already in selection mode, skipping');
@@ -361,8 +363,30 @@ export class UIManager {
       // Check if any anchor elements were removed
       notes.forEach((note, _id) => {
         if (!document.contains(note.anchor)) {
-          // Anchor element was removed, try to find it again
-          const newAnchor = document.querySelector(note.selector);
+          const oldText = (note.anchor?.textContent || '').trim();
+
+          // Anchor element was removed, try to find it again.
+          // If selector matches multiple elements, disambiguate using old anchor text.
+          let newAnchor = null;
+          let matches = [];
+          try {
+            matches = Array.from(document.querySelectorAll(note.selector));
+            newAnchor = matches[0] || null;
+          } catch {
+            matches = [];
+            newAnchor = null;
+          }
+
+          if (matches.length > 1 && oldText && noteManager?.selectorEngine?.findBestMatch) {
+            const exact = matches.find((el) => (el.textContent || '').trim() === oldText);
+            if (exact) {
+              newAnchor = exact;
+            } else {
+              const best = noteManager.selectorEngine.findBestMatch(note.selector, { textContent: oldText });
+              if (best) newAnchor = best;
+            }
+          }
+
           if (newAnchor) {
             // Store old anchor reference before updating
             const oldAnchor = note.anchor;

@@ -18,7 +18,7 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './config.js';
-import { VALID_THEMES, normalizeUrl, validateSelectorPattern } from '../shared/utils.js';
+import { VALID_THEMES, normalizeUrl, parseCompositeUrl, validateSelectorPattern } from '../shared/utils.js';
 
 const NOTES_COLLECTION = 'notes';
 
@@ -75,8 +75,14 @@ export async function createNote(noteData, userId, userEmail, deps = {}) {
   // Validate theme
   const theme = VALID_THEMES.includes(noteData.theme) ? noteData.theme : 'yellow';
   
+  // Parse the URL to check if it's a composite URL (for iframe support)
+  // Composite URLs are already normalized by createCompositeUrl, so we preserve them
+  const { isTopFrame } = parseCompositeUrl(noteData.url);
+  // For non-composite URLs, normalize them; for composite URLs, preserve as-is
+  const normalizedStorageUrl = isTopFrame ? normalizeUrl(noteData.url) : noteData.url;
+  
   const note = {
-    url: normalizeUrl(noteData.url),
+    url: normalizedStorageUrl,
     selector: noteData.selector.trim(),
     content: noteData.content || '',
     theme: theme,
@@ -101,7 +107,8 @@ export async function createNote(noteData, userId, userEmail, deps = {}) {
 
 /**
  * Get notes for a URL (owned or shared with user)
- * @param {string} url - Page URL
+ * Supports both regular URLs and composite URLs (for iframe support)
+ * @param {string} url - Page URL (may be a composite URL for iframes)
  * @param {string} userId - Current user ID
  * @param {string} userEmail - Current user's email (for shared notes lookup)
  * @param {Object} deps - Optional dependencies for testing
@@ -116,13 +123,17 @@ export async function getNotesForUrl(url, userId, userEmail, deps = {}) {
     throw new Error('Firebase is not configured');
   }
   
-  // Normalize URL to origin + pathname
-  const normalizedUrl = normalizeUrl(url);
+  // Parse the URL to check if it's a composite URL (for iframe support)
+  const { isTopFrame } = parseCompositeUrl(url);
+  
+  // For top-frame requests, normalize the URL
+  // For iframe requests, use the composite URL as-is (already normalized)
+  const queryUrl = isTopFrame ? normalizeUrl(url) : url;
   
   // Query for owned notes
   const ownedQuery = firebaseDeps.query(
     firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
-    firebaseDeps.where('url', '==', normalizedUrl),
+    firebaseDeps.where('url', '==', queryUrl),
     firebaseDeps.where('ownerId', '==', userId),
     firebaseDeps.orderBy('createdAt', 'desc')
   );
@@ -131,7 +142,7 @@ export async function getNotesForUrl(url, userId, userEmail, deps = {}) {
   const normalizedEmail = userEmail?.toLowerCase();
   const sharedQuery = normalizedEmail ? firebaseDeps.query(
     firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
-    firebaseDeps.where('url', '==', normalizedUrl),
+    firebaseDeps.where('url', '==', queryUrl),
     firebaseDeps.where('sharedWith', 'array-contains', normalizedEmail),
     firebaseDeps.orderBy('createdAt', 'desc')
   ) : null;
@@ -358,8 +369,12 @@ export function subscribeToNotesForUrl(url, userId, userEmail, onUpdate, onError
     return () => {};
   }
   
-  // Normalize URL to origin + pathname
-  const normalizedUrl = normalizeUrl(url);
+  // Parse the URL to check if it's a composite URL (for iframe support)
+  const { isTopFrame } = parseCompositeUrl(url);
+  
+  // For top-frame requests, normalize the URL
+  // For iframe requests, use the composite URL as-is (already normalized)
+  const queryUrl = isTopFrame ? normalizeUrl(url) : url;
   const normalizedEmail = userEmail?.toLowerCase();
   
   // Track notes from both queries
@@ -391,7 +406,7 @@ export function subscribeToNotesForUrl(url, userId, userEmail, onUpdate, onError
   // Query for owned notes
   const ownedQuery = firebaseDeps.query(
     firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
-    firebaseDeps.where('url', '==', normalizedUrl),
+    firebaseDeps.where('url', '==', queryUrl),
     firebaseDeps.where('ownerId', '==', userId),
     firebaseDeps.orderBy('createdAt', 'desc')
   );
@@ -416,7 +431,7 @@ export function subscribeToNotesForUrl(url, userId, userEmail, onUpdate, onError
   if (normalizedEmail) {
     const sharedQuery = firebaseDeps.query(
       firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
-      firebaseDeps.where('url', '==', normalizedUrl),
+      firebaseDeps.where('url', '==', queryUrl),
       firebaseDeps.where('sharedWith', 'array-contains', normalizedEmail),
       firebaseDeps.orderBy('createdAt', 'desc')
     );

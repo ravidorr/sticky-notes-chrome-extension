@@ -25,6 +25,7 @@ export class SelectionOverlay {
     this.boundHandleClick = this.handleClick.bind(this);
     this.boundHandleKeyDown = this.handleKeyDown.bind(this);
     this.boundHandleMouseMove = this.handleMouseMove.bind(this);
+    this.boundHandleMouseLeave = this.handleMouseLeave.bind(this);
     
     this.render();
     this.setupEventListeners();
@@ -57,6 +58,8 @@ export class SelectionOverlay {
     document.addEventListener('click', this.boundHandleClick, true);
     document.addEventListener('keydown', this.boundHandleKeyDown, true);
     document.addEventListener('mousemove', this.boundHandleMouseMove, true);
+    // Handle mouse leaving the document (e.g., into an iframe)
+    document.addEventListener('mouseleave', this.boundHandleMouseLeave);
   }
   
   /**
@@ -69,6 +72,7 @@ export class SelectionOverlay {
     document.removeEventListener('click', this.boundHandleClick, true);
     document.removeEventListener('keydown', this.boundHandleKeyDown, true);
     document.removeEventListener('mousemove', this.boundHandleMouseMove, true);
+    document.removeEventListener('mouseleave', this.boundHandleMouseLeave);
   }
   
   /**
@@ -108,6 +112,17 @@ export class SelectionOverlay {
     if (this.shouldIgnoreElement(event.relatedTarget)) {
       this.tooltip.style.display = 'none';
     }
+  }
+  
+  /**
+   * Handle mouse leaving the document (e.g., into an iframe)
+   */
+  handleMouseLeave() {
+    if (!this.isActive) return;
+    
+    // Hide tooltip and remove highlight when mouse leaves this frame
+    this.tooltip.style.display = 'none';
+    this.removeHighlight();
   }
   
   /**

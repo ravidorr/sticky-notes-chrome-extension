@@ -109,6 +109,10 @@ export function createHandlers(deps = {}) {
       case 'updateOrphanedCount':
         return updateOrphanedBadge(message.count, sender);
       
+      // Tab URL for iframe support
+      case 'getTabUrl':
+        return getTabUrl(sender);
+      
       default:
         log.warn('Unknown action received:', message.action, 'Full message:', JSON.stringify(message));
         return { success: false, error: t('unknownAction') };
@@ -148,6 +152,20 @@ export function createHandlers(deps = {}) {
       log.error('Error updating orphaned badge:', error);
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Get the tab URL for iframe support
+   * Returns the main page URL even when called from an iframe
+   * @param {Object} sender - Message sender (contains tab info)
+   * @returns {Object} Result with tab URL
+   */
+  function getTabUrl(sender) {
+    const tabUrl = sender?.tab?.url;
+    if (!tabUrl) {
+      return { success: false, error: 'Tab URL not available' };
+    }
+    return { success: true, url: tabUrl };
   }
 
   /**
@@ -870,7 +888,9 @@ export function createHandlers(deps = {}) {
     subscribeCommentsHandler,
     unsubscribeCommentsHandler,
     // Badge management
-    updateOrphanedBadge
+    updateOrphanedBadge,
+    // Iframe support
+    getTabUrl
   };
 }
 

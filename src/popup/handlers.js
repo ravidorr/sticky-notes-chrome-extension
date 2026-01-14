@@ -114,15 +114,36 @@ export function createPopupHandlers(deps = {}) {
         return { success: false, error: 'Restricted URL' };
       }
       
-      // Try to send message to content script
-      log.debug(' Sending enableSelectionMode message to tab', tab.id);
+      // Send enableSelectionMode to ALL frames in the tab
+      // This is necessary because each frame has its own content script instance
+      log.debug(' Sending enableSelectionMode message to all frames in tab', tab.id);
       try {
-        const response = await chromeTabs.sendMessage(tab.id, { action: 'enableSelectionMode' });
-        log.debug(' Content script responded:', response);
+        // Get all frames in the tab
+        const frames = await chrome.webNavigation.getAllFrames({ tabId: tab.id });
+        log.debug(' Found', frames?.length || 0, 'frames in tab');
+        
+        // Send to each frame - don't wait for all, just ensure message is sent
+        const sendPromises = (frames || []).map(async (frame) => {
+          try {
+            await chromeTabs.sendMessage(tab.id, { action: 'enableSelectionMode' }, { frameId: frame.frameId });
+            log.debug(' Sent to frame', frame.frameId);
+          } catch (err) {
+            // Frame might not have content script, that's okay
+            log.debug(' Frame', frame.frameId, 'error:', err.message);
+          }
+        });
+        
+        // Also send without frameId as fallback (goes to all frames)
+        sendPromises.push(
+          chromeTabs.sendMessage(tab.id, { action: 'enableSelectionMode' }).catch(() => {})
+        );
+        
+        await Promise.all(sendPromises);
+        
         windowClose();
         return { success: true };
       } catch (error) {
-        log.error(' First message failed:', error.message);
+        log.error(' First attempt failed:', error.message);
         
         // Content script not loaded - inject it first
         if (error.message.includes('Receiving end does not exist') || 
@@ -139,13 +160,13 @@ export function createPopupHandlers(deps = {}) {
             await new Promise(resolve => setTimeout(resolve, 200));
             try {
               log.debug(' Retrying message...');
-              const response = await chromeTabs.sendMessage(tab.id, { action: 'enableSelectionMode' });
-              log.debug(' Retry successful! Response:', response);
+              await chromeTabs.sendMessage(tab.id, { action: 'enableSelectionMode' });
+              log.debug(' Retry successful!');
               windowClose();
               return { success: true };
-            } catch (error) {
-              log.error(' Retry failed:', error);
-              lastError = error;
+            } catch (retryError) {
+              log.error(' Retry failed:', retryError);
+              lastError = retryError;
               retries--;
             }
           }

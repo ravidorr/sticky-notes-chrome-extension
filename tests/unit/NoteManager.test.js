@@ -20,6 +20,9 @@ const createMockDependencies = () => {
   localThis.isContextInvalidatedError = jest.fn(() => false);
   localThis.getCurrentUser = jest.fn(() => ({ uid: 'user-123', email: 'test@example.com' }));
   localThis.getCurrentUrl = jest.fn(() => 'https://example.com/page');
+  localThis.getTabUrl = jest.fn(() => 'https://example.com/page');
+  localThis.getFrameUrl = jest.fn(() => 'https://example.com/page');
+  localThis.isTopFrame = jest.fn(() => true);
   localThis.subscribeToComments = jest.fn();
   localThis.unsubscribeFromComments = jest.fn();
   localThis.showReanchorUI = jest.fn();
@@ -83,11 +86,11 @@ describe('NoteManager', () => {
       expect(manager.orphanedNotes.size).toBe(0);
     });
     
-    it('should initialize sessionCreatedNoteIds set', () => {
+    it('should initialize sessionCreatedNoteIds map', () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
       
-      expect(manager.sessionCreatedNoteIds).toBeInstanceOf(Set);
+      expect(manager.sessionCreatedNoteIds).toBeInstanceOf(Map);
       expect(manager.sessionCreatedNoteIds.size).toBe(0);
     });
   });
@@ -152,34 +155,22 @@ describe('NoteManager', () => {
       expect(manager.sessionCreatedNoteIds.size).toBe(0);
     });
     
-    it('should clean up tracked note ID after timeout', async () => {
-      jest.useFakeTimers();
-      
+    it('should purge tracked note IDs older than grace window', () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
-      const anchor = document.getElementById('anchor-element');
       
       const noteId = 'temp-note-789';
-      localThis.sendMessage.mockResolvedValueOnce({
-        success: true,
-        note: {
-          id: noteId,
-          selector: '#anchor-element',
-          content: '',
-          theme: 'yellow',
-          position: { anchor: 'top-right' }
-        }
-      });
-      
-      await manager.handleElementSelect(anchor);
-      expect(manager.sessionCreatedNoteIds.has(noteId)).toBe(true);
-      
-      // Fast-forward 5 seconds
-      jest.advanceTimersByTime(5000);
-      
+      // Insert an "old" marker and a "fresh" marker
+      const now = Date.now();
+      manager.sessionCreatedNoteIds.set(noteId, now - 20000);
+      manager.sessionCreatedNoteIds.set('fresh-note-000', now);
+      expect(manager.sessionCreatedNoteIds.size).toBe(2);
+
+      // Any realtime update should trigger opportunistic purge
+      manager.handleRealtimeNotesUpdate([]);
+
       expect(manager.sessionCreatedNoteIds.has(noteId)).toBe(false);
-      
-      jest.useRealTimers();
+      expect(manager.sessionCreatedNoteIds.has('fresh-note-000')).toBe(true);
     });
   });
   
@@ -187,10 +178,9 @@ describe('NoteManager', () => {
     it('should create note as maximized (isNewNote: true) when ID is in sessionCreatedNoteIds', () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
-      const anchor = document.getElementById('anchor-element');
       
       const noteId = 'session-note-001';
-      manager.sessionCreatedNoteIds.add(noteId);
+      manager.sessionCreatedNoteIds.set(noteId, Date.now());
       
       const noteData = {
         id: noteId,
@@ -213,7 +203,6 @@ describe('NoteManager', () => {
     it('should create note as minimized (isNewNote: false) when ID is NOT in sessionCreatedNoteIds', () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
-      const anchor = document.getElementById('anchor-element');
       
       const noteId = 'external-note-002';
       // Note: NOT adding to sessionCreatedNoteIds
@@ -323,6 +312,36 @@ describe('NoteManager', () => {
       note.destroy();
     });
   });
+
+  describe('createNoteFromData - selector disambiguation', () => {
+    it('should disambiguate when selector matches multiple elements using anchorText', () => {
+      document.body.innerHTML = `
+        <div class="sn-test-target">First</div>
+        <div class="sn-test-target">Second</div>
+      `;
+
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+
+      const noteData = {
+        id: 'note-disambig-1',
+        selector: '.sn-test-target',
+        anchorText: 'Second',
+        content: 'Loaded content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+
+      manager.createNoteFromData(noteData);
+
+      const note = manager.notes.get(noteData.id);
+      expect(note).toBeDefined();
+      expect((note.anchor?.textContent || '').trim()).toBe('Second');
+      expect(localThis.selectorEngine.findBestMatch).not.toHaveBeenCalled();
+
+      note.destroy();
+    });
+  });
   
   describe('clearAll', () => {
     it('should clear sessionCreatedNoteIds', () => {
@@ -330,8 +349,8 @@ describe('NoteManager', () => {
       const manager = new NoteManager(localThis);
       
       // Add some tracked IDs
-      manager.sessionCreatedNoteIds.add('note-1');
-      manager.sessionCreatedNoteIds.add('note-2');
+      manager.sessionCreatedNoteIds.set('note-1', Date.now());
+      manager.sessionCreatedNoteIds.set('note-2', Date.now());
       expect(manager.sessionCreatedNoteIds.size).toBe(2);
       
       manager.clearAll();
@@ -377,8 +396,6 @@ describe('NoteManager', () => {
   
   describe('race condition simulation', () => {
     it('should handle real-time update winning the race - note still created maximized', async () => {
-      jest.useFakeTimers();
-      
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
       const anchor = document.getElementById('anchor-element');
@@ -393,7 +410,7 @@ describe('NoteManager', () => {
       };
       
       // Simulate the race: first track the ID (as handleElementSelect would)
-      manager.sessionCreatedNoteIds.add(noteId);
+      manager.sessionCreatedNoteIds.set(noteId, Date.now());
       
       // Then real-time update comes in before direct creation
       manager.handleRealtimeNotesUpdate([noteData]);
@@ -404,7 +421,6 @@ describe('NoteManager', () => {
       expect(note.isMinimized).toBe(false);
       
       note.destroy();
-      jest.useRealTimers();
     });
     
     it('should skip duplicate creation when note already exists', () => {

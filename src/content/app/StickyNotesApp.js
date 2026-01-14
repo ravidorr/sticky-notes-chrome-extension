@@ -6,6 +6,7 @@
 import { SelectorEngine } from '../selectors/SelectorEngine.js';
 import { VisibilityManager } from '../observers/VisibilityManager.js';
 import { contentLogger as log } from '../../shared/logger.js';
+import { createCompositeUrl } from '../../shared/utils.js';
 import { RealtimeSync } from './RealtimeSync.js';
 import { MessageHandler } from './MessageHandler.js';
 import { NoteManager } from './NoteManager.js';
@@ -18,10 +19,15 @@ export class StickyNotesApp {
   constructor() {
     // Core state
     this.notes = new Map();
-    this.currentUrl = window.location.href;
     this.contextInvalidated = false;
     this.currentUser = null;
     this.lastRightClickedElement = null;
+    
+    // Frame and URL state for iframe support
+    this.isTopFrame = window.self === window.top;
+    this.frameUrl = window.location.href;
+    this.tabUrl = null; // Will be fetched from background script
+    this.currentUrl = null; // Composite URL, set after fetching tab URL
     
     // Services
     this.selectorEngine = new SelectorEngine();
@@ -45,6 +51,7 @@ export class StickyNotesApp {
   setupContextMenuTracking() {
     document.addEventListener('contextmenu', (event) => {
       this.lastRightClickedElement = event.target;
+      log.debug('Context menu event captured, target:', event.target?.tagName, 'id:', event.target?.id);
     }, true);
   }
   
@@ -53,6 +60,7 @@ export class StickyNotesApp {
    */
   async init() {
     log.debug(' init() started');
+    log.debug(' Frame type:', this.isTopFrame ? 'top frame' : 'iframe');
     try {
       // Initialize UI Manager first
       this.uiManager = new UIManager({
@@ -64,6 +72,29 @@ export class StickyNotesApp {
       log.debug(' Creating shadow container...');
       const { container } = this.uiManager.createShadowContainer();
       log.debug(' Shadow container created');
+      
+      // Fetch tab URL from background script for iframe support
+      // This ensures notes in iframes are associated with the main page
+      log.debug(' Fetching tab URL...');
+      try {
+        const tabUrlResponse = await this.sendMessage({ action: 'getTabUrl' });
+        if (tabUrlResponse.success) {
+          this.tabUrl = tabUrlResponse.url;
+          log.debug(' Tab URL:', this.tabUrl);
+        } else {
+          // Fallback to frame URL if tab URL not available
+          this.tabUrl = this.frameUrl;
+          log.debug(' Tab URL not available, using frame URL');
+        }
+      } catch (error) {
+        // Fallback to frame URL on error
+        this.tabUrl = this.frameUrl;
+        log.debug(' Error fetching tab URL, using frame URL:', error.message);
+      }
+      
+      // Create composite URL for note storage/lookup
+      this.currentUrl = createCompositeUrl(this.tabUrl, this.frameUrl, this.isTopFrame);
+      log.debug(' Composite URL:', this.currentUrl);
       
       // Initialize Real-time Sync
       this.realtimeSync = new RealtimeSync({
@@ -84,6 +115,9 @@ export class StickyNotesApp {
         isContextInvalidatedError: (err) => this.isContextInvalidatedError(err),
         getCurrentUser: () => this.currentUser,
         getCurrentUrl: () => this.currentUrl,
+        getTabUrl: () => this.tabUrl,
+        getFrameUrl: () => this.frameUrl,
+        isTopFrame: () => this.isTopFrame,
         subscribeToComments: (noteId) => this.realtimeSync.subscribeToComments(noteId),
         unsubscribeFromComments: (noteId) => this.realtimeSync.unsubscribeFromComments(noteId),
         showReanchorUI: (noteData) => this.uiManager.showReanchorUI(noteData)
@@ -166,7 +200,9 @@ export class StickyNotesApp {
     if (this.contextInvalidated) return; // Only show once
     
     this.contextInvalidated = true;
-    log.warn(' Extension context invalidated - extension was updated or reloaded');
+    // Use debug level - this can happen during extension reload/update in dev and is not actionable
+    // beyond refreshing the page (we already show a UI notification for that).
+    log.debug(' Extension context invalidated - extension was updated or reloaded');
     
     this.uiManager.showRefreshNotification();
   }
@@ -229,10 +265,20 @@ export class StickyNotesApp {
   
   /**
    * Handle URL change (for SPA navigation)
-   * @param {string} newUrl - New URL
+   * @param {string} newUrl - New URL (this is the tab URL from the background script)
    */
   async handleUrlChange(newUrl) {
-    if (newUrl === this.currentUrl) return;
+    // Update frame URL
+    this.frameUrl = window.location.href;
+    
+    // For SPA navigation, the tab URL changes but we might be in an iframe
+    // Use the provided newUrl as the tab URL
+    this.tabUrl = newUrl;
+    
+    // Create new composite URL
+    const newCompositeUrl = createCompositeUrl(this.tabUrl, this.frameUrl, this.isTopFrame);
+    
+    if (newCompositeUrl === this.currentUrl) return;
     
     // Unsubscribe from real-time updates for old URL
     await this.realtimeSync.unsubscribeFromNotes();
@@ -242,7 +288,7 @@ export class StickyNotesApp {
     this.noteManager.clearAll();
     
     // Update current URL
-    this.currentUrl = newUrl;
+    this.currentUrl = newCompositeUrl;
     
     // Load notes for new URL
     await this.noteManager.loadNotes(() => this.realtimeSync.subscribeToNotes(this.currentUrl));
@@ -281,11 +327,18 @@ export class StickyNotesApp {
   /**
    * Create a note at the last right-clicked element
    * Called from context menu
+   * @returns {boolean} True if note was created, false if no element to attach to
    */
   async createNoteAtClick() {
+    log.debug('createNoteAtClick called, lastRightClickedElement:', 
+      this.lastRightClickedElement?.tagName || 'null',
+      'isTopFrame:', this.isTopFrame,
+      'frameUrl:', this.frameUrl?.substring(0, 50));
+    
     if (!this.lastRightClickedElement) {
-      log.warn('No right-clicked element to attach note to');
-      return;
+      // Don't log warning - this is expected when message is broadcast to all frames
+      // Only one frame will have the element
+      return false;
     }
     
     try {
@@ -294,15 +347,20 @@ export class StickyNotesApp {
       
       if (!selector) {
         log.warn('Could not generate selector for element');
-        return;
+        return false;
       }
       
       // Create note via NoteManager
       await this.noteManager.createNoteAtElement(this.lastRightClickedElement, selector);
       
+      // Clear the element after creating note to prevent duplicate creates
+      this.lastRightClickedElement = null;
+      
       log.debug('Created note at right-clicked element');
+      return true;
     } catch (error) {
       log.error('Failed to create note at click:', error);
+      return false;
     }
   }
 }

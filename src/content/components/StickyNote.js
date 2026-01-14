@@ -420,7 +420,7 @@ export class StickyNote {
     });
     
     try {
-      await navigator.clipboard.writeText(markdown);
+      await this.copyTextToClipboard(markdown);
       this.showToast(t('copiedToClipboard'));
     } catch (error) {
       log.error('Failed to copy markdown:', error);
@@ -538,11 +538,71 @@ export class StickyNote {
     }
     
     try {
-      await navigator.clipboard.writeText(value);
+      await this.copyTextToClipboard(value);
       this.showToast(t('copiedToClipboard'));
     } catch (error) {
       log.error('Failed to copy metadata:', error);
       this.showToast(t('failedToCopy'), 'error');
+    }
+  }
+
+  /**
+   * Copy text to clipboard with a fallback for iframes where the Clipboard API is blocked
+   * by Permissions Policy (common in embedded/cross-origin frames).
+   * @param {string} text
+   */
+  async copyTextToClipboard(text) {
+    const isTopFrame = window.self === window.top;
+
+    // If Permissions Policy blocks clipboard-write, skip Clipboard API entirely.
+    // This avoids Chrome emitting a "[Violation] Permissions policy violation" console message.
+    let policyAllowsClipboardWrite = null;
+    try {
+      if (document?.permissionsPolicy?.allowsFeature) {
+        policyAllowsClipboardWrite = document.permissionsPolicy.allowsFeature('clipboard-write');
+      } else if (document?.featurePolicy?.allowsFeature) {
+        // Deprecated alias, but present in some environments
+        policyAllowsClipboardWrite = document.featurePolicy.allowsFeature('clipboard-write');
+      }
+    } catch {
+      policyAllowsClipboardWrite = null;
+    }
+
+    // First try modern Clipboard API (may still fail even if policy allows)
+    // In embedded/cross-origin iframes, Clipboard API is frequently blocked by policy and logs a console violation.
+    // Prefer the legacy fallback in iframes to keep console clean.
+    if (isTopFrame && policyAllowsClipboardWrite !== false && navigator?.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return;
+      } catch (_error) {
+        // Fall through to legacy copy
+      }
+    }
+
+    // Legacy fallback - execCommand('copy') - often still works even when Clipboard API is blocked
+    // as long as it is invoked from a user gesture.
+    if (typeof document?.execCommand !== 'function') {
+      throw new Error('Clipboard API unavailable and execCommand not supported');
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+
+    try {
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+      const ok = document.execCommand('copy');
+      if (!ok) throw new Error('execCommand copy returned false');
+    } finally {
+      textarea.remove();
     }
   }
   
@@ -777,10 +837,18 @@ export class StickyNote {
    */
   updatePosition() {
     if (!this.anchor || !this.element) return;
+
+    // Use untransformed layout dimensions where possible.
+    // getBoundingClientRect() includes CSS transforms (e.g. sn-hidden scale), which can cause
+    // small "jumps" as the note transitions between hidden/visible states.
+    const measuredWidth = this.element.offsetWidth || this.element.getBoundingClientRect().width;
+    const measuredHeight = this.element.offsetHeight || this.element.getBoundingClientRect().height;
+    if (!measuredWidth || !measuredHeight) return;
+
+    // (debug instrumentation removed)
     
     // Handle custom drag position (stored relative to anchor)
     if (this.customPosition) {
-      const noteRect = this.element.getBoundingClientRect();
       let x, y;
       
       if (this.customPosition.offsetX !== undefined) {
@@ -795,14 +863,13 @@ export class StickyNote {
       }
       
       // Clamp to viewport to ensure note is fully visible
-      const clamped = this.clampToViewport(x, y, noteRect.width, noteRect.height);
+      const clamped = this.clampToViewport(x, y, measuredWidth, measuredHeight);
       this.element.style.left = `${clamped.x}px`;
       this.element.style.top = `${clamped.y}px`;
       return;
     }
     
     const anchorRect = this.anchor.getBoundingClientRect();
-    const noteRect = this.element.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     
     // For wide elements (more than 70% of viewport), use a smarter positioning
@@ -815,21 +882,21 @@ export class StickyNote {
     switch (this.position.anchor) {
       case 'top-left':
         // Note above and to the left of element
-        x = anchorRect.left - noteRect.width - 10;
-        y = anchorRect.top - noteRect.height - 10;
+        x = anchorRect.left - measuredWidth - 10;
+        y = anchorRect.top - measuredHeight - 10;
         break;
       case 'top-right':
         // Note above and to the right of element
         if (isWideElement) {
-          x = Math.min(anchorRect.right, viewportWidth - noteRect.width - 20);
+          x = Math.min(anchorRect.right, viewportWidth - measuredWidth - 20);
         } else {
           x = anchorRect.right + 10;
         }
-        y = anchorRect.top - noteRect.height - 10;
+        y = anchorRect.top - measuredHeight - 10;
         break;
       case 'bottom-left':
         // Note below and to the left of element
-        x = anchorRect.left - noteRect.width - 10;
+        x = anchorRect.left - measuredWidth - 10;
         y = anchorRect.bottom + 10;
         break;
       case 'bottom-right':
@@ -846,7 +913,7 @@ export class StickyNote {
     }
     
     // Clamp to viewport to ensure note is fully visible
-    const clamped = this.clampToViewport(x, y, noteRect.width, noteRect.height);
+    const clamped = this.clampToViewport(x, y, measuredWidth, measuredHeight);
     this.element.style.left = `${clamped.x}px`;
     this.element.style.top = `${clamped.y}px`;
   }
@@ -1132,6 +1199,7 @@ export class StickyNote {
    */
   showToast(message, type = 'success') {
     const container = this.element.parentNode;
+    if (!container) return;
     
     // Remove existing toast
     const existing = container.querySelector('.sn-toast');

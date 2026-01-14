@@ -259,7 +259,9 @@ describe('StickyNote', () => {
       localThis.showToastSpy = jest.spyOn(note, 'showToast');
       localThis.copyButton = note.element.querySelector('.sn-metadata-copy-btn[data-copy-value="test-note-1"]');
 
-      await localThis.copyButton.click();
+      localThis.copyButton.click();
+      // Click handlers are async but DOM click isn't awaitable - flush microtasks
+      await new Promise((resolve) => process.nextTick(resolve));
 
       expect(localThis.showToastSpy).toHaveBeenCalledWith('copiedToClipboard');
       localThis.showToastSpy.mockRestore();
@@ -269,11 +271,43 @@ describe('StickyNote', () => {
       const localThis = {};
       localThis.showToastSpy = jest.spyOn(note, 'showToast');
       navigator.clipboard.writeText.mockRejectedValueOnce(new Error('Clipboard error'));
+      // Ensure fallback doesn't run in this test (execCommand may not exist in jsdom)
+      localThis.originalExecCommand = document.execCommand;
+      document.execCommand = undefined;
 
       localThis.copyButton = note.element.querySelector('.sn-metadata-copy-btn[data-copy-value="test-note-1"]');
-      await localThis.copyButton.click();
+      localThis.copyButton.click();
+      await new Promise((resolve) => process.nextTick(resolve));
 
       expect(localThis.showToastSpy).toHaveBeenCalledWith('failedToCopy', 'error');
+      document.execCommand = localThis.originalExecCommand;
+      localThis.showToastSpy.mockRestore();
+    });
+
+    it('should fall back to execCommand copy when Clipboard API is blocked', async () => {
+      const localThis = {};
+      localThis.showToastSpy = jest.spyOn(note, 'showToast');
+
+      navigator.clipboard.writeText.mockClear();
+      navigator.clipboard.writeText.mockRejectedValueOnce(new Error('Permissions policy violation'));
+      localThis.execCommandSpy = jest.fn(() => true);
+      localThis.originalExecCommand = document.execCommand;
+      document.execCommand = localThis.execCommandSpy;
+      // Simulate Permissions Policy explicitly blocking clipboard-write
+      localThis.originalPermissionsPolicy = document.permissionsPolicy;
+      document.permissionsPolicy = { allowsFeature: jest.fn(() => false) };
+
+      localThis.copyButton = note.element.querySelector('.sn-metadata-copy-btn[data-copy-value="test-note-1"]');
+      localThis.copyButton.click();
+      await new Promise((resolve) => process.nextTick(resolve));
+
+      expect(localThis.execCommandSpy).toHaveBeenCalledWith('copy');
+      expect(localThis.showToastSpy).toHaveBeenCalledWith('copiedToClipboard');
+      // Clipboard API should not be attempted if policy blocks it
+      expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+
+      document.permissionsPolicy = localThis.originalPermissionsPolicy;
+      document.execCommand = localThis.originalExecCommand;
       localThis.showToastSpy.mockRestore();
     });
 
@@ -328,6 +362,7 @@ describe('StickyNote', () => {
       });
       container.appendChild(localThis.noteWithLongUrl.element);
 
+      navigator.clipboard.writeText.mockClear();
       // Find the URL copy button (first one)
       localThis.copyButtons = localThis.noteWithLongUrl.element.querySelectorAll('.sn-metadata-copy-btn');
       localThis.urlCopyButton = localThis.copyButtons[0];

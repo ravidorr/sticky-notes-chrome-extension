@@ -45,7 +45,7 @@
 4. Run `npm run build` to generate `dist/` folder
 5. Open Chrome, navigate to `chrome://extensions`
 6. Enable "Developer mode" (toggle in top right)
-7. Click "Load unpacked" and select the `dist/` folder
+7. Click "Load unpacked" and select the `dist/chrome` folder
 8. Verify extension icon appears in toolbar
 
 ### Test Page Setup
@@ -171,6 +171,16 @@
 | 1 | Right-click on `#action-btn-1` | Context menu appears |
 | 2 | Click "Create Sticky Note Here" | Note created and anchored to button |
 | 3 | Note appears near button | Positioned appropriately |
+
+### TEST-4.6: Iframe Context Menu Note Creation
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open a page with an embedded iframe (e.g. a design tool embed) | Page loads and iframe content is visible |
+| 2 | Right-click an element inside the iframe | Context menu appears |
+| 3 | Click "Create Sticky Note Here" | Note is created in the iframe and anchored to the clicked element |
+| 4 | Wait 10-15 seconds | Note stays visible (does not disappear) |
+| 5 | Reload the page | Note persists and re-anchors correctly inside the iframe |
 
 ---
 
@@ -783,6 +793,15 @@
 | 5 | Click copy on URL | Full URL copied (not truncated version) |
 | 6 | Create note with complex CSS selector | Selector truncated in display |
 | 7 | Click copy on Element | Full selector copied (not truncated version) |
+
+### TEST-14.6: Copy Selector and Metadata in an Iframe
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create a note anchored to an element inside an iframe | Note exists inside iframe |
+| 2 | Click "Copy as Markdown" | Markdown is copied successfully |
+| 3 | Expand metadata panel and copy "Element" selector | Selector is copied successfully |
+| 4 | Observe DevTools console | No Permissions Policy clipboard violation noise is emitted from these actions |
 
 ---
 

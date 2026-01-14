@@ -28,6 +28,7 @@
 - [x] Keyboard event isolation (no conflict with page shortcuts)
 - [x] Re-anchor UI when elements not found
 - [x] Extension context invalidation handling
+- [x] Iframe support with composite URL keys (notes in iframes are associated with main page)
 
 ### Code Quality - DONE
 - [x] ESLint configuration with pre-commit hooks
