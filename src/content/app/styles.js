@@ -696,10 +696,6 @@ export function getShadowStyles() {
     /* ==========================================
        Minimized State & Animation
        ========================================== */
-    .sn-note {
-      transition: width 0.5s ease;
-    }
-    
     .sn-note.sn-minimized {
       min-height: auto;
       width: auto;
@@ -707,21 +703,13 @@ export function getShadowStyles() {
     
     .sn-note.sn-minimized .sn-note-header {
       border-radius: 4px;
+      padding: 8px;
     }
     
-    /* Header elements with animation */
-    .sn-note .sn-note-header-title,
-    .sn-note .sn-note-header-actions {
-      opacity: 1;
-      transition: opacity 0.5s ease;
-    }
-    
+    /* Hide header elements when minimized */
     .sn-note.sn-minimized .sn-note-header-title,
     .sn-note.sn-minimized .sn-note-header-actions {
-      opacity: 0;
-      width: 0;
-      overflow: hidden;
-      pointer-events: none;
+      display: none;
     }
     
     /* Expandable sections with animation */
