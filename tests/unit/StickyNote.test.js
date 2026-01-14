@@ -942,9 +942,30 @@ describe('StickyNote', () => {
   });
   
   describe('minimize/maximize', () => {
-    it('should start maximized by default', () => {
-      expect(note.isMinimized).toBe(false);
-      expect(note.element.classList.contains('sn-minimized')).toBe(false);
+    it('should start minimized by default (existing notes)', () => {
+      expect(note.isMinimized).toBe(true);
+      expect(note.element.classList.contains('sn-minimized')).toBe(true);
+    });
+
+    it('should start maximized when isMinimized: false is passed (new notes)', () => {
+      const localThis = {};
+      localThis.newNote = new StickyNote({
+        id: 'new-note-1',
+        anchor: anchor,
+        container: container,
+        content: 'New note content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        isMinimized: false,
+        onSave: onSave,
+        onThemeChange: onThemeChange,
+        onDelete: onDelete
+      });
+
+      expect(localThis.newNote.isMinimized).toBe(false);
+      expect(localThis.newNote.element.classList.contains('sn-minimized')).toBe(false);
+
+      localThis.newNote.destroy();
     });
     
     it('should create minimize button', () => {
@@ -957,35 +978,35 @@ describe('StickyNote', () => {
     });
     
     it('should toggle minimized state when toggleMinimize is called', () => {
-      // Starts maximized
-      expect(note.isMinimized).toBe(false);
-      expect(note.element.classList.contains('sn-minimized')).toBe(false);
-
-      // Toggle to minimized
-      note.toggleMinimize();
+      // Starts minimized (default for existing notes)
       expect(note.isMinimized).toBe(true);
       expect(note.element.classList.contains('sn-minimized')).toBe(true);
 
-      // Toggle back to maximized
+      // Toggle to maximized
       note.toggleMinimize();
       expect(note.isMinimized).toBe(false);
       expect(note.element.classList.contains('sn-minimized')).toBe(false);
+
+      // Toggle back to minimized
+      note.toggleMinimize();
+      expect(note.isMinimized).toBe(true);
+      expect(note.element.classList.contains('sn-minimized')).toBe(true);
     });
     
     it('should update button title based on state', () => {
       const localThis = {};
       localThis.minimizeBtn = note.element.querySelector('.sn-minimize-btn');
 
-      // When maximized (default), title should be "minimize"
-      expect(localThis.minimizeBtn.title).toBe('minimize');
-
-      // After minimizing
-      note.toggleMinimize();
+      // When minimized (default for existing notes), title should be "expand"
       expect(localThis.minimizeBtn.title).toBe('expand');
 
-      // After maximizing again
+      // After maximizing
       note.toggleMinimize();
       expect(localThis.minimizeBtn.title).toBe('minimize');
+
+      // After minimizing again
+      note.toggleMinimize();
+      expect(localThis.minimizeBtn.title).toBe('expand');
     });
     
     it('should call toggleMinimize when minimize button is clicked', () => {
@@ -1013,19 +1034,19 @@ describe('StickyNote', () => {
       const localThis = {};
       localThis.minimizeBtn = note.element.querySelector('.sn-minimize-btn');
 
-      // Get initial SVG (down arrow for minimize - note starts maximized)
+      // Get initial SVG (up arrow for expand - note starts minimized)
       localThis.initialSvg = localThis.minimizeBtn.innerHTML;
-      expect(localThis.initialSvg).toContain('6 9 12 15 18 9'); // down arrow points
+      expect(localThis.initialSvg).toContain('6 15 12 9 18 15'); // up arrow points
 
-      // Toggle to minimized state
-      note.toggleMinimize();
-      localThis.minimizedSvg = localThis.minimizeBtn.innerHTML;
-      expect(localThis.minimizedSvg).toContain('6 15 12 9 18 15'); // up arrow points
-
-      // Toggle back to maximized
+      // Toggle to maximized state
       note.toggleMinimize();
       localThis.maximizedSvg = localThis.minimizeBtn.innerHTML;
       expect(localThis.maximizedSvg).toContain('6 9 12 15 18 9'); // down arrow points
+
+      // Toggle back to minimized
+      note.toggleMinimize();
+      localThis.minimizedSvg = localThis.minimizeBtn.innerHTML;
+      expect(localThis.minimizedSvg).toContain('6 15 12 9 18 15'); // up arrow points
     });
   });
 });

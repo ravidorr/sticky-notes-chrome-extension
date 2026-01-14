@@ -189,8 +189,10 @@ export class NoteManager {
   /**
    * Create a note from saved data
    * @param {Object} noteData - Note data from storage
+   * @param {Object} options - Additional options
+   * @param {boolean} options.isNewNote - If true, note is newly created and shown maximized
    */
-  createNoteFromData(noteData) {
+  createNoteFromData(noteData, options = {}) {
     // Check if note already exists to prevent duplicates
     if (this.notes.has(noteData.id)) {
       log.debug('Note already exists, skipping creation:', noteData.id);
@@ -230,6 +232,7 @@ export class NoteManager {
     const user = this.getCurrentUser();
     
     // Create note instance with comment callbacks
+    // New notes start maximized, existing notes start minimized
     const note = new StickyNote({
       id: noteData.id,
       anchor: anchorElement,
@@ -241,6 +244,7 @@ export class NoteManager {
       createdAt: noteData.createdAt,
       ownerEmail: noteData.ownerEmail,
       ownerId: noteData.ownerId,
+      isMinimized: !options.isNewNote, // New notes are maximized, existing notes are minimized
       onSave: (content) => this.handleNoteSave(noteData.id, content),
       onThemeChange: (theme) => this.handleThemeChange(noteData.id, theme),
       onPositionChange: (position) => this.handlePositionChange(noteData.id, position),
@@ -541,8 +545,8 @@ export class NoteManager {
       });
       
       if (response.success) {
-        // Create the note UI
-        this.createNoteFromData(response.note);
+        // Create the note UI - new notes start maximized
+        this.createNoteFromData(response.note, { isNewNote: true });
       } else {
         log.error('Failed to save note:', response.error);
       }
@@ -590,8 +594,8 @@ export class NoteManager {
       });
       
       if (response.success) {
-        // Create the note UI
-        this.createNoteFromData(response.note);
+        // Create the note UI - new notes start maximized
+        this.createNoteFromData(response.note, { isNewNote: true });
         log.debug('Created note at element from context menu');
       } else {
         log.error('Failed to save note:', response.error);

@@ -83,7 +83,8 @@ export class StickyNote {
     this.customPosition = this.position.custom || null;
     this.saveTimeout = null;
     this.isMetadataExpanded = false;
-    this.isMinimized = false; // Notes start maximized by default
+    // Notes start minimized by default, but new notes can be created maximized
+    this.isMinimized = options.isMinimized !== undefined ? options.isMinimized : true;
     
     // Store bound event handlers to allow proper removal
     this.boundHandleDragMove = this.handleDragMove.bind(this);
@@ -100,16 +101,16 @@ export class StickyNote {
    */
   render() {
     this.element = document.createElement('div');
-    this.element.className = `sn-note sn-theme-${this.theme} sn-hidden`;
+    this.element.className = `sn-note sn-theme-${this.theme} sn-hidden${this.isMinimized ? ' sn-minimized' : ''}`;
     this.element.dataset.noteId = this.id;
     // Set initial z-index (will be increased when clicked for bring-to-front)
     this.element.style.zIndex = StickyNote.baseZIndex;
     
     this.element.innerHTML = `
       <div class="sn-note-header">
-        <button class="sn-note-btn sn-minimize-btn" title="${t('minimize')}">
+        <button class="sn-note-btn sn-minimize-btn" title="${this.isMinimized ? t('expand') : t('minimize')}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="6 9 12 15 18 9"/>
+            <polyline points="${this.isMinimized ? '6 15 12 9 18 15' : '6 9 12 15 18 9'}"/>
           </svg>
         </button>
         <span class="sn-note-header-title"></span>
