@@ -163,6 +163,7 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
             metadata: data.metadata,
             sharedWith: data.sharedWith || [],
             isShared: false,
+            ownerEmail: data.ownerEmail,
             createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
             updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
           });
@@ -186,6 +187,7 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
             metadata: data.metadata,
             sharedWith: data.sharedWith || [],
             isShared: true,
+            ownerEmail: data.ownerEmail,
             createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
             updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
           });
@@ -283,6 +285,7 @@ router.get('/search', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
           content: data.content,
           theme: data.theme,
           isShared,
+          ownerEmail: data.ownerEmail,
           matchedIn: [
             contentMatch && 'content',
             urlMatch && 'url',
@@ -519,6 +522,7 @@ router.get('/commented', apiKeyAuth({ requiredScope: 'notes:read' }), async (req
             metadata: data.metadata,
             sharedWith: data.sharedWith || [],
             isShared: !isOwner,
+            ownerEmail: data.ownerEmail,
             createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
             updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
           });
@@ -602,6 +606,7 @@ router.get('/export', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
         metadata: data.metadata,
         sharedWith: data.sharedWith || [],
         isShared,
+        ownerEmail: data.ownerEmail,
         createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
         updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
       };
@@ -710,6 +715,7 @@ router.get('/:id', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res)
       metadata: data.metadata,
       sharedWith: data.sharedWith || [],
       isShared: !isOwner,
+      ownerEmail: data.ownerEmail,
       createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
       updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
     });
@@ -750,6 +756,7 @@ router.post('/', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) 
       position: noteData.position || { anchor: 'top-right' },
       metadata: noteData.metadata || null,
       ownerId: userId,
+      ownerEmail: req.apiKey.userEmail,
       sharedWith: [],
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp()
@@ -1184,6 +1191,7 @@ router.post('/bulk', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, r
         position: noteData.position || { anchor: 'top-right' },
         metadata: noteData.metadata || null,
         ownerId: userId,
+        ownerEmail: req.apiKey.userEmail,
         sharedWith: [],
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp()

@@ -4,14 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sticky Notes Dashboard</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
   <div class="container">
     <header class="header">
-      <h1>Sticky Notes Dashboard</h1>
+      <h1><span id="userEmail" class="user-email"></span>Sticky Notes Dashboard</h1>
       <div class="controls">
-        <span id="keyIndicator" class="key-indicator" title="Connected API key"></span>
         <label class="auto-refresh">
           <input type="checkbox" id="autoRefresh">
           Auto-refresh
@@ -106,6 +105,10 @@
         <p class="empty-state">Loading notes...</p>
       </div>
     </div>
+
+    <footer class="footer">
+      <span id="keyIndicator" class="key-indicator" title="Connected API key"></span>
+    </footer>
   </div>
 
   <script>
@@ -129,6 +132,7 @@
     const filterTabs = document.querySelectorAll('.filter-tab');
     const keyIndicator = document.getElementById('keyIndicator');
     const domainSelect = document.getElementById('domainSelect');
+    const userEmailSpan = document.getElementById('userEmail');
     
     // Update key indicator display
     function updateKeyIndicator() {
@@ -223,8 +227,10 @@
         document.getElementById('legendGreen').textContent = themes.green || 0;
         document.getElementById('legendPink').textContent = themes.pink || 0;
         
-        // Update key indicator with user email
+        // Update user email in header
         if (stats.user?.email) {
+          userEmailSpan.textContent = stats.user.email + ' ';
+          userEmailSpan.title = `Signed in as ${stats.user.email}`;
           keyIndicator.textContent = stats.user.email;
           keyIndicator.title = `Connected as ${stats.user.email}`;
           keyIndicator.style.display = 'inline';
@@ -354,12 +360,10 @@
         return;
       }
 
-      notesList.innerHTML = notes.map((note, index) => `
+      notesList.innerHTML = notes.map((note) => `
         <div class="note-card theme-${note.theme || 'yellow'}">
           <div class="note-header">
-            <span class="note-number">#${index + 1}</span>
-            <span class="note-theme">${note.theme || 'yellow'}</span>
-            ${note.isShared ? '<span class="note-badge shared">Shared</span>' : ''}
+            ${note.isShared ? `<span class="note-badge shared" title="Shared by ${escapeHtml(note.ownerEmail || 'unknown')}">Shared by ${escapeHtml(note.ownerEmail || 'unknown')}</span>` : ''}
             <code class="note-selector">${escapeHtml(note.selector)}</code>
           </div>
           <div class="note-url-row">

@@ -35,6 +35,11 @@ body {
   color: #ffffff;
 }
 
+.user-email {
+  color: #6cb6ff;
+  font-weight: 400;
+}
+
 .controls {
   display: flex;
   gap: 12px;
@@ -62,6 +67,14 @@ body {
   padding: 4px 8px;
   border-radius: 4px;
   display: none;
+}
+
+/* Footer */
+.footer {
+  margin-top: 30px;
+  padding-top: 15px;
+  border-top: 1px solid #333;
+  text-align: center;
 }
 
 /* Stats Dashboard */
@@ -291,12 +304,12 @@ body {
 }
 
 .btn-secondary {
-  background-color: #333;
-  color: #cccccc;
+  background-color: #0078d4;
+  color: #ffffff;
 }
 
 .btn-secondary:hover {
-  background-color: #404040;
+  background-color: #006cbd;
 }
 
 /* Status */
@@ -369,39 +382,6 @@ body {
   flex-wrap: wrap;
 }
 
-.note-number {
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.note-theme {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-}
-
-.theme-yellow .note-theme {
-  background-color: rgba(255, 217, 61, 0.2);
-  color: #ffd93d;
-}
-
-.theme-blue .note-theme {
-  background-color: rgba(108, 182, 255, 0.2);
-  color: #6cb6ff;
-}
-
-.theme-green .note-theme {
-  background-color: rgba(63, 185, 80, 0.2);
-  color: #3fb950;
-}
-
-.theme-pink .note-theme {
-  background-color: rgba(247, 120, 186, 0.2);
-  color: #f778ba;
-}
-
 .note-badge {
   padding: 2px 8px;
   border-radius: 4px;
@@ -413,6 +393,12 @@ body {
 .note-badge.shared {
   background-color: rgba(108, 182, 255, 0.2);
   color: #6cb6ff;
+  text-transform: none;
+  font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .note-selector {
@@ -455,8 +441,8 @@ body {
   padding: 4px 10px;
   font-size: 0.7rem;
   font-weight: 500;
-  background-color: #333;
-  color: #cccccc;
+  background-color: #0078d4;
+  color: #ffffff;
   text-decoration: none;
   border-radius: 4px;
   transition: background-color 0.2s;
@@ -464,8 +450,7 @@ body {
 }
 
 .btn-open:hover {
-  background-color: #0078d4;
-  color: #ffffff;
+  background-color: #006cbd;
 }
 
 .note-content {

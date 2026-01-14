@@ -194,6 +194,7 @@ curl "https://us-central1-PROJECT.cloudfunctions.net/api/notes?domain=github.com
       "metadata": null,
       "sharedWith": [],
       "isShared": false,
+      "ownerEmail": "owner@example.com",
       "createdAt": "2025-01-13T10:00:00.000Z",
       "updatedAt": "2025-01-13T10:00:00.000Z"
     }
@@ -228,6 +229,8 @@ Authorization: Bearer sk_live_...
   "position": { "anchor": "top-right" },
   "metadata": null,
   "sharedWith": [],
+  "isShared": false,
+  "ownerEmail": "owner@example.com",
   "createdAt": "2025-01-13T10:00:00.000Z",
   "updatedAt": "2025-01-13T10:00:00.000Z"
 }
@@ -766,6 +769,8 @@ Authorization: Bearer sk_live_...
       "selector": "h1",
       "content": "Contains keyword here",
       "theme": "yellow",
+      "isShared": false,
+      "ownerEmail": "owner@example.com",
       "matchedIn": ["content"],
       "createdAt": "...",
       "updatedAt": "..."
@@ -851,6 +856,7 @@ Authorization: Bearer sk_live_...
       "content": "Note content here",
       "theme": "yellow",
       "isShared": false,
+      "ownerEmail": "owner@example.com",
       "createdAt": "...",
       "updatedAt": "..."
     }
@@ -899,6 +905,8 @@ The response includes a `Content-Disposition` header for downloading.
       "position": { "anchor": "top-right" },
       "metadata": null,
       "sharedWith": [],
+      "isShared": false,
+      "ownerEmail": "owner@example.com",
       "createdAt": "...",
       "updatedAt": "...",
       "comments": [
