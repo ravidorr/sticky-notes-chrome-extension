@@ -9,7 +9,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
+  ListToolsRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
 import process from 'process';
 
@@ -32,8 +32,8 @@ async function apiRequest(endpoint, options = {}) {
     headers: {
       'Authorization': `Bearer ${API_KEY}`,
       'Content-Type': 'application/json',
-      ...options.headers,
-    },
+      ...options.headers
+    }
   });
   
   // Handle 204 No Content responses (e.g., DELETE operations)
@@ -54,12 +54,12 @@ async function apiRequest(endpoint, options = {}) {
 const server = new Server(
   {
     name: 'sticky-notes-mcp',
-    version: '1.0.0',
+    version: '1.0.0'
   },
   {
     capabilities: {
-      tools: {},
-    },
+      tools: {}
+    }
   }
 );
 
@@ -75,18 +75,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             url: {
               type: 'string',
-              description: 'Filter notes by exact URL (optional)',
+              description: 'Filter notes by exact URL (optional)'
             },
             domain: {
               type: 'string',
-              description: 'Filter notes by domain - matches all pages on that domain (e.g., "example.com" or "https://example.com"). More flexible than url filter.',
+              description: 'Filter notes by domain - matches all pages on that domain (e.g., "example.com" or "https://example.com"). More flexible than url filter.'
             },
             limit: {
               type: 'number',
-              description: 'Maximum number of notes to return (default: 50)',
-            },
-          },
-        },
+              description: 'Maximum number of notes to return (default: 50)'
+            }
+          }
+        }
       },
       {
         name: 'get_note',
@@ -96,11 +96,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             id: {
               type: 'string',
-              description: 'The note ID',
-            },
+              description: 'The note ID'
+            }
           },
-          required: ['id'],
-        },
+          required: ['id']
+        }
       },
       {
         name: 'create_note',
@@ -110,24 +110,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             url: {
               type: 'string',
-              description: 'The webpage URL where the note should appear',
+              description: 'The webpage URL where the note should appear'
             },
             selector: {
               type: 'string',
-              description: 'CSS selector for the element to attach the note to (e.g., "h1", "#main", ".header")',
+              description: 'CSS selector for the element to attach the note to (e.g., "h1", "#main", ".header")'
             },
             content: {
               type: 'string',
-              description: 'The note content (can include HTML)',
+              description: 'The note content (can include HTML)'
             },
             theme: {
               type: 'string',
               enum: ['yellow', 'blue', 'green', 'pink'],
-              description: 'Note color theme (default: yellow)',
-            },
+              description: 'Note color theme (default: yellow)'
+            }
           },
-          required: ['url', 'selector'],
-        },
+          required: ['url', 'selector']
+        }
       },
       {
         name: 'update_note',
@@ -137,20 +137,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             id: {
               type: 'string',
-              description: 'The note ID',
+              description: 'The note ID'
             },
             content: {
               type: 'string',
-              description: 'New note content',
+              description: 'New note content'
             },
             theme: {
               type: 'string',
               enum: ['yellow', 'blue', 'green', 'pink'],
-              description: 'New color theme',
-            },
+              description: 'New color theme'
+            }
           },
-          required: ['id'],
-        },
+          required: ['id']
+        }
       },
       {
         name: 'delete_note',
@@ -160,11 +160,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             id: {
               type: 'string',
-              description: 'The note ID to delete',
-            },
+              description: 'The note ID to delete'
+            }
           },
-          required: ['id'],
-        },
+          required: ['id']
+        }
       },
       {
         name: 'search_notes',
@@ -174,15 +174,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             query: {
               type: 'string',
-              description: 'Search query',
+              description: 'Search query'
             },
             limit: {
               type: 'number',
-              description: 'Maximum results (default: 50)',
-            },
+              description: 'Maximum results (default: 50)'
+            }
           },
-          required: ['query'],
-        },
+          required: ['query']
+        }
       },
       {
         name: 'share_note',
@@ -192,15 +192,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             id: {
               type: 'string',
-              description: 'The note ID',
+              description: 'The note ID'
             },
             email: {
               type: 'string',
-              description: 'Email address to share with',
-            },
+              description: 'Email address to share with'
+            }
           },
-          required: ['id', 'email'],
-        },
+          required: ['id', 'email']
+        }
       },
       {
         name: 'export_notes',
@@ -210,10 +210,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             includeComments: {
               type: 'boolean',
-              description: 'Include comments in export (default: false)',
-            },
-          },
-        },
+              description: 'Include comments in export (default: false)'
+            }
+          }
+        }
       },
       {
         name: 'show_notes_panel',
@@ -223,13 +223,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             url: {
               type: 'string',
-              description: 'URL to show notes for',
-            },
+              description: 'URL to show notes for'
+            }
           },
-          required: ['url'],
-        },
-      },
-    ],
+          required: ['url']
+        }
+      }
+    ]
   };
 });
 
@@ -251,9 +251,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
+              text: JSON.stringify(result, null, 2)
+            }
+          ]
         };
       }
 
@@ -263,9 +263,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
+              text: JSON.stringify(result, null, 2)
+            }
+          ]
         };
       }
 
@@ -276,16 +276,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             url: args.url,
             selector: args.selector,
             content: args.content || '',
-            theme: args.theme || 'yellow',
-          }),
+            theme: args.theme || 'yellow'
+          })
         });
         return {
           content: [
             {
               type: 'text',
-              text: `Note created successfully!\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
+              text: `Note created successfully!\n${JSON.stringify(result, null, 2)}`
+            }
+          ]
         };
       }
 
@@ -296,15 +296,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         
         const result = await apiRequest(`/notes/${args.id}`, {
           method: 'PUT',
-          body: JSON.stringify(updates),
+          body: JSON.stringify(updates)
         });
         return {
           content: [
             {
               type: 'text',
-              text: `Note updated!\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
+              text: `Note updated!\n${JSON.stringify(result, null, 2)}`
+            }
+          ]
         };
       }
 
@@ -314,9 +314,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: 'text',
-              text: `Note ${args.id} deleted successfully.`,
-            },
-          ],
+              text: `Note ${args.id} deleted successfully.`
+            }
+          ]
         };
       }
 
@@ -329,24 +329,24 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
+              text: JSON.stringify(result, null, 2)
+            }
+          ]
         };
       }
 
       case 'share_note': {
         const result = await apiRequest(`/notes/${args.id}/share`, {
           method: 'POST',
-          body: JSON.stringify({ email: args.email }),
+          body: JSON.stringify({ email: args.email })
         });
         return {
           content: [
             {
               type: 'text',
-              text: `Note shared with ${args.email}!\n${JSON.stringify(result, null, 2)}`,
-            },
-          ],
+              text: `Note shared with ${args.email}!\n${JSON.stringify(result, null, 2)}`
+            }
+          ]
         };
       }
 
@@ -360,9 +360,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
+              text: JSON.stringify(result, null, 2)
+            }
+          ]
         };
       }
 
@@ -402,9 +402,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: 'text',
-              text: markdown,
-            },
-          ],
+              text: markdown
+            }
+          ]
         };
       }
 
@@ -416,10 +416,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       content: [
         {
           type: 'text',
-          text: `Error: ${error.message}`,
-        },
+          text: `Error: ${error.message}`
+        }
       ],
-      isError: true,
+      isError: true
     };
   }
 });
