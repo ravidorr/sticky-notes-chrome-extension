@@ -6,8 +6,11 @@ on:
     paths:
       - 'site/templates/**'
       - 'site/partials/**'
-      - 'site/styles.css'
-      - 'site/scripts.js'
+      - 'site/css/**'
+      - 'site/js/**'
+      - 'site/*.html'
+      - 'site/*.css'
+      - 'site/*.js'
       - 'site/*.svg'
       - 'site/*.png'
       - 'scripts/build-site.js'
