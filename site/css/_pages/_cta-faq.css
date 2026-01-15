@@ -1,0 +1,118 @@
+/* ============================================
+   CTA Section
+   ============================================ */
+.section-cta {
+    padding: 6rem 0;
+    background: var(--c-slate-900);
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.section-cta .container {
+    position: relative;
+    z-index: 10;
+}
+
+.section-cta h2 {
+    color: white;
+}
+
+.section-cta p {
+    color: var(--c-slate-300);
+}
+
+.cta-title {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+}
+
+.cta-text {
+    margin-bottom: 2.5rem;
+    max-width: 42rem;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.cta-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.2;
+    pointer-events: none;
+}
+
+.cta-glow-1,
+.cta-glow-2 {
+    position: absolute;
+    width: 16rem;
+    height: 16rem;
+    border-radius: 50%;
+    filter: blur(100px);
+}
+
+.cta-glow-1 {
+    top: 2.5rem;
+    left: 2.5rem;
+    background: var(--c-blue-600);
+}
+
+.cta-glow-2 {
+    bottom: 2.5rem;
+    right: 2.5rem;
+    background: #9333ea;
+}
+
+/* ============================================
+   FAQ Section
+   ============================================ */
+.section-faq {
+    padding: 5rem 0;
+    background: var(--color-bg-secondary);
+}
+
+.faq-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-top: 3rem;
+    max-width: 900px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+@media (max-width: 480px) {
+    .faq-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.faq-item {
+    padding: 1.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+}
+
+.faq-question {
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.faq-question svg {
+    flex-shrink: 0;
+    color: var(--c-yellow-500);
+    margin-top: 0.125rem;
+}
+
+.faq-answer {
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    padding-left: 1.75rem;
+}

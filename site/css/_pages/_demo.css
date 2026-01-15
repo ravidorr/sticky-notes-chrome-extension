@@ -1,0 +1,255 @@
+/* ============================================
+   Demo Section
+   ============================================ */
+.section-dark {
+    background-color: var(--c-slate-900);
+    color: white;
+    padding: 5rem 0;
+    overflow: hidden;
+}
+
+[data-theme="dark"] .section-dark {
+    background-color: var(--c-slate-800);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .section-dark {
+        background-color: var(--c-slate-800);
+    }
+}
+
+.demo-header {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.demo-subtitle {
+    max-width: 42rem;
+    margin: 0 auto;
+    color: #94a3b8;
+}
+
+.demo-container {
+    max-width: 56rem;
+    margin: 0 auto;
+    background: var(--c-slate-950);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--c-slate-800);
+    padding: 0.5rem;
+    box-shadow: var(--shadow-2xl);
+}
+
+.demo-toolbar {
+    background: var(--c-slate-900);
+    padding: 0.75rem;
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
+    border-bottom: 1px solid var(--c-slate-800);
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-demo-toggle {
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-lg);
+    font-size: 0.875rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all var(--transition);
+    background: var(--c-slate-800);
+    color: var(--c-slate-300);
+}
+
+.btn-demo-toggle:hover {
+    background: var(--c-slate-700);
+}
+
+.btn-demo-toggle.active {
+    background: var(--c-blue-600);
+    color: white;
+    box-shadow: 0 0 15px rgba(37, 99, 235, 0.5);
+}
+
+.demo-canvas {
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    position: relative;
+    min-height: 400px;
+}
+
+.demo-target {
+    position: relative;
+    transition: all var(--transition);
+}
+
+/* Demo target focus states for accessibility */
+.demo-target:focus-visible {
+    outline: 2px solid var(--c-blue-500);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+}
+
+.selection-mode .demo-target:focus-visible {
+    outline: 2px solid var(--c-yellow-400);
+    box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.3);
+}
+
+/* Selection Mode States */
+.selection-mode .demo-target:hover {
+    box-shadow: 0 0 0 4px var(--c-blue-500);
+    background-color: rgba(30, 41, 59, 0.9) !important;
+    cursor: crosshair;
+}
+
+.target-label {
+    opacity: 0;
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    font-size: 10px;
+    color: var(--c-slate-500);
+    font-family: monospace;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0 0.25rem;
+    border-radius: var(--radius-sm);
+    transition: opacity var(--transition);
+    pointer-events: none;
+}
+
+.selection-mode .demo-target:hover .target-label {
+    opacity: 1;
+}
+
+.demo-box-1 {
+    grid-column: span 1;
+    grid-row: span 2;
+    background: var(--c-slate-700);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--c-slate-500);
+}
+
+.demo-box-2 {
+    grid-column: span 2;
+    height: 4rem;
+    background: var(--c-slate-800);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    font-weight: 700;
+    font-size: 1.25rem;
+}
+
+.demo-box-3 {
+    grid-column: span 2;
+    height: 6rem;
+    background: var(--c-slate-800);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    font-size: 0.875rem;
+    color: var(--c-slate-400);
+}
+
+.demo-box-4 {
+    grid-column: span 1;
+    height: 3rem;
+    background: var(--c-blue-600);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.empty-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.empty-msg {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(4px);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    animation: pulse 2s infinite;
+}
+
+/* ============================================
+   Sticky Note (Demo)
+   ============================================ */
+.sticky-note {
+    position: absolute;
+    top: -1rem;
+    right: -1rem;
+    width: 12rem;
+    background: var(--c-yellow-300);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xl);
+    z-index: 20;
+    border-top: 1px solid var(--c-yellow-100);
+    transform-origin: bottom left;
+    animation: notePop 0.3s ease-out forwards;
+}
+
+.note-header {
+    background: rgba(250, 204, 21, 0.5);
+    padding: 0.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+}
+
+.note-user {
+    font-size: 10px;
+    color: var(--c-yellow-800);
+    font-weight: 700;
+    padding: 0 0.25rem;
+}
+
+.note-close {
+    color: var(--c-yellow-800);
+    padding: 2px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.note-close:hover {
+    background: rgba(234, 179, 8, 0.5);
+}
+
+.note-textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 0.5rem;
+    color: var(--c-slate-800);
+    font-size: 0.875rem;
+    font-family: var(--font-hand);
+    resize: none;
+    outline: none;
+    height: 5rem;
+}
+
+.note-textarea::placeholder {
+    color: rgba(133, 77, 14, 0.5);
+}
