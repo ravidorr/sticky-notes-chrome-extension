@@ -9,11 +9,11 @@
  * 5. CTA and FAQ sections
  */
 
-@import '_hero.css';
-@import '_demo.css';
-@import '_sections.css';
-@import '_pricing.css';
-@import '_cta-faq.css';
+@import '_index_hero.css';
+@import '_index_demo.css';
+@import '_index_sections.css';
+@import '_index_pricing.css';
+@import '_index_cta-faq.css';
 
 /* ============================================
    Responsive Adjustments (Index Page)
