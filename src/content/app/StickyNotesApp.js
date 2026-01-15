@@ -11,6 +11,12 @@ import { RealtimeSync } from './RealtimeSync.js';
 import { MessageHandler } from './MessageHandler.js';
 import { NoteManager } from './NoteManager.js';
 import { UIManager } from './UIManager.js';
+import { 
+  isContextInvalidatedError, 
+  shouldSubscribeToNotes, 
+  shouldUnsubscribeFromNotes, 
+  shouldReloadNotes 
+} from './StickyNotesApp.helpers.js';
 
 /**
  * Main application class for the content script
@@ -160,10 +166,7 @@ export class StickyNotesApp {
    * @returns {boolean} True if context is invalidated
    */
   isContextInvalidatedError(error) {
-    const message = error?.message || String(error);
-    return message.includes('Extension context invalidated') ||
-           message.includes('Extension context was invalidated') ||
-           message.includes('context invalidated');
+    return isContextInvalidatedError(error);
   }
   
   /**
@@ -249,11 +252,11 @@ export class StickyNotesApp {
     this.noteManager.updateUser(user);
     
     // Handle subscription changes
-    if (!wasLoggedIn && isLoggedIn) {
+    if (shouldSubscribeToNotes(wasLoggedIn, isLoggedIn)) {
       // User logged in - subscribe to real-time updates
       await this.realtimeSync.subscribeToNotes(this.currentUrl);
       log.debug('User logged in, subscribed to real-time updates');
-    } else if (wasLoggedIn && !isLoggedIn) {
+    } else if (shouldUnsubscribeFromNotes(wasLoggedIn, isLoggedIn)) {
       // User logged out - unsubscribe from all real-time updates
       await this.realtimeSync.unsubscribeFromNotes();
       await this.realtimeSync.unsubscribeFromAllComments();
@@ -278,7 +281,7 @@ export class StickyNotesApp {
     // Create new composite URL
     const newCompositeUrl = createCompositeUrl(this.tabUrl, this.frameUrl, this.isTopFrame);
     
-    if (newCompositeUrl === this.currentUrl) return;
+    if (!shouldReloadNotes(this.currentUrl, newCompositeUrl)) return;
     
     // Unsubscribe from real-time updates for old URL
     await this.realtimeSync.unsubscribeFromNotes();

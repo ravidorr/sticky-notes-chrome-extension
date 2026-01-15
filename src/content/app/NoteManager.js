@@ -7,6 +7,7 @@ import { StickyNote } from '../components/StickyNote.js';
 import { contentLogger as log } from '../../shared/logger.js';
 import { t } from '../../shared/i18n.js';
 import { getBrowserInfo } from '../../shared/utils.js';
+import { purgeExpiredSessionMarkers, calculateNoteDiff } from './SyncLogic.js';
 
 /**
  * Manages note operations
@@ -678,63 +679,50 @@ export class NoteManager {
   handleRealtimeNotesUpdate(updatedNotes) {
     if (!updatedNotes) return;
 
-    // Purge old "session created" markers opportunistically (no timers).
-    const now = Date.now();
-    const creationGraceMs = 15000;
-    for (const [id, createdAt] of this.sessionCreatedNoteIds.entries()) {
-      if (now - createdAt > creationGraceMs) {
-        this.sessionCreatedNoteIds.delete(id);
-      }
-    }
+    // Purge old "session created" markers
+    purgeExpiredSessionMarkers(this.sessionCreatedNoteIds);
     
-    // Create sets for efficient lookup
-    const currentIds = new Set(this.notes.keys());
-    const updatedIds = new Set(updatedNotes.map(note => note.id));
+    // Calculate difference
+    const { toRemove, toUpdate, toCreate } = calculateNoteDiff(
+      this.notes, 
+      updatedNotes, 
+      this.sessionCreatedNoteIds
+    );
     
-    // Remove notes that no longer exist
-    currentIds.forEach(id => {
-      if (!updatedIds.has(id)) {
-        // If we just created the note, avoid removing it due to a real-time sync lag.
-        if (this.sessionCreatedNoteIds.has(id)) {
-          return;
-        }
-
-        const note = this.notes.get(id);
-        if (note) {
-          this.visibilityManager.unobserve(note.anchor);
-          note.destroy();
-          this.notes.delete(id);
-          log.debug('Removed note:', id);
-        }
+    // Process removals
+    toRemove.forEach(id => {
+      const note = this.notes.get(id);
+      if (note) {
+        this.visibilityManager.unobserve(note.anchor);
+        note.destroy();
+        this.notes.delete(id);
+        log.debug('Removed note:', id);
       }
     });
     
-    // Update existing notes or create new ones
-    updatedNotes.forEach(noteData => {
+    // Process updates
+    toUpdate.forEach(noteData => {
       const existingNote = this.notes.get(noteData.id);
-      
-      if (existingNote) {
-        // Update content if changed
-        const newContent = noteData.content || '';
-        if (existingNote.content !== newContent) {
-          existingNote.richEditor.setContent(newContent);
-          existingNote.content = newContent;
-          log.debug('Updated note content:', noteData.id);
-        }
-        
-        // Update theme if changed (use fallback to match createNoteFromData)
-        const newTheme = noteData.theme || 'yellow';
-        if (existingNote.theme !== newTheme) {
-          existingNote.setTheme(newTheme);
-          log.debug('Updated note theme:', noteData.id);
-        }
-      } else {
-        // Create new note
-        // Check if this note was created in current session (race condition handling)
-        const isNewNote = this.sessionCreatedNoteIds.has(noteData.id);
-        this.createNoteFromData(noteData, { isNewNote });
-        log.debug('Created new note from real-time update:', noteData.id, 'isNewNote:', isNewNote);
+      if (!existingNote) return;
+
+      const newContent = noteData.content || '';
+      if (existingNote.content !== newContent) {
+        existingNote.richEditor.setContent(newContent);
+        existingNote.content = newContent;
+        log.debug('Updated note content:', noteData.id);
       }
+      
+      const newTheme = noteData.theme || 'yellow';
+      if (existingNote.theme !== newTheme) {
+        existingNote.setTheme(newTheme);
+        log.debug('Updated note theme:', noteData.id);
+      }
+    });
+    
+    // Process creations
+    toCreate.forEach(({ noteData, isNewNote }) => {
+      this.createNoteFromData(noteData, { isNewNote });
+      log.debug('Created new note from real-time update:', noteData.id, 'isNewNote:', isNewNote);
     });
   }
   

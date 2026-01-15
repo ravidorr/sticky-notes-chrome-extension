@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iframe Parent Page</title>
+</head>
+<body>
+    <h1 data-testid="parent-title">Iframe Parent Page</h1>
+    <div style="padding: 20px; border: 1px solid #ccc;">
+        <p>Content outside iframe</p>
+        <iframe 
+            src="index.html" 
+            id="test-iframe" 
+            width="800" 
+            height="600" 
+            style="border: 1px solid blue;"
+            data-testid="content-iframe"
+        ></iframe>
+    </div>
+</body>
+</html>
