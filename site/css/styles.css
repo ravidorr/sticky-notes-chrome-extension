@@ -1651,19 +1651,6 @@ svg.editor-btn {
     background-size: contain;
 }
 
-.footer-bottom {
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--color-border);
-    text-align: center;
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
-}
-
-.footer-bottom.simple {
-    border-top: none;
-    padding-top: 0;
-}
-
 /* --- Animations --- */
 @keyframes notePop {
     0% {
