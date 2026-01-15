@@ -1,16 +1,9 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { API_BASE_URL, FIREBASE_CONFIG } from './config.js';
 
-const firebaseConfig = {
-    apiKey: 'AIzaSyCqdVVAamQ9yrUkbCWRtPPtevdOK0_PrRM',
-    authDomain: 'sticky-notes-chrome-extension.firebaseapp.com',
-    projectId: 'sticky-notes-chrome-extension',
-    storageBucket: 'sticky-notes-chrome-extension.firebasestorage.app',
-    messagingSenderId: '413613230006',
-    appId: '1:413613230006:web:1bb39d70bd4976e95ae317'
-};
-
-const API_URL = 'https://us-central1-sticky-notes-chrome-extension.cloudfunctions.net/api';
+const firebaseConfig = FIREBASE_CONFIG;
+const API_URL = API_BASE_URL;
 
 let app, auth, currentUser, idToken;
 
@@ -33,7 +26,13 @@ function hideError() {
 
 document.getElementById('signInBtn').addEventListener('click', async () => {
     hideError();
+    const signInBtn = document.getElementById('signInBtn');
+    const originalText = signInBtn.textContent;
+    
     try {
+        signInBtn.textContent = 'Signing in...';
+        signInBtn.disabled = true;
+        
         const provider = new GoogleAuthProvider();
         const result = await signInWithPopup(auth, provider);
         currentUser = result.user;
@@ -41,16 +40,30 @@ document.getElementById('signInBtn').addEventListener('click', async () => {
         
         document.getElementById('userInfo').textContent = `Signed in as: ${currentUser.email}`;
         document.getElementById('userInfo').style.display = 'block';
-        document.getElementById('signInBtn').textContent = 'Signed In';
-        document.getElementById('signInBtn').disabled = true;
+        signInBtn.textContent = 'Signed In';
         document.getElementById('step2').style.display = 'block';
     } catch (error) {
-        showError('Sign in failed: ' + error.message);
+        signInBtn.textContent = originalText;
+        signInBtn.disabled = false;
+        
+        // Handle specific error cases
+        if (error.code === 'auth/popup-blocked') {
+            showError('Popup was blocked. Please allow popups for this site and try again.');
+        } else if (error.code === 'auth/popup-closed-by-user') {
+            showError('Sign in was cancelled. Please try again.');
+        } else if (error.code === 'auth/cancelled-popup-request') {
+            // User clicked multiple times, ignore
+            return;
+        } else {
+            showError('Sign in failed: ' + error.message);
+        }
     }
 });
 
 document.getElementById('generateBtn').addEventListener('click', async () => {
     hideError();
+    const generateBtn = document.getElementById('generateBtn');
+    const originalText = generateBtn.textContent;
     const name = document.getElementById('keyName').value || 'API Key';
     const scopeChoice = document.getElementById('scopes').value;
     
@@ -60,6 +73,9 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
     else scopes = ['notes:read', 'notes:write'];
 
     try {
+        generateBtn.textContent = 'Generating...';
+        generateBtn.disabled = true;
+        
         const response = await fetch(`${API_URL}/keys`, {
             method: 'POST',
             headers: {
@@ -80,8 +96,13 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
             `curl "${API_URL}/notes" \\\n  -H "Authorization: Bearer ${data.key}"`;
         document.getElementById('result').style.display = 'block';
         
+        generateBtn.textContent = 'Key Generated';
+        // Keep button disabled after successful generation
+        
         window.generatedKey = data.key;
     } catch (error) {
+        generateBtn.textContent = originalText;
+        generateBtn.disabled = false;
         showError('Failed to generate key: ' + error.message);
     }
 });

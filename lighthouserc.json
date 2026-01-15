@@ -1,0 +1,52 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicolo-ribaudo/lighthouse-ci/main/packages/utils/src/schema.json",
+  "ci": {
+    "collect": {
+      "staticDistDir": "./site",
+      "url": [
+        "http://localhost/index.html",
+        "http://localhost/privacy.html",
+        "http://localhost/dashboard.html",
+        "http://localhost/generate-key.html"
+      ],
+      "numberOfRuns": 3
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": ["warn", { "minScore": 0.8 }],
+        "categories:accessibility": ["error", { "minScore": 0.9 }],
+        "categories:best-practices": ["warn", { "minScore": 0.9 }],
+        "categories:seo": ["warn", { "minScore": 0.9 }],
+        "first-contentful-paint": ["warn", { "maxNumericValue": 2000 }],
+        "largest-contentful-paint": ["warn", { "maxNumericValue": 3000 }],
+        "cumulative-layout-shift": ["warn", { "maxNumericValue": 0.1 }],
+        "total-blocking-time": ["warn", { "maxNumericValue": 300 }],
+        "interactive": ["warn", { "maxNumericValue": 4000 }],
+        "uses-responsive-images": "warn",
+        "uses-webp-images": "warn",
+        "render-blocking-resources": "warn",
+        "unminified-css": "warn",
+        "unminified-javascript": "warn",
+        "unused-css-rules": "warn",
+        "unused-javascript": "warn",
+        "modern-image-formats": "warn",
+        "offscreen-images": "warn",
+        "uses-text-compression": "warn",
+        "uses-rel-preconnect": "warn",
+        "color-contrast": "error",
+        "document-title": "error",
+        "html-has-lang": "error",
+        "meta-description": "warn",
+        "link-text": "warn",
+        "crawlable-anchors": "warn",
+        "is-crawlable": "warn",
+        "robots-txt": "off",
+        "tap-targets": "warn",
+        "viewport": "error"
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}

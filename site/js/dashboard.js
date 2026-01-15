@@ -3,10 +3,10 @@
  * View and manage your sticky notes from any browser
  */
 
+import { API_BASE_URL } from './config.js';
+
 (function() {
     'use strict';
-
-    const API_BASE_URL = 'https://us-central1-sticky-notes-chrome-extension.cloudfunctions.net/api';
     
     // Get API key from localStorage
     let API_KEY = localStorage.getItem('sticky_notes_api_key');
@@ -179,7 +179,7 @@
         });
         
         // Restore selection if it still exists
-        if (currentValue && Array.from(domainSelect.options).some(o => o.value === currentValue)) {
+        if (currentValue && Array.from(domainSelect.options).some((option) => option.value === currentValue)) {
             domainSelect.value = currentValue;
         }
     }
@@ -272,8 +272,8 @@
                                 const commentsData = await commentsRes.json();
                                 return { ...note, comments: commentsData.comments || [] };
                             }
-                        } catch (e) {
-                            console.error('Error fetching comments for note:', note.id, e);
+                        } catch (error) {
+                            console.error('Error fetching comments for note:', note.id, error);
                         }
                         return { ...note, comments: [] };
                     })
@@ -307,17 +307,20 @@
             return;
         }
 
-        notesList.innerHTML = notes.map((note) => `
+        notesList.innerHTML = notes.map((note) => {
+            const safeUrl = getSafeUrl(note.url);
+            const displayUrl = escapeHtml(note.url);
+            return `
             <div class="note-card theme-${note.theme || 'yellow'}">
                 <div class="note-header">
                     ${note.isShared ? `<span class="note-badge" title="Shared by ${escapeHtml(note.ownerEmail || 'unknown')}">Shared by ${escapeHtml(note.ownerEmail || 'unknown')}</span>` : ''}
                     <code class="note-selector">${escapeHtml(note.selector)}</code>
                 </div>
                 <div class="note-url-row">
-                    <a href="${escapeHtml(note.url)}" target="_blank" rel="noopener noreferrer" class="note-url-link" title="Open in new tab">
-                        ${escapeHtml(note.url)}
+                    <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="note-url-link" title="Open in new tab">
+                        ${displayUrl}
                     </a>
-                    <a href="${escapeHtml(note.url)}" target="_blank" rel="noopener noreferrer" class="btn-open" title="Open page">
+                    <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="btn-open" title="Open page"${safeUrl === '#' ? ' style="pointer-events: none; opacity: 0.5;"' : ''}>
                         Open
                     </a>
                 </div>
@@ -345,7 +348,8 @@
                     </span>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     /**
@@ -358,6 +362,30 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    /**
+     * Validate that a URL is safe (http or https protocol)
+     * @param {string} url - URL to validate
+     * @returns {boolean} True if URL is safe
+     */
+    function isValidUrl(url) {
+        if (!url) return false;
+        try {
+            const parsed = new URL(url);
+            return ['http:', 'https:'].includes(parsed.protocol);
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Get a safe URL for rendering, returns '#' if invalid
+     * @param {string} url - URL to sanitize
+     * @returns {string} Safe URL or '#'
+     */
+    function getSafeUrl(url) {
+        return isValidUrl(url) ? url : '#';
     }
 
     /**
@@ -427,6 +455,18 @@
     }
 
     /**
+     * Clear refresh interval on page unload to prevent memory leaks
+     */
+    function setupCleanup() {
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        });
+    }
+
+    /**
      * Open the settings (API key) dialog
      */
     function openSettings() {
@@ -440,14 +480,14 @@
     function setupEventListeners() {
         // API key events
         saveApiKeyBtn.addEventListener('click', saveApiKey);
-        apiKeyInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') saveApiKey();
+        apiKeyInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') saveApiKey();
         });
 
         // Load and filter events
         loadBtn.addEventListener('click', loadNotes);
-        urlInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') loadNotes();
+        urlInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') loadNotes();
         });
         domainSelect.addEventListener('change', handleDomainSelectChange);
 
@@ -457,8 +497,8 @@
         });
 
         // Auto-refresh
-        autoRefreshCheckbox.addEventListener('change', (e) => {
-            handleAutoRefreshChange(e.target.checked);
+        autoRefreshCheckbox.addEventListener('change', (event) => {
+            handleAutoRefreshChange(event.target.checked);
         });
 
         // Settings button
@@ -471,6 +511,7 @@
     function init() {
         handleUrlParams();
         setupEventListeners();
+        setupCleanup();
         checkApiKey();
     }
 

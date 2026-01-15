@@ -1,4 +1,17 @@
-/* Sticky Notes Dashboard - Standalone Styles */
+/* Sticky Notes Dashboard - Standalone Styles
+ *
+ * INTENTIONAL DESIGN DECISION:
+ * This file is a standalone stylesheet that duplicates CSS variables from
+ * the main site's _variables.css. This is intentional because:
+ *
+ * 1. The dashboard is a separate application from the marketing site
+ * 2. It should work independently without requiring the full site CSS
+ * 3. It allows the dashboard to be served from different contexts (e.g., CDN)
+ * 4. It prevents loading unnecessary marketing site styles
+ *
+ * If brand colors change, update both this file and _variables.css.
+ * Consider creating a shared _tokens.css if synchronization becomes burdensome.
+ */
 
 /* ============================================
    CSS Variables

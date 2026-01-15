@@ -1,4 +1,17 @@
-/* Generate Key Page - Standalone Styles */
+/* Generate Key Page - Standalone Styles
+ *
+ * INTENTIONAL DESIGN DECISION:
+ * This file is a standalone stylesheet that duplicates CSS variables from
+ * the main site's _variables.css. This is intentional because:
+ *
+ * 1. The generate-key page is a separate utility from the marketing site
+ * 2. It should work independently without requiring the full site CSS
+ * 3. It allows the page to be served from different contexts
+ * 4. It prevents loading unnecessary marketing site styles
+ *
+ * If brand colors change, update both this file and _variables.css.
+ * Consider creating a shared _tokens.css if synchronization becomes burdensome.
+ */
 
 /* ============================================
    CSS Variables
@@ -212,31 +225,12 @@ button {
 }
 
 .btn-primary {
-    background-color: var(--c-slate-900);
+    background-color: var(--c-blue-500);
     color: white;
-    box-shadow: var(--shadow-md);
 }
 
 .btn-primary:hover {
-    background-color: var(--c-slate-800);
-}
-
-[data-theme="dark"] .btn-primary {
-    background-color: var(--c-blue-500);
-}
-
-[data-theme="dark"] .btn-primary:hover {
     background-color: var(--c-blue-600);
-}
-
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .btn-primary {
-        background-color: var(--c-blue-500);
-    }
-
-    :root:not([data-theme="light"]) .btn-primary:hover {
-        background-color: var(--c-blue-600);
-    }
 }
 
 .btn-secondary {
