@@ -97,9 +97,13 @@
     border-radius: var(--radius-xl);
     padding: 2rem;
     overflow: hidden;
-    aspect-ratio: 16/10;
+    min-height: 20rem;
     border: 1px solid rgba(100, 116, 139, 0.2);
     transition: background-color 0.3s ease;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 1.5rem;
 }
 
 [data-theme="dark"] .demo-canvas {
@@ -181,6 +185,221 @@
     border-radius: 0.375rem;
 }
 
+/* --- Interactive Element Anchoring Demo --- */
+.demo-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.demo-header .h2-title {
+    color: white;
+    margin-bottom: 1rem;
+}
+
+.demo-subtitle {
+    max-width: 36rem;
+    margin: 0 auto;
+    font-size: 1.125rem;
+    line-height: 1.6;
+}
+
+.demo-container {
+    max-width: 56rem;
+    margin: 0 auto;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    background: var(--c-slate-800);
+}
+
+/* Demo Toolbar */
+.demo-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--c-slate-700);
+    border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+/* Traffic light dots */
+.dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+}
+
+.dot-r {
+    background: #ef4444;
+}
+
+.dot-y {
+    background: #eab308;
+}
+
+.dot-g {
+    background: #22c55e;
+}
+
+.browser-title {
+    font-size: 0.875rem;
+    color: var(--c-slate-400);
+}
+
+/* Demo Toggle Button */
+.btn-demo-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--c-slate-600);
+    color: var(--c-slate-200);
+    border: 1px solid rgba(100, 116, 139, 0.5);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-demo-toggle:hover {
+    background: var(--c-slate-500);
+    color: white;
+}
+
+.btn-demo-toggle.active {
+    background: var(--c-yellow-400);
+    color: var(--c-slate-900);
+    border-color: var(--c-yellow-400);
+}
+
+/* Demo Target Elements */
+.demo-target {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: var(--c-slate-700);
+    border: 2px dashed rgba(100, 116, 139, 0.5);
+    border-radius: var(--radius-lg);
+    color: var(--c-slate-400);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: default;
+    transition: all 0.2s ease;
+}
+
+.selection-mode .demo-target {
+    cursor: pointer;
+    border-color: var(--c-yellow-400);
+    background: rgba(234, 179, 8, 0.1);
+}
+
+.selection-mode .demo-target:hover {
+    background: rgba(234, 179, 8, 0.2);
+    border-style: solid;
+    transform: scale(1.02);
+}
+
+.selection-mode .demo-target:focus {
+    outline: 2px solid var(--c-yellow-400);
+    outline-offset: 2px;
+}
+
+/* Target Label */
+.target-label {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    margin-bottom: 0.5rem;
+    background: rgba(100, 116, 139, 0.3);
+    border-radius: var(--radius-sm);
+    font-size: 0.625rem;
+    font-family: var(--font-mono, monospace);
+    color: var(--c-slate-400);
+    text-transform: lowercase;
+}
+
+.selection-mode .target-label {
+    background: rgba(234, 179, 8, 0.3);
+    color: var(--c-yellow-400);
+}
+
+/* Demo Box Variations */
+.demo-box-1 {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.demo-box-2 {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.demo-box-3 {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.demo-box-4 {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+/* Empty State */
+.empty-state {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.empty-state.hidden {
+    display: none;
+}
+
+.empty-msg {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    border-radius: var(--radius-lg);
+    color: var(--c-slate-400);
+    font-size: 0.875rem;
+}
+
+.empty-msg svg {
+    color: var(--c-slate-500);
+}
+
+/* Mobile Note */
+.demo-mobile-note {
+    display: none;
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.875rem;
+    color: var(--c-slate-400);
+}
+
+@media (max-width: 640px) {
+    .demo-container {
+        display: none;
+    }
+    
+    .demo-mobile-note {
+        display: block;
+    }
+}
+
 /* Animated Sticky Note in Demo */
 .sticky-note {
     position: absolute;
@@ -251,6 +470,75 @@
     bottom: 3rem;
     right: 1rem;
     transform: rotate(2deg);
+}
+
+/* Interactive Sticky Note (created by JS) */
+.demo-target .sticky-note {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 50%;
+    transform: translateX(-50%) rotate(0deg);
+    width: 12rem;
+    z-index: 10;
+    animation: none;
+    padding: 0;
+    cursor: default;
+}
+
+.note-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: rgba(217, 119, 6, 0.2);
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.note-user {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #92400e;
+}
+
+.note-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #92400e;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.note-close:hover {
+    background: rgba(217, 119, 6, 0.3);
+}
+
+.note-textarea {
+    display: block;
+    width: 100%;
+    min-height: 3.5rem;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: none;
+    border-radius: 0 0 0.5rem 0.5rem;
+    font-family: inherit;
+    font-size: 0.75rem;
+    color: #78350f;
+    resize: none;
+}
+
+.note-textarea::placeholder {
+    color: #a16207;
+}
+
+.note-textarea:focus {
+    outline: none;
 }
 
 /* --- Features Grid --- */
