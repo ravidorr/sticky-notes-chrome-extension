@@ -1,0 +1,19 @@
+/* ============================================
+   Contact Page
+   ============================================ */
+.contact-methods {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+/* Contact cards need full-width buttons */
+.contact-methods .card .btn {
+    width: 100%;
+}
+
+/* Contact cards need extra paragraph margin */
+.contact-methods .card p {
+    margin-bottom: 1.5rem;
+}

@@ -1,0 +1,126 @@
+/* ============================================
+   Design Tokens & CSS Variables
+   ============================================ */
+:root {
+    /* Fonts */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-hand: 'Kalam', cursive;
+
+    /* Slate Color Palette (base) */
+    --c-slate-50: #f8fafc;
+    --c-slate-100: #f1f5f9;
+    --c-slate-200: #e2e8f0;
+    --c-slate-300: #cbd5e1;
+    --c-slate-400: #94a3b8;
+    --c-slate-500: #64748b;
+    --c-slate-600: #475569;
+    --c-slate-700: #334155;
+    --c-slate-800: #1e293b;
+    --c-slate-900: #0f172a;
+    --c-slate-950: #020617;
+
+    /* Blue Accent */
+    --c-blue-200: #bfdbfe;
+    --c-blue-300: #93c5fd;
+    --c-blue-400: #60a5fa;
+    --c-blue-500: #3b82f6;
+    --c-blue-600: #2563eb;
+    --c-blue-700: #1d4ed8;
+    --c-blue-800: #1e40af;
+
+    /* Yellow (Primary Brand) */
+    --c-yellow-50: rgba(254, 252, 232, 0.5);
+    --c-yellow-100: #fef9c3;
+    --c-yellow-200: #fef08a;
+    --c-yellow-300: #fde047;
+    --c-yellow-400: #facc15;
+    --c-yellow-500: #eab308;
+    --c-yellow-600: #ca8a04;
+    --c-yellow-700: #a16207;
+    --c-yellow-800: #854d0e;
+    --c-yellow-900: #713f12;
+
+    /* Semantic Colors (Light Mode) */
+    --color-bg: #ffffff;
+    --color-bg-secondary: var(--c-slate-50);
+    --color-bg-tertiary: var(--c-slate-100);
+    --color-text: var(--c-slate-900);
+    --color-text-secondary: var(--c-slate-600);
+    --color-text-muted: var(--c-slate-500);
+    --color-border: var(--c-slate-200);
+    --color-border-light: var(--c-slate-100);
+    --navbar-bg: rgba(255, 255, 255, 0.95);
+    --navbar-bg-scrolled: rgba(255, 255, 255, 0.98);
+    --card-bg: #ffffff;
+    --card-border: var(--c-slate-100);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    --shadow-yellow-lg: 0 4px 12px rgba(234, 179, 8, 0.4);
+
+    /* Border Radius */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
+    --radius-full: 9999px;
+
+    /* Transitions */
+    --transition: 0.2s ease;
+}
+
+/* ============================================
+   Dark Mode - Manual Toggle
+   ============================================ */
+[data-theme="dark"] {
+    --color-bg: var(--c-slate-950);
+    --color-bg-secondary: var(--c-slate-900);
+    --color-bg-tertiary: var(--c-slate-800);
+    --color-text: var(--c-slate-100);
+    --color-text-secondary: var(--c-slate-300);
+    --color-text-muted: var(--c-slate-400);
+    --color-border: var(--c-slate-700);
+    --color-border-light: var(--c-slate-800);
+    --navbar-bg: rgba(2, 6, 23, 0.95);
+    --navbar-bg-scrolled: rgba(2, 6, 23, 0.98);
+    --card-bg: var(--c-slate-900);
+    --card-border: var(--c-slate-800);
+
+    /* Adjusted shadows for dark mode */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+}
+
+/* ============================================
+   Dark Mode - System Preference (Auto)
+   ============================================ */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --color-bg: var(--c-slate-950);
+        --color-bg-secondary: var(--c-slate-900);
+        --color-bg-tertiary: var(--c-slate-800);
+        --color-text: var(--c-slate-100);
+        --color-text-secondary: var(--c-slate-300);
+        --color-text-muted: var(--c-slate-400);
+        --color-border: var(--c-slate-700);
+        --color-border-light: var(--c-slate-800);
+        --navbar-bg: rgba(2, 6, 23, 0.95);
+        --navbar-bg-scrolled: rgba(2, 6, 23, 0.98);
+        --card-bg: var(--c-slate-900);
+        --card-border: var(--c-slate-800);
+
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4);
+        --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+    }
+}
