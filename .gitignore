@@ -7,6 +7,7 @@ dist/
 # Generated site HTML (built by CI, not committed)
 site/*.html
 !site/dashboard.html
+!site/generate-key.html
 
 # IDE
 .idea/
@@ -32,3 +33,6 @@ test-results/
 # Firebase (don't commit real credentials)
 # Uncomment if you add real credentials:
 # src/firebase/config.js
+
+# Extension private keys (keep these secret!)
+keys/
