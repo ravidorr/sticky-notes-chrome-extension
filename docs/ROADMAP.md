@@ -102,9 +102,11 @@ Features that differentiate for developer and QA workflows:
 
 ### Screenshot & Export
 - [] Screenshot on note creation
-- [] "Copy as Markdown" - generates bug report template
-- [] "Copy screenshot" - one-click annotated screenshot
+- [x] "Copy as Markdown" - generates bug report template
+- [x] "Copy screenshot" - one-click annotated screenshot
 - [] Shareable link that highlights the element
+- [] Export all notes as JSON
+- [] Export all notes as CSV
 
 ### Issue Tracking Integration
 - [] Jira integration (one-click ticket creation)
@@ -123,13 +125,18 @@ Features that differentiate for developer and QA workflows:
 - [] Team workspaces
 - [] Role-based permissions
 - [] Usage analytics dashboard
+- [] Priority support (Team and Pro tiers)
+- [] Custom branding (Pro tier - custom logo, colors for shared notes)
 
 ### Pricing Model
+
+**Note:** The extension can be used without any account (local storage only). The tiers below describe features available with a Google account.
+
 | Tier | Price | Features |
 |------|-------|----------|
-| **Free** | $0 | Up to 10 cloud notes, all features, no sharing |
-| **Basic** | $1/user/mo or $10/user/year | Unlimited notes, sharing, threads, offline |
-| **Pro** | $2/user/mo or $20/user/year | Integrations, screenshots, metadata, branding |
+| **Starter** | $0 (Forever free) | Up to 10 cloud notes, all note features, rich text editor, color themes, cloud sync, team sharing |
+| **Team** | $1/user/mo or $10/user/year | Unlimited cloud notes, share notes by email, threaded comments, offline support, priority support, all note features |
+| **Pro** | $2/user/mo or $20/user/year | Everything in Team, Jira integration, GitHub Issues integration, screenshot capture, metadata capture, custom branding |
 
 ---
 
