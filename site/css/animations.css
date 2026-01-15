@@ -1,0 +1,90 @@
+/* ==========================================================================
+   Animations - Keyframes and Global Responsive Overrides
+   ========================================================================== */
+
+/* --- Keyframe Animations --- */
+@keyframes notePop {
+    0% {
+        opacity: 0;
+        transform: rotate(-1deg) scale(0.8);
+    }
+    50% {
+        transform: rotate(-1deg) scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: rotate(-1deg) scale(1);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0) rotate(-2deg);
+    }
+    50% {
+        transform: translateY(-8px) rotate(-2deg);
+    }
+}
+
+/* --- Mobile Responsive Overrides --- */
+@media (max-width: 640px) {
+    /* Typography scaling */
+    .h1-hero {
+        font-size: 2.25rem;
+    }
+    
+    .h2-title {
+        font-size: 1.5rem;
+    }
+    
+    /* Section spacing */
+    .section-dark,
+    .section-light,
+    .section-gray,
+    .section-steps,
+    .section-pricing,
+    .section-cta,
+    .pain-points,
+    .install-cta-section {
+        padding: 3rem 0;
+    }
+    
+    /* Demo section mobile */
+    .demo-intro h2 {
+        font-size: 1.75rem;
+    }
+    
+    /* Simplify demo on mobile */
+    .demo-canvas {
+        aspect-ratio: 4/3;
+        padding: 1rem;
+    }
+    
+    .sticky-note {
+        width: 6rem;
+        font-size: 0.5rem;
+    }
+    
+    .sticky-note--side {
+        display: none;
+    }
+    
+    /* Pricing mobile */
+    .pricing-price {
+        font-size: 2.5rem;
+    }
+    
+    /* CTA mobile */
+    .cta-box h2 {
+        font-size: 1.75rem;
+    }
+}

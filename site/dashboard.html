@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- htmlhint doctype-first:false -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="7fWtIQvn3-ZOWcEe7M8TU5hVy_uy5guIh3k1uDowdhY" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Sticky Notes">
+    <meta property="og:title" content="Sticky Notes - Visual Bug Reporting for Dev Teams">
+    <meta property="og:description" content="Pin notes directly to UI elements on any website. No screenshots, no confusion, no context lost.">
+    <meta property="og:image" content="images/og-image.png">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sticky Notes - Visual Bug Reporting for Dev Teams">
+    <meta name="twitter:description" content="Pin notes directly to UI elements on any website. No screenshots, no confusion, no context lost.">
+
+
+    <title>Dashboard - Sticky Notes</title>
+    <meta name="description" content="View and manage your Sticky Notes from any browser">
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+
+<!-- htmlhint doctype-first:false -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Navigation -->
+    <nav id="navbar" class="navbar">
+        <div class="container flex justify-between items-center">
+            <!-- Logo -->
+            <a href="index.html" class="flex items-center gap-2">
+                <div class="nav-logo-box">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="1" y="1" width="14" height="14" rx="2" fill="#facc15"/>
+                        <path d="M4 5h8M4 8h8M4 11h5" stroke="#713f12" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span class="logo-text">Sticky Notes</span>
+            </a>
+
+            <!-- Desktop Menu -->
+            <div class="desktop-menu items-center gap-8">
+                <a href="index.html#features" class="nav-link">Features</a>
+                <a href="index.html#preview" class="nav-link">Preview</a>
+                <a href="index.html#how-it-works" class="nav-link">How it Works</a>
+                <a href="index.html#pricing" class="nav-link">Pricing</a>
+                <a href="https://github.com/ravidorr/sticky-notes-chrome-extension" target="_blank" rel="noopener" class="nav-link">GitHub</a>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+                    <!-- Sun icon (shown in dark mode) -->
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <!-- Moon icon (shown in light mode) -->
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <a href="https://chrome.google.com/webstore/detail/miahokcndajlgenbmbdfnbaampbfmneh" class="btn btn-primary gap-2">
+                    <img src="chrome-logo.svg" width="16" height="16" alt="" aria-hidden="true">
+                    Add to Chrome
+                </a>
+            </div>
+
+            <!-- Mobile Menu Button -->
+            <div class="flex items-center gap-2">
+                <button id="theme-toggle-mobile" class="theme-toggle mobile-theme-toggle" aria-label="Toggle dark mode">
+                    <!-- Sun icon (shown in dark mode) -->
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <!-- Moon icon (shown in light mode) -->
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-menu">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Dropdown -->
+        <div id="mobile-menu" class="mobile-dropdown hidden flex" role="menu" aria-hidden="true">
+            <a href="index.html#features" class="nav-link">Features</a>
+            <a href="index.html#preview" class="nav-link">Preview</a>
+            <a href="index.html#how-it-works" class="nav-link">How it Works</a>
+            <a href="index.html#pricing" class="nav-link">Pricing</a>
+            <a href="https://github.com/ravidorr/sticky-notes-chrome-extension" target="_blank" rel="noopener" class="nav-link">GitHub</a>
+            <a href="https://chrome.google.com/webstore/detail/miahokcndajlgenbmbdfnbaampbfmneh" class="btn btn-primary gap-2 w-full">
+                <img src="chrome-logo.svg" width="16" height="16" alt="" aria-hidden="true">
+                Add to Chrome
+            </a>
+        </div>
+    </nav>
+
+
+
+    <main id="main-content" class="dashboard-page">
+        <div class="container">
+            <header class="dashboard-header">
+                <h1><span id="userEmail" class="user-email"></span>Sticky Notes Dashboard</h1>
+                <div class="dashboard-controls">
+                    <label class="auto-refresh">
+                        <input type="checkbox" id="autoRefresh">
+                        Auto-refresh
+                    </label>
+                    <button id="settingsBtn" class="btn btn-secondary" title="Change API Key">Settings</button>
+                </div>
+            </header>
+
+            <!-- API Key Setup Section -->
+            <div id="apiKeySection" class="api-key-overlay" style="display: none;">
+                <div class="api-key-card">
+                    <h3>API Key Required</h3>
+                    <p>Enter your Sticky Notes API key to view notes. You can generate one from the Chrome extension's Settings.</p>
+                    <div class="api-key-input-container">
+                        <input 
+                            type="password" 
+                            id="apiKeyInput" 
+                            placeholder="sk_live_..."
+                            class="api-key-input"
+                        >
+                        <button id="saveApiKeyBtn" class="btn btn-primary">Save Key</button>
+                    </div>
+                    <p class="api-key-hint">Your API key is stored locally in your browser.</p>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div id="mainContent">
+                <!-- Stats Dashboard -->
+                <div id="statsDashboard" class="stats-dashboard">
+                    <div class="stat-card stat-total">
+                        <span class="stat-value" id="statTotal">-</span>
+                        <span class="stat-label">Total Notes</span>
+                    </div>
+                    <div class="stat-card stat-owned">
+                        <span class="stat-value" id="statOwned">-</span>
+                        <span class="stat-label">My Notes</span>
+                    </div>
+                    <div class="stat-card stat-shared">
+                        <span class="stat-value" id="statShared">-</span>
+                        <span class="stat-label">Shared With Me</span>
+                    </div>
+                    <div class="stat-card stat-domains">
+                        <span class="stat-value" id="statDomains">-</span>
+                        <span class="stat-label">Domains</span>
+                    </div>
+                </div>
+
+                <!-- Theme Breakdown -->
+                <div id="themeBreakdown" class="theme-breakdown">
+                    <div class="theme-bar">
+                        <div class="theme-segment theme-yellow" id="themeYellow" style="flex: 0"></div>
+                        <div class="theme-segment theme-blue" id="themeBlue" style="flex: 0"></div>
+                        <div class="theme-segment theme-green" id="themeGreen" style="flex: 0"></div>
+                        <div class="theme-segment theme-pink" id="themePink" style="flex: 0"></div>
+                    </div>
+                    <div class="theme-legend">
+                        <span class="legend-count yellow">[<span id="legendYellow">0</span>]</span>
+                        <span class="legend-count blue">[<span id="legendBlue">0</span>]</span>
+                        <span class="legend-count green">[<span id="legendGreen">0</span>]</span>
+                        <span class="legend-count pink">[<span id="legendPink">0</span>]</span>
+                    </div>
+                </div>
+
+                <!-- Filter Tabs -->
+                <div class="filter-tabs">
+                    <button class="filter-tab active" data-filter="all">All Notes</button>
+                    <button class="filter-tab" data-filter="owned">My Notes</button>
+                    <button class="filter-tab" data-filter="shared">Shared With Me</button>
+                    <button class="filter-tab" data-filter="commented">Commented</button>
+                </div>
+
+                <!-- URL/Domain Filter -->
+                <div class="url-input-container">
+                    <select id="domainSelect" class="domain-select">
+                        <option value="">All domains</option>
+                        <option value="__custom__">Custom URL...</option>
+                    </select>
+                    <input 
+                        type="text" 
+                        id="urlInput" 
+                        placeholder="Enter full URL..."
+                        class="url-input"
+                        style="display: none;"
+                    >
+                    <button id="loadBtn" class="btn btn-primary">Load Notes</button>
+                </div>
+
+                <div id="status" class="status"></div>
+
+                <div id="notesList" class="notes-list">
+                    <p class="empty-state-msg">Loading notes...</p>
+                </div>
+            </div>
+
+            <footer class="dashboard-footer">
+                <span id="keyIndicator" class="key-indicator" title="Connected API key"></span>
+            </footer>
+        </div>
+    </main>
+
+<!-- htmlhint doctype-first:false -->
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="index.html" class="flex items-center gap-2">
+                        <div class="nav-logo-box">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="1" y="1" width="14" height="14" rx="2" fill="#facc15"/>
+                                <path d="M4 5h8M4 8h8M4 11h5" stroke="#713f12" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <span class="logo-text">Sticky Notes</span>
+                    </a>
+                    <p>Visual bug reporting for dev teams. Built with care for developers.</p>
+                </div>
+                <div class="footer-links">
+                    <h3>Product</h3>
+                    <a href="index.html#features">Features</a>
+                    <a href="index.html#pricing">Pricing</a>
+                    <a href="index.html#how-it-works">How it Works</a>
+                </div>
+                <div class="footer-links">
+                    <h3>Resources</h3>
+                    <a href="https://github.com/ravidorr/sticky-notes-chrome-extension#readme" target="_blank" rel="noopener">Documentation</a>
+                    <a href="https://github.com/ravidorr/sticky-notes-chrome-extension/releases" target="_blank" rel="noopener">Changelog</a>
+                    <a href="https://github.com/ravidorr/sticky-notes-chrome-extension" target="_blank" rel="noopener">GitHub</a>
+                </div>
+                <div class="footer-links">
+                    <h3>Legal</h3>
+                    <a href="privacy.html">Privacy Policy</a>
+                    <a href="terms.html">Terms of Service</a>
+                    <a href="contact.html">Contact</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Sticky Notes. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script type="module" src="js/scripts.js"></script>
+
+
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

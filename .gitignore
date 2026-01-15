@@ -6,6 +6,7 @@ dist/
 
 # Generated site HTML (built by CI, not committed)
 site/*.html
+!site/dashboard.html
 
 # IDE
 .idea/

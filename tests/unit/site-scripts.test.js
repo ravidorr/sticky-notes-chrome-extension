@@ -1,5 +1,5 @@
 /**
- * Unit tests for site/scripts.js
+ * Unit tests for site/js/scripts.js
  * Landing page JavaScript functionality
  */
 
@@ -25,7 +25,7 @@ import {
     updateDemoUI,
     createNote,
     demoState
-} from '../../site/scripts.js';
+} from '../../site/js/scripts.js';
 
 describe('site/scripts.js', () => {
     const localThis = {};

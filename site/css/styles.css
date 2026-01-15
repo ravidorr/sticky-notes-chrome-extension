@@ -1,0 +1,22 @@
+/* ==========================================================================
+   Sticky Notes Site - Main Stylesheet
+   ========================================================================== */
+
+/*
+ * This file serves as the entry point for all site styles.
+ * Individual styles are organized into separate files by concern:
+ *
+ * - base.css:       CSS variables, reset, utilities, accessibility
+ * - components.css: Buttons, cards, navbar, footer, tables
+ * - hero.css:       Hero section, browser mockup, static note
+ * - sections.css:   Demo, pricing, testimonials, FAQ, CTA, features
+ * - pages.css:      Legal pages, contact page
+ * - animations.css: Keyframes, responsive overrides
+ */
+
+@import 'base.css';
+@import 'components.css';
+@import 'hero.css';
+@import 'sections.css';
+@import 'pages.css';
+@import 'animations.css';

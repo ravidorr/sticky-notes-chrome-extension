@@ -187,20 +187,31 @@ Assistant: [calls list_commented_notes] You've commented on 5 notes...
 
 ---
 
-## Web Panel
+## Web Dashboard
 
-A visual dashboard is available for browsing notes:
+A visual dashboard is available for browsing notes at:
+
+**https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html**
+
+Features:
+- Statistics dashboard
+- Filter tabs (All/My Notes/Shared/Commented)
+- Theme breakdown visualization
+- URL/domain filtering
+- Works with the site's light/dark theme
+
+Each user enters their own API key, which is stored locally in their browser.
+
+### Local Development
+
+For local development, you can also run the panel locally:
 
 ```bash
 cd mcp-server
 npm run panel
 ```
 
-Opens at `http://localhost:3002`. Features:
-- Statistics dashboard
-- Filter tabs (All/My Notes/Shared/Commented)
-- Theme breakdown visualization
-- URL/domain filtering
+Opens at `http://localhost:3002`.
 
 ---
 
@@ -210,6 +221,7 @@ Opens at `http://localhost:3002`. Features:
 |----------|-------------|----------|
 | `STICKY_NOTES_API_KEY` | Your API key | Yes |
 | `STICKY_NOTES_API_URL` | Custom API URL (for self-hosted) | No |
+| `STICKY_NOTES_DASHBOARD_URL` | Custom dashboard URL | No |
 
 ---
 

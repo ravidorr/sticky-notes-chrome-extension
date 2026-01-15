@@ -19,6 +19,7 @@ import process from 'process';
 
 const API_BASE_URL = process.env.STICKY_NOTES_API_URL || 
   'https://us-central1-sticky-notes-chrome-extension.cloudfunctions.net/api';
+const DASHBOARD_URL = process.env.STICKY_NOTES_DASHBOARD_URL;
 const API_KEY = process.env.STICKY_NOTES_API_KEY;
 
 if (!API_KEY) {
@@ -479,7 +480,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         
         if (notes.length === 0) {
           markdown += '_No notes found for this URL._\n';
-          markdown += `\n**Panel URL:** http://localhost:3002?url=${encodeURIComponent(args.url)}`;
+          markdown += `\n**Dashboard:** ${DASHBOARD_URL}?url=${encodeURIComponent(args.url)}`;
         } else {
           notes.forEach((note, index) => {
             const theme = note.theme || 'yellow';
