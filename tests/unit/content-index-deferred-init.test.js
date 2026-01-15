@@ -72,10 +72,10 @@ describe('content/index - setupDeferredIframeInit', () => {
   });
 
   it('should not defer init for top frame', () => {
-    // Simulate top frame: both self and top must reference the same object
-    const topWindow = {};
-    Object.defineProperty(window, 'self', { value: topWindow, configurable: true });
-    Object.defineProperty(window, 'top', { value: topWindow, configurable: true });
+    // Simulate top frame: both self and top must reference the same window object
+    // Use window itself as the reference to ensure proper equality check
+    Object.defineProperty(window, 'self', { value: window, configurable: true });
+    Object.defineProperty(window, 'top', { value: window, configurable: true });
 
     const initFn = jest.fn();
     const result = setupDeferredIframeInit({ initFn, minSize: 50 });
