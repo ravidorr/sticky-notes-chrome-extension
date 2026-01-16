@@ -679,7 +679,18 @@ function setupCleanup(appState) {
     window.addEventListener('pageshow', (event) => {
         if (event.persisted) {
             // Page was restored from BFCache
-            // Re-check API key and refresh data if auto-refresh was enabled
+            // Immediately refresh data to avoid showing stale content
+            const elements = getDOMElements();
+            if (appState.apiKey) {
+                loadStats(appState.apiKey, elements);
+                loadNotes({
+                    apiKey: appState.apiKey,
+                    elements,
+                    currentFilter: appState.currentFilter
+                });
+            }
+            
+            // Re-enable auto-refresh interval if it was enabled
             const autoRefreshCheckbox = document.getElementById('autoRefresh');
             if (autoRefreshCheckbox?.checked && !appState.refreshInterval) {
                 appState.refreshInterval = setInterval(() => {

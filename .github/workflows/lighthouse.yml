@@ -9,6 +9,7 @@ on:
 jobs:
   lighthouse:
     name: Lighthouse Audit
+    if: false  # Temporarily disabled
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

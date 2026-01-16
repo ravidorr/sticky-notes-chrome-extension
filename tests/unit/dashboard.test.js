@@ -947,6 +947,23 @@ describe('site/js/dashboard.js', () => {
         beforeEach(() => {
             jest.useFakeTimers();
             localThis.appState = { refreshInterval: setInterval(() => {}, 1000) };
+            // Store original addEventListener to track listeners
+            localThis.originalAddEventListener = window.addEventListener;
+            localThis.eventListeners = [];
+            window.addEventListener = (type, listener, options) => {
+                localThis.eventListeners.push({ type, listener, options });
+                localThis.originalAddEventListener.call(window, type, listener, options);
+            };
+        });
+
+        afterEach(() => {
+            // Remove all event listeners added during the test
+            localThis.eventListeners.forEach(({ type, listener, options }) => {
+                window.removeEventListener(type, listener, options);
+            });
+            localThis.eventListeners = [];
+            // Restore original addEventListener
+            window.addEventListener = localThis.originalAddEventListener;
         });
 
         it('should clear interval on pagehide', () => {
@@ -973,6 +990,12 @@ describe('site/js/dashboard.js', () => {
             checkbox.checked = true;
             document.body.appendChild(checkbox);
             
+            // Mock fetch to handle the immediate data refresh calls
+            global.fetch = jest.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ notes: [], stats: {} })
+            });
+            
             setupCleanup(localThis.appState);
             
             // Simulate pageshow event from BFCache (persisted = true)
@@ -985,6 +1008,73 @@ describe('site/js/dashboard.js', () => {
             // Cleanup
             document.body.removeChild(checkbox);
             clearInterval(localThis.appState.refreshInterval);
+        });
+
+        it('should immediately refresh data on pageshow from BFCache', async () => {
+            // Setup: appState with API key
+            localThis.appState = { 
+                refreshInterval: null, 
+                apiKey: 'test-key',
+                currentFilter: 'all'
+            };
+            
+            // Create required DOM elements
+            const statsContainer = document.createElement('div');
+            statsContainer.id = 'stats';
+            document.body.appendChild(statsContainer);
+            
+            const notesContainer = document.createElement('div');
+            notesContainer.id = 'notesContainer';
+            document.body.appendChild(notesContainer);
+            
+            // Mock fetch to track calls
+            global.fetch = jest.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ notes: [], totalNotes: 0, uniqueUrls: 0 })
+            });
+            
+            setupCleanup(localThis.appState);
+            
+            // Clear any previous fetch calls
+            global.fetch.mockClear();
+            
+            // Simulate pageshow event from BFCache (persisted = true)
+            const event = new PageTransitionEvent('pageshow', { persisted: true });
+            window.dispatchEvent(event);
+            
+            // Should have made fetch calls immediately for stats and notes
+            expect(global.fetch).toHaveBeenCalled();
+            
+            // Cleanup
+            document.body.removeChild(statsContainer);
+            document.body.removeChild(notesContainer);
+        });
+
+        it('should not refresh data on pageshow from BFCache when no API key', () => {
+            // Setup: appState without API key
+            localThis.appState = { 
+                refreshInterval: null, 
+                apiKey: null,
+                currentFilter: 'all'
+            };
+            
+            // Mock fetch to track calls
+            global.fetch = jest.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ notes: [] })
+            });
+            
+            setupCleanup(localThis.appState);
+            
+            // Clear any previous fetch calls
+            global.fetch.mockClear();
+            
+            // Simulate pageshow event from BFCache (persisted = true)
+            const event = new PageTransitionEvent('pageshow', { persisted: true });
+            window.dispatchEvent(event);
+            
+            // Should NOT have made fetch calls since there's no API key
+            expect(global.fetch).not.toHaveBeenCalled();
         });
 
         it('should not restore interval on pageshow if not from BFCache', () => {
