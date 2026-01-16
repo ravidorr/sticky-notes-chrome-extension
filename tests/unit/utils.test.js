@@ -611,3 +611,154 @@ describe('formatRelativeTime', () => {
     expect(utils.formatRelativeTime(undefined)).toMatch(/^(just now|justNow)$/);
   });
 });
+
+describe('detectEnvironment', () => {
+  describe('local environment', () => {
+    it('should detect localhost as local', () => {
+      expect(utils.detectEnvironment('http://localhost:3000')).toBe('local');
+      expect(utils.detectEnvironment('http://localhost')).toBe('local');
+      expect(utils.detectEnvironment('https://localhost:8080/path')).toBe('local');
+    });
+    
+    it('should detect 127.0.0.1 as local', () => {
+      expect(utils.detectEnvironment('http://127.0.0.1:3000')).toBe('local');
+      expect(utils.detectEnvironment('http://127.0.0.1')).toBe('local');
+    });
+    
+    it('should detect 0.0.0.0 as local', () => {
+      expect(utils.detectEnvironment('http://0.0.0.0:8000')).toBe('local');
+    });
+  });
+  
+  describe('development environment', () => {
+    it('should detect dev. prefix as development', () => {
+      expect(utils.detectEnvironment('https://dev.example.com')).toBe('development');
+    });
+    
+    it('should detect -dev. pattern as development', () => {
+      expect(utils.detectEnvironment('https://app-dev.example.com')).toBe('development');
+    });
+    
+    it('should detect .dev. pattern as development', () => {
+      expect(utils.detectEnvironment('https://app.dev.example.com')).toBe('development');
+    });
+    
+    it('should detect development. prefix as development', () => {
+      expect(utils.detectEnvironment('https://development.example.com')).toBe('development');
+    });
+  });
+  
+  describe('staging environment', () => {
+    it('should detect staging. prefix as staging', () => {
+      expect(utils.detectEnvironment('https://staging.example.com')).toBe('staging');
+    });
+    
+    it('should detect stage. prefix as staging', () => {
+      expect(utils.detectEnvironment('https://stage.example.com')).toBe('staging');
+    });
+    
+    it('should detect qa. prefix as staging', () => {
+      expect(utils.detectEnvironment('https://qa.example.com')).toBe('staging');
+    });
+    
+    it('should detect uat. prefix as staging', () => {
+      expect(utils.detectEnvironment('https://uat.example.com')).toBe('staging');
+    });
+    
+    it('should detect test. prefix as staging', () => {
+      expect(utils.detectEnvironment('https://test.example.com')).toBe('staging');
+    });
+    
+    it('should detect preprod. prefix as staging', () => {
+      expect(utils.detectEnvironment('https://preprod.example.com')).toBe('staging');
+    });
+    
+    it('should detect -staging. pattern as staging', () => {
+      expect(utils.detectEnvironment('https://app-staging.example.com')).toBe('staging');
+    });
+    
+    it('should detect -qa. pattern as staging', () => {
+      expect(utils.detectEnvironment('https://app-qa.example.com')).toBe('staging');
+    });
+    
+    it('should detect Vercel preview deployments as staging', () => {
+      expect(utils.detectEnvironment('https://preview-abc123.vercel.app')).toBe('staging');
+      expect(utils.detectEnvironment('https://my-project.vercel.app')).toBe('staging');
+    });
+    
+    it('should detect Netlify deployments as staging', () => {
+      expect(utils.detectEnvironment('https://deploy-preview-123--mysite.netlify.app')).toBe('staging');
+    });
+    
+    it('should detect Cloudflare Pages as staging', () => {
+      expect(utils.detectEnvironment('https://my-project.pages.dev')).toBe('staging');
+    });
+    
+    it('should detect Heroku apps as staging', () => {
+      expect(utils.detectEnvironment('https://my-app-staging.herokuapp.com')).toBe('staging');
+    });
+    
+    it('should detect ngrok tunnels as staging', () => {
+      expect(utils.detectEnvironment('https://abc123.ngrok.io')).toBe('staging');
+    });
+    
+    it('should detect non-standard ports on real domains as staging', () => {
+      expect(utils.detectEnvironment('https://example.com:8080')).toBe('staging');
+      expect(utils.detectEnvironment('https://api.company.com:3000')).toBe('staging');
+    });
+  });
+  
+  describe('production environment', () => {
+    it('should detect standard domains as production', () => {
+      expect(utils.detectEnvironment('https://example.com')).toBe('production');
+      expect(utils.detectEnvironment('https://www.example.com')).toBe('production');
+    });
+    
+    it('should detect subdomains without staging patterns as production', () => {
+      expect(utils.detectEnvironment('https://app.example.com')).toBe('production');
+      expect(utils.detectEnvironment('https://api.company.io')).toBe('production');
+    });
+    
+    it('should treat standard ports as production', () => {
+      expect(utils.detectEnvironment('https://example.com:443')).toBe('production');
+      expect(utils.detectEnvironment('http://example.com:80')).toBe('production');
+    });
+  });
+  
+  describe('edge cases', () => {
+    it('should return production for null/undefined URL', () => {
+      expect(utils.detectEnvironment(null)).toBe('production');
+      expect(utils.detectEnvironment(undefined)).toBe('production');
+      expect(utils.detectEnvironment('')).toBe('production');
+    });
+    
+    it('should return production for invalid URL', () => {
+      expect(utils.detectEnvironment('not-a-url')).toBe('production');
+    });
+    
+    it('should be case-insensitive for hostname', () => {
+      expect(utils.detectEnvironment('https://STAGING.Example.COM')).toBe('staging');
+      expect(utils.detectEnvironment('https://DEV.Example.COM')).toBe('development');
+    });
+  });
+});
+
+describe('ENVIRONMENTS constant', () => {
+  it('should have all expected environment types', () => {
+    expect(utils.ENVIRONMENTS).toEqual({
+      LOCAL: 'local',
+      DEVELOPMENT: 'development',
+      STAGING: 'staging',
+      PRODUCTION: 'production'
+    });
+  });
+});
+
+describe('ENVIRONMENT_COLORS constant', () => {
+  it('should have colors for all environments', () => {
+    expect(utils.ENVIRONMENT_COLORS.local).toBeDefined();
+    expect(utils.ENVIRONMENT_COLORS.development).toBeDefined();
+    expect(utils.ENVIRONMENT_COLORS.staging).toBeDefined();
+    expect(utils.ENVIRONMENT_COLORS.production).toBeDefined();
+  });
+});

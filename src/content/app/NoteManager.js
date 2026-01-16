@@ -6,7 +6,7 @@
 import { StickyNote } from '../components/StickyNote.js';
 import { contentLogger as log } from '../../shared/logger.js';
 import { t } from '../../shared/i18n.js';
-import { getBrowserInfo } from '../../shared/utils.js';
+import { getBrowserInfo, detectEnvironment } from '../../shared/utils.js';
 import { purgeExpiredSessionMarkers, calculateNoteDiff } from './SyncLogic.js';
 
 /**
@@ -571,6 +571,7 @@ export class NoteManager {
     const isTopFrame = this.isTopFrame();
     const tabUrl = this.getTabUrl();
     const frameUrl = this.getFrameUrl();
+    const currentUrl = frameUrl || window.location.href;
     const noteData = {
       url: this.getCurrentUrl(),
       selector: selector,
@@ -586,7 +587,8 @@ export class NoteManager {
         viewport: `${window.innerWidth}x${window.innerHeight}`,
         timestamp: new Date().toISOString(),
         isTopFrame: isTopFrame,
-        frameUrl: isTopFrame ? null : frameUrl
+        frameUrl: isTopFrame ? null : frameUrl,
+        environment: detectEnvironment(currentUrl)
       }
     };
     
@@ -629,6 +631,7 @@ export class NoteManager {
     const isTopFrame = this.isTopFrame();
     const tabUrl = this.getTabUrl();
     const frameUrl = this.getFrameUrl();
+    const currentUrl = frameUrl || window.location.href;
     const noteData = {
       url: this.getCurrentUrl(),
       selector: selector,
@@ -644,7 +647,8 @@ export class NoteManager {
         viewport: `${window.innerWidth}x${window.innerHeight}`,
         timestamp: new Date().toISOString(),
         isTopFrame: isTopFrame,
-        frameUrl: isTopFrame ? null : frameUrl
+        frameUrl: isTopFrame ? null : frameUrl,
+        environment: detectEnvironment(currentUrl)
       }
     };
 

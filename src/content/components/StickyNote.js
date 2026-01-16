@@ -14,7 +14,9 @@ import {
   VALID_THEMES,
   getPageMetadata,
   generateBugReportMarkdown,
-  formatRelativeTime
+  formatRelativeTime,
+  detectEnvironment,
+  ENVIRONMENTS
 } from '../../shared/utils.js';
 import { contentLogger as log } from '../../shared/logger.js';
 import { t } from '../../shared/i18n.js';
@@ -182,6 +184,54 @@ export class StickyNote {
               </svg>
             </button>
           </div>
+          <div class="sn-metadata-row sn-metadata-environment-row">
+            <span class="sn-metadata-label" id="sn-env-label-${this.id}">${t('metadataEnvironment')}</span>
+            <div class="sn-environment-selector">
+              <button 
+                class="sn-environment-badge sn-env-${this.getEnvironment()}" 
+                title="${t('changeEnvironment')}"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-labelledby="sn-env-label-${this.id}"
+              >
+                ${this.getEnvironmentLabel(this.getEnvironment())}
+                <svg class="sn-env-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              <div 
+                class="sn-environment-dropdown sn-hidden" 
+                role="listbox" 
+                aria-label="${t('metadataEnvironment')}"
+                tabindex="-1"
+              >
+                <button class="sn-env-option sn-env-local" data-env="local" role="option" aria-selected="${this.getEnvironment() === 'local'}">
+                  <svg class="sn-env-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                  </svg>
+                  ${t('envLocal')}
+                </button>
+                <button class="sn-env-option sn-env-development" data-env="development" role="option" aria-selected="${this.getEnvironment() === 'development'}">
+                  <svg class="sn-env-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                  </svg>
+                  ${t('envDevelopment')}
+                </button>
+                <button class="sn-env-option sn-env-staging" data-env="staging" role="option" aria-selected="${this.getEnvironment() === 'staging'}">
+                  <svg class="sn-env-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M9 3h6l3 7-6 11-6-11z"/><line x1="12" y1="3" x2="12" y2="8"/>
+                  </svg>
+                  ${t('envStaging')}
+                </button>
+                <button class="sn-env-option sn-env-production" data-env="production" role="option" aria-selected="${this.getEnvironment() === 'production'}">
+                  <svg class="sn-env-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                  </svg>
+                  ${t('envProduction')}
+                </button>
+              </div>
+            </div>
+          </div>
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataBrowser')}</span>
             <span class="sn-metadata-value">${escapeHtml(this.metadata.browser)}</span>
@@ -304,6 +354,35 @@ export class StickyNote {
   }
   
   /**
+   * Get the current environment for this note
+   * Uses stored metadata or auto-detects from URL
+   * @returns {string} Environment type
+   */
+  getEnvironment() {
+    // Use stored environment if available
+    if (this.metadata.environment) {
+      return this.metadata.environment;
+    }
+    // Auto-detect from URL
+    return detectEnvironment(this.metadata.url);
+  }
+  
+  /**
+   * Get translated label for environment
+   * @param {string} env - Environment type
+   * @returns {string} Translated label
+   */
+  getEnvironmentLabel(env) {
+    const labels = {
+      [ENVIRONMENTS.LOCAL]: t('envLocal'),
+      [ENVIRONMENTS.DEVELOPMENT]: t('envDevelopment'),
+      [ENVIRONMENTS.STAGING]: t('envStaging'),
+      [ENVIRONMENTS.PRODUCTION]: t('envProduction')
+    };
+    return labels[env] || t('envProduction');
+  }
+  
+  /**
    * Setup event listeners
    */
   setupEventListeners() {
@@ -344,6 +423,22 @@ export class StickyNote {
     copyButtons.forEach(btn => {
       btn.addEventListener('click', this.handleMetadataCopy.bind(this));
     });
+    
+    // Environment badge and dropdown
+    const envBadge = this.element.querySelector('.sn-environment-badge');
+    if (envBadge) {
+      envBadge.addEventListener('click', this.handleEnvironmentClick.bind(this));
+      envBadge.addEventListener('keydown', this.handleEnvironmentBadgeKeydown.bind(this));
+    }
+    
+    const envOptions = this.element.querySelectorAll('.sn-env-option');
+    envOptions.forEach(option => {
+      option.addEventListener('click', this.handleEnvironmentSelect.bind(this));
+      option.addEventListener('keydown', this.handleEnvironmentOptionKeydown.bind(this));
+    });
+    
+    // Close environment dropdown when clicking outside
+    document.addEventListener('click', this.handleDocumentClick.bind(this));
     
     // Minimize button
     const minimizeBtn = this.element.querySelector('.sn-minimize-btn');
@@ -543,6 +638,195 @@ export class StickyNote {
     } catch (error) {
       log.error('Failed to copy metadata:', error);
       this.showToast(t('failedToCopy'), 'error');
+    }
+  }
+  
+  /**
+   * Handle environment badge click - toggle dropdown
+   * @param {MouseEvent} event - Click event
+   */
+  handleEnvironmentClick(event) {
+    event.stopPropagation();
+    this.toggleEnvironmentDropdown();
+  }
+  
+  /**
+   * Handle keyboard events on environment badge
+   * @param {KeyboardEvent} event - Keyboard event
+   */
+  handleEnvironmentBadgeKeydown(event) {
+    switch (event.key) {
+      case 'Enter':
+      case ' ':
+      case 'ArrowDown':
+        event.preventDefault();
+        event.stopPropagation();
+        this.openEnvironmentDropdown();
+        break;
+      case 'Escape':
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeEnvironmentDropdown();
+        break;
+    }
+  }
+  
+  /**
+   * Handle keyboard events on environment dropdown options
+   * @param {KeyboardEvent} event - Keyboard event
+   */
+  handleEnvironmentOptionKeydown(event) {
+    const options = Array.from(this.element.querySelectorAll('.sn-env-option'));
+    const currentIndex = options.indexOf(event.currentTarget);
+    
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        event.stopPropagation();
+        if (currentIndex < options.length - 1) {
+          options[currentIndex + 1].focus();
+        }
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        event.stopPropagation();
+        if (currentIndex > 0) {
+          options[currentIndex - 1].focus();
+        } else {
+          // Go back to badge
+          this.element.querySelector('.sn-environment-badge')?.focus();
+        }
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        event.stopPropagation();
+        this.handleEnvironmentSelect(event);
+        break;
+      case 'Escape':
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeEnvironmentDropdown();
+        this.element.querySelector('.sn-environment-badge')?.focus();
+        break;
+      case 'Tab':
+        // Close dropdown when tabbing out
+        this.closeEnvironmentDropdown();
+        break;
+    }
+  }
+  
+  /**
+   * Toggle environment dropdown open/closed
+   */
+  toggleEnvironmentDropdown() {
+    const dropdown = this.element.querySelector('.sn-environment-dropdown');
+    const isHidden = dropdown?.classList.contains('sn-hidden');
+    
+    if (isHidden) {
+      this.openEnvironmentDropdown();
+    } else {
+      this.closeEnvironmentDropdown();
+    }
+  }
+  
+  /**
+   * Open environment dropdown and focus first option
+   */
+  openEnvironmentDropdown() {
+    const dropdown = this.element.querySelector('.sn-environment-dropdown');
+    const badge = this.element.querySelector('.sn-environment-badge');
+    
+    if (dropdown && badge) {
+      dropdown.classList.remove('sn-hidden');
+      badge.setAttribute('aria-expanded', 'true');
+      
+      // Focus the currently selected option, or first option
+      const currentEnv = this.getEnvironment();
+      const selectedOption = dropdown.querySelector(`[data-env="${currentEnv}"]`);
+      const firstOption = dropdown.querySelector('.sn-env-option');
+      (selectedOption || firstOption)?.focus();
+    }
+  }
+  
+  /**
+   * Handle environment option selection
+   * @param {MouseEvent|KeyboardEvent} event - Click or keyboard event
+   */
+  handleEnvironmentSelect(event) {
+    event.stopPropagation();
+    
+    const option = event.currentTarget;
+    const newEnv = option.dataset.env;
+    const badge = this.element.querySelector('.sn-environment-badge');
+    
+    if (!newEnv || newEnv === this.metadata.environment) {
+      // Close dropdown if same selection
+      this.closeEnvironmentDropdown();
+      badge?.focus();
+      return;
+    }
+    
+    // Update metadata
+    this.metadata.environment = newEnv;
+    
+    // Update badge display
+    if (badge) {
+      // Remove all env classes and add the new one
+      badge.className = `sn-environment-badge sn-env-${newEnv}`;
+      // Recreate content with chevron
+      badge.innerHTML = `${this.getEnvironmentLabel(newEnv)}
+        <svg class="sn-env-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>`;
+      // Restore ARIA attributes
+      badge.setAttribute('aria-haspopup', 'listbox');
+      badge.setAttribute('aria-expanded', 'false');
+    }
+    
+    // Update aria-selected on all options
+    const options = this.element.querySelectorAll('.sn-env-option');
+    options.forEach(opt => {
+      opt.setAttribute('aria-selected', opt.dataset.env === newEnv);
+    });
+    
+    // Close dropdown and return focus to badge
+    this.closeEnvironmentDropdown();
+    badge?.focus();
+    
+    // Trigger save
+    this.triggerSave();
+    
+    log.debug('Environment changed to:', newEnv);
+  }
+  
+  /**
+   * Handle document click to close environment dropdown
+   * @param {MouseEvent} event - Click event
+   */
+  handleDocumentClick(event) {
+    // Guard against element being destroyed
+    if (!this.element) return;
+    
+    // Check if click is outside the environment selector
+    const envSelector = this.element.querySelector('.sn-environment-selector');
+    if (envSelector && !envSelector.contains(event.target)) {
+      this.closeEnvironmentDropdown();
+    }
+  }
+  
+  /**
+   * Close environment dropdown and update ARIA
+   */
+  closeEnvironmentDropdown() {
+    const dropdown = this.element.querySelector('.sn-environment-dropdown');
+    const badge = this.element.querySelector('.sn-environment-badge');
+    
+    if (dropdown) {
+      dropdown.classList.add('sn-hidden');
+    }
+    if (badge) {
+      badge.setAttribute('aria-expanded', 'false');
     }
   }
 

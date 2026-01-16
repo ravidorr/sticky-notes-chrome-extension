@@ -578,5 +578,30 @@
   "copyMetadata": {
     "message": "העתק ללוח",
     "description": "Tooltip for copy button in metadata panel"
+  },
+
+  "metadataEnvironment": {
+    "message": "סביבה",
+    "description": "Metadata label for environment"
+  },
+  "envLocal": {
+    "message": "מקומי",
+    "description": "Environment type for localhost"
+  },
+  "envDevelopment": {
+    "message": "פיתוח",
+    "description": "Environment type for dev servers"
+  },
+  "envStaging": {
+    "message": "בדיקות",
+    "description": "Environment type for staging/QA"
+  },
+  "envProduction": {
+    "message": "ייצור",
+    "description": "Environment type for production"
+  },
+  "changeEnvironment": {
+    "message": "לחץ לשינוי סביבה",
+    "description": "Tooltip for environment badge"
   }
 }

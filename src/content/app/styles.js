@@ -724,6 +724,147 @@ export function getShadowStyles() {
     }
     
     /* ==========================================
+       Environment Badge & Dropdown
+       ========================================== */
+    .sn-metadata-environment-row {
+      align-items: center;
+    }
+    
+    .sn-environment-selector {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .sn-environment-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border: none;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: inherit;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      transition: filter 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+    }
+    
+    .sn-environment-badge:hover {
+      filter: brightness(0.92);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+      transform: translateY(-1px);
+    }
+    
+    .sn-environment-badge:active {
+      transform: translateY(0) scale(0.98);
+      box-shadow: none;
+    }
+    
+    .sn-environment-badge:focus {
+      outline: 2px solid var(--sn-color-primary);
+      outline-offset: 2px;
+    }
+    
+    .sn-environment-badge:focus:not(:focus-visible) {
+      outline: none;
+    }
+    
+    .sn-env-chevron {
+      width: 10px;
+      height: 10px;
+      transition: transform 0.2s ease;
+    }
+    
+    .sn-env-icon {
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
+    }
+    
+    /* Environment colors - WCAG AA compliant contrast ratios */
+    .sn-env-local {
+      background: #e5e7eb;
+      color: #1f2937; /* Darker gray for 7:1+ contrast */
+    }
+    
+    .sn-env-development {
+      background: #dbeafe;
+      color: #1e40af; /* 4.5:1+ contrast */
+    }
+    
+    .sn-env-staging {
+      background: #fef3c7;
+      color: #78350f; /* Darker amber for 4.5:1+ contrast */
+    }
+    
+    .sn-env-production {
+      background: #fee2e2;
+      color: #991b1b; /* 4.5:1+ contrast */
+    }
+    
+    /* Environment dropdown */
+    .sn-environment-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      padding: 4px;
+      z-index: 100;
+      min-width: 120px;
+      animation: sn-fade-in 0.15s ease;
+    }
+    
+    .sn-environment-dropdown.sn-hidden {
+      display: none;
+    }
+    
+    .sn-env-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      min-height: 44px; /* WCAG touch target minimum */
+      padding: 12px 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: filter 0.1s ease, outline 0.1s ease, transform 0.1s ease;
+    }
+    
+    .sn-env-option:hover {
+      filter: brightness(0.95);
+      transform: translateX(2px);
+    }
+    
+    .sn-env-option:focus {
+      outline: 2px solid var(--sn-color-primary);
+      outline-offset: -2px;
+    }
+    
+    .sn-env-option:focus:not(:focus-visible) {
+      outline: none;
+    }
+    
+    .sn-env-option:focus-visible {
+      outline: 2px solid var(--sn-color-primary);
+      outline-offset: -2px;
+    }
+    
+    .sn-env-option .sn-env-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+    
+    /* ==========================================
        Minimized State & Animation
        ========================================== */
     .sn-note.sn-minimized {

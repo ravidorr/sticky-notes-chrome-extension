@@ -336,6 +336,100 @@ export function generateBugReportMarkdown(options) {
 }
 
 /**
+ * Environment types for note metadata
+ */
+export const ENVIRONMENTS = {
+  LOCAL: 'local',
+  DEVELOPMENT: 'development',
+  STAGING: 'staging',
+  PRODUCTION: 'production'
+};
+
+/**
+ * Environment colors for display
+ */
+export const ENVIRONMENT_COLORS = {
+  local: '#6b7280',      // Gray
+  development: '#3b82f6', // Blue
+  staging: '#eab308',     // Yellow
+  production: '#ef4444'   // Red
+};
+
+/**
+ * Detect environment from URL
+ * Uses common patterns to infer if a URL is local, development, staging, or production
+ * @param {string} url - URL to analyze
+ * @returns {string} Environment type (local, development, staging, production)
+ */
+export function detectEnvironment(url) {
+  if (!url) return ENVIRONMENTS.PRODUCTION;
+  
+  let hostname, port;
+  try {
+    const parsed = new URL(url);
+    hostname = parsed.hostname.toLowerCase();
+    port = parsed.port;
+  } catch {
+    return ENVIRONMENTS.PRODUCTION;
+  }
+  
+  // Local environment - localhost, 127.0.0.1, 0.0.0.0
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
+    return ENVIRONMENTS.LOCAL;
+  }
+  
+  // Development patterns
+  const devPatterns = [
+    /^dev\./,
+    /-dev\./,
+    /\.dev\./,
+    /^development\./,
+    /-development\./
+  ];
+  if (devPatterns.some(pattern => pattern.test(hostname))) {
+    return ENVIRONMENTS.DEVELOPMENT;
+  }
+  
+  // Staging/QA patterns
+  const stagingPatterns = [
+    /^staging\./,
+    /^stage\./,
+    /^qa\./,
+    /^uat\./,
+    /^test\./,
+    /^preprod\./,
+    /^pre-prod\./,
+    /-staging\./,
+    /-stage\./,
+    /-qa\./,
+    /-uat\./,
+    /-test\./,
+    /\.staging\./,
+    /\.stage\./,
+    /^preview-/,           // Vercel preview deployments
+    /\.vercel\.app$/,      // Vercel previews
+    /\.netlify\.app$/,     // Netlify previews
+    /\.pages\.dev$/,       // Cloudflare Pages
+    /\.herokuapp\.com$/,   // Heroku staging
+    /\.ngrok\./,           // ngrok tunnels
+    /\.localtunnel\./      // localtunnel
+  ];
+  if (stagingPatterns.some(pattern => pattern.test(hostname))) {
+    return ENVIRONMENTS.STAGING;
+  }
+  
+  // Check for common non-standard ports (often indicates dev/staging)
+  if (port && !['80', '443', ''].includes(port)) {
+    // Non-standard port on a real domain often indicates staging
+    // But we already caught localhost above, so this is likely staging
+    return ENVIRONMENTS.STAGING;
+  }
+  
+  // Default to production
+  return ENVIRONMENTS.PRODUCTION;
+}
+
+/**
  * Format relative time (e.g., "2 hours ago")
  * @param {string|Date|Object} date - Date to format (can be string, Date, or Firestore Timestamp)
  * @returns {string} Relative time string

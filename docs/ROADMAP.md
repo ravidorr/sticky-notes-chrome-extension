@@ -95,10 +95,12 @@ Add comment threads to notes for Q&A and discussions.
 Features that differentiate for developer and QA workflows:
 
 ### Metadata Capture (High Priority)
-- [] Auto-capture URL, viewport size, browser, timestamp
-- [] Capture element selector in bug report format
+- [x] Auto-capture URL, viewport size, browser, timestamp
+- [x] Capture element selector in bug report format
+- [x] Display metadata in collapsible panel on note
+- [x] Relative timestamp display ("1 minute ago")
+- [x] Environment tagging (auto-detect local/dev/staging/production with override)
 - [] Console errors capture (optional)
-- [] Environment tagging (staging vs production)
 
 ### Screenshot & Export
 - [] Screenshot on note creation

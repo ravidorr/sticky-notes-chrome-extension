@@ -578,5 +578,30 @@
   "copyMetadata": {
     "message": "In Zwischenablage kopieren",
     "description": "Tooltip for copy button in metadata panel"
+  },
+
+  "metadataEnvironment": {
+    "message": "Umgebung",
+    "description": "Metadata label for environment"
+  },
+  "envLocal": {
+    "message": "Lokal",
+    "description": "Environment type for localhost"
+  },
+  "envDevelopment": {
+    "message": "Entwicklung",
+    "description": "Environment type for dev servers"
+  },
+  "envStaging": {
+    "message": "Staging",
+    "description": "Environment type for staging/QA"
+  },
+  "envProduction": {
+    "message": "Produktion",
+    "description": "Environment type for production"
+  },
+  "changeEnvironment": {
+    "message": "Klicken um Umgebung zu ändern",
+    "description": "Tooltip for environment badge"
   }
 }
