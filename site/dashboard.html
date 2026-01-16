@@ -38,7 +38,7 @@
 <main id="main-content" class="dashboard-page">
         <div class="container">
             <header class="dashboard-header">
-                <h1><span id="userEmail" class="user-email"></span>Sticky Notes Dashboard</h1>
+                <h1><span id="userEmail" class="user-email" aria-hidden="true"></span>Sticky Notes Dashboard</h1>
                 <div class="dashboard-controls">
                     <label class="auto-refresh">
                         <input type="checkbox" id="autoRefresh">
@@ -73,20 +73,20 @@
                 <!-- Stats Dashboard -->
                 <div id="statsDashboard" class="stats-dashboard">
                     <div class="stat-card stat-total">
-                        <span class="stat-value" id="statTotal">-</span>
-                        <span class="stat-label">Total Notes</span>
+                        <span class="stat-value" id="statTotal" aria-labelledby="statTotalLabel">-</span>
+                        <span class="stat-label" id="statTotalLabel">Total Notes</span>
                     </div>
                     <div class="stat-card stat-owned">
-                        <span class="stat-value" id="statOwned">-</span>
-                        <span class="stat-label">My Notes</span>
+                        <span class="stat-value" id="statOwned" aria-labelledby="statOwnedLabel">-</span>
+                        <span class="stat-label" id="statOwnedLabel">My Notes</span>
                     </div>
                     <div class="stat-card stat-shared">
-                        <span class="stat-value" id="statShared">-</span>
-                        <span class="stat-label">Shared With Me</span>
+                        <span class="stat-value" id="statShared" aria-labelledby="statSharedLabel">-</span>
+                        <span class="stat-label" id="statSharedLabel">Shared With Me</span>
                     </div>
                     <div class="stat-card stat-domains">
-                        <span class="stat-value" id="statDomains">-</span>
-                        <span class="stat-label">Domains</span>
+                        <span class="stat-value" id="statDomains" aria-labelledby="statDomainsLabel">-</span>
+                        <span class="stat-label" id="statDomainsLabel">Domains</span>
                     </div>
                 </div>
 
@@ -141,7 +141,7 @@
             </div>
 
             <footer class="dashboard-footer">
-                <span id="keyIndicator" class="key-indicator" title="Connected API key"></span>
+                <span id="keyIndicator" class="key-indicator" title="Connected API key" aria-label="API key status"></span>
             </footer>
         </div>
     </main>
