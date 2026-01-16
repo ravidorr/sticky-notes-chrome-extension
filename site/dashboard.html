@@ -5,17 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <!-- Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.cloudfunctions.net; base-uri 'self'; form-action 'self';">
+    <!-- Content Security Policy (fonts are self-hosted) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self' https://*.cloudfunctions.net; base-uri 'self'; form-action 'self';">
     <meta name="google-site-verification" content="7fWtIQvn3-ZOWcEe7M8TU5hVy_uy5guIh3k1uDowdhY" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     
-    <!-- Google Fonts - Non-render-blocking -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style">
-    <link id="google-fonts" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
+    <!-- Preload self-hosted fonts -->
+    <link rel="preload" href="fonts/inter-variable.woff2" as="font" type="font/woff2" crossorigin>
     
     <!-- Open Graph / Social -->
     <meta property="og:type" content="website">
@@ -34,10 +30,8 @@
     <meta name="description" content="View and manage your Sticky Notes from any browser">
     <meta name="robots" content="noindex">
     
-    <!-- Non-render-blocking CSS -->
-    <link rel="preload" href="css/dashboard.min.css" as="style">
-    <link id="dashboard-css" href="css/dashboard.min.css" rel="stylesheet" media="print">
-    <noscript><link href="css/dashboard.min.css" rel="stylesheet"></noscript>
+    <!-- Dashboard CSS -->
+    <link rel="stylesheet" href="css/dashboard.min.css">
 </head>
 <body>
 

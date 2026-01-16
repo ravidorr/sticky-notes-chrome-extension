@@ -711,16 +711,6 @@ function setupCleanup(appState) {
  * Initialize the dashboard
  */
 function init() {
-    // Swap stylesheets from print to all media (non-render-blocking loading)
-    const googleFonts = document.getElementById('google-fonts');
-    if (googleFonts) {
-        googleFonts.media = 'all';
-    }
-    const dashboardCss = document.getElementById('dashboard-css');
-    if (dashboardCss) {
-        dashboardCss.media = 'all';
-    }
-
     // Initialize state from localStorage
     state.apiKey = localStorage.getItem('sticky_notes_api_key');
     

@@ -329,12 +329,6 @@ function setupEventListeners(firebaseModules = {}) {
  * @param {Object} firebaseModules - Firebase modules
  */
 async function init(firebaseModules = {}) {
-    // Swap Google Fonts from print to all media (non-render-blocking font loading)
-    const googleFonts = document.getElementById('google-fonts');
-    if (googleFonts) {
-        googleFonts.media = 'all';
-    }
-
     const { initializeApp, getAuth, signInWithPopup, GoogleAuthProvider } = firebaseModules;
     
     if (initializeApp && getAuth) {

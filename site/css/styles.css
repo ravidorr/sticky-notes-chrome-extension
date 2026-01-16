@@ -2,6 +2,7 @@
  * Sticky Notes - Marketing Site Styles
  * 
  * This file imports all CSS modules following ITCSS architecture:
+ * 0. Fonts (self-hosted web fonts)
  * 1. Variables (design tokens, colors, spacing)
  * 2. Reset (normalize, base element styles)
  * 3. Utilities (helper classes)
@@ -9,6 +10,9 @@
  * 5. Pages (page-specific styles)
  * 6. Animations (keyframes)
  */
+
+/* Layer 0: Self-hosted Fonts */
+@import '_fonts.css';
 
 /* Layer 1: Design Tokens */
 @import '_variables.css';

@@ -577,12 +577,6 @@ function initDemo(selectors = {}) {
 function init() {
     const cleanups = {};
 
-    // Swap Google Fonts from print to all media (non-render-blocking font loading)
-    const googleFonts = document.getElementById('google-fonts');
-    if (googleFonts) {
-        googleFonts.media = 'all';
-    }
-
     // Initialize theme (do this first to prevent flash)
     cleanups.theme = initTheme();
 

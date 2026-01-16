@@ -14,6 +14,17 @@
  */
 
 /* ============================================
+   Self-hosted Web Fonts
+   ============================================ */
+@font-face {
+    font-family: Inter;
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('../fonts/inter-variable.woff2') format('woff2');
+}
+
+/* ============================================
    Font Fallback Metrics
    Prevents layout shift (CLS) when web fonts load
    by matching fallback font metrics to Inter
