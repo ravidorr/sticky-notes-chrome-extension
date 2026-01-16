@@ -260,11 +260,10 @@ describe('site/js/dashboard.js', () => {
             expect(localThis.elements.apiKeySection.style.display).toBe('flex');
         });
 
-        it('should dim the main content', () => {
+        it('should hide the main content', () => {
             showApiKeySection(localThis.elements);
             
-            expect(localThis.elements.mainContent.style.opacity).toBe('0.3');
-            expect(localThis.elements.mainContent.style.pointerEvents).toBe('none');
+            expect(localThis.elements.mainContent.style.display).toBe('none');
         });
 
         it('should focus the API key input', () => {
@@ -279,7 +278,7 @@ describe('site/js/dashboard.js', () => {
         beforeEach(() => {
             document.body.innerHTML = `
                 <div id="apiKeySection" style="display: flex;"></div>
-                <div id="mainContent" style="opacity: 0.3; pointer-events: none;"></div>
+                <div id="mainContent" style="display: none;"></div>
             `;
             localThis.elements = {
                 apiKeySection: document.getElementById('apiKeySection'),
@@ -293,11 +292,10 @@ describe('site/js/dashboard.js', () => {
             expect(localThis.elements.apiKeySection.style.display).toBe('none');
         });
 
-        it('should restore main content visibility', () => {
+        it('should show the main content', () => {
             hideApiKeySection(localThis.elements);
             
-            expect(localThis.elements.mainContent.style.opacity).toBe('1');
-            expect(localThis.elements.mainContent.style.pointerEvents).toBe('auto');
+            expect(localThis.elements.mainContent.style.display).toBe('block');
         });
     });
 
