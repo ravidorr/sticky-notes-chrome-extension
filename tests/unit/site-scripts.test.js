@@ -5,6 +5,8 @@
 
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import {
+    // Performance
+    rafThrottle,
     // Theme
     THEME_STORAGE_KEY,
     THEME_LIGHT,
@@ -45,12 +47,111 @@ describe('site/scripts.js', () => {
         // Reset scroll position
         Object.defineProperty(window, 'scrollY', {
             value: 0,
-            writable: true
+            writable: true,
+            configurable: true
         });
+        
+        // Mock requestAnimationFrame with deferred execution
+        localThis.rafCallbacks = [];
+        localThis.rafIdCounter = 0;
+        global.requestAnimationFrame = jest.fn((callback) => {
+            const id = localThis.rafIdCounter++;
+            localThis.rafCallbacks.push({ id, callback, cancelled: false });
+            // Use Promise.resolve to defer execution until after assignment
+            Promise.resolve().then(() => {
+                const entry = localThis.rafCallbacks.find(e => e.id === id);
+                if (entry && !entry.cancelled) {
+                    entry.callback();
+                }
+            });
+            return id;
+        });
+        global.cancelAnimationFrame = jest.fn((id) => {
+            const entry = localThis.rafCallbacks.find(e => e.id === id);
+            if (entry) {
+                entry.cancelled = true;
+            }
+        });
+        // Helper to flush all pending RAF callbacks synchronously
+        localThis.flushRaf = () => {
+            return Promise.resolve();
+        };
     });
 
     afterEach(() => {
         jest.clearAllMocks();
+    });
+
+    // ============================================
+    // Performance Utilities Tests
+    // ============================================
+
+    describe('rafThrottle', () => {
+        it('should throttle function calls to animation frames', async () => {
+            const fn = jest.fn();
+            const throttled = rafThrottle(fn);
+            
+            throttled(1);
+            throttled(2);
+            throttled(3);
+            
+            // Wait for RAF to execute
+            await Promise.resolve();
+            
+            // Only one call should be made (with last args)
+            expect(fn).toHaveBeenCalledTimes(1);
+            expect(fn).toHaveBeenCalledWith(3);
+        });
+
+        it('should pass the last arguments to the function', () => {
+            // Use async RAF mock for this test
+            const callbacks = [];
+            global.requestAnimationFrame = jest.fn((cb) => {
+                const id = callbacks.length;
+                callbacks.push(cb);
+                return id;
+            });
+            
+            const fn = jest.fn();
+            const throttled = rafThrottle(fn);
+            
+            throttled('a');
+            throttled('b');
+            throttled('c');
+            
+            // Execute the RAF callback
+            callbacks[0]();
+            
+            expect(fn).toHaveBeenCalledTimes(1);
+            expect(fn).toHaveBeenCalledWith('c');
+        });
+
+        it('should have a cancel method', () => {
+            const fn = jest.fn();
+            const throttled = rafThrottle(fn);
+            
+            expect(typeof throttled.cancel).toBe('function');
+        });
+
+        it('should cancel pending animation frame on cancel()', () => {
+            // Use async RAF mock
+            global.requestAnimationFrame = jest.fn(() => 123);
+            
+            const fn = jest.fn();
+            const throttled = rafThrottle(fn);
+            
+            throttled();
+            throttled.cancel();
+            
+            expect(global.cancelAnimationFrame).toHaveBeenCalledWith(123);
+        });
+
+        it('should not throw if cancel called when no pending frame', () => {
+            const fn = jest.fn();
+            const throttled = rafThrottle(fn);
+            
+            expect(() => throttled.cancel()).not.toThrow();
+        });
     });
 
     // ============================================
@@ -254,47 +355,55 @@ describe('site/scripts.js', () => {
             localThis.navbar = document.getElementById('navbar');
         });
 
-        it('should add scrolled class when scrolled past threshold', () => {
+        it('should add scrolled class when scrolled past threshold', async () => {
             initNavScroll(localThis.navbar, 20);
+            await Promise.resolve(); // Wait for initial RAF
             
             // Simulate scroll past threshold
-            Object.defineProperty(window, 'scrollY', { value: 50 });
+            Object.defineProperty(window, 'scrollY', { value: 50, configurable: true });
             window.dispatchEvent(new Event('scroll'));
+            await Promise.resolve(); // Wait for RAF from scroll event
             
             expect(localThis.navbar.classList.contains('scrolled')).toBe(true);
         });
 
-        it('should remove scrolled class when scrolled above threshold', () => {
+        it('should remove scrolled class when scrolled above threshold', async () => {
             localThis.navbar.classList.add('scrolled');
             initNavScroll(localThis.navbar, 20);
+            await Promise.resolve(); // Wait for initial RAF
             
             // Simulate scroll above threshold
-            Object.defineProperty(window, 'scrollY', { value: 10 });
+            Object.defineProperty(window, 'scrollY', { value: 10, configurable: true });
             window.dispatchEvent(new Event('scroll'));
+            await Promise.resolve(); // Wait for RAF from scroll event
             
             expect(localThis.navbar.classList.contains('scrolled')).toBe(false);
         });
 
-        it('should use default threshold of 20 when not specified', () => {
+        it('should use default threshold of 20 when not specified', async () => {
             initNavScroll(localThis.navbar);
+            await Promise.resolve(); // Wait for initial RAF
             
             // Scroll just above threshold
-            Object.defineProperty(window, 'scrollY', { value: 21 });
+            Object.defineProperty(window, 'scrollY', { value: 21, configurable: true });
             window.dispatchEvent(new Event('scroll'));
+            await Promise.resolve(); // Wait for RAF from scroll event
             
             expect(localThis.navbar.classList.contains('scrolled')).toBe(true);
         });
 
-        it('should return cleanup function that removes event listener', () => {
+        it('should return cleanup function that removes event listener', async () => {
             const cleanup = initNavScroll(localThis.navbar);
+            await Promise.resolve(); // Wait for initial RAF
             
             // Call cleanup
             cleanup();
             
             // Scroll should no longer affect the class
             localThis.navbar.classList.remove('scrolled');
-            Object.defineProperty(window, 'scrollY', { value: 100 });
+            Object.defineProperty(window, 'scrollY', { value: 100, configurable: true });
             window.dispatchEvent(new Event('scroll'));
+            await Promise.resolve(); // Wait for any pending RAF
             
             // Class should not be added after cleanup
             expect(localThis.navbar.classList.contains('scrolled')).toBe(false);
@@ -307,10 +416,11 @@ describe('site/scripts.js', () => {
             expect(() => cleanup()).not.toThrow();
         });
 
-        it('should check scroll position on initialization', () => {
-            Object.defineProperty(window, 'scrollY', { value: 50 });
+        it('should check scroll position on initialization', async () => {
+            Object.defineProperty(window, 'scrollY', { value: 50, configurable: true });
             
             initNavScroll(localThis.navbar, 20);
+            await Promise.resolve(); // Wait for initial RAF
             
             expect(localThis.navbar.classList.contains('scrolled')).toBe(true);
         });
@@ -339,33 +449,39 @@ describe('site/scripts.js', () => {
             Object.defineProperty(localThis.pricingSection, 'offsetHeight', { value: 500, configurable: true });
         });
 
-        it('should add active class to nav link when section is in view', () => {
+        it('should add active class to nav link when section is in view', async () => {
             initActiveNavIndicator();
+            await Promise.resolve(); // Wait for initial RAF
             
             // Scroll to features section
-            Object.defineProperty(window, 'scrollY', { value: 50 });
+            Object.defineProperty(window, 'scrollY', { value: 50, configurable: true });
             window.dispatchEvent(new Event('scroll'));
+            await Promise.resolve(); // Wait for RAF from scroll event
             
             const featuresLink = document.querySelector('a[href="#features"]');
             expect(featuresLink.classList.contains('active')).toBe(true);
         });
 
-        it('should set aria-current attribute on active link', () => {
+        it('should set aria-current attribute on active link', async () => {
             initActiveNavIndicator();
+            await Promise.resolve(); // Wait for initial RAF
             
-            Object.defineProperty(window, 'scrollY', { value: 50 });
+            Object.defineProperty(window, 'scrollY', { value: 50, configurable: true });
             window.dispatchEvent(new Event('scroll'));
+            await Promise.resolve(); // Wait for RAF from scroll event
             
             const featuresLink = document.querySelector('a[href="#features"]');
             expect(featuresLink.getAttribute('aria-current')).toBe('true');
         });
 
-        it('should remove active class and aria-current from other links', () => {
+        it('should remove active class and aria-current from other links', async () => {
             initActiveNavIndicator();
+            await Promise.resolve(); // Wait for initial RAF
             
             // Start at features
-            Object.defineProperty(window, 'scrollY', { value: 50 });
+            Object.defineProperty(window, 'scrollY', { value: 50, configurable: true });
             window.dispatchEvent(new Event('scroll'));
+            await Promise.resolve(); // Wait for RAF from scroll event
             
             const featuresLink = document.querySelector('a[href="#features"]');
             const pricingLink = document.querySelector('a[href="#pricing"]');
@@ -375,12 +491,14 @@ describe('site/scripts.js', () => {
             expect(pricingLink.hasAttribute('aria-current')).toBe(false);
         });
 
-        it('should update active link when scrolling to different section', () => {
+        it('should update active link when scrolling to different section', async () => {
             initActiveNavIndicator();
+            await Promise.resolve(); // Wait for initial RAF
             
             // Scroll to pricing section
-            Object.defineProperty(window, 'scrollY', { value: 550 });
+            Object.defineProperty(window, 'scrollY', { value: 550, configurable: true });
             window.dispatchEvent(new Event('scroll'));
+            await Promise.resolve(); // Wait for RAF from scroll event
             
             const featuresLink = document.querySelector('a[href="#features"]');
             const pricingLink = document.querySelector('a[href="#pricing"]');
@@ -389,14 +507,16 @@ describe('site/scripts.js', () => {
             expect(pricingLink.classList.contains('active')).toBe(true);
         });
 
-        it('should return cleanup function that removes event listener', () => {
+        it('should return cleanup function that removes event listener', async () => {
             const cleanup = initActiveNavIndicator();
+            await Promise.resolve(); // Wait for initial RAF
             
             expect(typeof cleanup).toBe('function');
             
             // Set up active state
-            Object.defineProperty(window, 'scrollY', { value: 50 });
+            Object.defineProperty(window, 'scrollY', { value: 50, configurable: true });
             window.dispatchEvent(new Event('scroll'));
+            await Promise.resolve(); // Wait for RAF from scroll event
             
             const featuresLink = document.querySelector('a[href="#features"]');
             expect(featuresLink.classList.contains('active')).toBe(true);
@@ -406,8 +526,9 @@ describe('site/scripts.js', () => {
             featuresLink.classList.remove('active');
             
             // Scroll should no longer update active state
-            Object.defineProperty(window, 'scrollY', { value: 50 });
+            Object.defineProperty(window, 'scrollY', { value: 50, configurable: true });
             window.dispatchEvent(new Event('scroll'));
+            await Promise.resolve(); // Wait for any pending RAF
             
             expect(featuresLink.classList.contains('active')).toBe(false);
         });
@@ -430,10 +551,11 @@ describe('site/scripts.js', () => {
             expect(() => cleanup()).not.toThrow();
         });
 
-        it('should check scroll position on initialization', () => {
-            Object.defineProperty(window, 'scrollY', { value: 50 });
+        it('should check scroll position on initialization', async () => {
+            Object.defineProperty(window, 'scrollY', { value: 50, configurable: true });
             
             initActiveNavIndicator();
+            await Promise.resolve(); // Wait for initial RAF
             
             const featuresLink = document.querySelector('a[href="#features"]');
             expect(featuresLink.classList.contains('active')).toBe(true);

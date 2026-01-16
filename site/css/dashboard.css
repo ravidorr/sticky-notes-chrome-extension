@@ -37,10 +37,12 @@
     --c-blue-400: #60a5fa;
     --c-blue-500: #3b82f6;
     --c-blue-600: #2563eb;
+    --c-blue-700: #1d4ed8;
 
     /* Yellow (Brand) */
     --c-yellow-400: #facc15;
     --c-yellow-500: #eab308;
+    --c-yellow-700: #a16207;
 
     /* Semantic Colors (Light Mode) */
     --color-bg: #ffffff;
@@ -200,6 +202,19 @@ img {
     outline-offset: 2px;
 }
 
+/* Screen reader only - visually hidden but accessible */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* ============================================
    Utilities
    ============================================ */
@@ -241,12 +256,12 @@ img {
 }
 
 .btn-primary {
-    background-color: var(--c-blue-500);
+    background-color: var(--c-blue-600);
     color: white;
 }
 
 .btn-primary:hover {
-    background-color: var(--c-blue-600);
+    background-color: var(--c-blue-700, #1d4ed8);
 }
 
 .btn-secondary {
@@ -286,7 +301,7 @@ img {
 }
 
 .dashboard-header .user-email {
-    color: var(--c-blue-500);
+    color: var(--c-blue-600);
     font-weight: 400;
 }
 
@@ -334,7 +349,7 @@ img {
     border: 1px solid var(--color-border);
 }
 
-.api-key-card h3 {
+.api-key-card h2 {
     margin: 0 0 0.75rem;
     color: var(--color-text);
     font-size: 1.25rem;
@@ -375,12 +390,12 @@ img {
 }
 
 .api-key-hint a {
-    color: var(--c-blue-500);
+    color: var(--c-blue-600);
     text-decoration: underline;
 }
 
 .api-key-hint a:hover {
-    color: var(--c-blue-400);
+    color: var(--c-blue-500);
 }
 
 /* Stats Dashboard */
@@ -463,10 +478,23 @@ img {
     font-weight: 500;
 }
 
-.legend-count.yellow { color: var(--c-yellow-500); }
-.legend-count.blue { color: var(--c-blue-500); }
-.legend-count.green { color: #3fb950; }
-.legend-count.pink { color: #f778ba; }
+.legend-count.yellow { color: var(--c-yellow-700, #a16207); }
+.legend-count.blue { color: var(--c-blue-600, #2563eb); }
+.legend-count.green { color: #2da44e; }
+.legend-count.pink { color: #d63384; }
+
+/* Dark mode legend colors - brighter for dark backgrounds */
+[data-theme="dark"] .legend-count.yellow { color: var(--c-yellow-400, #facc15); }
+[data-theme="dark"] .legend-count.blue { color: var(--c-blue-400, #60a5fa); }
+[data-theme="dark"] .legend-count.green { color: #3fb950; }
+[data-theme="dark"] .legend-count.pink { color: #f778ba; }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .legend-count.yellow { color: var(--c-yellow-400, #facc15); }
+    :root:not([data-theme="light"]) .legend-count.blue { color: var(--c-blue-400, #60a5fa); }
+    :root:not([data-theme="light"]) .legend-count.green { color: #3fb950; }
+    :root:not([data-theme="light"]) .legend-count.pink { color: #f778ba; }
+}
 
 /* Filter Tabs */
 .filter-tabs {
@@ -497,7 +525,7 @@ img {
 }
 
 .filter-tab.active {
-    background: var(--c-blue-500);
+    background: var(--c-blue-600);
     color: white;
 }
 
@@ -561,8 +589,8 @@ img {
 }
 
 .dashboard-page .status-loading {
-    background: rgba(59, 130, 246, 0.1);
-    color: var(--c-blue-500);
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--c-blue-700);
 }
 
 .dashboard-page .status-success {
@@ -620,8 +648,8 @@ img {
     border-radius: var(--radius-md);
     font-size: 0.7rem;
     font-weight: 500;
-    background: rgba(59, 130, 246, 0.15);
-    color: var(--c-blue-500);
+    background: rgba(37, 99, 235, 0.15);
+    color: var(--c-blue-700);
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -651,7 +679,7 @@ img {
 .note-url-link {
     flex: 1;
     font-size: 0.75rem;
-    color: var(--c-blue-500);
+    color: var(--c-blue-600);
     text-decoration: none;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -660,7 +688,7 @@ img {
 }
 
 .note-url-link:hover {
-    color: var(--c-blue-400);
+    color: var(--c-blue-500);
     text-decoration: underline;
 }
 
@@ -668,7 +696,7 @@ img {
     padding: 0.25rem 0.625rem;
     font-size: 0.7rem;
     font-weight: 500;
-    background: var(--c-blue-500);
+    background: var(--c-blue-600);
     color: white;
     text-decoration: none;
     border-radius: var(--radius-md);
@@ -677,7 +705,7 @@ img {
 }
 
 .btn-open:hover {
-    background: var(--c-blue-600);
+    background: var(--c-blue-700);
 }
 
 .note-content-box {
@@ -725,7 +753,7 @@ img {
 
 .comment-author {
     font-weight: 600;
-    color: var(--c-blue-500);
+    color: var(--c-blue-600);
     font-size: 0.8rem;
 }
 

@@ -53,10 +53,10 @@
             
             <div id="result" class="result-card" style="display: none;">
                 <h3>Your API Key</h3>
-                <div class="warning-box">
+                <div class="warning-box" role="alert">
                     Save this key now - it won't be shown again!
                 </div>
-                <div class="key-display" id="apiKeyDisplay"></div>
+                <div class="key-display" id="apiKeyDisplay" role="textbox" aria-readonly="true" aria-label="Generated API key"></div>
                 
                 <div class="btn-group">
                     <button id="copyBtn" class="btn btn-secondary">Copy to Clipboard</button>
@@ -64,7 +64,7 @@
                 </div>
                 
                 <h4>Test your key:</h4>
-                <div class="curl-example" id="curlExample"></div>
+                <pre class="curl-example" id="curlExample" aria-label="Example curl command"></pre>
             </div>
         </div>
     </main>

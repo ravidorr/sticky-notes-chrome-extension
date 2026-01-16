@@ -60,7 +60,17 @@
 .text-highlight {
     position: relative;
     display: inline-block;
-    color: var(--c-yellow-500);
+    color: var(--c-yellow-800);
+}
+
+[data-theme="dark"] .text-highlight {
+    color: var(--c-yellow-400);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .text-highlight {
+        color: var(--c-yellow-400);
+    }
 }
 
 .highlight-svg {

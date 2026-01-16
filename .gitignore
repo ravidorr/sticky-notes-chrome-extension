@@ -4,10 +4,12 @@ node_modules/
 # Build output
 dist/
 
-# Generated site HTML (built by CI, not committed)
+# Generated site files (built by CI, not committed)
 site/*.html
 !site/dashboard.html
 !site/generate-key.html
+site/css/styles.bundled.css
+site/js/scripts.min.js
 
 # IDE
 .idea/

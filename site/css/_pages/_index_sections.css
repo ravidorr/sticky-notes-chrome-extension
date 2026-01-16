@@ -113,13 +113,13 @@
 
 .comparison-table .highlight-col {
     background: rgba(250, 204, 21, 0.15);
-    color: var(--c-yellow-800);
+    color: var(--c-yellow-900);
     font-weight: 600;
 }
 
 .comparison-table th.highlight-col {
     background: var(--c-yellow-400);
-    color: var(--c-yellow-800);
+    color: var(--c-yellow-900);
 }
 
 /* Comparison table icons */

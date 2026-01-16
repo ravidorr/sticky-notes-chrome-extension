@@ -2,6 +2,21 @@
 
 A simple, modern landing page for the Sticky Notes Chrome Extension.
 
+## Build Process
+
+The site uses a build script to optimize CSS and JavaScript for production:
+
+```bash
+npm run build:site
+```
+
+This script:
+1. **Bundles CSS**: Resolves all `@import` statements in `styles.css` into a single `styles.bundled.css` file, eliminating render-blocking CSS waterfalls
+2. **Minifies JavaScript**: Creates `scripts.min.js` from `scripts.js` (typically 50-60% size reduction)
+3. **Generates HTML**: Combines partials (head, header, footer) with page templates
+
+**Important**: Always run `npm run build:site` after making changes to CSS, JavaScript, or HTML templates.
+
 ## Local Development
 
 To preview the site locally, you can use any static file server:
@@ -82,26 +97,50 @@ jobs:
 
 ```
 site/
-├── index.html      # Main landing page
-├── styles.css      # All styles
-├── scripts.js      # Interactive functionality (navbar, demo, etc.)
-├── favicon.svg     # Site favicon
-└── README.md       # This file
+├── templates/          # Source HTML templates
+│   ├── index.html
+│   ├── privacy.html
+│   ├── terms.html
+│   └── contact.html
+├── partials/           # Reusable HTML partials
+│   ├── head.html       # Common <head> content
+│   ├── header.html     # Navigation header
+│   └── footer.html     # Footer with scripts
+├── css/
+│   ├── styles.css          # Main CSS with @imports (source)
+│   ├── styles.bundled.css  # Generated: all CSS bundled (use this)
+│   ├── _variables.css      # Design tokens
+│   ├── _reset.css          # CSS reset
+│   ├── _utilities.css      # Utility classes
+│   ├── _components.css     # Component styles
+│   ├── _animations.css     # Animations
+│   └── _pages/             # Page-specific styles
+├── js/
+│   ├── scripts.js      # Source JavaScript
+│   └── scripts.min.js  # Generated: minified version (use this)
+├── index.html          # Generated from templates/index.html
+├── privacy.html        # Generated from templates/privacy.html
+├── terms.html          # Generated from templates/terms.html
+├── contact.html        # Generated from templates/contact.html
+├── favicon.svg         # Site favicon
+└── README.md           # This file
 ```
 
 ## Customization
 
 ### Colors
 
-Edit CSS variables in `styles.css`:
+Edit CSS variables in `css/_variables.css`:
 
 ```css
 :root {
-    --color-primary: #5B4FE9;      /* Main brand color */
-    --color-primary-dark: #4840B8;  /* Darker shade for hover */
-    --color-yellow: #FEF08A;        /* Sticky note color */
+    --c-blue-500: #3b82f6;    /* Primary accent color */
+    --c-blue-600: #2563eb;    /* Darker shade for hover */
+    --c-yellow-400: #facc15;  /* Sticky note color */
 }
 ```
+
+After making changes, run `npm run build:site` to regenerate the bundled CSS.
 
 ### Content
 

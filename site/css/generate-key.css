@@ -39,6 +39,7 @@
 
     /* Yellow (Brand) */
     --c-yellow-400: #facc15;
+    --c-yellow-700: #a16207;
 
     /* Semantic Colors (Light Mode) */
     --color-bg: #ffffff;
@@ -187,6 +188,19 @@ button {
     outline-offset: 2px;
 }
 
+/* Screen reader only - visually hidden but accessible */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* ============================================
    Utilities
    ============================================ */
@@ -225,12 +239,12 @@ button {
 }
 
 .btn-primary {
-    background-color: var(--c-blue-500);
+    background-color: var(--c-blue-600);
     color: white;
 }
 
 .btn-primary:hover {
-    background-color: var(--c-blue-600);
+    background-color: var(--c-blue-700, #1d4ed8);
 }
 
 .btn-secondary {

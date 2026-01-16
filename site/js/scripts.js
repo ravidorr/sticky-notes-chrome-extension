@@ -19,6 +19,39 @@ const THEME_LIGHT = 'light';
 const THEME_DARK = 'dark';
 
 // ============================================
+// Performance Utilities
+// ============================================
+
+/**
+ * Throttle a function to run at most once per animation frame
+ * @param {Function} fn - Function to throttle
+ * @returns {Function} Throttled function
+ */
+function rafThrottle(fn) {
+    let rafId = null;
+    let lastArgs = null;
+
+    const throttled = (...args) => {
+        lastArgs = args;
+        if (rafId === null) {
+            rafId = requestAnimationFrame(() => {
+                fn(...lastArgs);
+                rafId = null;
+            });
+        }
+    };
+
+    throttled.cancel = () => {
+        if (rafId !== null) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+        }
+    };
+
+    return throttled;
+}
+
+// ============================================
 // State
 // ============================================
 
@@ -177,21 +210,24 @@ function initNavScroll(navbar, threshold = 20) {
         return () => {};
     }
 
-    const handleScroll = () => {
+    const handleScroll = rafThrottle(() => {
         if (window.scrollY > threshold) {
             navbar.classList.add('scrolled');
         } else {
             navbar.classList.remove('scrolled');
         }
-    };
+    });
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     
     // Initial check
     handleScroll();
 
     // Return cleanup function
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+        handleScroll.cancel();
+        window.removeEventListener('scroll', handleScroll);
+    };
 }
 
 /**
@@ -207,19 +243,38 @@ function initActiveNavIndicator() {
         return () => {};
     }
 
-    const handleScroll = () => {
+    // Cache section positions to avoid forced reflows on scroll
+    let sectionPositions = [];
+    
+    const cacheSectionPositions = () => {
+        sectionPositions = Array.from(sections).map(section => ({
+            id: section.getAttribute('id'),
+            top: section.offsetTop,
+            height: section.offsetHeight
+        }));
+    };
+
+    // Initial cache
+    cacheSectionPositions();
+
+    // Recache on resize (debounced)
+    let resizeTimeout = null;
+    const handleResize = () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(cacheSectionPositions, 150);
+    };
+
+    const handleScroll = rafThrottle(() => {
         const scrollPos = window.scrollY + 100; // Offset for navbar height
         
         let currentSection = '';
         
-        sections.forEach(section => {
-            const sectionTop = section.offsetTop;
-            const sectionHeight = section.offsetHeight;
-            
-            if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
-                currentSection = section.getAttribute('id');
+        for (const { id, top, height } of sectionPositions) {
+            if (scrollPos >= top && scrollPos < top + height) {
+                currentSection = id;
+                break;
             }
-        });
+        }
 
         navLinks.forEach(link => {
             const href = link.getAttribute('href');
@@ -233,14 +288,20 @@ function initActiveNavIndicator() {
                 link.removeAttribute('aria-current');
             }
         });
-    };
+    });
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
     
     // Initial check
     handleScroll();
 
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+        handleScroll.cancel();
+        clearTimeout(resizeTimeout);
+        window.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('resize', handleResize);
+    };
 }
 
 /**
@@ -558,6 +619,8 @@ if (typeof document !== 'undefined') {
 // ============================================
 
 export {
+    // Performance
+    rafThrottle,
     // Theme
     THEME_STORAGE_KEY,
     THEME_LIGHT,

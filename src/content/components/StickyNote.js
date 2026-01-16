@@ -575,7 +575,7 @@ export class StickyNote {
       try {
         await navigator.clipboard.writeText(text);
         return;
-      } catch (_error) {
+      } catch {
         // Fall through to legacy copy
       }
     }

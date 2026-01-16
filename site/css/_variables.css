@@ -28,7 +28,9 @@
     --c-blue-700: #1d4ed8;
     --c-blue-800: #1e40af;
 
-    /* Yellow (Primary Brand) */
+    /* Yellow (Primary Brand)
+       Accessibility note: Use yellow-700 or darker for text on white backgrounds
+       to meet WCAG AA contrast requirements (4.5:1 ratio) */
     --c-yellow-50: rgba(254, 252, 232, 0.5);
     --c-yellow-100: #fef9c3;
     --c-yellow-200: #fef08a;
