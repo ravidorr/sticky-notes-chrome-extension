@@ -9,7 +9,15 @@
         "http://localhost/dashboard.html",
         "http://localhost/generate-key.html"
       ],
-      "numberOfRuns": 3
+      "numberOfRuns": 3,
+      "settings": {
+        "output": ["html", "json"],
+        "logLevel": "info",
+        "screenEmulation": {
+          "disabled": false
+        },
+        "skipAudits": []
+      }
     },
     "assert": {
       "assertMatrix": [
