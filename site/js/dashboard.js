@@ -150,8 +150,7 @@ function showApiKeySection(elements) {
     const { apiKeySection, mainContent, apiKeyInput } = elements;
     if (apiKeySection) apiKeySection.style.display = 'flex';
     if (mainContent) {
-        mainContent.style.opacity = '0.3';
-        mainContent.style.pointerEvents = 'none';
+        mainContent.style.display = 'none';
     }
     if (apiKeyInput) apiKeyInput.focus();
 }
@@ -164,8 +163,7 @@ function hideApiKeySection(elements) {
     const { apiKeySection, mainContent } = elements;
     if (apiKeySection) apiKeySection.style.display = 'none';
     if (mainContent) {
-        mainContent.style.opacity = '1';
-        mainContent.style.pointerEvents = 'auto';
+        mainContent.style.display = 'block';
     }
 }
 
