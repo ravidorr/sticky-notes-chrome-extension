@@ -22,6 +22,9 @@ const TEMPLATES_DIR = path.join(SITE_DIR, 'templates');
 const CSS_DIR = path.join(SITE_DIR, 'css');
 const JS_DIR = path.join(SITE_DIR, 'js');
 
+// Cache for minified CSS content (used for inlining)
+let minifiedCssCache = null;
+
 /**
  * Read a file and return its contents
  */
@@ -229,10 +232,26 @@ function getTemplateFiles() {
 }
 
 /**
+ * Get the minified CSS content (cached)
+ */
+function getMinifiedCss() {
+    if (minifiedCssCache === null) {
+        const cssPath = path.join(CSS_DIR, 'styles.bundled.min.css');
+        if (fs.existsSync(cssPath)) {
+            minifiedCssCache = readFile(cssPath);
+        } else {
+            console.warn('  Warning: styles.bundled.min.css not found for inlining');
+            minifiedCssCache = '';
+        }
+    }
+    return minifiedCssCache;
+}
+
+/**
  * Process a template by replacing placeholders with partials
  */
 function processTemplate(template, partials, options = {}) {
-    const { baseUrl = '' } = options;
+    const { baseUrl = '', inlineCss = false } = options;
     
     let result = template;
     
@@ -245,6 +264,18 @@ function processTemplate(template, partials, options = {}) {
     // For index.html, links should be "#section"
     // For other pages, links should be "index.html" to link back to home
     result = result.replace(/\{\{BASE_URL\}\}/g, baseUrl);
+    
+    // Inline CSS for index.html (eliminates render-blocking stylesheet request)
+    if (inlineCss) {
+        const cssContent = getMinifiedCss();
+        if (cssContent) {
+            // Replace the external stylesheet link with inline <style> tag
+            // Match the stylesheet link (handles both minified and non-minified references)
+            const stylesheetRegex = /<link\s+rel="stylesheet"\s+href="css\/styles\.bundled(?:\.min)?\.css"[^>]*>/gi;
+            result = result.replace(stylesheetRegex, `<style>${cssContent}</style>`);
+            console.log(`    Inlined ${(cssContent.length / 1024).toFixed(1)}KB of CSS`);
+        }
+    }
     
     return result;
 }
@@ -287,7 +318,11 @@ async function build() {
         const baseUrl = isIndex ? '' : 'index.html';
         
         // Process template
-        const output = processTemplate(template, partials, { baseUrl });
+        // Inline CSS only for index.html (landing page optimization)
+        const output = processTemplate(template, partials, { 
+            baseUrl,
+            inlineCss: isIndex  // Inline CSS for index.html only
+        });
         
         // Write output
         writeFile(outputPath, output);
