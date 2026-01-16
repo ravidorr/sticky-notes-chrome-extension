@@ -267,8 +267,12 @@ function processTemplate(template, partials, options = {}) {
     
     // Inline CSS for index.html (eliminates render-blocking stylesheet request)
     if (inlineCss) {
-        const cssContent = getMinifiedCss();
+        let cssContent = getMinifiedCss();
         if (cssContent) {
+            // Fix font paths: when CSS is inlined in index.html, '../fonts/' becomes 'fonts/'
+            // because index.html is at the root level, not in the css/ directory
+            cssContent = cssContent.replace(/\.\.\/fonts\//g, 'fonts/');
+            
             // Replace the external stylesheet link with inline <style> tag
             // Match the stylesheet link (handles both minified and non-minified references)
             const stylesheetRegex = /<link\s+rel="stylesheet"\s+href="css\/styles\.bundled(?:\.min)?\.css"[^>]*>/gi;
