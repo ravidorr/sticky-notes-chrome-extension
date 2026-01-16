@@ -24,6 +24,7 @@ const JS_DIR = path.join(SITE_DIR, 'js');
 
 // Cache for minified CSS content (used for inlining)
 let minifiedCssCache = null;
+let minifiedCriticalCssCache = null;
 
 /**
  * Read a file and return its contents
@@ -248,6 +249,31 @@ function getMinifiedCss() {
 }
 
 /**
+ * Get the minified critical CSS content (cached)
+ */
+function getMinifiedCriticalCss() {
+    if (minifiedCriticalCssCache === null) {
+        const cssPath = path.join(CSS_DIR, '_critical.css');
+        if (fs.existsSync(cssPath)) {
+            const cleanCss = new CleanCSS({ level: 2, format: false });
+            const result = cleanCss.minify(readFile(cssPath));
+            if (result.styles) {
+                // Fix font paths for inlining: url('fonts/...) not url('../fonts/...)
+                // because when inlined in index.html, paths are relative to HTML location
+                minifiedCriticalCssCache = result.styles.replace(/url\(['"]?\.\.\/fonts\//g, "url('fonts/");
+                console.log(`    Critical CSS: ${result.stats.originalSize} -> ${result.styles.length} bytes`);
+            } else {
+                minifiedCriticalCssCache = '';
+            }
+        } else {
+            console.warn('  Warning: _critical.css not found');
+            minifiedCriticalCssCache = '';
+        }
+    }
+    return minifiedCriticalCssCache;
+}
+
+/**
  * Process a template by replacing placeholders with partials
  */
 function processTemplate(template, partials, options = {}) {
@@ -265,19 +291,19 @@ function processTemplate(template, partials, options = {}) {
     // For other pages, links should be "index.html" to link back to home
     result = result.replace(/\{\{BASE_URL\}\}/g, baseUrl);
     
-    // Inline CSS for index.html (eliminates render-blocking stylesheet request)
+    // Inline critical CSS for index.html (fast first paint, full CSS loads async)
     if (inlineCss) {
-        let cssContent = getMinifiedCss();
-        if (cssContent) {
-            // Fix font paths: when CSS is inlined in index.html, '../fonts/' becomes 'fonts/'
-            // because index.html is at the root level, not in the css/ directory
-            cssContent = cssContent.replace(/\.\.\/fonts\//g, 'fonts/');
-            
-            // Replace the external stylesheet link with inline <style> tag
-            // Match the stylesheet link (handles both minified and non-minified references)
+        const criticalCss = getMinifiedCriticalCss();
+        if (criticalCss) {
+            // Replace the external stylesheet link with:
+            // 1. Inline critical CSS for instant first paint
+            // 2. Preload for full CSS (starts download immediately)
+            // 3. The full CSS will be loaded by JavaScript after first paint
             const stylesheetRegex = /<link\s+rel="stylesheet"\s+href="css\/styles\.bundled(?:\.min)?\.css"[^>]*>/gi;
-            result = result.replace(stylesheetRegex, `<style>${cssContent}</style>`);
-            console.log(`    Inlined ${(cssContent.length / 1024).toFixed(1)}KB of CSS`);
+            const replacement = `<style>${criticalCss}</style>
+    <link rel="preload" href="css/styles.bundled.min.css" as="style">`;
+            result = result.replace(stylesheetRegex, replacement);
+            console.log(`    Inlined ${(criticalCss.length / 1024).toFixed(1)}KB critical CSS (full CSS loads async)`);
         }
     }
     

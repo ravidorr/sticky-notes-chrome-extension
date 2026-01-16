@@ -567,6 +567,30 @@ function initDemo(selectors = {}) {
 }
 
 // ============================================
+// Async CSS Loading
+// ============================================
+
+/**
+ * Load the full CSS stylesheet asynchronously
+ * Critical CSS is inlined for fast first paint, this loads the rest
+ */
+function loadFullStylesheet() {
+    // Check if we're on a page with critical CSS (has preload link)
+    const preload = document.querySelector('link[rel="preload"][href*="styles.bundled"]');
+    if (!preload) return; // Not a critical CSS page, full CSS already loaded
+    
+    // Check if stylesheet is already loaded
+    const existing = document.querySelector('link[rel="stylesheet"][href*="styles.bundled"]');
+    if (existing) return;
+    
+    // Create stylesheet link - the preload already started the download
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = preload.href;
+    document.head.appendChild(link);
+}
+
+// ============================================
 // Main Initialization
 // ============================================
 
@@ -576,6 +600,9 @@ function initDemo(selectors = {}) {
  */
 function init() {
     const cleanups = {};
+
+    // Load full CSS asynchronously (critical CSS is already inlined)
+    loadFullStylesheet();
 
     // Initialize theme (do this first to prevent flash)
     cleanups.theme = initTheme();
@@ -649,6 +676,8 @@ export {
     updateDemoUI,
     createNote,
     demoState,
+    // CSS Loading
+    loadFullStylesheet,
     // Main
     init
 };
