@@ -112,7 +112,12 @@ function bundleCss() {
     const outputPath = path.join(CSS_DIR, 'styles.bundled.css');
     
     const mainCss = readFile(mainCssPath);
-    const bundledCss = bundleCssImports(mainCss, CSS_DIR);
+    let bundledCss = bundleCssImports(mainCss, CSS_DIR);
+    
+    // Fix font paths: The bundled CSS is served from /css/ directory, but fonts are in /fonts/
+    // Change url('../fonts/...) to url('../fonts/...) - this is already correct for css/ location
+    // However, GitHub Pages serves from a subdirectory, so we need to ensure paths work correctly
+    // The safest approach is to keep ../fonts/ which works when CSS is at /subdir/css/ and fonts at /subdir/fonts/
     
     // Add header comment
     const header = `/*
