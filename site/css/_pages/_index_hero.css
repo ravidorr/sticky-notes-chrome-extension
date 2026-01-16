@@ -2,8 +2,8 @@
    Hero Section
    ============================================ */
 .hero-section {
-    padding-top: 8rem;
-    padding-bottom: 5rem;
+    padding-top: 10rem;
+    padding-bottom: 6rem;
     overflow: hidden;
     position: relative;
     background-color: var(--color-bg);

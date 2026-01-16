@@ -343,6 +343,63 @@ describe('site/scripts.js', () => {
             
             expect(() => initTheme()).not.toThrow();
         });
+
+        it('should toggle theme when Enter key is pressed on toggle button', () => {
+            localStorage.setItem(THEME_STORAGE_KEY, THEME_LIGHT);
+            initTheme();
+            
+            expect(getCurrentTheme()).toBe(THEME_LIGHT);
+            
+            const button = document.getElementById('theme-toggle');
+            const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+            button.dispatchEvent(event);
+            
+            expect(getCurrentTheme()).toBe(THEME_DARK);
+        });
+
+        it('should toggle theme when Space key is pressed on toggle button', () => {
+            localStorage.setItem(THEME_STORAGE_KEY, THEME_LIGHT);
+            initTheme();
+            
+            expect(getCurrentTheme()).toBe(THEME_LIGHT);
+            
+            const button = document.getElementById('theme-toggle');
+            const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true });
+            button.dispatchEvent(event);
+            
+            expect(getCurrentTheme()).toBe(THEME_DARK);
+        });
+
+        it('should not toggle theme on other key presses', () => {
+            localStorage.setItem(THEME_STORAGE_KEY, THEME_LIGHT);
+            initTheme();
+            
+            expect(getCurrentTheme()).toBe(THEME_LIGHT);
+            
+            const button = document.getElementById('theme-toggle');
+            const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true });
+            button.dispatchEvent(event);
+            
+            expect(getCurrentTheme()).toBe(THEME_LIGHT);
+        });
+
+        it('should remove keyboard event listeners on cleanup', () => {
+            localStorage.setItem(THEME_STORAGE_KEY, THEME_LIGHT);
+            const cleanup = initTheme();
+            
+            expect(getCurrentTheme()).toBe(THEME_LIGHT);
+            
+            cleanup();
+            
+            // Manually set theme back to light for the test
+            applyTheme(THEME_LIGHT);
+            
+            // After cleanup, keydown should not change theme
+            const button = document.getElementById('theme-toggle');
+            const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+            button.dispatchEvent(event);
+            expect(getCurrentTheme()).toBe(THEME_LIGHT);
+        });
     });
 
     // ============================================

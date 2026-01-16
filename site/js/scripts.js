@@ -158,13 +158,21 @@ function initTheme(toggleSelectors = ['#theme-toggle', '#theme-toggle-mobile']) 
     
     const handlers = [];
     
-    // Set up click handlers for toggle buttons
+    // Set up click and keyboard handlers for toggle buttons
     selectors.forEach(selector => {
         const button = document.querySelector(selector);
         if (button) {
             const handleClick = () => toggleTheme();
+            const handleKeydown = (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    toggleTheme();
+                }
+            };
             button.addEventListener('click', handleClick);
-            handlers.push({ element: button, handler: handleClick });
+            button.addEventListener('keydown', handleKeydown);
+            handlers.push({ element: button, handler: handleClick, event: 'click' });
+            handlers.push({ element: button, handler: handleKeydown, event: 'keydown' });
         }
     });
     
@@ -184,8 +192,8 @@ function initTheme(toggleSelectors = ['#theme-toggle', '#theme-toggle-mobile']) 
     
     // Return cleanup function
     return () => {
-        handlers.forEach(({ element, handler }) => {
-            element.removeEventListener('click', handler);
+        handlers.forEach(({ element, handler, event }) => {
+            element.removeEventListener(event, handler);
         });
         if (mediaQueryHandler && window.matchMedia) {
             window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', mediaQueryHandler);

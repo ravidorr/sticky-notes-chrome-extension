@@ -37,9 +37,10 @@
                         <img src="images/chrome-logo.svg" width="20" height="20" alt="" aria-hidden="true">
                         Install Free Chrome Extension
                     </a>
-                    <a href="#preview" class="btn btn-secondary btn-lg gap-2 demo-link">
+                    <span id="demo-link-desc" class="sr-only">Navigate to interactive demo section</span>
+                    <a href="#preview" class="btn btn-secondary btn-lg gap-2 demo-link" aria-describedby="demo-link-desc">
                         See How It Works
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                             <polyline points="12 5 19 12 12 19"></polyline>
                         </svg>
@@ -205,8 +206,8 @@
                         </div>
                         <span class="browser-title">Simulated Web Page</span>
                     </div>
-                    <button id="demo-activate-btn" class="btn-demo-toggle">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <button id="demo-activate-btn" class="btn-demo-toggle" aria-label="Activate element selection mode to attach notes">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
                             <path d="M13 13l6 6"></path>
                         </svg>

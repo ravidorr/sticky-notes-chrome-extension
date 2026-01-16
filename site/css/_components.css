@@ -128,6 +128,12 @@
     color: var(--color-text);
 }
 
+.theme-toggle:focus-visible {
+    outline: 2px solid var(--c-blue-500);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+}
+
 .theme-toggle svg {
     width: 1.25rem;
     height: 1.25rem;
@@ -283,6 +289,7 @@
 
 .card p {
     color: var(--color-text-secondary);
+    line-height: 1.5;
 }
 
 /* Card with buttons */

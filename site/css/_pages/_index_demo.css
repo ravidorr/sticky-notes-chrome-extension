@@ -74,6 +74,12 @@
     box-shadow: 0 0 15px rgba(37, 99, 235, 0.5);
 }
 
+.btn-demo-toggle:focus-visible {
+    outline: 2px solid var(--c-yellow-400);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.3);
+}
+
 .demo-canvas {
     padding: 2rem;
     display: grid;

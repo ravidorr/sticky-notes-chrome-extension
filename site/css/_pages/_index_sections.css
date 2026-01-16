@@ -95,7 +95,7 @@
 
 .comparison-table th,
 .comparison-table td {
-    padding: 1rem 1.5rem;
+    padding: 1.25rem 1.75rem;
     text-align: left;
     border-bottom: 1px solid var(--color-border-light);
     color: var(--color-text);
@@ -120,6 +120,29 @@
 .comparison-table th.highlight-col {
     background: var(--c-yellow-400);
     color: var(--c-yellow-900);
+}
+
+/* Dark mode contrast fix for highlight column */
+[data-theme="dark"] .comparison-table .highlight-col {
+    background: rgba(250, 204, 21, 0.12);
+    color: var(--c-yellow-200);
+}
+
+[data-theme="dark"] .comparison-table th.highlight-col {
+    background: var(--c-yellow-600);
+    color: var(--c-slate-900);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .comparison-table .highlight-col {
+        background: rgba(250, 204, 21, 0.12);
+        color: var(--c-yellow-200);
+    }
+
+    :root:not([data-theme="light"]) .comparison-table th.highlight-col {
+        background: var(--c-yellow-600);
+        color: var(--c-slate-900);
+    }
 }
 
 /* Comparison table icons */
