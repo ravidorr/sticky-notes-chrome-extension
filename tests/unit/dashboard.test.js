@@ -1,101 +1,79 @@
 /**
  * Unit tests for site/js/dashboard.js
- * Dashboard functionality for viewing and managing notes
+ * Dashboard functionality for viewing and managing sticky notes
  */
 
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import {
+    // State
+    state,
+    // Utilities
+    escapeHtml,
+    isValidUrl,
+    getSafeUrl,
+    stripHtml,
+    formatDate,
+    // DOM helpers
+    showStatus,
+    // UI functions
+    updateKeyIndicator,
+    showApiKeySection,
+    hideApiKeySection,
+    handleUrlParams,
+    handleDomainSelectChange,
+    populateDomainDropdown,
+    // Rendering
+    renderNotes,
+    // API functions
+    saveApiKey,
+    loadStats,
+    loadNotes,
+    // Event handlers
+    handleFilterTabClick,
+    handleAutoRefreshChange,
+    clearRefreshInterval,
+    openSettings,
+    // Initialization
+    checkApiKey,
+    setupEventListeners,
+    setupCleanup
+} from '../../site/js/dashboard.js';
 
-describe('site/dashboard.js', () => {
+describe('site/js/dashboard.js', () => {
     const localThis = {};
 
     beforeEach(() => {
-        // Reset DOM with dashboard structure
-        document.body.innerHTML = `
-            <div id="apiKeySection" style="display: none;">
-                <input type="password" id="apiKeyInput">
-                <button id="saveApiKeyBtn">Save Key</button>
-            </div>
-            <div id="mainContent">
-                <div id="statsDashboard">
-                    <span id="statTotal">-</span>
-                    <span id="statOwned">-</span>
-                    <span id="statShared">-</span>
-                    <span id="statDomains">-</span>
-                </div>
-                <div id="themeBreakdown">
-                    <div id="themeYellow" style="flex: 0"></div>
-                    <div id="themeBlue" style="flex: 0"></div>
-                    <div id="themeGreen" style="flex: 0"></div>
-                    <div id="themePink" style="flex: 0"></div>
-                    <span id="legendYellow">0</span>
-                    <span id="legendBlue">0</span>
-                    <span id="legendGreen">0</span>
-                    <span id="legendPink">0</span>
-                </div>
-                <div class="filter-tabs">
-                    <button class="filter-tab active" data-filter="all">All</button>
-                    <button class="filter-tab" data-filter="owned">My Notes</button>
-                    <button class="filter-tab" data-filter="shared">Shared</button>
-                    <button class="filter-tab" data-filter="commented">Commented</button>
-                </div>
-                <select id="domainSelect">
-                    <option value="">All domains</option>
-                    <option value="__custom__">Custom URL...</option>
-                </select>
-                <input type="text" id="urlInput" style="display: none;">
-                <button id="loadBtn">Load Notes</button>
-                <div id="status" class="status"></div>
-                <div id="notesList"></div>
-            </div>
-            <button id="settingsBtn">Settings</button>
-            <input type="checkbox" id="autoRefresh">
-            <span id="keyIndicator"></span>
-            <span id="userEmail"></span>
-        `;
-
+        // Reset DOM
+        document.body.innerHTML = '';
+        
         // Reset localStorage
         localStorage.clear();
-
-        // Reset mocks
-        jest.clearAllMocks();
-
+        
+        // Reset state
+        state.apiKey = null;
+        state.currentFilter = 'all';
+        state.refreshInterval = null;
+        
         // Mock fetch
         global.fetch = jest.fn();
-
-        // Store element references
-        localThis.apiKeySection = document.getElementById('apiKeySection');
-        localThis.mainContent = document.getElementById('mainContent');
-        localThis.apiKeyInput = document.getElementById('apiKeyInput');
-        localThis.domainSelect = document.getElementById('domainSelect');
-        localThis.urlInput = document.getElementById('urlInput');
-        localThis.notesList = document.getElementById('notesList');
-        localThis.status = document.getElementById('status');
-        localThis.keyIndicator = document.getElementById('keyIndicator');
     });
 
     afterEach(() => {
         jest.clearAllMocks();
-        localStorage.clear();
+        jest.useRealTimers();
     });
 
     // ============================================
-    // Utility Functions Tests
+    // Utility Function Tests
     // ============================================
 
     describe('escapeHtml', () => {
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
         it('should escape HTML special characters', () => {
             expect(escapeHtml('<script>alert("xss")</script>')).toBe('&lt;script&gt;alert("xss")&lt;/script&gt;');
         });
 
         it('should escape ampersands', () => {
-            expect(escapeHtml('foo & bar')).toBe('foo &amp; bar');
+            expect(escapeHtml('Tom & Jerry')).toBe('Tom &amp; Jerry');
         });
 
         it('should escape quotes', () => {
@@ -108,28 +86,20 @@ describe('site/dashboard.js', () => {
             expect(escapeHtml('')).toBe('');
         });
 
-        it('should handle normal text without changes', () => {
+        it('should handle plain text without changes', () => {
             expect(escapeHtml('Hello World')).toBe('Hello World');
         });
     });
 
     describe('isValidUrl', () => {
-        function isValidUrl(url) {
-            if (!url) return false;
-            try {
-                const parsed = new URL(url);
-                return ['http:', 'https:'].includes(parsed.protocol);
-            } catch {
-                return false;
-            }
-        }
-
-        it('should return true for http URLs', () => {
+        it('should return true for valid http URLs', () => {
             expect(isValidUrl('http://example.com')).toBe(true);
+            expect(isValidUrl('http://example.com/path?query=1')).toBe(true);
         });
 
-        it('should return true for https URLs', () => {
+        it('should return true for valid https URLs', () => {
             expect(isValidUrl('https://example.com')).toBe(true);
+            expect(isValidUrl('https://sub.example.com:8080/path')).toBe(true);
         });
 
         it('should return false for javascript: URLs', () => {
@@ -141,10 +111,7 @@ describe('site/dashboard.js', () => {
         });
 
         it('should return false for invalid URLs', () => {
-            expect(isValidUrl('not-a-url')).toBe(false);
-        });
-
-        it('should return false for empty/null URLs', () => {
+            expect(isValidUrl('not a url')).toBe(false);
             expect(isValidUrl('')).toBe(false);
             expect(isValidUrl(null)).toBe(false);
             expect(isValidUrl(undefined)).toBe(false);
@@ -156,80 +123,46 @@ describe('site/dashboard.js', () => {
     });
 
     describe('getSafeUrl', () => {
-        function isValidUrl(url) {
-            if (!url) return false;
-            try {
-                const parsed = new URL(url);
-                return ['http:', 'https:'].includes(parsed.protocol);
-            } catch {
-                return false;
-            }
-        }
-
-        function getSafeUrl(url) {
-            return isValidUrl(url) ? url : '#';
-        }
-
-        it('should return URL if valid', () => {
+        it('should return the URL for valid URLs', () => {
             expect(getSafeUrl('https://example.com')).toBe('https://example.com');
         });
 
-        it('should return # for invalid URL', () => {
+        it('should return # for invalid URLs', () => {
             expect(getSafeUrl('javascript:alert(1)')).toBe('#');
-        });
-
-        it('should return # for empty URL', () => {
             expect(getSafeUrl('')).toBe('#');
+            expect(getSafeUrl(null)).toBe('#');
         });
     });
 
     describe('stripHtml', () => {
-        function stripHtml(html) {
-            if (!html) return '';
-            const div = document.createElement('div');
-            div.innerHTML = html;
-            return div.textContent || div.innerText || '';
-        }
-
-        it('should strip HTML tags', () => {
-            expect(stripHtml('<b>bold</b> text')).toBe('bold text');
+        it('should strip HTML tags from string', () => {
+            expect(stripHtml('<p>Hello <strong>World</strong></p>')).toBe('Hello World');
         });
 
         it('should handle nested tags', () => {
-            expect(stripHtml('<div><p>nested</p></div>')).toBe('nested');
+            expect(stripHtml('<div><span><b>Text</b></span></div>')).toBe('Text');
         });
 
         it('should return empty string for null/undefined', () => {
             expect(stripHtml(null)).toBe('');
             expect(stripHtml(undefined)).toBe('');
+            expect(stripHtml('')).toBe('');
         });
 
         it('should handle plain text', () => {
-            expect(stripHtml('plain text')).toBe('plain text');
+            expect(stripHtml('Plain text')).toBe('Plain text');
         });
     });
 
     describe('formatDate', () => {
-        function formatDate(dateString) {
-            if (!dateString) return 'Unknown date';
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-
-        it('should format ISO date string', () => {
+        it('should format a valid date string', () => {
             const result = formatDate('2024-01-15T10:30:00Z');
             expect(result).toContain('Jan');
             expect(result).toContain('15');
             expect(result).toContain('2024');
         });
 
-        it('should return Unknown date for null/undefined', () => {
+        it('should return "Unknown date" for null/undefined', () => {
             expect(formatDate(null)).toBe('Unknown date');
             expect(formatDate(undefined)).toBe('Unknown date');
             expect(formatDate('')).toBe('Unknown date');
@@ -237,545 +170,792 @@ describe('site/dashboard.js', () => {
     });
 
     // ============================================
-    // API Key Management Tests
+    // DOM Helper Tests
+    // ============================================
+
+    describe('showStatus', () => {
+        beforeEach(() => {
+            document.body.innerHTML = '<div id="status"></div>';
+            localThis.statusElement = document.getElementById('status');
+        });
+
+        it('should set message and class for success status', () => {
+            showStatus(localThis.statusElement, 'Success!', 'success');
+            
+            expect(localThis.statusElement.textContent).toBe('Success!');
+            expect(localThis.statusElement.className).toBe('status status-success');
+        });
+
+        it('should set message and class for error status', () => {
+            showStatus(localThis.statusElement, 'Error occurred', 'error');
+            
+            expect(localThis.statusElement.textContent).toBe('Error occurred');
+            expect(localThis.statusElement.className).toBe('status status-error');
+        });
+
+        it('should set message and class for loading status', () => {
+            showStatus(localThis.statusElement, 'Loading...', 'loading');
+            
+            expect(localThis.statusElement.textContent).toBe('Loading...');
+            expect(localThis.statusElement.className).toBe('status status-loading');
+        });
+
+        it('should handle null element gracefully', () => {
+            expect(() => showStatus(null, 'Message', 'success')).not.toThrow();
+        });
+    });
+
+    // ============================================
+    // UI Function Tests
     // ============================================
 
     describe('updateKeyIndicator', () => {
-        function updateKeyIndicator(apiKey) {
-            const keyIndicator = document.getElementById('keyIndicator');
-            if (apiKey && apiKey.length > 16) {
-                keyIndicator.textContent = `Key: ${apiKey.substring(0, 12)}...${apiKey.slice(-4)}`;
-                keyIndicator.style.display = 'inline';
-            } else {
-                keyIndicator.style.display = 'none';
-            }
-        }
+        beforeEach(() => {
+            document.body.innerHTML = '<span id="keyIndicator"></span>';
+            localThis.keyIndicator = document.getElementById('keyIndicator');
+        });
 
-        it('should display truncated key for long keys', () => {
-            updateKeyIndicator('sk_live_1234567890abcdefghij');
-
-            expect(localThis.keyIndicator.textContent).toBe('Key: sk_live_1234...ghij');
+        it('should show truncated key when key is long enough', () => {
+            const longKey = 'abcdefghijklmnopqrstuvwxyz';
+            updateKeyIndicator(localThis.keyIndicator, longKey);
+            
+            expect(localThis.keyIndicator.textContent).toBe('Key: abcdefghijkl...wxyz');
             expect(localThis.keyIndicator.style.display).toBe('inline');
         });
 
-        it('should hide indicator for short keys', () => {
-            updateKeyIndicator('short');
-
+        it('should hide indicator when key is too short', () => {
+            updateKeyIndicator(localThis.keyIndicator, 'short');
+            
             expect(localThis.keyIndicator.style.display).toBe('none');
         });
 
-        it('should hide indicator for null key', () => {
-            updateKeyIndicator(null);
-
+        it('should hide indicator when key is null', () => {
+            updateKeyIndicator(localThis.keyIndicator, null);
+            
             expect(localThis.keyIndicator.style.display).toBe('none');
+        });
+
+        it('should handle null element gracefully', () => {
+            expect(() => updateKeyIndicator(null, 'key')).not.toThrow();
         });
     });
 
     describe('showApiKeySection', () => {
-        function showApiKeySection() {
-            const apiKeySection = document.getElementById('apiKeySection');
-            const mainContent = document.getElementById('mainContent');
-            apiKeySection.style.display = 'flex';
-            mainContent.style.opacity = '0.3';
-            mainContent.style.pointerEvents = 'none';
-        }
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="apiKeySection" style="display: none;"></div>
+                <div id="mainContent"></div>
+                <input id="apiKeyInput" />
+            `;
+            localThis.elements = {
+                apiKeySection: document.getElementById('apiKeySection'),
+                mainContent: document.getElementById('mainContent'),
+                apiKeyInput: document.getElementById('apiKeyInput')
+            };
+        });
 
-        it('should show API key overlay', () => {
-            showApiKeySection();
+        it('should show the API key section', () => {
+            showApiKeySection(localThis.elements);
+            
+            expect(localThis.elements.apiKeySection.style.display).toBe('flex');
+        });
 
-            expect(localThis.apiKeySection.style.display).toBe('flex');
-            expect(localThis.mainContent.style.opacity).toBe('0.3');
-            expect(localThis.mainContent.style.pointerEvents).toBe('none');
+        it('should dim the main content', () => {
+            showApiKeySection(localThis.elements);
+            
+            expect(localThis.elements.mainContent.style.opacity).toBe('0.3');
+            expect(localThis.elements.mainContent.style.pointerEvents).toBe('none');
+        });
+
+        it('should focus the API key input', () => {
+            const focusSpy = jest.spyOn(localThis.elements.apiKeyInput, 'focus');
+            showApiKeySection(localThis.elements);
+            
+            expect(focusSpy).toHaveBeenCalled();
         });
     });
 
     describe('hideApiKeySection', () => {
-        function hideApiKeySection() {
-            const apiKeySection = document.getElementById('apiKeySection');
-            const mainContent = document.getElementById('mainContent');
-            apiKeySection.style.display = 'none';
-            mainContent.style.opacity = '1';
-            mainContent.style.pointerEvents = 'auto';
-        }
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="apiKeySection" style="display: flex;"></div>
+                <div id="mainContent" style="opacity: 0.3; pointer-events: none;"></div>
+            `;
+            localThis.elements = {
+                apiKeySection: document.getElementById('apiKeySection'),
+                mainContent: document.getElementById('mainContent')
+            };
+        });
 
-        it('should hide API key overlay', () => {
-            localThis.apiKeySection.style.display = 'flex';
+        it('should hide the API key section', () => {
+            hideApiKeySection(localThis.elements);
+            
+            expect(localThis.elements.apiKeySection.style.display).toBe('none');
+        });
 
-            hideApiKeySection();
-
-            expect(localThis.apiKeySection.style.display).toBe('none');
-            expect(localThis.mainContent.style.opacity).toBe('1');
-            expect(localThis.mainContent.style.pointerEvents).toBe('auto');
+        it('should restore main content visibility', () => {
+            hideApiKeySection(localThis.elements);
+            
+            expect(localThis.elements.mainContent.style.opacity).toBe('1');
+            expect(localThis.elements.mainContent.style.pointerEvents).toBe('auto');
         });
     });
 
-    describe('saveApiKey', () => {
-        it('should save key to localStorage', () => {
-            const key = 'sk_live_testkey123456789';
-            localStorage.setItem('sticky_notes_api_key', key);
-
-            expect(localStorage.getItem('sticky_notes_api_key')).toBe(key);
+    describe('handleUrlParams', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <select id="domainSelect">
+                    <option value="">All domains</option>
+                    <option value="__custom__">Custom URL...</option>
+                </select>
+                <input id="urlInput" style="display: none;" />
+            `;
+            localThis.elements = {
+                domainSelect: document.getElementById('domainSelect'),
+                urlInput: document.getElementById('urlInput')
+            };
         });
 
-        it('should not save empty key', () => {
-            const key = '';
-            if (key) {
-                localStorage.setItem('sticky_notes_api_key', key);
-            }
-
-            expect(localStorage.getItem('sticky_notes_api_key')).toBeNull();
+        it('should pre-fill URL from query params', () => {
+            // Mock window.location.search
+            Object.defineProperty(window, 'location', {
+                value: { search: '?url=https://example.com' },
+                writable: true
+            });
+            
+            handleUrlParams(localThis.elements);
+            
+            expect(localThis.elements.domainSelect.value).toBe('__custom__');
+            expect(localThis.elements.urlInput.value).toBe('https://example.com');
+            expect(localThis.elements.urlInput.style.display).toBe('block');
         });
 
-        it('should trim whitespace from key', () => {
-            const key = '  sk_live_testkey123456789  '.trim();
-            localStorage.setItem('sticky_notes_api_key', key);
-
-            expect(localStorage.getItem('sticky_notes_api_key')).toBe('sk_live_testkey123456789');
+        it('should do nothing when no URL param', () => {
+            Object.defineProperty(window, 'location', {
+                value: { search: '' },
+                writable: true
+            });
+            
+            handleUrlParams(localThis.elements);
+            
+            expect(localThis.elements.urlInput.style.display).toBe('none');
         });
     });
-
-    // ============================================
-    // Domain/URL Handling Tests
-    // ============================================
 
     describe('handleDomainSelectChange', () => {
-        function handleDomainSelectChange() {
-            const domainSelect = document.getElementById('domainSelect');
-            const urlInput = document.getElementById('urlInput');
-            if (domainSelect.value === '__custom__') {
-                urlInput.style.display = 'block';
-            } else {
-                urlInput.style.display = 'none';
-                urlInput.value = '';
-            }
-        }
-
-        it('should show URL input when custom selected', () => {
-            localThis.domainSelect.value = '__custom__';
-
-            handleDomainSelectChange();
-
-            expect(localThis.urlInput.style.display).toBe('block');
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <select id="domainSelect">
+                    <option value="">All domains</option>
+                    <option value="example.com">example.com</option>
+                    <option value="__custom__">Custom URL...</option>
+                </select>
+                <input id="urlInput" style="display: none;" />
+            `;
+            localThis.elements = {
+                domainSelect: document.getElementById('domainSelect'),
+                urlInput: document.getElementById('urlInput')
+            };
+            localThis.loadNotesFn = jest.fn();
         });
 
-        it('should hide URL input when domain selected', () => {
-            localThis.domainSelect.value = 'example.com';
-            localThis.urlInput.style.display = 'block';
+        it('should show URL input when custom is selected', () => {
+            localThis.elements.domainSelect.value = '__custom__';
+            handleDomainSelectChange(localThis.elements, localThis.loadNotesFn);
+            
+            expect(localThis.elements.urlInput.style.display).toBe('block');
+            expect(localThis.loadNotesFn).not.toHaveBeenCalled();
+        });
 
-            handleDomainSelectChange();
-
-            expect(localThis.urlInput.style.display).toBe('none');
-            expect(localThis.urlInput.value).toBe('');
+        it('should hide URL input and load notes when domain is selected', () => {
+            localThis.elements.domainSelect.value = 'example.com';
+            handleDomainSelectChange(localThis.elements, localThis.loadNotesFn);
+            
+            expect(localThis.elements.urlInput.style.display).toBe('none');
+            expect(localThis.loadNotesFn).toHaveBeenCalled();
         });
     });
 
     describe('populateDomainDropdown', () => {
-        function populateDomainDropdown(domains) {
-            const domainSelect = document.getElementById('domainSelect');
-            // Remove old domain options (keep first two: "All domains" and will insert before last)
-            while (domainSelect.options.length > 2) {
-                domainSelect.remove(1);
-            }
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <select id="domainSelect">
+                    <option value="">All domains</option>
+                    <option value="__custom__">Custom URL...</option>
+                </select>
+            `;
+            localThis.domainSelect = document.getElementById('domainSelect');
+        });
+
+        it('should add domains to dropdown', () => {
+            populateDomainDropdown(localThis.domainSelect, ['example.com', 'test.com']);
             
-            domains.sort().forEach(domain => {
-                const option = document.createElement('option');
-                option.value = domain;
-                option.textContent = domain;
-                domainSelect.insertBefore(option, domainSelect.lastElementChild);
-            });
-        }
-
-        it('should add domain options sorted alphabetically', () => {
-            populateDomainDropdown(['zebra.com', 'alpha.com', 'middle.com']);
-
-            const options = Array.from(localThis.domainSelect.options);
-            const domainValues = options.slice(1, -1).map(o => o.value);
-
-            expect(domainValues).toEqual(['alpha.com', 'middle.com', 'zebra.com']);
+            expect(localThis.domainSelect.options.length).toBe(4);
+            expect(localThis.domainSelect.options[1].value).toBe('example.com');
+            expect(localThis.domainSelect.options[2].value).toBe('test.com');
         });
 
-        it('should preserve first and last options', () => {
-            populateDomainDropdown(['test.com']);
-
-            expect(localThis.domainSelect.options[0].value).toBe('');
-            expect(localThis.domainSelect.options[localThis.domainSelect.options.length - 1].value).toBe('__custom__');
-        });
-    });
-
-    // ============================================
-    // Status Display Tests
-    // ============================================
-
-    describe('showStatus', () => {
-        function showStatus(message, type) {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = `status status-${type}`;
-        }
-
-        it('should display loading status', () => {
-            showStatus('Loading notes...', 'loading');
-
-            expect(localThis.status.textContent).toBe('Loading notes...');
-            expect(localThis.status.className).toBe('status status-loading');
+        it('should sort domains alphabetically', () => {
+            populateDomainDropdown(localThis.domainSelect, ['zebra.com', 'alpha.com']);
+            
+            expect(localThis.domainSelect.options[1].value).toBe('alpha.com');
+            expect(localThis.domainSelect.options[2].value).toBe('zebra.com');
         });
 
-        it('should display success status', () => {
-            showStatus('Found 5 notes', 'success');
-
-            expect(localThis.status.textContent).toBe('Found 5 notes');
-            expect(localThis.status.className).toBe('status status-success');
+        it('should preserve current selection if still valid', () => {
+            populateDomainDropdown(localThis.domainSelect, ['example.com']);
+            localThis.domainSelect.value = 'example.com';
+            
+            populateDomainDropdown(localThis.domainSelect, ['example.com', 'new.com']);
+            
+            expect(localThis.domainSelect.value).toBe('example.com');
         });
 
-        it('should display error status', () => {
-            showStatus('Error: API error', 'error');
-
-            expect(localThis.status.textContent).toBe('Error: API error');
-            expect(localThis.status.className).toBe('status status-error');
+        it('should handle null element gracefully', () => {
+            expect(() => populateDomainDropdown(null, ['example.com'])).not.toThrow();
         });
     });
 
     // ============================================
-    // Filter Tab Tests
-    // ============================================
-
-    describe('handleFilterTabClick', () => {
-        it('should update active class on tabs', () => {
-            const tabs = document.querySelectorAll('.filter-tab');
-            let currentFilter = 'all';
-
-            function handleFilterTabClick(tab) {
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                currentFilter = tab.dataset.filter;
-            }
-
-            const ownedTab = document.querySelector('[data-filter="owned"]');
-            handleFilterTabClick(ownedTab);
-
-            expect(ownedTab.classList.contains('active')).toBe(true);
-            expect(document.querySelector('[data-filter="all"]').classList.contains('active')).toBe(false);
-            expect(currentFilter).toBe('owned');
-        });
-    });
-
-    // ============================================
-    // Auto-refresh Tests
-    // ============================================
-
-    describe('handleAutoRefreshChange', () => {
-        it('should start interval when enabled', () => {
-            jest.useFakeTimers();
-            let refreshInterval = null;
-            let refreshCount = 0;
-
-            function handleAutoRefreshChange(enabled) {
-                if (enabled) {
-                    refreshInterval = setInterval(() => {
-                        refreshCount++;
-                    }, 5000);
-                } else {
-                    clearInterval(refreshInterval);
-                    refreshInterval = null;
-                }
-            }
-
-            handleAutoRefreshChange(true);
-
-            expect(refreshInterval).not.toBeNull();
-
-            jest.advanceTimersByTime(5000);
-            expect(refreshCount).toBe(1);
-
-            jest.advanceTimersByTime(5000);
-            expect(refreshCount).toBe(2);
-
-            handleAutoRefreshChange(false);
-            expect(refreshInterval).toBeNull();
-
-            jest.useRealTimers();
-        });
-
-        it('should clear interval when disabled', () => {
-            jest.useFakeTimers();
-            let refreshInterval = setInterval(() => {}, 5000);
-
-            function handleAutoRefreshChange(enabled) {
-                if (!enabled) {
-                    clearInterval(refreshInterval);
-                    refreshInterval = null;
-                }
-            }
-
-            handleAutoRefreshChange(false);
-
-            expect(refreshInterval).toBeNull();
-
-            jest.useRealTimers();
-        });
-    });
-
-    describe('setupCleanup', () => {
-        it('should clear interval on beforeunload', () => {
-            let refreshInterval = setInterval(() => {}, 5000);
-            let cleanedUp = false;
-
-            function setupCleanup() {
-                window.addEventListener('beforeunload', () => {
-                    if (refreshInterval) {
-                        clearInterval(refreshInterval);
-                        refreshInterval = null;
-                        cleanedUp = true;
-                    }
-                });
-            }
-
-            setupCleanup();
-
-            window.dispatchEvent(new Event('beforeunload'));
-
-            expect(cleanedUp).toBe(true);
-            expect(refreshInterval).toBeNull();
-        });
-    });
-
-    // ============================================
-    // Note Rendering Tests
+    // Rendering Tests
     // ============================================
 
     describe('renderNotes', () => {
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        beforeEach(() => {
+            document.body.innerHTML = '<div id="notesList"></div>';
+            localThis.notesList = document.getElementById('notesList');
+        });
 
-        function isValidUrl(url) {
-            if (!url) return false;
-            try {
-                const parsed = new URL(url);
-                return ['http:', 'https:'].includes(parsed.protocol);
-            } catch {
-                return false;
-            }
-        }
-
-        function getSafeUrl(url) {
-            return isValidUrl(url) ? url : '#';
-        }
-
-        function renderNotes(notes) {
-            const notesList = document.getElementById('notesList');
-            if (notes.length === 0) {
-                notesList.innerHTML = '<p class="empty-state-msg">No notes found</p>';
-                return;
-            }
-
-            notesList.innerHTML = notes.map((note) => {
-                const safeUrl = getSafeUrl(note.url);
-                const displayUrl = escapeHtml(note.url);
-                return `
-                <div class="note-card theme-${note.theme || 'yellow'}">
-                    <div class="note-header">
-                        <code class="note-selector">${escapeHtml(note.selector)}</code>
-                    </div>
-                    <div class="note-url-row">
-                        <a href="${safeUrl}" class="note-url-link">${displayUrl}</a>
-                    </div>
-                    <div class="note-content-box">${escapeHtml(note.content)}</div>
-                </div>
-            `;
-            }).join('');
-        }
-
-        it('should render empty state for no notes', () => {
-            renderNotes([]);
-
+        it('should show empty state when no notes', () => {
+            renderNotes(localThis.notesList, []);
+            
             expect(localThis.notesList.innerHTML).toContain('No notes found');
         });
 
         it('should render note cards', () => {
             const notes = [{
-                id: '123',
+                id: 'note-123456789',
                 url: 'https://example.com',
-                selector: 'div.test',
-                content: 'Test note',
-                theme: 'blue'
+                selector: '.test-selector',
+                content: 'Test content',
+                theme: 'blue',
+                createdAt: '2024-01-15T10:00:00Z'
             }];
-
-            renderNotes(notes);
-
+            
+            renderNotes(localThis.notesList, notes);
+            
             expect(localThis.notesList.innerHTML).toContain('note-card');
             expect(localThis.notesList.innerHTML).toContain('theme-blue');
-            expect(localThis.notesList.innerHTML).toContain('Test note');
+            expect(localThis.notesList.innerHTML).toContain('Test content');
+            expect(localThis.notesList.innerHTML).toContain('.test-selector');
         });
 
-        it('should use safe URL for links', () => {
+        it('should show shared badge for shared notes', () => {
             const notes = [{
-                id: '123',
-                url: 'javascript:alert(1)',
-                selector: 'div.test',
-                content: 'Test'
+                id: 'note-123456789',
+                url: 'https://example.com',
+                selector: '.test',
+                content: 'Content',
+                isShared: true,
+                ownerEmail: 'owner@example.com',
+                createdAt: '2024-01-15T10:00:00Z'
             }];
+            
+            renderNotes(localThis.notesList, notes);
+            
+            expect(localThis.notesList.innerHTML).toContain('Shared by');
+            expect(localThis.notesList.innerHTML).toContain('owner@example.com');
+        });
 
-            renderNotes(notes);
+        it('should render comments if present', () => {
+            const notes = [{
+                id: 'note-123456789',
+                url: 'https://example.com',
+                selector: '.test',
+                content: 'Content',
+                createdAt: '2024-01-15T10:00:00Z',
+                comments: [{
+                    id: 'comment-1',
+                    content: 'Test comment',
+                    authorName: 'Author',
+                    createdAt: '2024-01-15T11:00:00Z'
+                }]
+            }];
+            
+            renderNotes(localThis.notesList, notes);
+            
+            expect(localThis.notesList.innerHTML).toContain('Comments (1)');
+            expect(localThis.notesList.innerHTML).toContain('Test comment');
+        });
 
+        it('should handle null notesList gracefully', () => {
+            expect(() => renderNotes(null, [])).not.toThrow();
+        });
+
+        it('should sanitize URLs to prevent XSS', () => {
+            const notes = [{
+                id: 'note-123456789',
+                url: 'javascript:alert(1)',
+                selector: '.test',
+                content: 'Content',
+                createdAt: '2024-01-15T10:00:00Z'
+            }];
+            
+            renderNotes(localThis.notesList, notes);
+            
+            // Should use # for invalid URLs
             expect(localThis.notesList.innerHTML).toContain('href="#"');
         });
-
-        it('should escape HTML in content', () => {
-            const notes = [{
-                id: '123',
-                url: 'https://example.com',
-                selector: 'div.test',
-                content: '<script>alert("xss")</script>'
-            }];
-
-            renderNotes(notes);
-
-            expect(localThis.notesList.innerHTML).toContain('&lt;script&gt;');
-            expect(localThis.notesList.innerHTML).not.toContain('<script>alert');
-        });
-
-        it('should default to yellow theme', () => {
-            const notes = [{
-                id: '123',
-                url: 'https://example.com',
-                selector: 'div.test',
-                content: 'Test'
-            }];
-
-            renderNotes(notes);
-
-            expect(localThis.notesList.innerHTML).toContain('theme-yellow');
-        });
     });
 
     // ============================================
-    // URL Params Tests
+    // API Function Tests
     // ============================================
 
-    describe('handleUrlParams', () => {
-        it('should pre-fill URL from query params', () => {
-            // Mock window.location.search
-            delete window.location;
-            window.location = { search: '?url=https://example.com/page' };
-
-            function handleUrlParams() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const initialUrl = urlParams.get('url');
-                if (initialUrl) {
-                    document.getElementById('domainSelect').value = '__custom__';
-                    document.getElementById('urlInput').value = initialUrl;
-                    document.getElementById('urlInput').style.display = 'block';
-                }
-            }
-
-            handleUrlParams();
-
-            expect(localThis.domainSelect.value).toBe('__custom__');
-            expect(localThis.urlInput.value).toBe('https://example.com/page');
-            expect(localThis.urlInput.style.display).toBe('block');
+    describe('saveApiKey', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="apiKeySection"></div>
+                <div id="mainContent"></div>
+                <input id="apiKeyInput" value="test-api-key-12345678" />
+                <span id="keyIndicator"></span>
+                <div id="status"></div>
+            `;
+            localThis.elements = {
+                apiKeySection: document.getElementById('apiKeySection'),
+                mainContent: document.getElementById('mainContent'),
+                apiKeyInput: document.getElementById('apiKeyInput'),
+                keyIndicator: document.getElementById('keyIndicator'),
+                status: document.getElementById('status')
+            };
+            localThis.appState = { apiKey: null };
         });
 
-        it('should not change anything when no URL param', () => {
-            delete window.location;
-            window.location = { search: '' };
-
-            function handleUrlParams() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const initialUrl = urlParams.get('url');
-                if (initialUrl) {
-                    document.getElementById('domainSelect').value = '__custom__';
-                }
-            }
-
-            handleUrlParams();
-
-            expect(localThis.domainSelect.value).toBe('');
-        });
-    });
-
-    // ============================================
-    // API Request Tests
-    // ============================================
-
-    describe('loadNotes request construction', () => {
-        it('should construct correct endpoint for all notes', () => {
-            const API_BASE_URL = 'https://us-central1-sticky-notes-chrome-extension.cloudfunctions.net/api';
-            const currentFilter = 'all';
+        it('should save valid API key', () => {
+            const onSuccess = jest.fn();
+            saveApiKey(localThis.elements, localThis.appState, { onSuccess });
             
-            let endpoint = `${API_BASE_URL}/notes`;
-            if (currentFilter === 'commented') {
-                endpoint = `${API_BASE_URL}/notes/commented`;
-            }
-
-            expect(endpoint).toBe('https://us-central1-sticky-notes-chrome-extension.cloudfunctions.net/api/notes');
+            expect(localThis.appState.apiKey).toBe('test-api-key-12345678');
+            expect(localStorage.getItem('sticky_notes_api_key')).toBe('test-api-key-12345678');
+            expect(onSuccess).toHaveBeenCalled();
         });
 
-        it('should construct correct endpoint for commented notes', () => {
-            const API_BASE_URL = 'https://us-central1-sticky-notes-chrome-extension.cloudfunctions.net/api';
-            const currentFilter = 'commented';
+        it('should show error for empty API key', () => {
+            localThis.elements.apiKeyInput.value = '  ';
+            saveApiKey(localThis.elements, localThis.appState);
             
-            let endpoint;
-            if (currentFilter === 'commented') {
-                endpoint = `${API_BASE_URL}/notes/commented`;
-            } else {
-                endpoint = `${API_BASE_URL}/notes`;
-            }
-
-            expect(endpoint).toBe('https://us-central1-sticky-notes-chrome-extension.cloudfunctions.net/api/notes/commented');
-        });
-
-        it('should add filter param for owned/shared', () => {
-            const params = new URLSearchParams();
-            const currentFilter = 'owned';
-
-            if (currentFilter !== 'all' && currentFilter !== 'commented') {
-                params.set('filter', currentFilter);
-            }
-
-            expect(params.get('filter')).toBe('owned');
-        });
-
-        it('should add domain param when domain selected', () => {
-            const params = new URLSearchParams();
-            const selectedDomain = 'example.com';
-
-            if (selectedDomain && selectedDomain !== '__custom__') {
-                params.set('domain', selectedDomain);
-            }
-
-            expect(params.get('domain')).toBe('example.com');
-        });
-
-        it('should add url param for full URLs', () => {
-            const params = new URLSearchParams();
-            const customUrl = 'https://example.com/page';
-
-            if (customUrl.startsWith('http://') || customUrl.startsWith('https://')) {
-                params.set('url', customUrl);
-            }
-
-            expect(params.get('url')).toBe('https://example.com/page');
+            expect(localThis.appState.apiKey).toBeNull();
+            expect(localThis.elements.status.textContent).toContain('valid API key');
         });
     });
 
-    describe('API error handling', () => {
-        it('should clear key on 401 response', () => {
-            localStorage.setItem('sticky_notes_api_key', 'invalid-key');
+    describe('loadStats', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <span id="statTotal"></span>
+                <span id="statOwned"></span>
+                <span id="statShared"></span>
+                <span id="statDomains"></span>
+                <div id="themeYellow"></div>
+                <div id="themeBlue"></div>
+                <div id="themeGreen"></div>
+                <div id="themePink"></div>
+                <span id="legendYellow"></span>
+                <span id="legendBlue"></span>
+                <span id="legendGreen"></span>
+                <span id="legendPink"></span>
+                <span id="userEmail"></span>
+                <span id="keyIndicator"></span>
+                <select id="domainSelect">
+                    <option value="">All</option>
+                    <option value="__custom__">Custom</option>
+                </select>
+            `;
+            localThis.elements = {
+                userEmailSpan: document.getElementById('userEmail'),
+                keyIndicator: document.getElementById('keyIndicator'),
+                domainSelect: document.getElementById('domainSelect')
+            };
+        });
 
-            function handleUnauthorized() {
-                localStorage.removeItem('sticky_notes_api_key');
-            }
+        it('should return null when no API key', async () => {
+            const result = await loadStats(null, localThis.elements);
+            expect(result).toBeNull();
+        });
 
-            const response = { status: 401, ok: false };
-            if (response.status === 401) {
-                handleUnauthorized();
-            }
+        it('should fetch and display stats', async () => {
+            const mockStats = {
+                total: 10,
+                owned: 5,
+                shared: 5,
+                domainCount: 3,
+                byTheme: { yellow: 4, blue: 3, green: 2, pink: 1 },
+                domains: ['example.com', 'test.com'],
+                user: { email: 'user@example.com' }
+            };
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(mockStats)
+            });
+            
+            const result = await loadStats('test-api-key', localThis.elements);
+            
+            expect(result).toEqual(mockStats);
+            expect(document.getElementById('statTotal').textContent).toBe('10');
+            expect(document.getElementById('statOwned').textContent).toBe('5');
+        });
 
+        it('should handle API errors gracefully', async () => {
+            global.fetch.mockResolvedValueOnce({
+                ok: false,
+                status: 500
+            });
+            
+            const result = await loadStats('test-api-key', localThis.elements);
+            expect(result).toBeNull();
+        });
+
+        it('should handle network errors gracefully', async () => {
+            global.fetch.mockRejectedValueOnce(new Error('Network error'));
+            
+            const result = await loadStats('test-api-key', localThis.elements);
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('loadNotes', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="status"></div>
+                <div id="notesList"></div>
+                <select id="domainSelect">
+                    <option value="">All</option>
+                </select>
+                <input id="urlInput" value="" />
+            `;
+            localThis.elements = {
+                status: document.getElementById('status'),
+                notesList: document.getElementById('notesList'),
+                domainSelect: document.getElementById('domainSelect'),
+                urlInput: document.getElementById('urlInput')
+            };
+        });
+
+        it('should return empty array when no API key', async () => {
+            const result = await loadNotes({ apiKey: null, elements: localThis.elements });
+            expect(result).toEqual([]);
+        });
+
+        it('should fetch and render notes', async () => {
+            const mockNotes = {
+                notes: [{
+                    id: 'note-123456789',
+                    url: 'https://example.com',
+                    selector: '.test',
+                    content: 'Test',
+                    createdAt: '2024-01-15T10:00:00Z'
+                }]
+            };
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(mockNotes)
+            });
+            
+            const result = await loadNotes({
+                apiKey: 'test-key',
+                elements: localThis.elements,
+                currentFilter: 'all'
+            });
+            
+            expect(result.length).toBe(1);
+            expect(localThis.elements.notesList.innerHTML).toContain('note-card');
+        });
+
+        it('should handle 401 unauthorized', async () => {
+            const onUnauthorized = jest.fn();
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: false,
+                status: 401
+            });
+            
+            const result = await loadNotes({
+                apiKey: 'invalid-key',
+                elements: localThis.elements,
+                onUnauthorized
+            });
+            
+            expect(result).toEqual([]);
+            expect(onUnauthorized).toHaveBeenCalled();
             expect(localStorage.getItem('sticky_notes_api_key')).toBeNull();
+        });
+
+        it('should filter by domain', async () => {
+            // Add a domain option and select it
+            const option = document.createElement('option');
+            option.value = 'example.com';
+            option.textContent = 'example.com';
+            localThis.elements.domainSelect.appendChild(option);
+            localThis.elements.domainSelect.value = 'example.com';
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({ notes: [] })
+            });
+            
+            await loadNotes({
+                apiKey: 'test-key',
+                elements: localThis.elements
+            });
+            
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.stringContaining('domain=example.com'),
+                expect.any(Object)
+            );
+        });
+
+        it('should filter by custom URL', async () => {
+            // Add custom option and select it
+            const option = document.createElement('option');
+            option.value = '__custom__';
+            option.textContent = 'Custom URL...';
+            localThis.elements.domainSelect.appendChild(option);
+            localThis.elements.domainSelect.value = '__custom__';
+            localThis.elements.urlInput.value = 'https://custom.com/page';
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({ notes: [] })
+            });
+            
+            await loadNotes({
+                apiKey: 'test-key',
+                elements: localThis.elements
+            });
+            
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.stringContaining('url=https'),
+                expect.any(Object)
+            );
+        });
+    });
+
+    // ============================================
+    // Event Handler Tests
+    // ============================================
+
+    describe('handleFilterTabClick', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <button class="filter-tab active" data-filter="all">All</button>
+                <button class="filter-tab" data-filter="owned">Owned</button>
+                <button class="filter-tab" data-filter="shared">Shared</button>
+            `;
+            localThis.tabs = document.querySelectorAll('.filter-tab');
+            localThis.appState = { currentFilter: 'all' };
+            localThis.loadNotesFn = jest.fn();
+        });
+
+        it('should update active tab and filter', () => {
+            const ownedTab = document.querySelector('[data-filter="owned"]');
+            handleFilterTabClick(ownedTab, localThis.tabs, localThis.appState, localThis.loadNotesFn);
+            
+            expect(ownedTab.classList.contains('active')).toBe(true);
+            expect(document.querySelector('[data-filter="all"]').classList.contains('active')).toBe(false);
+            expect(localThis.appState.currentFilter).toBe('owned');
+            expect(localThis.loadNotesFn).toHaveBeenCalled();
+        });
+    });
+
+    describe('handleAutoRefreshChange', () => {
+        beforeEach(() => {
+            jest.useFakeTimers();
+            localThis.appState = { refreshInterval: null };
+            localThis.refreshFn = jest.fn();
+        });
+
+        it('should start interval when enabled', () => {
+            handleAutoRefreshChange(true, localThis.appState, localThis.refreshFn);
+            
+            expect(localThis.appState.refreshInterval).not.toBeNull();
+            
+            jest.advanceTimersByTime(5000);
+            expect(localThis.refreshFn).toHaveBeenCalledTimes(1);
+            
+            jest.advanceTimersByTime(5000);
+            expect(localThis.refreshFn).toHaveBeenCalledTimes(2);
+        });
+
+        it('should stop interval when disabled', () => {
+            handleAutoRefreshChange(true, localThis.appState, localThis.refreshFn);
+            handleAutoRefreshChange(false, localThis.appState, localThis.refreshFn);
+            
+            expect(localThis.appState.refreshInterval).toBeNull();
+            
+            jest.advanceTimersByTime(10000);
+            expect(localThis.refreshFn).toHaveBeenCalledTimes(0);
+        });
+    });
+
+    describe('clearRefreshInterval', () => {
+        beforeEach(() => {
+            jest.useFakeTimers();
+            localThis.appState = { refreshInterval: null };
+        });
+
+        it('should clear existing interval', () => {
+            localThis.appState.refreshInterval = setInterval(() => {}, 1000);
+            const intervalId = localThis.appState.refreshInterval;
+            
+            clearRefreshInterval(localThis.appState);
+            
+            expect(localThis.appState.refreshInterval).toBeNull();
+        });
+
+        it('should handle null interval gracefully', () => {
+            expect(() => clearRefreshInterval(localThis.appState)).not.toThrow();
+        });
+    });
+
+    describe('openSettings', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="apiKeySection" style="display: none;"></div>
+                <div id="mainContent"></div>
+                <input id="apiKeyInput" />
+            `;
+            localThis.elements = {
+                apiKeySection: document.getElementById('apiKeySection'),
+                mainContent: document.getElementById('mainContent'),
+                apiKeyInput: document.getElementById('apiKeyInput')
+            };
+        });
+
+        it('should pre-fill API key input and show section', () => {
+            openSettings(localThis.elements, 'existing-key');
+            
+            expect(localThis.elements.apiKeyInput.value).toBe('existing-key');
+            expect(localThis.elements.apiKeySection.style.display).toBe('flex');
+        });
+    });
+
+    // ============================================
+    // Initialization Tests
+    // ============================================
+
+    describe('checkApiKey', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="apiKeySection" style="display: none;"></div>
+                <div id="mainContent"></div>
+                <span id="keyIndicator"></span>
+            `;
+            localThis.elements = {
+                apiKeySection: document.getElementById('apiKeySection'),
+                mainContent: document.getElementById('mainContent'),
+                keyIndicator: document.getElementById('keyIndicator')
+            };
+        });
+
+        it('should show API key section when no key', () => {
+            const appState = { apiKey: null };
+            checkApiKey(localThis.elements, appState, {});
+            
+            expect(localThis.elements.apiKeySection.style.display).toBe('flex');
+        });
+
+        it('should hide section and call callback when key exists', () => {
+            const appState = { apiKey: 'valid-key-12345678901234567890' };
+            const onApiKeyValid = jest.fn();
+            
+            checkApiKey(localThis.elements, appState, { onApiKeyValid });
+            
+            expect(localThis.elements.apiKeySection.style.display).toBe('none');
+            expect(onApiKeyValid).toHaveBeenCalled();
+        });
+    });
+
+    describe('setupEventListeners', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <button id="saveApiKeyBtn"></button>
+                <input id="apiKeyInput" />
+                <button id="loadBtn"></button>
+                <input id="urlInput" />
+                <select id="domainSelect"></select>
+                <button class="filter-tab" data-filter="all"></button>
+                <input type="checkbox" id="autoRefresh" />
+                <button id="settingsBtn"></button>
+            `;
+            localThis.elements = {
+                saveApiKeyBtn: document.getElementById('saveApiKeyBtn'),
+                apiKeyInput: document.getElementById('apiKeyInput'),
+                loadBtn: document.getElementById('loadBtn'),
+                urlInput: document.getElementById('urlInput'),
+                domainSelect: document.getElementById('domainSelect'),
+                filterTabs: document.querySelectorAll('.filter-tab'),
+                autoRefreshCheckbox: document.getElementById('autoRefresh'),
+                settingsBtn: document.getElementById('settingsBtn')
+            };
+            localThis.appState = { currentFilter: 'all' };
+            localThis.handlers = {
+                onSaveApiKey: jest.fn(),
+                onLoadNotes: jest.fn(),
+                onDomainChange: jest.fn(),
+                onRefresh: jest.fn(),
+                onOpenSettings: jest.fn()
+            };
+        });
+
+        it('should set up save API key button click handler', () => {
+            setupEventListeners(localThis.elements, localThis.appState, localThis.handlers);
+            
+            localThis.elements.saveApiKeyBtn.click();
+            
+            expect(localThis.handlers.onSaveApiKey).toHaveBeenCalled();
+        });
+
+        it('should set up load button click handler', () => {
+            setupEventListeners(localThis.elements, localThis.appState, localThis.handlers);
+            
+            localThis.elements.loadBtn.click();
+            
+            expect(localThis.handlers.onLoadNotes).toHaveBeenCalled();
+        });
+
+        it('should set up settings button click handler', () => {
+            setupEventListeners(localThis.elements, localThis.appState, localThis.handlers);
+            
+            localThis.elements.settingsBtn.click();
+            
+            expect(localThis.handlers.onOpenSettings).toHaveBeenCalled();
+        });
+
+        it('should set up Enter key handler for API key input', () => {
+            setupEventListeners(localThis.elements, localThis.appState, localThis.handlers);
+            
+            const event = new KeyboardEvent('keypress', { key: 'Enter' });
+            localThis.elements.apiKeyInput.dispatchEvent(event);
+            
+            expect(localThis.handlers.onSaveApiKey).toHaveBeenCalled();
+        });
+    });
+
+    describe('setupCleanup', () => {
+        beforeEach(() => {
+            jest.useFakeTimers();
+            localThis.appState = { refreshInterval: setInterval(() => {}, 1000) };
+        });
+
+        it('should clear interval on beforeunload', () => {
+            setupCleanup(localThis.appState);
+            
+            const event = new Event('beforeunload');
+            window.dispatchEvent(event);
+            
+            expect(localThis.appState.refreshInterval).toBeNull();
         });
     });
 });
