@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     
-    <!-- Google Fonts -->
+    <!-- Google Fonts - Non-render-blocking -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
     
-    <link rel="stylesheet" href="css/generate-key.css">
+    <link rel="stylesheet" href="css/generate-key.min.css">
     
     <title>Generate API Key - Sticky Notes</title>
     <meta name="description" content="Generate an API key to use with Sticky Notes MCP server or dashboard">
@@ -69,6 +71,6 @@
         </div>
     </main>
 
-    <script type="module" src="js/generate-key.js"></script>
+    <script type="module" src="js/generate-key.min.js"></script>
 </body>
 </html>

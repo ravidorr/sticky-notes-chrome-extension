@@ -7,10 +7,12 @@
     <meta name="google-site-verification" content="7fWtIQvn3-ZOWcEe7M8TU5hVy_uy5guIh3k1uDowdhY" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     
-    <!-- Google Fonts -->
+    <!-- Google Fonts - Non-render-blocking -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
     
     <!-- Open Graph / Social -->
     <meta property="og:type" content="website">
@@ -28,7 +30,7 @@
     <title>Dashboard - Sticky Notes</title>
     <meta name="description" content="View and manage your Sticky Notes from any browser">
     <meta name="robots" content="noindex">
-    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/dashboard.min.css">
 </head>
 <body>
 
@@ -143,6 +145,6 @@
         </div>
     </main>
 
-    <script type="module" src="js/dashboard.js"></script>
+    <script type="module" src="js/dashboard.min.js"></script>
 </body>
 </html>

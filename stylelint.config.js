@@ -53,6 +53,8 @@ export default {
   ignoreFiles: [
     'node_modules/**',
     'dist/**',
-    'coverage/**'
+    'coverage/**',
+    '**/*.min.css',
+    '**/*.bundled.css'
   ]
 };

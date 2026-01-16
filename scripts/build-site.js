@@ -2,7 +2,7 @@
  * Site Build Script
  * 
  * Combines HTML partials with page templates to generate the final site files.
- * Also bundles CSS imports and minifies JavaScript for better performance.
+ * Also bundles CSS imports and minifies JavaScript and CSS for better performance.
  * 
  * Usage: node scripts/build-site.js
  */
@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { minify } from 'terser';
+import CleanCSS from 'clean-css';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -129,11 +130,17 @@ function bundleCss() {
 async function minifyJs() {
     console.log('  Minifying JavaScript...');
     
-    const jsFiles = ['scripts.js'];
+    const jsFiles = ['scripts.js', 'dashboard.js', 'generate-key.js'];
     
     for (const jsFile of jsFiles) {
         const inputPath = path.join(JS_DIR, jsFile);
         const outputPath = path.join(JS_DIR, jsFile.replace('.js', '.min.js'));
+        
+        // Skip if source file doesn't exist
+        if (!fs.existsSync(inputPath)) {
+            console.log(`    Skipping ${jsFile} (not found)`);
+            continue;
+        }
         
         try {
             const code = readFile(inputPath);
@@ -145,7 +152,8 @@ async function minifyJs() {
                 mangle: true,
                 format: {
                     comments: false
-                }
+                },
+                module: true  // Support ES modules
             });
             
             if (result.code) {
@@ -155,6 +163,48 @@ async function minifyJs() {
             }
         } catch (error) {
             console.error(`  Error minifying ${jsFile}:`, error.message);
+        }
+    }
+}
+
+/**
+ * Minify CSS files
+ */
+function minifyCss() {
+    console.log('  Minifying CSS...');
+    
+    const cssFiles = ['dashboard.css', 'generate-key.css', 'styles.bundled.css'];
+    const cleanCss = new CleanCSS({
+        level: 2,  // Advanced optimizations
+        format: false  // No formatting (fully minified)
+    });
+    
+    for (const cssFile of cssFiles) {
+        const inputPath = path.join(CSS_DIR, cssFile);
+        const outputPath = path.join(CSS_DIR, cssFile.replace('.css', '.min.css'));
+        
+        // Skip if source file doesn't exist
+        if (!fs.existsSync(inputPath)) {
+            console.log(`    Skipping ${cssFile} (not found)`);
+            continue;
+        }
+        
+        try {
+            const code = readFile(inputPath);
+            const result = cleanCss.minify(code);
+            
+            if (result.errors && result.errors.length > 0) {
+                console.error(`  Errors in ${cssFile}:`, result.errors);
+                continue;
+            }
+            
+            if (result.styles) {
+                writeFile(outputPath, result.styles);
+                const savings = ((1 - result.styles.length / code.length) * 100).toFixed(1);
+                console.log(`    ${cssFile}: ${code.length} -> ${result.styles.length} bytes (${savings}% reduction)`);
+            }
+        } catch (error) {
+            console.error(`  Error minifying ${cssFile}:`, error.message);
         }
     }
 }
@@ -207,6 +257,9 @@ async function build() {
     
     // Bundle CSS (eliminates render-blocking @import waterfall)
     bundleCss();
+    
+    // Minify CSS (after bundling to include bundled file)
+    minifyCss();
     
     // Minify JavaScript
     await minifyJs();
