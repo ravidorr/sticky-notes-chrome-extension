@@ -91,12 +91,18 @@
     font-weight: 700;
     font-size: 1.25rem;
     letter-spacing: -0.025em;
+    /* Explicit line-height to prevent CLS when fonts load */
+    line-height: 1.5;
 }
 
 .nav-link {
     color: var(--color-text-secondary);
     font-weight: 500;
     transition: color var(--transition);
+    /* Explicit dimensions to prevent CLS when fonts load */
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
 }
 
 .nav-link:hover {
@@ -154,7 +160,12 @@
     min-height: 44px;
 }
 
-.desktop-menu { display: none; }
+/* Desktop menu - explicit height prevents CLS when fonts load */
+.desktop-menu { 
+    display: none;
+    min-height: 44px; /* Matches button height */
+    align-items: center;
+}
 
 @media (min-width: 768px) {
     .mobile-menu-btn { display: none; }

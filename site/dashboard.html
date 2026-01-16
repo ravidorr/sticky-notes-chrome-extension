@@ -4,6 +4,9 @@
 <!-- htmlhint doctype-first:false -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.cloudfunctions.net; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
     <meta name="google-site-verification" content="7fWtIQvn3-ZOWcEe7M8TU5hVy_uy5guIh3k1uDowdhY" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     
@@ -30,7 +33,11 @@
     <title>Dashboard - Sticky Notes</title>
     <meta name="description" content="View and manage your Sticky Notes from any browser">
     <meta name="robots" content="noindex">
-    <link rel="stylesheet" href="css/dashboard.min.css">
+    
+    <!-- Non-render-blocking CSS -->
+    <link rel="preload" href="css/dashboard.min.css" as="style">
+    <link href="css/dashboard.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="css/dashboard.min.css" rel="stylesheet"></noscript>
 </head>
 <body>
 

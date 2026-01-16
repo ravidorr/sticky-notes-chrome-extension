@@ -949,13 +949,67 @@ describe('site/js/dashboard.js', () => {
             localThis.appState = { refreshInterval: setInterval(() => {}, 1000) };
         });
 
-        it('should clear interval on beforeunload', () => {
+        it('should clear interval on pagehide', () => {
             setupCleanup(localThis.appState);
             
-            const event = new Event('beforeunload');
+            const event = new Event('pagehide');
             window.dispatchEvent(event);
             
             expect(localThis.appState.refreshInterval).toBeNull();
+        });
+
+        it('should restore auto-refresh interval on pageshow from BFCache', () => {
+            // Setup: no interval initially, but checkbox is checked
+            localThis.appState = { 
+                refreshInterval: null, 
+                apiKey: 'test-key',
+                currentFilter: 'all'
+            };
+            
+            // Create auto-refresh checkbox
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = 'autoRefresh';
+            checkbox.checked = true;
+            document.body.appendChild(checkbox);
+            
+            setupCleanup(localThis.appState);
+            
+            // Simulate pageshow event from BFCache (persisted = true)
+            const event = new PageTransitionEvent('pageshow', { persisted: true });
+            window.dispatchEvent(event);
+            
+            // Should have restored the interval
+            expect(localThis.appState.refreshInterval).not.toBeNull();
+            
+            // Cleanup
+            document.body.removeChild(checkbox);
+            clearInterval(localThis.appState.refreshInterval);
+        });
+
+        it('should not restore interval on pageshow if not from BFCache', () => {
+            localThis.appState = { 
+                refreshInterval: null, 
+                apiKey: 'test-key',
+                currentFilter: 'all'
+            };
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = 'autoRefresh';
+            checkbox.checked = true;
+            document.body.appendChild(checkbox);
+            
+            setupCleanup(localThis.appState);
+            
+            // Simulate pageshow event NOT from BFCache (persisted = false)
+            const event = new PageTransitionEvent('pageshow', { persisted: false });
+            window.dispatchEvent(event);
+            
+            // Should NOT have created an interval
+            expect(localThis.appState.refreshInterval).toBeNull();
+            
+            document.body.removeChild(checkbox);
         });
     });
 });

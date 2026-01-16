@@ -666,12 +666,33 @@ function setupEventListeners(elements, appState, handlers = {}) {
 }
 
 /**
- * Set up cleanup on page unload
+ * Set up cleanup on page hide (supports BFCache)
+ * Using 'pagehide' instead of 'beforeunload' to allow back/forward cache
  * @param {Object} appState - Application state
  */
 function setupCleanup(appState) {
-    window.addEventListener('beforeunload', () => {
+    window.addEventListener('pagehide', () => {
         clearRefreshInterval(appState);
+    });
+    
+    // Restore state when page is shown from BFCache
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) {
+            // Page was restored from BFCache
+            // Re-check API key and refresh data if auto-refresh was enabled
+            const autoRefreshCheckbox = document.getElementById('autoRefresh');
+            if (autoRefreshCheckbox?.checked && !appState.refreshInterval) {
+                appState.refreshInterval = setInterval(() => {
+                    const elements = getDOMElements();
+                    loadStats(appState.apiKey, elements);
+                    loadNotes({
+                        apiKey: appState.apiKey,
+                        elements,
+                        currentFilter: appState.currentFilter
+                    });
+                }, 5000);
+            }
+        }
     });
 }
 

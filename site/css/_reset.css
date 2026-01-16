@@ -57,6 +57,20 @@
 }
 
 /* ============================================
+   Font Fallback Metrics
+   Prevents layout shift (CLS) when web fonts load
+   by matching fallback font metrics to Inter
+   ============================================ */
+@font-face {
+    font-family: 'Inter Fallback';
+    src: local('BlinkMacSystemFont'), local('Segoe UI'), local('Roboto'), local('Helvetica Neue'), local('Arial');
+    ascent-override: 90%;
+    descent-override: 22%;
+    line-gap-override: 0%;
+    size-adjust: 107%;
+}
+
+/* ============================================
    CSS Reset
    ============================================ */
 *,

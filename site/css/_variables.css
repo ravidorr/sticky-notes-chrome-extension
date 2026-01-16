@@ -2,8 +2,9 @@
    Design Tokens & CSS Variables
    ============================================ */
 :root {
-    /* Fonts */
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* Fonts - Inter Fallback is defined in _reset.css with adjusted metrics
+       to prevent layout shift (CLS) when web fonts load */
+    --font-sans: 'Inter', 'Inter Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-hand: 'Kalam', cursive;
 
     /* Slate Color Palette (base) */
