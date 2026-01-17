@@ -636,6 +636,23 @@ describe('Popup Handlers', () => {
       
       expect(result.success).toBe(true);
     });
+
+    it('should show error toast when export fails', async () => {
+      jest.spyOn(document, 'createElement').mockImplementation(() => {
+        throw new Error('Failed to create element');
+      });
+      
+      const notes = [
+        { id: '1', url: 'http://test.com', selector: '#main', content: 'Test', theme: 'yellow' }
+      ];
+      
+      const result = await localThis.handlers.handleExportCSV(notes, 'test.csv');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Failed to create element');
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+      expect(localThis.mockLog.error).toHaveBeenCalledWith('Export CSV error:', expect.any(Error));
+    });
   });
 
   describe('renderNoteItemExpanded', () => {

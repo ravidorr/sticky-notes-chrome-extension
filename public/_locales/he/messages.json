@@ -638,5 +638,128 @@
   "consolePromiseType": {
     "message": "Promise",
     "description": "Unhandled promise rejection type label"
+  },
+
+  "exportCSV": {
+    "message": "ייצא כ-CSV",
+    "description": "Button to export notes as CSV file"
+  },
+  "exportThisPage": {
+    "message": "ייצא פתקיות מדף זה",
+    "description": "Export only notes from current page"
+  },
+  "exportAllNotes": {
+    "message": "ייצא את כל הפתקיות",
+    "description": "Export all notes from all pages"
+  },
+  "deleteAllFromPage": {
+    "message": "מחק את כל הפתקיות מדף זה",
+    "description": "Button to delete all notes from current page"
+  },
+  "deleteAllNotes": {
+    "message": "מחק את כל הפתקיות",
+    "description": "Button to delete all notes from all pages"
+  },
+  "deleteAllFromPageConfirm": {
+    "message": "למחוק את כל $COUNT$ הפתקיות מדף זה? פעולה זו אינה ניתנת לביטול.",
+    "description": "Confirmation message for deleting all notes from page",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "deleteAllNotesConfirm": {
+    "message": "למחוק את כל $COUNT$ הפתקיות? פעולה זו אינה ניתנת לביטול.",
+    "description": "Confirmation message for deleting all notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "25"
+      }
+    }
+  },
+  "notesDeleted": {
+    "message": "$COUNT$ פתקיות נמחקו",
+    "description": "Toast message after deleting multiple notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "noteDeleted": {
+    "message": "הפתקית נמחקה",
+    "description": "Toast message after deleting a note"
+  },
+  "failedToDelete": {
+    "message": "מחיקת הפתקית נכשלה",
+    "description": "Error message when deletion fails"
+  },
+  "exportedNotes": {
+    "message": "$COUNT$ פתקיות יוצאו",
+    "description": "Toast message after exporting notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "10"
+      }
+    }
+  },
+  "noNotesToExport": {
+    "message": "אין פתקיות לייצוא",
+    "description": "Message when there are no notes to export"
+  },
+  "failedToExport": {
+    "message": "ייצוא הפתקיות נכשל",
+    "description": "Error message when export fails"
+  },
+  "moreActions": {
+    "message": "פעולות נוספות",
+    "description": "Tooltip for more actions button"
+  },
+  "viewMetadata": {
+    "message": "הצג פרטים",
+    "description": "Button to expand note and view metadata"
+  },
+  "hideMetadata": {
+    "message": "הסתר פרטים",
+    "description": "Button to collapse note metadata"
+  },
+  "createdAt": {
+    "message": "נוצר",
+    "description": "Label for creation date"
+  },
+  "updatedAt": {
+    "message": "עודכן",
+    "description": "Label for update date"
+  },
+  "theme": {
+    "message": "ערכת נושא",
+    "description": "Label for note theme/color"
+  },
+  "sharedWith": {
+    "message": "משותף עם",
+    "description": "Label for shared users"
+  },
+  "notShared": {
+    "message": "לא משותף",
+    "description": "Text when note is not shared with anyone"
+  },
+  "totalNotes": {
+    "message": "סה\"כ $COUNT$ פתקיות",
+    "description": "Footer text showing total notes count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "goToNote": {
+    "message": "עבור לפתקית",
+    "description": "Tooltip for clicking to jump to a note"
   }
 }

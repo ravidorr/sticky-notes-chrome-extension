@@ -712,6 +712,10 @@
     "message": "No notes to export",
     "description": "Message when there are no notes to export"
   },
+  "failedToExport": {
+    "message": "Failed to export notes",
+    "description": "Error message when export fails"
+  },
   "moreActions": {
     "message": "More actions",
     "description": "Tooltip for more actions button"

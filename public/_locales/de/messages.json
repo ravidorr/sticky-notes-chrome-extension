@@ -638,5 +638,128 @@
   "consolePromiseType": {
     "message": "Promise",
     "description": "Unhandled promise rejection type label"
+  },
+
+  "exportCSV": {
+    "message": "Als CSV exportieren",
+    "description": "Button to export notes as CSV file"
+  },
+  "exportThisPage": {
+    "message": "Notizen von dieser Seite exportieren",
+    "description": "Export only notes from current page"
+  },
+  "exportAllNotes": {
+    "message": "Alle Notizen exportieren",
+    "description": "Export all notes from all pages"
+  },
+  "deleteAllFromPage": {
+    "message": "Alle Notizen von dieser Seite loschen",
+    "description": "Button to delete all notes from current page"
+  },
+  "deleteAllNotes": {
+    "message": "Alle Notizen loschen",
+    "description": "Button to delete all notes from all pages"
+  },
+  "deleteAllFromPageConfirm": {
+    "message": "Alle $COUNT$ Notizen von dieser Seite loschen? Dies kann nicht ruckgangig gemacht werden.",
+    "description": "Confirmation message for deleting all notes from page",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "deleteAllNotesConfirm": {
+    "message": "Alle $COUNT$ Notizen loschen? Dies kann nicht ruckgangig gemacht werden.",
+    "description": "Confirmation message for deleting all notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "25"
+      }
+    }
+  },
+  "notesDeleted": {
+    "message": "$COUNT$ Notizen geloscht",
+    "description": "Toast message after deleting multiple notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "noteDeleted": {
+    "message": "Notiz geloscht",
+    "description": "Toast message after deleting a note"
+  },
+  "failedToDelete": {
+    "message": "Notiz konnte nicht geloscht werden",
+    "description": "Error message when deletion fails"
+  },
+  "exportedNotes": {
+    "message": "$COUNT$ Notizen exportiert",
+    "description": "Toast message after exporting notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "10"
+      }
+    }
+  },
+  "noNotesToExport": {
+    "message": "Keine Notizen zum Exportieren",
+    "description": "Message when there are no notes to export"
+  },
+  "failedToExport": {
+    "message": "Export der Notizen fehlgeschlagen",
+    "description": "Error message when export fails"
+  },
+  "moreActions": {
+    "message": "Weitere Aktionen",
+    "description": "Tooltip for more actions button"
+  },
+  "viewMetadata": {
+    "message": "Details anzeigen",
+    "description": "Button to expand note and view metadata"
+  },
+  "hideMetadata": {
+    "message": "Details ausblenden",
+    "description": "Button to collapse note metadata"
+  },
+  "createdAt": {
+    "message": "Erstellt",
+    "description": "Label for creation date"
+  },
+  "updatedAt": {
+    "message": "Aktualisiert",
+    "description": "Label for update date"
+  },
+  "theme": {
+    "message": "Thema",
+    "description": "Label for note theme/color"
+  },
+  "sharedWith": {
+    "message": "Geteilt mit",
+    "description": "Label for shared users"
+  },
+  "notShared": {
+    "message": "Nicht geteilt",
+    "description": "Text when note is not shared with anyone"
+  },
+  "totalNotes": {
+    "message": "$COUNT$ Notizen insgesamt",
+    "description": "Footer text showing total notes count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "goToNote": {
+    "message": "Zur Notiz gehen",
+    "description": "Tooltip for clicking to jump to a note"
   }
 }

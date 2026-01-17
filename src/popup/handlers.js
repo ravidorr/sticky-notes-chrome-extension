@@ -544,7 +544,7 @@ export function createPopupHandlers(deps = {}) {
     } catch (error) {
       log.error('Export CSV error:', error);
       if (showErrorToast) {
-        showErrorToast('Failed to export notes');
+        showErrorToast(t('failedToExport'));
       }
       return { success: false, error: error.message };
     }

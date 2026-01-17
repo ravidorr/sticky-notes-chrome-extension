@@ -638,5 +638,128 @@
   "consolePromiseType": {
     "message": "Promesse",
     "description": "Unhandled promise rejection type label"
+  },
+
+  "exportCSV": {
+    "message": "Exporter en CSV",
+    "description": "Button to export notes as CSV file"
+  },
+  "exportThisPage": {
+    "message": "Exporter les notes de cette page",
+    "description": "Export only notes from current page"
+  },
+  "exportAllNotes": {
+    "message": "Exporter toutes les notes",
+    "description": "Export all notes from all pages"
+  },
+  "deleteAllFromPage": {
+    "message": "Supprimer toutes les notes de cette page",
+    "description": "Button to delete all notes from current page"
+  },
+  "deleteAllNotes": {
+    "message": "Supprimer toutes les notes",
+    "description": "Button to delete all notes from all pages"
+  },
+  "deleteAllFromPageConfirm": {
+    "message": "Supprimer les $COUNT$ notes de cette page ? Cette action est irreversible.",
+    "description": "Confirmation message for deleting all notes from page",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "deleteAllNotesConfirm": {
+    "message": "Supprimer les $COUNT$ notes ? Cette action est irreversible.",
+    "description": "Confirmation message for deleting all notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "25"
+      }
+    }
+  },
+  "notesDeleted": {
+    "message": "$COUNT$ notes supprimees",
+    "description": "Toast message after deleting multiple notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "noteDeleted": {
+    "message": "Note supprimee",
+    "description": "Toast message after deleting a note"
+  },
+  "failedToDelete": {
+    "message": "Echec de la suppression de la note",
+    "description": "Error message when deletion fails"
+  },
+  "exportedNotes": {
+    "message": "$COUNT$ notes exportees",
+    "description": "Toast message after exporting notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "10"
+      }
+    }
+  },
+  "noNotesToExport": {
+    "message": "Aucune note a exporter",
+    "description": "Message when there are no notes to export"
+  },
+  "failedToExport": {
+    "message": "Echec de l'exportation des notes",
+    "description": "Error message when export fails"
+  },
+  "moreActions": {
+    "message": "Plus d'actions",
+    "description": "Tooltip for more actions button"
+  },
+  "viewMetadata": {
+    "message": "Voir les details",
+    "description": "Button to expand note and view metadata"
+  },
+  "hideMetadata": {
+    "message": "Masquer les details",
+    "description": "Button to collapse note metadata"
+  },
+  "createdAt": {
+    "message": "Cree le",
+    "description": "Label for creation date"
+  },
+  "updatedAt": {
+    "message": "Mis a jour le",
+    "description": "Label for update date"
+  },
+  "theme": {
+    "message": "Theme",
+    "description": "Label for note theme/color"
+  },
+  "sharedWith": {
+    "message": "Partage avec",
+    "description": "Label for shared users"
+  },
+  "notShared": {
+    "message": "Non partage",
+    "description": "Text when note is not shared with anyone"
+  },
+  "totalNotes": {
+    "message": "$COUNT$ notes au total",
+    "description": "Footer text showing total notes count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "goToNote": {
+    "message": "Aller a la note",
+    "description": "Tooltip for clicking to jump to a note"
   }
 }
