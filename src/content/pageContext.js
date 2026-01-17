@@ -2,6 +2,10 @@
  * Page Context Script
  * Runs in the MAIN world (page context) to capture console errors
  * This script has access to the page's console object
+ * 
+ * IMPORTANT: This script runs at document_start, before the content script's
+ * ConsoleCapture listener is ready (which runs at document_idle). We buffer
+ * errors until the listener signals readiness via window.__stickyNotesListenerReady.
  */
 
 (function() {
@@ -9,11 +13,37 @@
   if (window.__stickyNotesConsoleCapture) return;
   window.__stickyNotesConsoleCapture = true;
   
+  // Maximum number of errors to buffer before listener is ready
+  // This prevents memory issues if many errors occur before initialization
+  const MAX_BUFFER_SIZE = 50;
+  
+  // Initialize the error buffer for errors that occur before listener is ready
+  // ConsoleCapture.js will read from this buffer when it initializes
+  window.__stickyNotesErrorBuffer = [];
+  
+  /**
+   * Send error to content script, buffering if listener is not ready.
+   * The content script's ConsoleCapture sets window.__stickyNotesListenerReady = true
+   * when it's ready to receive events directly.
+   */
   function sendError(errorData) {
-    // Send to content script via custom event
-    window.dispatchEvent(new CustomEvent('__stickyNotesError', {
-      detail: errorData
-    }));
+    if (window.__stickyNotesListenerReady) {
+      // Listener is ready, dispatch event directly
+      window.dispatchEvent(new CustomEvent('__stickyNotesError', {
+        detail: errorData
+      }));
+    } else {
+      // Listener not ready yet, buffer the error
+      // ConsoleCapture.processBufferedErrors() will process these when ready
+      if (window.__stickyNotesErrorBuffer.length < MAX_BUFFER_SIZE) {
+        window.__stickyNotesErrorBuffer.push(errorData);
+      }
+      // If buffer is full, silently drop oldest errors to make room
+      else {
+        window.__stickyNotesErrorBuffer.shift();
+        window.__stickyNotesErrorBuffer.push(errorData);
+      }
+    }
   }
   
   // Convert any value to a useful string representation
@@ -39,13 +69,13 @@
         try {
           const str = JSON.stringify(arg, null, 0);
           return str.length > 200 ? str.substring(0, 197) + '...' : str;
-        } catch (e) {
+        } catch {
           // Circular reference or other JSON error
           return Object.prototype.toString.call(arg);
         }
       }
       return String(arg);
-    } catch (ex) {
+    } catch {
       return '[Unable to stringify]';
     }
   }
@@ -98,7 +128,7 @@
       } else if (event.reason) {
         message = stringify(event.reason);
       }
-    } catch (ex) {
+    } catch {
       message = 'Unhandled Promise Rejection (unable to get details)';
     }
     
