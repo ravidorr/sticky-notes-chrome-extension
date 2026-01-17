@@ -100,7 +100,7 @@ Features that differentiate for developer and QA workflows:
 - [x] Display metadata in collapsible panel on note
 - [x] Relative timestamp display ("1 minute ago")
 - [x] Environment tagging (auto-detect local/dev/staging/production with override)
-- [] Console errors capture (optional)
+- [x] Console errors capture
 
 ### Screenshot & Export
 - [] Screenshot on note creation

@@ -30,6 +30,7 @@ export class NoteManager {
    * @param {Function} options.subscribeToComments - Function to subscribe to comments
    * @param {Function} options.unsubscribeFromComments - Function to unsubscribe from comments
    * @param {Function} options.showReanchorUI - Function to show reanchor UI
+   * @param {Function} options.getConsoleErrors - Function to get recent console errors
    */
   constructor(options) {
     this.notes = options.notes;
@@ -46,6 +47,7 @@ export class NoteManager {
     this.subscribeToComments = options.subscribeToComments;
     this.unsubscribeFromComments = options.unsubscribeFromComments;
     this.showReanchorUI = options.showReanchorUI;
+    this.getConsoleErrors = options.getConsoleErrors || (() => []);
     
     // Track notes waiting for their anchor elements to appear (for SPAs)
     this.pendingNotes = new Map();
@@ -572,6 +574,7 @@ export class NoteManager {
     const tabUrl = this.getTabUrl();
     const frameUrl = this.getFrameUrl();
     const currentUrl = frameUrl || window.location.href;
+    const consoleErrors = this.getConsoleErrors();
     const noteData = {
       url: this.getCurrentUrl(),
       selector: selector,
@@ -588,7 +591,8 @@ export class NoteManager {
         timestamp: new Date().toISOString(),
         isTopFrame: isTopFrame,
         frameUrl: isTopFrame ? null : frameUrl,
-        environment: detectEnvironment(currentUrl)
+        environment: detectEnvironment(currentUrl),
+        consoleErrors: consoleErrors.length > 0 ? consoleErrors : undefined
       }
     };
     
@@ -632,6 +636,7 @@ export class NoteManager {
     const tabUrl = this.getTabUrl();
     const frameUrl = this.getFrameUrl();
     const currentUrl = frameUrl || window.location.href;
+    const consoleErrors = this.getConsoleErrors();
     const noteData = {
       url: this.getCurrentUrl(),
       selector: selector,
@@ -648,7 +653,8 @@ export class NoteManager {
         timestamp: new Date().toISOString(),
         isTopFrame: isTopFrame,
         frameUrl: isTopFrame ? null : frameUrl,
-        environment: detectEnvironment(currentUrl)
+        environment: detectEnvironment(currentUrl),
+        consoleErrors: consoleErrors.length > 0 ? consoleErrors : undefined
       }
     };
 

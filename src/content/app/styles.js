@@ -865,6 +865,122 @@ export function getShadowStyles() {
     }
     
     /* ==========================================
+       Console Errors Section
+       ========================================== */
+    .sn-console-errors-section {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .sn-console-errors-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      padding: 6px 0;
+      border: none;
+      background: transparent;
+      color: #dc2626;
+      cursor: pointer;
+      font-size: 11px;
+      font-family: inherit;
+      text-align: left;
+      transition: opacity 0.15s ease;
+    }
+    
+    .sn-console-errors-toggle:hover {
+      opacity: 0.8;
+    }
+    
+    .sn-console-errors-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+    
+    .sn-console-errors-label {
+      font-weight: 500;
+    }
+    
+    .sn-console-errors-count {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    
+    .sn-console-errors-chevron {
+      width: 12px;
+      height: 12px;
+      margin-left: auto;
+      transition: transform 0.2s ease;
+    }
+    
+    .sn-console-errors-list {
+      padding: 6px 0;
+    }
+    
+    .sn-console-errors-list.sn-hidden {
+      display: none;
+    }
+    
+    .sn-console-error-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 6px 8px;
+      margin-bottom: 4px;
+      background: rgba(0, 0, 0, 0.03);
+      border-radius: 4px;
+      border-left: 3px solid #dc2626;
+    }
+    
+    .sn-console-error-item.sn-console-error-console-warn {
+      border-left-color: #d97706;
+    }
+    
+    .sn-console-error-item.sn-console-error-exception {
+      border-left-color: #dc2626;
+    }
+    
+    .sn-console-error-item.sn-console-error-unhandledrejection {
+      border-left-color: #7c3aed;
+    }
+    
+    .sn-console-error-type {
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #dc2626;
+    }
+    
+    .sn-console-error-console-warn .sn-console-error-type {
+      color: #d97706;
+    }
+    
+    .sn-console-error-unhandledrejection .sn-console-error-type {
+      color: #7c3aed;
+    }
+    
+    .sn-console-error-message {
+      font-size: 10px;
+      color: #374151;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      word-break: break-word;
+      white-space: pre-wrap;
+      max-height: 60px;
+      overflow: hidden;
+    }
+    
+    .sn-console-error-time {
+      font-size: 9px;
+      color: #9ca3af;
+    }
+
+    /* ==========================================
        Minimized State & Animation
        ========================================== */
     .sn-note.sn-minimized {

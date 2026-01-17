@@ -603,5 +603,40 @@
   "changeEnvironment": {
     "message": "Cliquer pour changer l'environnement",
     "description": "Tooltip for environment badge"
+  },
+
+  "metadataConsoleErrors": {
+    "message": "Erreurs console",
+    "description": "Metadata label for console errors"
+  },
+  "consoleErrorsCount": {
+    "message": "$COUNT$ erreurs capturees",
+    "description": "Number of console errors captured",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "noConsoleErrors": {
+    "message": "Aucune erreur capturee",
+    "description": "Message when no console errors"
+  },
+  "consoleErrorType": {
+    "message": "Erreur",
+    "description": "Console error type label"
+  },
+  "consoleWarnType": {
+    "message": "Avertissement",
+    "description": "Console warning type label"
+  },
+  "consoleExceptionType": {
+    "message": "Exception",
+    "description": "Uncaught exception type label"
+  },
+  "consolePromiseType": {
+    "message": "Promesse",
+    "description": "Unhandled promise rejection type label"
   }
 }

@@ -292,6 +292,7 @@ export class StickyNote {
               </svg>
             </button>
           </div>
+          ${this.renderConsoleErrors()}
         </div>
       </div>
     `;
@@ -351,6 +352,67 @@ export class StickyNote {
   truncateSelector(selector) {
     if (!selector) return '';
     return selector.length > 35 ? selector.substring(0, 32) + '...' : selector;
+  }
+  
+  /**
+   * Render console errors section for metadata panel
+   * @returns {string} HTML string for console errors section
+   */
+  renderConsoleErrors() {
+    const errors = this.metadata.consoleErrors || [];
+    
+    if (errors.length === 0) {
+      return '';
+    }
+    
+    const errorItems = errors.map(err => {
+      const typeLabel = this.getErrorTypeLabel(err.type);
+      const message = escapeHtml(err.message || '').substring(0, 200);
+      const timestamp = err.timestamp ? new Date(err.timestamp).toLocaleTimeString() : '';
+      
+      return `
+        <div class="sn-console-error-item sn-console-error-${err.type.replace('.', '-')}">
+          <span class="sn-console-error-type">${typeLabel}</span>
+          <span class="sn-console-error-message" title="${escapeHtml(err.message || '')}">${message}</span>
+          ${timestamp ? `<span class="sn-console-error-time">${timestamp}</span>` : ''}
+        </div>
+      `;
+    }).join('');
+    
+    return `
+      <div class="sn-console-errors-section">
+        <button class="sn-console-errors-toggle">
+          <svg class="sn-console-errors-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span class="sn-console-errors-label">${t('metadataConsoleErrors')}</span>
+          <span class="sn-console-errors-count">${errors.length}</span>
+          <svg class="sn-console-errors-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <div class="sn-console-errors-list sn-hidden">
+          ${errorItems}
+        </div>
+      </div>
+    `;
+  }
+  
+  /**
+   * Get translated label for error type
+   * @param {string} type - Error type
+   * @returns {string} Translated label
+   */
+  getErrorTypeLabel(type) {
+    switch (type) {
+      case 'console.error': return t('consoleErrorType');
+      case 'console.warn': return t('consoleWarnType');
+      case 'exception': return t('consoleExceptionType');
+      case 'unhandledrejection': return t('consolePromiseType');
+      default: return type;
+    }
   }
   
   /**
@@ -423,6 +485,12 @@ export class StickyNote {
     copyButtons.forEach(btn => {
       btn.addEventListener('click', this.handleMetadataCopy.bind(this));
     });
+    
+    // Console errors toggle (if present)
+    const consoleErrorsToggle = this.element.querySelector('.sn-console-errors-toggle');
+    if (consoleErrorsToggle) {
+      consoleErrorsToggle.addEventListener('click', this.toggleConsoleErrors.bind(this));
+    }
     
     // Environment badge and dropdown
     const envBadge = this.element.querySelector('.sn-environment-badge');
@@ -614,6 +682,25 @@ export class StickyNote {
     } else {
       panel.classList.add('sn-hidden');
       chevron.style.transform = '';
+    }
+  }
+  
+  /**
+   * Toggle console errors list visibility
+   * @param {MouseEvent} event - Click event
+   */
+  toggleConsoleErrors(event) {
+    event.stopPropagation();
+    
+    const list = this.element.querySelector('.sn-console-errors-list');
+    const chevron = this.element.querySelector('.sn-console-errors-chevron');
+    
+    if (list) {
+      const isHidden = list.classList.contains('sn-hidden');
+      list.classList.toggle('sn-hidden');
+      if (chevron) {
+        chevron.style.transform = isHidden ? 'rotate(180deg)' : '';
+      }
     }
   }
   

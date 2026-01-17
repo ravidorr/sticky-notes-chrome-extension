@@ -603,5 +603,40 @@
   "changeEnvironment": {
     "message": "לחץ לשינוי סביבה",
     "description": "Tooltip for environment badge"
+  },
+
+  "metadataConsoleErrors": {
+    "message": "שגיאות קונסול",
+    "description": "Metadata label for console errors"
+  },
+  "consoleErrorsCount": {
+    "message": "$COUNT$ שגיאות נלכדו",
+    "description": "Number of console errors captured",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "noConsoleErrors": {
+    "message": "לא נלכדו שגיאות",
+    "description": "Message when no console errors"
+  },
+  "consoleErrorType": {
+    "message": "שגיאה",
+    "description": "Console error type label"
+  },
+  "consoleWarnType": {
+    "message": "אזהרה",
+    "description": "Console warning type label"
+  },
+  "consoleExceptionType": {
+    "message": "חריגה",
+    "description": "Uncaught exception type label"
+  },
+  "consolePromiseType": {
+    "message": "Promise",
+    "description": "Unhandled promise rejection type label"
   }
 }

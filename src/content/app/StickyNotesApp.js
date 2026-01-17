@@ -5,6 +5,7 @@
 
 import { SelectorEngine } from '../selectors/SelectorEngine.js';
 import { VisibilityManager } from '../observers/VisibilityManager.js';
+import { getConsoleCapture } from '../observers/ConsoleCapture.js';
 import { contentLogger as log } from '../../shared/logger.js';
 import { createCompositeUrl } from '../../shared/utils.js';
 import { RealtimeSync } from './RealtimeSync.js';
@@ -38,6 +39,7 @@ export class StickyNotesApp {
     // Services
     this.selectorEngine = new SelectorEngine();
     this.visibilityManager = new VisibilityManager();
+    this.consoleCapture = getConsoleCapture();
     
     // Initialize modules (will be set up in init())
     this.uiManager = null;
@@ -68,6 +70,10 @@ export class StickyNotesApp {
     log.debug(' init() started');
     log.debug(' Frame type:', this.isTopFrame ? 'top frame' : 'iframe');
     try {
+      // Initialize console capture early to catch errors during page load
+      this.consoleCapture.init();
+      log.debug(' Console capture initialized');
+      
       // Initialize UI Manager first
       this.uiManager = new UIManager({
         onElementSelect: (element, pendingReanchor) => 
@@ -126,7 +132,8 @@ export class StickyNotesApp {
         isTopFrame: () => this.isTopFrame,
         subscribeToComments: (noteId) => this.realtimeSync.subscribeToComments(noteId),
         unsubscribeFromComments: (noteId) => this.realtimeSync.unsubscribeFromComments(noteId),
-        showReanchorUI: (noteData) => this.uiManager.showReanchorUI(noteData)
+        showReanchorUI: (noteData) => this.uiManager.showReanchorUI(noteData),
+        getConsoleErrors: () => this.consoleCapture.getRecentErrors(5)
       });
       
       // Initialize Message Handler
