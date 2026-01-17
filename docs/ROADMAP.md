@@ -138,7 +138,7 @@ Features that differentiate for developer and QA workflows:
 - [x] "Copy as Markdown" - generates bug report template
 - [x] "Copy screenshot" - one-click annotated screenshot
 - [] Shareable link that highlights the element
-- [] Export all notes as JSON
+- [x] Export all notes as JSON
 - [] Export all notes as CSV
 
 ### Issue Tracking Integration
