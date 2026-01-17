@@ -23,7 +23,10 @@ export class ConsoleCapture {
   /**
    * Initialize console capture
    * Listens for errors sent from the page context script (pageContext.js)
-   * which runs in the MAIN world and captures console errors
+   * which runs in the MAIN world and captures console errors.
+   * 
+   * IMPORTANT: pageContext.js runs at document_start and may buffer errors
+   * before this listener is ready. We process any buffered errors here.
    */
   init() {
     if (this.isInitialized) return;
@@ -33,7 +36,44 @@ export class ConsoleCapture {
     // The pageContext.js script (running in MAIN world) dispatches these
     window.addEventListener('__stickyNotesError', this.handleCapturedError.bind(this));
     
+    // Process any errors that were buffered before we could listen
+    // pageContext.js buffers errors until we signal readiness
+    this.processBufferedErrors();
+    
+    // Signal to pageContext.js that we're ready to receive events directly
+    window.__stickyNotesListenerReady = true;
+    
     log.debug('ConsoleCapture initialized - listening for page context errors');
+  }
+  
+  /**
+   * Process errors that were buffered by pageContext.js before we initialized.
+   * This handles the timing gap between document_start (when pageContext.js runs)
+   * and document_idle (when this listener is registered).
+   */
+  processBufferedErrors() {
+    const buffer = window.__stickyNotesErrorBuffer;
+    if (!buffer || !Array.isArray(buffer)) return;
+    
+    const bufferedCount = buffer.length;
+    if (bufferedCount > 0) {
+      log.debug(`Processing ${bufferedCount} buffered errors from pageContext.js`);
+      
+      // Process each buffered error
+      for (const errorData of buffer) {
+        if (errorData) {
+          this.errors.push(errorData);
+        }
+      }
+      
+      // Trim to MAX_ERRORS if we exceeded it
+      while (this.errors.length > MAX_ERRORS) {
+        this.errors.shift();
+      }
+      
+      // Clear the buffer
+      window.__stickyNotesErrorBuffer = [];
+    }
   }
   
   /**

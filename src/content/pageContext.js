@@ -9,8 +9,6 @@
   if (window.__stickyNotesConsoleCapture) return;
   window.__stickyNotesConsoleCapture = true;
   
-  const MAX_ERRORS = 20;
-  
   function sendError(errorData) {
     // Send to content script via custom event
     window.dispatchEvent(new CustomEvent('__stickyNotesError', {
@@ -18,39 +16,60 @@
     }));
   }
   
+  // Convert any value to a useful string representation
+  function stringify(arg) {
+    try {
+      if (arg === null) return 'null';
+      if (arg === undefined) return 'undefined';
+      if (arg instanceof Error) {
+        return arg.message + (arg.stack ? '\n' + arg.stack : '');
+      }
+      if (arg instanceof Element) {
+        const id = arg.id ? '#' + arg.id : '';
+        const cls = arg.className && typeof arg.className === 'string' 
+          ? '.' + arg.className.trim().split(/\s+/).join('.') 
+          : '';
+        return arg.tagName.toLowerCase() + id + cls;
+      }
+      if (arg instanceof ShadowRoot) {
+        const host = arg.host;
+        return 'ShadowRoot(' + (host ? host.tagName.toLowerCase() : 'unknown') + ')';
+      }
+      if (typeof arg === 'object') {
+        try {
+          const str = JSON.stringify(arg, null, 0);
+          return str.length > 200 ? str.substring(0, 197) + '...' : str;
+        } catch (e) {
+          // Circular reference or other JSON error
+          return Object.prototype.toString.call(arg);
+        }
+      }
+      return String(arg);
+    } catch (ex) {
+      return '[Unable to stringify]';
+    }
+  }
+  
   // Capture console.error
   const originalError = console.error;
-  console.error = function(...args) {
+  console.error = function() {
+    const args = Array.prototype.slice.call(arguments);
     const errorData = {
       type: 'console.error',
-      message: args.map((arg) => {
-        try {
-          if (arg instanceof Error) {
-            return arg.message + (arg.stack ? '\n' + arg.stack : '');
-          }
-          return String(arg);
-        } catch (ex) {
-          return '[Unable to stringify]';
-        }
-      }).join(' '),
+      message: args.map(stringify).join(' '),
       timestamp: Date.now()
     };
     sendError(errorData);
     return originalError.apply(console, args);
   };
   
-  // Capture console.warn (useful for warnings)
+  // Capture console.warn
   const originalWarn = console.warn;
-  console.warn = function(...args) {
+  console.warn = function() {
+    const args = Array.prototype.slice.call(arguments);
     const errorData = {
       type: 'console.warn',
-      message: args.map((arg) => {
-        try {
-          return String(arg);
-        } catch (ex) {
-          return '[Unable to stringify]';
-        }
-      }).join(' '),
+      message: args.map(stringify).join(' '),
       timestamp: Date.now()
     };
     sendError(errorData);
@@ -77,7 +96,7 @@
       if (event.reason instanceof Error) {
         message = event.reason.message + (event.reason.stack ? '\n' + event.reason.stack : '');
       } else if (event.reason) {
-        message = String(event.reason);
+        message = stringify(event.reason);
       }
     } catch (ex) {
       message = 'Unhandled Promise Rejection (unable to get details)';

@@ -38,6 +38,10 @@ describe('ConsoleCapture', () => {
     if (localThis.consoleCapture) {
       localThis.consoleCapture.clear();
     }
+    
+    // Clean up window globals used for buffering
+    delete window.__stickyNotesErrorBuffer;
+    delete window.__stickyNotesListenerReady;
   });
   
   describe('constructor', () => {
@@ -71,6 +75,91 @@ describe('ConsoleCapture', () => {
       
       // Should only add listener once
       expect(localThis.eventListeners['__stickyNotesError']?.length || 0).toBe(1);
+    });
+    
+    it('should set listener ready flag on window', () => {
+      localThis.consoleCapture.init();
+      expect(window.__stickyNotesListenerReady).toBe(true);
+    });
+    
+    it('should process buffered errors on init', () => {
+      // Set up buffer with errors before init
+      window.__stickyNotesErrorBuffer = [
+        { type: 'console.error', message: 'Early error 1', timestamp: Date.now() },
+        { type: 'exception', message: 'Early error 2', timestamp: Date.now() }
+      ];
+      
+      localThis.consoleCapture.init();
+      
+      expect(localThis.consoleCapture.errors).toHaveLength(2);
+      expect(localThis.consoleCapture.errors[0].message).toBe('Early error 1');
+      expect(localThis.consoleCapture.errors[1].message).toBe('Early error 2');
+    });
+    
+    it('should clear buffer after processing', () => {
+      window.__stickyNotesErrorBuffer = [
+        { type: 'console.error', message: 'Buffered error', timestamp: Date.now() }
+      ];
+      
+      localThis.consoleCapture.init();
+      
+      expect(window.__stickyNotesErrorBuffer).toEqual([]);
+    });
+  });
+  
+  describe('processBufferedErrors', () => {
+    it('should handle missing buffer gracefully', () => {
+      delete window.__stickyNotesErrorBuffer;
+      
+      expect(() => localThis.consoleCapture.processBufferedErrors()).not.toThrow();
+      expect(localThis.consoleCapture.errors).toHaveLength(0);
+    });
+    
+    it('should handle non-array buffer gracefully', () => {
+      window.__stickyNotesErrorBuffer = 'not an array';
+      
+      expect(() => localThis.consoleCapture.processBufferedErrors()).not.toThrow();
+      expect(localThis.consoleCapture.errors).toHaveLength(0);
+    });
+    
+    it('should handle empty buffer', () => {
+      window.__stickyNotesErrorBuffer = [];
+      
+      localThis.consoleCapture.processBufferedErrors();
+      
+      expect(localThis.consoleCapture.errors).toHaveLength(0);
+    });
+    
+    it('should skip null entries in buffer', () => {
+      window.__stickyNotesErrorBuffer = [
+        null,
+        { type: 'console.error', message: 'Valid error', timestamp: Date.now() },
+        null
+      ];
+      
+      localThis.consoleCapture.processBufferedErrors();
+      
+      expect(localThis.consoleCapture.errors).toHaveLength(1);
+      expect(localThis.consoleCapture.errors[0].message).toBe('Valid error');
+    });
+    
+    it('should trim to MAX_ERRORS when buffer exceeds limit', () => {
+      // Create buffer with 25 errors
+      window.__stickyNotesErrorBuffer = [];
+      for (let i = 0; i < 25; i++) {
+        window.__stickyNotesErrorBuffer.push({
+          type: 'console.error',
+          message: `Buffered error ${i}`,
+          timestamp: Date.now() + i
+        });
+      }
+      
+      localThis.consoleCapture.processBufferedErrors();
+      
+      // Should be trimmed to MAX_ERRORS (20)
+      expect(localThis.consoleCapture.errors.length).toBeLessThanOrEqual(20);
+      // Should keep the most recent (later indices)
+      expect(localThis.consoleCapture.errors[localThis.consoleCapture.errors.length - 1].message).toBe('Buffered error 24');
     });
   });
   
