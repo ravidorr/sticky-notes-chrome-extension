@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
   "permissions": [
@@ -51,7 +51,7 @@
     }
   ],
   "oauth2": {
-    "client_id": "413613230006-c8044e50sohrq813h1ejfjdojfcsfa2n.apps.googleusercontent.com",
+    "client_id": "413613230006-hd5340hlkdvg0ebgvmgd587a5fdsggn6.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile"

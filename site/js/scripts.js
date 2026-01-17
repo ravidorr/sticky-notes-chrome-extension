@@ -575,8 +575,7 @@ function initDemo(selectors = {}) {
  */
 const STORE_URLS = {
     chrome: 'https://chrome.google.com/webstore/detail/miahokcndajlgenbmbdfnbaampbfmneh',
-    // Edge Add-ons URL will be updated once extension is published
-    edge: 'https://microsoftedge.microsoft.com/addons/detail/sticky-notes/TODO_EDGE_EXTENSION_ID'
+    edge: 'https://microsoftedge.microsoft.com/addons/detail/sticky-notes/ollaooeaifoelbimhjljjjbiifenmoaa'
 };
 
 /**
@@ -618,12 +617,14 @@ function updateInstallButtons() {
             url: STORE_URLS.chrome,
             logo: 'images/chrome-logo.svg',
             text: 'Install Free Chrome Extension',
+            navText: 'Add to Chrome',
             ctaText: 'Get Sticky Notes Free'
         },
         edge: {
             url: STORE_URLS.edge,
             logo: 'images/edge-logo.svg',
             text: 'Install Free Edge Extension',
+            navText: 'Add to Edge',
             ctaText: 'Get Sticky Notes Free'
         }
     };
@@ -640,12 +641,21 @@ function updateInstallButtons() {
             img.setAttribute('src', cfg.logo);
         }
         
-        // Update button text - check for .btn-text span first, then use data attribute
+        // Update button text - check for .btn-text span first
         const textSpan = btn.querySelector('.btn-text');
         if (textSpan) {
-            // Use cta text for CTA buttons, regular text otherwise
+            // Determine which text to use based on button type
             const isCta = btn.classList.contains('btn-cta');
-            textSpan.textContent = isCta ? cfg.ctaText : cfg.text;
+            const isLarge = btn.classList.contains('btn-lg');
+            
+            if (isCta) {
+                textSpan.textContent = cfg.ctaText;
+            } else if (isLarge) {
+                textSpan.textContent = cfg.text;
+            } else {
+                // Nav buttons use shorter text
+                textSpan.textContent = cfg.navText;
+            }
         }
     });
 }

@@ -1215,11 +1215,18 @@ describe('site/scripts.js', () => {
 
         describe('updateInstallButtons', () => {
             beforeEach(() => {
-                // Set up DOM with install buttons
+                // Set up DOM with different button types:
+                // - Large button (hero): btn-lg
+                // - Nav button: no btn-lg, no btn-cta
+                // - CTA button: btn-cta
                 document.body.innerHTML = `
+                    <a href="#" data-install-btn class="btn btn-lg">
+                        <img src="images/chrome-logo.svg" alt="">
+                        <span class="btn-text">Install Free Chrome Extension</span>
+                    </a>
                     <a href="#" data-install-btn class="btn">
                         <img src="images/chrome-logo.svg" alt="">
-                        <span class="btn-text">Install Chrome Extension</span>
+                        <span class="btn-text">Add to Chrome</span>
                     </a>
                     <a href="#" data-install-btn class="btn btn-cta">
                         <img src="images/chrome-logo.svg" alt="">
@@ -1261,7 +1268,7 @@ describe('site/scripts.js', () => {
                 });
             });
 
-            it('should update button text for Edge', () => {
+            it('should update button text for Edge based on button type', () => {
                 Object.defineProperty(navigator, 'userAgentData', {
                     value: {
                         brands: [{ brand: 'Microsoft Edge', version: '120' }]
@@ -1271,8 +1278,17 @@ describe('site/scripts.js', () => {
 
                 updateInstallButtons();
 
-                const regularBtn = document.querySelector('[data-install-btn]:not(.btn-cta)');
-                expect(regularBtn.querySelector('.btn-text').textContent).toBe('Install Free Edge Extension');
+                // Large button (hero) should get full text
+                const largeBtn = document.querySelector('[data-install-btn].btn-lg');
+                expect(largeBtn.querySelector('.btn-text').textContent).toBe('Install Free Edge Extension');
+
+                // Nav button (no btn-lg, no btn-cta) should get short text
+                const navBtn = document.querySelector('[data-install-btn]:not(.btn-lg):not(.btn-cta)');
+                expect(navBtn.querySelector('.btn-text').textContent).toBe('Add to Edge');
+
+                // CTA button should keep generic text
+                const ctaBtn = document.querySelector('[data-install-btn].btn-cta');
+                expect(ctaBtn.querySelector('.btn-text').textContent).toBe('Get Sticky Notes Free');
             });
 
             it('should handle buttons without images gracefully', () => {
