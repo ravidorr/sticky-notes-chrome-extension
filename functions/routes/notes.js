@@ -327,6 +327,7 @@ router.get('/search', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
           selector: data.selector,
           content: data.content,
           theme: data.theme,
+          metadata: data.metadata,
           isShared,
           ownerEmail: data.ownerEmail,
           matchedIn: [

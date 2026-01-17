@@ -13,6 +13,8 @@ import {
     getSafeUrl,
     stripHtml,
     formatDate,
+    getErrorTypeLabel,
+    renderConsoleErrors,
     // DOM helpers
     showStatus,
     // UI functions
@@ -166,6 +168,165 @@ describe('site/js/dashboard.js', () => {
             expect(formatDate(null)).toBe('Unknown date');
             expect(formatDate(undefined)).toBe('Unknown date');
             expect(formatDate('')).toBe('Unknown date');
+        });
+    });
+
+    describe('getErrorTypeLabel', () => {
+        it('should return "Error" for console.error', () => {
+            expect(getErrorTypeLabel('console.error')).toBe('Error');
+        });
+
+        it('should return "Warning" for console.warn', () => {
+            expect(getErrorTypeLabel('console.warn')).toBe('Warning');
+        });
+
+        it('should return "Exception" for exception', () => {
+            expect(getErrorTypeLabel('exception')).toBe('Exception');
+        });
+
+        it('should return "Promise" for unhandledrejection', () => {
+            expect(getErrorTypeLabel('unhandledrejection')).toBe('Promise');
+        });
+
+        it('should return the type itself for unknown types', () => {
+            expect(getErrorTypeLabel('unknown')).toBe('unknown');
+            expect(getErrorTypeLabel('custom.error')).toBe('custom.error');
+        });
+    });
+
+    describe('renderConsoleErrors', () => {
+        it('should return empty string for null/undefined errors', () => {
+            expect(renderConsoleErrors(null)).toBe('');
+            expect(renderConsoleErrors(undefined)).toBe('');
+        });
+
+        it('should return empty string for empty array', () => {
+            expect(renderConsoleErrors([])).toBe('');
+        });
+
+        it('should render console errors section', () => {
+            const errors = [
+                { type: 'console.error', message: 'Test error message', timestamp: Date.now() }
+            ];
+            
+            const html = renderConsoleErrors(errors);
+            
+            expect(html).toContain('console-errors');
+            expect(html).toContain('console-errors-header');
+            expect(html).toContain('Console Errors');
+            expect(html).toContain('1'); // count
+        });
+
+        it('should render error type label', () => {
+            const errors = [
+                { type: 'console.error', message: 'Error message' }
+            ];
+            
+            const html = renderConsoleErrors(errors);
+            
+            expect(html).toContain('console-error-type');
+            expect(html).toContain('Error');
+        });
+
+        it('should render error message', () => {
+            const errors = [
+                { type: 'console.warn', message: 'Warning message here' }
+            ];
+            
+            const html = renderConsoleErrors(errors);
+            
+            expect(html).toContain('console-error-message');
+            expect(html).toContain('Warning message here');
+        });
+
+        it('should truncate long messages in visible text but keep full message in title', () => {
+            const longMessage = 'A'.repeat(200);
+            const errors = [
+                { type: 'console.error', message: longMessage }
+            ];
+            
+            const html = renderConsoleErrors(errors);
+            
+            // Should truncate visible text to 150 chars and add ellipsis
+            expect(html).toContain('...');
+            // Full message should be in title attribute for accessibility/hover
+            expect(html).toContain(`title="${longMessage}"`);
+            // Visible text should be truncated (150 chars, not 200)
+            const truncatedMessage = 'A'.repeat(150);
+            expect(html).toContain(`>${truncatedMessage}...`);
+        });
+
+        it('should render timestamp if present', () => {
+            const timestamp = new Date('2024-01-15T10:30:00Z').getTime();
+            const errors = [
+                { type: 'console.error', message: 'Error', timestamp }
+            ];
+            
+            const html = renderConsoleErrors(errors);
+            
+            expect(html).toContain('console-error-time');
+        });
+
+        it('should render multiple errors', () => {
+            const errors = [
+                { type: 'console.error', message: 'Error 1' },
+                { type: 'console.warn', message: 'Warning 1' },
+                { type: 'exception', message: 'Exception 1' }
+            ];
+            
+            const html = renderConsoleErrors(errors);
+            
+            expect(html).toContain('3'); // count
+            expect(html).toContain('Error 1');
+            expect(html).toContain('Warning 1');
+            expect(html).toContain('Exception 1');
+        });
+
+        it('should apply correct CSS class for error type', () => {
+            const errors = [
+                { type: 'console.error', message: 'Error' },
+                { type: 'console.warn', message: 'Warning' },
+                { type: 'exception', message: 'Exception' },
+                { type: 'unhandledrejection', message: 'Promise' }
+            ];
+            
+            const html = renderConsoleErrors(errors);
+            
+            expect(html).toContain('console-error-console-error');
+            expect(html).toContain('console-error-console-warn');
+            expect(html).toContain('console-error-exception');
+            expect(html).toContain('console-error-unhandledrejection');
+        });
+
+        it('should set aria-expanded to false initially', () => {
+            const errors = [
+                { type: 'console.error', message: 'Error' }
+            ];
+            
+            const html = renderConsoleErrors(errors);
+            
+            expect(html).toContain('aria-expanded="false"');
+        });
+
+        it('should set list as hidden initially', () => {
+            const errors = [
+                { type: 'console.error', message: 'Error' }
+            ];
+            
+            const html = renderConsoleErrors(errors);
+            
+            expect(html).toContain('hidden');
+        });
+
+        it('should escape HTML in messages', () => {
+            const errors = [
+                { type: 'console.error', message: '<script>alert("xss")</script>' }
+            ];
+            
+            const html = renderConsoleErrors(errors);
+            
+            expect(html).toContain('&lt;script&gt;');
+            expect(html).not.toContain('<script>alert');
         });
     });
 
@@ -503,6 +664,77 @@ describe('site/js/dashboard.js', () => {
             
             // Should use # for invalid URLs
             expect(localThis.notesList.innerHTML).toContain('href="#"');
+        });
+
+        it('should render console errors when present in metadata', () => {
+            const notes = [{
+                id: 'note-123456789',
+                url: 'https://example.com',
+                selector: '.test',
+                content: 'Content',
+                createdAt: '2024-01-15T10:00:00Z',
+                metadata: {
+                    consoleErrors: [
+                        { type: 'console.error', message: 'Test error' },
+                        { type: 'console.warn', message: 'Test warning' }
+                    ]
+                }
+            }];
+            
+            renderNotes(localThis.notesList, notes);
+            
+            expect(localThis.notesList.innerHTML).toContain('console-errors');
+            expect(localThis.notesList.innerHTML).toContain('Console Errors');
+            expect(localThis.notesList.innerHTML).toContain('2'); // error count
+            expect(localThis.notesList.innerHTML).toContain('Test error');
+        });
+
+        it('should not render console errors section when no errors', () => {
+            const notes = [{
+                id: 'note-123456789',
+                url: 'https://example.com',
+                selector: '.test',
+                content: 'Content',
+                createdAt: '2024-01-15T10:00:00Z',
+                metadata: {
+                    consoleErrors: []
+                }
+            }];
+            
+            renderNotes(localThis.notesList, notes);
+            
+            expect(localThis.notesList.innerHTML).not.toContain('console-errors');
+        });
+
+        it('should not render console errors section when metadata is missing', () => {
+            const notes = [{
+                id: 'note-123456789',
+                url: 'https://example.com',
+                selector: '.test',
+                content: 'Content',
+                createdAt: '2024-01-15T10:00:00Z'
+            }];
+            
+            renderNotes(localThis.notesList, notes);
+            
+            expect(localThis.notesList.innerHTML).not.toContain('console-errors');
+        });
+
+        it('should not render console errors section when consoleErrors is missing from metadata', () => {
+            const notes = [{
+                id: 'note-123456789',
+                url: 'https://example.com',
+                selector: '.test',
+                content: 'Content',
+                createdAt: '2024-01-15T10:00:00Z',
+                metadata: {
+                    someOtherField: 'value'
+                }
+            }];
+            
+            renderNotes(localThis.notesList, notes);
+            
+            expect(localThis.notesList.innerHTML).not.toContain('console-errors');
         });
     });
 
@@ -938,6 +1170,57 @@ describe('site/js/dashboard.js', () => {
             localThis.elements.apiKeyInput.dispatchEvent(event);
             
             expect(localThis.handlers.onSaveApiKey).toHaveBeenCalled();
+        });
+
+        it('should set up console errors toggle via event delegation', () => {
+            // Create a notesList with console errors
+            document.body.innerHTML = `
+                <button id="saveApiKeyBtn"></button>
+                <input id="apiKeyInput" />
+                <button id="loadBtn"></button>
+                <input id="urlInput" />
+                <select id="domainSelect"></select>
+                <button class="filter-tab" data-filter="all"></button>
+                <input type="checkbox" id="autoRefresh" />
+                <button id="settingsBtn"></button>
+                <div id="notesList">
+                    <div class="console-errors">
+                        <button class="console-errors-header" aria-expanded="false">Toggle</button>
+                        <div class="console-errors-list" hidden>Error content</div>
+                    </div>
+                </div>
+            `;
+            
+            const elements = {
+                saveApiKeyBtn: document.getElementById('saveApiKeyBtn'),
+                apiKeyInput: document.getElementById('apiKeyInput'),
+                loadBtn: document.getElementById('loadBtn'),
+                urlInput: document.getElementById('urlInput'),
+                domainSelect: document.getElementById('domainSelect'),
+                filterTabs: document.querySelectorAll('.filter-tab'),
+                autoRefreshCheckbox: document.getElementById('autoRefresh'),
+                settingsBtn: document.getElementById('settingsBtn'),
+                notesList: document.getElementById('notesList')
+            };
+            
+            setupEventListeners(elements, { currentFilter: 'all' }, {});
+            
+            const toggle = document.querySelector('.console-errors-header');
+            const list = document.querySelector('.console-errors-list');
+            
+            // Initially hidden
+            expect(toggle.getAttribute('aria-expanded')).toBe('false');
+            expect(list.hidden).toBe(true);
+            
+            // Click to expand
+            toggle.click();
+            expect(toggle.getAttribute('aria-expanded')).toBe('true');
+            expect(list.hidden).toBe(false);
+            
+            // Click to collapse
+            toggle.click();
+            expect(toggle.getAttribute('aria-expanded')).toBe('false');
+            expect(list.hidden).toBe(true);
         });
     });
 

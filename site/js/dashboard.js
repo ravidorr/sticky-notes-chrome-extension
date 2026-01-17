@@ -84,6 +84,60 @@ function formatDate(dateString) {
     });
 }
 
+/**
+ * Get a human-readable label for console error type
+ * @param {string} type - Error type (console.error, console.warn, exception, unhandledrejection)
+ * @returns {string} Human-readable label
+ */
+function getErrorTypeLabel(type) {
+    const labels = {
+        'console.error': 'Error',
+        'console.warn': 'Warning',
+        'exception': 'Exception',
+        'unhandledrejection': 'Promise'
+    };
+    return labels[type] || type;
+}
+
+/**
+ * Render console errors section for a note
+ * @param {Array} errors - Array of console error objects
+ * @returns {string} HTML string for console errors section
+ */
+function renderConsoleErrors(errors) {
+    if (!errors || errors.length === 0) return '';
+    
+    const errorItems = errors.map(err => {
+        const typeLabel = getErrorTypeLabel(err.type);
+        const typeClass = err.type.replace('.', '-');
+        const message = escapeHtml(err.message || '').substring(0, 150);
+        const fullMessage = escapeHtml(err.message || '');
+        const timestamp = err.timestamp ? new Date(err.timestamp).toLocaleTimeString() : '';
+        
+        return `
+            <div class="console-error-item console-error-${typeClass}">
+                <span class="console-error-type">${typeLabel}</span>
+                <span class="console-error-message" title="${fullMessage}">${message}${err.message?.length > 150 ? '...' : ''}</span>
+                ${timestamp ? `<span class="console-error-time">${timestamp}</span>` : ''}
+            </div>
+        `;
+    }).join('');
+    
+    return `
+        <div class="console-errors">
+            <button class="console-errors-header" type="button" aria-expanded="false">
+                <span class="console-errors-icon" aria-hidden="true"></span>
+                <span class="console-errors-label">Console Errors</span>
+                <span class="console-errors-count">${errors.length}</span>
+                <span class="console-errors-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="console-errors-list" hidden>
+                ${errorItems}
+            </div>
+        </div>
+    `;
+}
+
 // ============================================
 // DOM Helpers
 // ============================================
@@ -273,6 +327,7 @@ function renderNotes(notesList, notes) {
             <div class="note-content-box">
                 ${escapeHtml(stripHtml(note.content)) || '<em class="no-content">No content</em>'}
             </div>
+            ${renderConsoleErrors(note.metadata?.consoleErrors)}
             ${note.comments && note.comments.length > 0 ? `
             <div class="note-comments">
                 <div class="comments-header">Comments (${note.comments.length})</div>
@@ -661,6 +716,23 @@ function setupEventListeners(elements, appState, handlers = {}) {
     if (settingsBtn) {
         settingsBtn.addEventListener('click', () => handlers.onOpenSettings?.());
     }
+    
+    // Console errors toggle (event delegation for dynamically loaded notes)
+    const notesList = elements.notesList;
+    if (notesList) {
+        notesList.addEventListener('click', (event) => {
+            const toggle = event.target.closest('.console-errors-header');
+            if (toggle) {
+                const consoleErrors = toggle.closest('.console-errors');
+                const list = consoleErrors?.querySelector('.console-errors-list');
+                if (list) {
+                    const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+                    toggle.setAttribute('aria-expanded', !isExpanded);
+                    list.hidden = isExpanded;
+                }
+            }
+        });
+    }
 }
 
 /**
@@ -779,6 +851,8 @@ export {
     getSafeUrl,
     stripHtml,
     formatDate,
+    getErrorTypeLabel,
+    renderConsoleErrors,
     // DOM helpers
     getDOMElements,
     showStatus,

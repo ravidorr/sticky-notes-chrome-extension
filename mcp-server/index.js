@@ -55,6 +55,33 @@ async function apiRequest(endpoint, options = {}) {
   return data;
 }
 
+/**
+ * Format console errors for markdown output
+ * @param {Array} errors - Array of console error objects
+ * @param {string} indent - Indentation prefix for each line
+ * @returns {string} Formatted markdown string
+ */
+function formatConsoleErrors(errors, indent = '') {
+  if (!errors || errors.length === 0) return '';
+  
+  const typeMarkers = {
+    'console.error': '[ERR]',
+    'console.warn': '[WARN]',
+    'exception': '[EXC]',
+    'unhandledrejection': '[PROM]'
+  };
+  
+  let markdown = `\n${indent}**Console Errors (${errors.length}):**\n`;
+  errors.forEach(err => {
+    const marker = typeMarkers[err.type] || '[?]';
+    const msg = (err.message || '').substring(0, 100);
+    const truncated = err.message?.length > 100 ? '...' : '';
+    markdown += `${indent}- ${marker} ${msg}${truncated}\n`;
+  });
+  
+  return markdown;
+}
+
 // Create MCP server
 const server = new Server(
   {
@@ -494,7 +521,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             
             markdown += `### ${index + 1}. ${themeMarker} ${theme} on \`${note.selector}\`\n`;
             markdown += `> ${content.substring(0, 200)}${content.length > 200 ? '...' : ''}\n\n`;
-            markdown += `_Created: ${date} | ID: ${note.id}_\n\n`;
+            markdown += `_Created: ${date} | ID: ${note.id}_\n`;
+            
+            // Add console errors if present
+            const consoleErrors = note.metadata?.consoleErrors;
+            if (consoleErrors?.length > 0) {
+              markdown += formatConsoleErrors(consoleErrors);
+            }
+            markdown += '\n';
           });
           
           markdown += `---\n**Panel URL:** http://localhost:3002?url=${encodeURIComponent(args.url)}`;
@@ -557,7 +591,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             const content = note.content ? note.content.replace(/<[^>]*>/g, '').trim().substring(0, 100) : '_No content_';
             markdown += `${index + 1}. **${note.selector}** on ${note.url}\n`;
             markdown += `   > ${content}${content.length >= 100 ? '...' : ''}\n`;
-            markdown += `   _ID: ${note.id}${note.isShared ? ' (shared)' : ''}_\n\n`;
+            markdown += `   _ID: ${note.id}${note.isShared ? ' (shared)' : ''}_\n`;
+            
+            // Add console errors if present
+            const consoleErrors = note.metadata?.consoleErrors;
+            if (consoleErrors?.length > 0) {
+              markdown += formatConsoleErrors(consoleErrors, '   ');
+            }
+            markdown += '\n';
           });
         }
         

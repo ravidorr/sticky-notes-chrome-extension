@@ -271,7 +271,7 @@ Content-Type: application/json
 | `content` | string | No | HTML content of the note |
 | `theme` | string | No | Color theme: `yellow`, `blue`, `green`, `pink` |
 | `position` | object | No | Position relative to element |
-| `metadata` | object | No | Custom metadata (stored but not processed) |
+| `metadata` | object | No | Custom metadata (see [Metadata Object](#metadata-object) below) |
 
 **Response (201 Created):**
 
@@ -342,6 +342,40 @@ Authorization: Bearer sk_live_...
 ```
 
 **Response:** `204 No Content`
+
+### Metadata Object
+
+The `metadata` field can store arbitrary JSON data. When notes are created via the Chrome extension, the metadata may include captured console errors from the page.
+
+**Console Errors Structure:**
+
+```json
+{
+  "metadata": {
+    "consoleErrors": [
+      {
+        "type": "console.error",
+        "message": "Uncaught TypeError: Cannot read property 'foo' of undefined",
+        "timestamp": 1705312800000
+      },
+      {
+        "type": "console.warn",
+        "message": "Deprecation warning: ...",
+        "timestamp": 1705312801000
+      }
+    ]
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `consoleErrors` | array | Array of captured console errors (may be empty or absent) |
+| `consoleErrors[].type` | string | Error type: `console.error`, `console.warn`, `exception`, or `unhandledrejection` |
+| `consoleErrors[].message` | string | The error message |
+| `consoleErrors[].timestamp` | number | Unix timestamp (milliseconds) when the error occurred |
+
+The Chrome extension automatically captures console errors when creating notes, providing context about JavaScript errors that may be related to the annotated element.
 
 ---
 
@@ -771,6 +805,15 @@ Authorization: Bearer sk_live_...
       "selector": "h1",
       "content": "Contains keyword here",
       "theme": "yellow",
+      "metadata": {
+        "consoleErrors": [
+          {
+            "type": "console.error",
+            "message": "Error message",
+            "timestamp": 1705312800000
+          }
+        ]
+      },
       "isShared": false,
       "ownerEmail": "owner@example.com",
       "matchedIn": ["content"],
