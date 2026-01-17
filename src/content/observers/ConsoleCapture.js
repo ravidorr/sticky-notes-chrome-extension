@@ -21,125 +21,19 @@ export class ConsoleCapture {
   }
   
   /**
-   * Initialize console capture by injecting script into page context
+   * Initialize console capture
+   * Listens for errors sent from the page context script (pageContext.js)
+   * which runs in the MAIN world and captures console errors
    */
   init() {
     if (this.isInitialized) return;
     this.isInitialized = true;
     
-    // Listen for errors sent from page context
+    // Listen for errors sent from page context via custom events
+    // The pageContext.js script (running in MAIN world) dispatches these
     window.addEventListener('__stickyNotesError', this.handleCapturedError.bind(this));
     
-    // Inject the capture script into page context
-    this.injectCaptureScript();
-    
-    log.debug('ConsoleCapture initialized');
-  }
-  
-  /**
-   * Inject script into page context to capture console errors
-   * This is necessary because console methods exist in the page context,
-   * not the content script's isolated world
-   */
-  injectCaptureScript() {
-    const script = document.createElement('script');
-    script.textContent = `
-      (function() {
-        // Avoid double initialization
-        if (window.__stickyNotesConsoleCapture) return;
-        window.__stickyNotesConsoleCapture = true;
-        
-        const MAX_ERRORS = ${MAX_ERRORS};
-        const errors = [];
-        
-        function sendError(errorData) {
-          // Send to content script via custom event
-          window.dispatchEvent(new CustomEvent('__stickyNotesError', {
-            detail: errorData
-          }));
-        }
-        
-        // Capture console.error
-        const originalError = console.error;
-        console.error = function(...args) {
-          const errorData = {
-            type: 'console.error',
-            message: args.map(function(arg) {
-              try {
-                if (arg instanceof Error) {
-                  return arg.message + (arg.stack ? '\\n' + arg.stack : '');
-                }
-                return String(arg);
-              } catch (ex) {
-                return '[Unable to stringify]';
-              }
-            }).join(' '),
-            timestamp: Date.now()
-          };
-          sendError(errorData);
-          return originalError.apply(console, args);
-        };
-        
-        // Capture console.warn (optional, useful for warnings)
-        const originalWarn = console.warn;
-        console.warn = function(...args) {
-          const errorData = {
-            type: 'console.warn',
-            message: args.map(function(arg) {
-              try {
-                return String(arg);
-              } catch (ex) {
-                return '[Unable to stringify]';
-              }
-            }).join(' '),
-            timestamp: Date.now()
-          };
-          sendError(errorData);
-          return originalWarn.apply(console, args);
-        };
-        
-        // Capture uncaught exceptions
-        window.addEventListener('error', function(event) {
-          const errorData = {
-            type: 'exception',
-            message: event.message || 'Unknown error',
-            filename: event.filename || '',
-            line: event.lineno || 0,
-            col: event.colno || 0,
-            timestamp: Date.now()
-          };
-          sendError(errorData);
-        });
-        
-        // Capture unhandled promise rejections
-        window.addEventListener('unhandledrejection', function(event) {
-          var message = 'Unhandled Promise Rejection';
-          try {
-            if (event.reason instanceof Error) {
-              message = event.reason.message + (event.reason.stack ? '\\n' + event.reason.stack : '');
-            } else if (event.reason) {
-              message = String(event.reason);
-            }
-          } catch (ex) {
-            message = 'Unhandled Promise Rejection (unable to get details)';
-          }
-          
-          const errorData = {
-            type: 'unhandledrejection',
-            message: message,
-            timestamp: Date.now()
-          };
-          sendError(errorData);
-        });
-      })();
-    `;
-    
-    // Inject at document start to capture early errors
-    const target = document.head || document.documentElement;
-    target.insertBefore(script, target.firstChild);
-    
-    // Remove script element after injection (it's already executed)
-    script.remove();
+    log.debug('ConsoleCapture initialized - listening for page context errors');
   }
   
   /**

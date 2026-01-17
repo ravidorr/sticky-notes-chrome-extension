@@ -138,6 +138,30 @@ async function buildContent() {
   console.log('Content script built');
 }
 
+// Build page context script (IIFE - runs in MAIN world for console capture)
+async function buildPageContext() {
+  console.log('Building page context script...');
+  
+  await build({
+    ...commonOptions,
+    build: {
+      ...commonOptions.build,
+      outDir: distDir,
+      emptyOutDir: false,
+      rollupOptions: {
+        input: resolve(rootDir, 'src/content/pageContext.js'),
+        output: {
+          format: 'iife',
+          name: 'StickyNotesPageContext',
+          entryFileNames: 'src/content/pageContext.js',
+          inlineDynamicImports: true
+        }
+      }
+    }
+  });
+  console.log('Page context script built');
+}
+
 // Build background script (ES module - service workers support it)
 async function buildBackground() {
   console.log('Building background script...');
@@ -248,6 +272,7 @@ async function main() {
   try {
     copyStaticFiles();
     await buildContent();
+    await buildPageContext();
     await buildBackground();
     await buildPopup();
     
