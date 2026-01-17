@@ -49,6 +49,36 @@
 - [x] Offline persistence (Firestore cache)
 - [x] Automatic migration of local notes to cloud on first login
 
+### Notes Data Model
+```javascript
+// Firestore: notes/{noteId}
+{
+  id: "note123",
+  url: "https://example.com/page",           // Normalized URL (or composite URL for iframes)
+  selector: "div.container > button#submit", // CSS selector for anchor element
+  content: "<p>Note content here</p>",       // Rich text HTML content
+  theme: "yellow",                           // yellow | blue | green | pink
+  position: { anchor: "top-right" },         // Note position relative to anchor
+  metadata: {
+    url: "https://example.com/page",
+    tabUrl: "https://example.com/page",      // Top-level page URL
+    title: "Page Title",
+    browser: "Chrome 120",
+    viewport: "1920x1080",
+    timestamp: "2026-01-17T10:00:00.000Z",
+    isTopFrame: true,
+    frameUrl: null,                          // Iframe URL if not top frame
+    environment: "staging",                  // local | development | staging | production
+    consoleErrors: [{ type: "console.error", message: "...", timestamp: 1234567890 }]
+  },
+  ownerId: "user1",
+  ownerEmail: "user1@email.com",
+  sharedWith: ["user2@email.com"],           // Array of email addresses
+  createdAt: Timestamp,
+  updatedAt: Timestamp
+}
+```
+
 ---
 
 ## Phase 2: Threaded Discussions & Real-time Sync - DONE
@@ -70,6 +100,7 @@ Add comment threads to notes for Q&A and discussions.
   authorPhotoURL: "https://...",  // User's profile photo
   content: "What does this mean?",
   createdAt: Timestamp,
+  updatedAt: Timestamp,
   parentId: null  // null = top-level, commentId for replies
 }
 ```
