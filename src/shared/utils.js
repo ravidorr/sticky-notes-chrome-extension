@@ -231,26 +231,47 @@ export const VALID_THEMES = ['yellow', 'blue', 'green', 'pink'];
 
 /**
  * Get browser information
- * @returns {Object} Browser info object
+ * Uses User-Agent Client Hints API as primary detection (more reliable),
+ * with user agent string parsing as fallback
+ * @returns {Object} Browser info object with browser, version, and userAgent
  */
 export function getBrowserInfo() {
   const ua = navigator.userAgent;
   let browser = 'Unknown';
   let version = '';
   
-  if (ua.includes('Chrome') && !ua.includes('Edg')) {
-    browser = 'Chrome';
-    const match = ua.match(/Chrome\/(\d+)/);
-    version = match ? match[1] : '';
-  } else if (ua.includes('Edg')) {
+  // Primary: Use User-Agent Client Hints API (more reliable, harder to spoof)
+  // This correctly identifies Edge even when enterprise policies modify the UA string
+  if (navigator.userAgentData?.brands) {
+    const brands = navigator.userAgentData.brands;
+    
+    // Check for Edge first (Edge includes both "Microsoft Edge" and "Chromium" brands)
+    const edge = brands.find(b => b.brand === 'Microsoft Edge');
+    if (edge) {
+      return { browser: 'Edge', version: edge.version, userAgent: ua };
+    }
+    
+    // Check for Chrome
+    const chrome = brands.find(b => b.brand === 'Google Chrome');
+    if (chrome) {
+      return { browser: 'Chrome', version: chrome.version, userAgent: ua };
+    }
+  }
+  
+  // Fallback: Parse user agent string (for browsers without Client Hints support)
+  if (ua.includes('Edg')) {
     browser = 'Edge';
     const match = ua.match(/Edg\/(\d+)/);
+    version = match ? match[1] : '';
+  } else if (ua.includes('Chrome')) {
+    browser = 'Chrome';
+    const match = ua.match(/Chrome\/(\d+)/);
     version = match ? match[1] : '';
   } else if (ua.includes('Firefox')) {
     browser = 'Firefox';
     const match = ua.match(/Firefox\/(\d+)/);
     version = match ? match[1] : '';
-  } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+  } else if (ua.includes('Safari')) {
     browser = 'Safari';
     const match = ua.match(/Version\/(\d+)/);
     version = match ? match[1] : '';

@@ -1,10 +1,12 @@
 /**
- * Build script for Chrome extension
+ * Build script for browser extensions (Chrome, Edge)
  * Runs separate Vite builds for content, background, and popup
  * 
  * Usage:
- *   npm run build      - Production build (Chrome Web Store OAuth client)
- *   npm run build:dev  - Development build (local OAuth client)
+ *   npm run build           - Production build for Chrome
+ *   npm run build:dev       - Development build for Chrome
+ *   npm run build:edge      - Production build for Edge
+ *   npm run build:all       - Build for all browsers
  */
 
 import { build } from 'vite';
@@ -16,6 +18,9 @@ import archiver from 'archiver';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = resolve(__dirname, '..');
+
+// Supported browsers
+const SUPPORTED_BROWSERS = ['chrome', 'edge'];
 
 // OAuth client IDs for different environments
 const OAUTH_CLIENTS = {
@@ -29,13 +34,30 @@ const isDevelopment = process.argv.includes('--development') || process.env.BUIL
 const buildEnv = isDevelopment ? 'development' : 'production';
 const oauthClientId = OAUTH_CLIENTS[buildEnv];
 
-// Output to dist/chrome for browser-specific builds
-const distBaseDir = resolve(rootDir, 'dist');
-const distDir = resolve(distBaseDir, 'chrome');
+// Determine target browser from command line args
+// Default is chrome; use --browser=edge for Edge builds
+const browserArg = process.argv.find(arg => arg.startsWith('--browser='));
+const targetBrowser = browserArg ? browserArg.split('=')[1] : 'chrome';
 
-// Clean entire dist folder (will be rebuilt)
-if (existsSync(distBaseDir)) {
-  rmSync(distBaseDir, { recursive: true });
+// Validate browser target
+if (!SUPPORTED_BROWSERS.includes(targetBrowser)) {
+  console.error(`Unsupported browser: ${targetBrowser}. Supported: ${SUPPORTED_BROWSERS.join(', ')}`);
+  process.exit(1);
+}
+
+// Get manifest filename for target browser
+function getManifestFilename(browser) {
+  if (browser === 'edge') return 'manifest.edge.json';
+  return 'manifest.json';
+}
+
+// Output to dist/<browser> for browser-specific builds
+const distBaseDir = resolve(rootDir, 'dist');
+let distDir = resolve(distBaseDir, targetBrowser);
+
+// Clean target browser folder only (preserve other browser builds)
+if (existsSync(distDir)) {
+  rmSync(distDir, { recursive: true });
 }
 mkdirSync(distDir, { recursive: true });
 
@@ -44,7 +66,8 @@ function copyStaticFiles() {
   const publicDir = resolve(rootDir, 'public');
   
   // Copy and transform manifest with correct OAuth client ID
-  const manifestPath = resolve(publicDir, 'manifest.json');
+  const manifestFilename = getManifestFilename(targetBrowser);
+  const manifestPath = resolve(publicDir, manifestFilename);
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
   
   // Update OAuth client ID based on build environment
@@ -52,6 +75,7 @@ function copyStaticFiles() {
     manifest.oauth2.client_id = oauthClientId;
   }
   
+  // Always output as manifest.json regardless of source filename
   writeFileSync(
     resolve(distDir, 'manifest.json'),
     JSON.stringify(manifest, null, 2)
@@ -228,11 +252,11 @@ async function buildPopup() {
   console.log('Popup built');
 }
 
-// Create zip file of the chrome folder
+// Create zip file of the browser folder
 async function createZipFile() {
   console.log('Creating zip file...');
   
-  const zipPath = resolve(rootDir, 'dist/chrome.zip');
+  const zipPath = resolve(rootDir, `dist/${targetBrowser}.zip`);
   
   // Remove existing zip if present
   if (existsSync(zipPath)) {
@@ -247,7 +271,7 @@ async function createZipFile() {
     
     output.on('close', () => {
       const sizeKB = (archive.pointer() / 1024).toFixed(2);
-      console.log(`Zip file created: dist/chrome.zip (${sizeKB} KB)`);
+      console.log(`Zip file created: dist/${targetBrowser}.zip (${sizeKB} KB)`);
       resolve();
     });
     
@@ -257,7 +281,7 @@ async function createZipFile() {
     
     archive.pipe(output);
     
-    // Add the contents of the chrome folder to the zip
+    // Add the contents of the browser folder to the zip
     archive.directory(distDir, false);
     
     archive.finalize();
@@ -266,8 +290,11 @@ async function createZipFile() {
 
 // Run all builds
 async function main() {
-  console.log(`Building Chrome extension (${buildEnv.toUpperCase()})...\n`);
-  console.log(`OAuth Client: ${buildEnv === 'production' ? 'Chrome Web Store' : 'Local Development'}\n`);
+  const browserName = targetBrowser.charAt(0).toUpperCase() + targetBrowser.slice(1);
+  const storeName = targetBrowser === 'edge' ? 'Edge Add-ons' : 'Chrome Web Store';
+  
+  console.log(`Building ${browserName} extension (${buildEnv.toUpperCase()})...\n`);
+  console.log(`OAuth Client: ${buildEnv === 'production' ? storeName : 'Local Development'}\n`);
   
   try {
     copyStaticFiles();
@@ -279,10 +306,10 @@ async function main() {
     // Only create zip for production builds
     if (!isDevelopment) {
       await createZipFile();
-      console.log('\nBuild complete! Output in dist/chrome/');
-      console.log('Zip file ready for upload: dist/chrome.zip');
+      console.log(`\nBuild complete! Output in dist/${targetBrowser}/`);
+      console.log(`Zip file ready for upload: dist/${targetBrowser}.zip`);
     } else {
-      console.log('\nBuild complete! Output in dist/chrome/');
+      console.log(`\nBuild complete! Output in dist/${targetBrowser}/`);
     }
   } catch (error) {
     console.error('Build failed:', error);

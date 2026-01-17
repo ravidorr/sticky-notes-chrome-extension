@@ -26,7 +26,11 @@ import {
     initDemo,
     updateDemoUI,
     createNote,
-    demoState
+    demoState,
+    // Browser Detection
+    STORE_URLS,
+    getBrowserType,
+    updateInstallButtons
 } from '../../site/js/scripts.js';
 
 describe('site/scripts.js', () => {
@@ -59,7 +63,7 @@ describe('site/scripts.js', () => {
             localThis.rafCallbacks.push({ id, callback, cancelled: false });
             // Use Promise.resolve to defer execution until after assignment
             Promise.resolve().then(() => {
-                const entry = localThis.rafCallbacks.find(e => e.id === id);
+                const entry = localThis.rafCallbacks.find(cb => cb.id === id);
                 if (entry && !entry.cancelled) {
                     entry.callback();
                 }
@@ -67,7 +71,7 @@ describe('site/scripts.js', () => {
             return id;
         });
         global.cancelAnimationFrame = jest.fn((id) => {
-            const entry = localThis.rafCallbacks.find(e => e.id === id);
+            const entry = localThis.rafCallbacks.find(cb => cb.id === id);
             if (entry) {
                 entry.cancelled = true;
             }
@@ -1109,6 +1113,182 @@ describe('site/scripts.js', () => {
             expect(document.querySelector('.sticky-note')).toBeNull();
             // Selection mode should still be active
             expect(demoState.activeMode).toBe(true);
+        });
+    });
+
+    describe('Browser Detection', () => {
+        const localThis = {};
+
+        beforeEach(() => {
+            localThis.originalUserAgentData = navigator.userAgentData;
+            localThis.originalUserAgent = navigator.userAgent;
+        });
+
+        afterEach(() => {
+            // Restore original values
+            if (localThis.originalUserAgentData !== undefined) {
+                Object.defineProperty(navigator, 'userAgentData', {
+                    value: localThis.originalUserAgentData,
+                    configurable: true
+                });
+            }
+        });
+
+        describe('STORE_URLS', () => {
+            it('should have Chrome store URL', () => {
+                expect(STORE_URLS.chrome).toContain('chrome.google.com/webstore');
+            });
+
+            it('should have Edge store URL', () => {
+                expect(STORE_URLS.edge).toContain('microsoftedge.microsoft.com');
+            });
+        });
+
+        describe('getBrowserType', () => {
+            it('should detect Edge via userAgentData', () => {
+                Object.defineProperty(navigator, 'userAgentData', {
+                    value: {
+                        brands: [
+                            { brand: 'Microsoft Edge', version: '120' },
+                            { brand: 'Chromium', version: '120' }
+                        ]
+                    },
+                    configurable: true
+                });
+
+                expect(getBrowserType()).toBe('edge');
+            });
+
+            it('should detect Chrome via userAgentData', () => {
+                Object.defineProperty(navigator, 'userAgentData', {
+                    value: {
+                        brands: [
+                            { brand: 'Google Chrome', version: '120' },
+                            { brand: 'Chromium', version: '120' }
+                        ]
+                    },
+                    configurable: true
+                });
+
+                expect(getBrowserType()).toBe('chrome');
+            });
+
+            it('should detect Edge via user agent string when userAgentData not available', () => {
+                Object.defineProperty(navigator, 'userAgentData', {
+                    value: undefined,
+                    configurable: true
+                });
+                Object.defineProperty(navigator, 'userAgent', {
+                    value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
+                    configurable: true
+                });
+
+                expect(getBrowserType()).toBe('edge');
+            });
+
+            it('should detect Chrome via user agent string when userAgentData not available', () => {
+                Object.defineProperty(navigator, 'userAgentData', {
+                    value: undefined,
+                    configurable: true
+                });
+                Object.defineProperty(navigator, 'userAgent', {
+                    value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+                    configurable: true
+                });
+
+                expect(getBrowserType()).toBe('chrome');
+            });
+
+            it('should default to chrome for unknown browsers', () => {
+                Object.defineProperty(navigator, 'userAgentData', {
+                    value: undefined,
+                    configurable: true
+                });
+                Object.defineProperty(navigator, 'userAgent', {
+                    value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
+                    configurable: true
+                });
+
+                expect(getBrowserType()).toBe('chrome');
+            });
+        });
+
+        describe('updateInstallButtons', () => {
+            beforeEach(() => {
+                // Set up DOM with install buttons
+                document.body.innerHTML = `
+                    <a href="#" data-install-btn class="btn">
+                        <img src="images/chrome-logo.svg" alt="">
+                        <span class="btn-text">Install Chrome Extension</span>
+                    </a>
+                    <a href="#" data-install-btn class="btn btn-cta">
+                        <img src="images/chrome-logo.svg" alt="">
+                        <span class="btn-text">Get Sticky Notes Free</span>
+                    </a>
+                `;
+            });
+
+            it('should update button hrefs based on browser type', () => {
+                Object.defineProperty(navigator, 'userAgentData', {
+                    value: {
+                        brands: [{ brand: 'Google Chrome', version: '120' }]
+                    },
+                    configurable: true
+                });
+
+                updateInstallButtons();
+
+                const buttons = document.querySelectorAll('[data-install-btn]');
+                buttons.forEach(btn => {
+                    expect(btn.href).toContain('chrome.google.com');
+                });
+            });
+
+            it('should update button logos for Edge', () => {
+                Object.defineProperty(navigator, 'userAgentData', {
+                    value: {
+                        brands: [{ brand: 'Microsoft Edge', version: '120' }]
+                    },
+                    configurable: true
+                });
+
+                updateInstallButtons();
+
+                const buttons = document.querySelectorAll('[data-install-btn]');
+                buttons.forEach(btn => {
+                    const img = btn.querySelector('img');
+                    expect(img.getAttribute('src')).toBe('images/edge-logo.svg');
+                });
+            });
+
+            it('should update button text for Edge', () => {
+                Object.defineProperty(navigator, 'userAgentData', {
+                    value: {
+                        brands: [{ brand: 'Microsoft Edge', version: '120' }]
+                    },
+                    configurable: true
+                });
+
+                updateInstallButtons();
+
+                const regularBtn = document.querySelector('[data-install-btn]:not(.btn-cta)');
+                expect(regularBtn.querySelector('.btn-text').textContent).toBe('Install Free Edge Extension');
+            });
+
+            it('should handle buttons without images gracefully', () => {
+                document.body.innerHTML = `
+                    <a href="#" data-install-btn class="btn">
+                        <span class="btn-text">Install Extension</span>
+                    </a>
+                `;
+
+                expect(() => updateInstallButtons()).not.toThrow();
+            });
+
+            it('should do nothing when no install buttons exist', () => {
+                document.body.innerHTML = '<div>No buttons here</div>';
+                expect(() => updateInstallButtons()).not.toThrow();
+            });
         });
     });
 });

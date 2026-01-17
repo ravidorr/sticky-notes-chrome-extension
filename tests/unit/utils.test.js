@@ -330,43 +330,168 @@ describe('getBrowserInfo', () => {
     }
   });
   
-  it('should detect Chrome browser', () => {
-    Object.defineProperty(global, 'navigator', {
-      value: { userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
-      writable: true
+  describe('User-Agent Client Hints detection (primary)', () => {
+    it('should detect Edge via userAgentData.brands', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: {
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/144.0.0.0 Safari/537.36',
+          userAgentData: {
+            brands: [
+              { brand: 'Not(A:Brand', version: '8' },
+              { brand: 'Chromium', version: '144' },
+              { brand: 'Microsoft Edge', version: '144' }
+            ]
+          }
+        },
+        writable: true
+      });
+      
+      const result = utils.getBrowserInfo();
+      expect(result.browser).toBe('Edge');
+      expect(result.version).toBe('144');
     });
     
-    const result = utils.getBrowserInfo();
-    expect(result.browser).toBe('Chrome');
-    expect(result.version).toBe('120');
+    it('should detect Chrome via userAgentData.brands', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: {
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+          userAgentData: {
+            brands: [
+              { brand: 'Not_A Brand', version: '8' },
+              { brand: 'Chromium', version: '120' },
+              { brand: 'Google Chrome', version: '120' }
+            ]
+          }
+        },
+        writable: true
+      });
+      
+      const result = utils.getBrowserInfo();
+      expect(result.browser).toBe('Chrome');
+      expect(result.version).toBe('120');
+    });
+    
+    it('should prioritize Edge over Chrome in userAgentData', () => {
+      // Edge includes both Microsoft Edge and sometimes Google Chrome brands
+      Object.defineProperty(global, 'navigator', {
+        value: {
+          userAgent: 'Mozilla/5.0 Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0',
+          userAgentData: {
+            brands: [
+              { brand: 'Google Chrome', version: '144' },
+              { brand: 'Microsoft Edge', version: '144' },
+              { brand: 'Chromium', version: '144' }
+            ]
+          }
+        },
+        writable: true
+      });
+      
+      const result = utils.getBrowserInfo();
+      expect(result.browser).toBe('Edge');
+      expect(result.version).toBe('144');
+    });
+    
+    it('should detect Edge even when UA string is modified by enterprise policy', () => {
+      // This is the case where enterprise policies strip Edg/ from UA but Client Hints still work
+      Object.defineProperty(global, 'navigator', {
+        value: {
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/144.0.0.0 Safari/537.36',
+          userAgentData: {
+            brands: [
+              { brand: 'Not(A:Brand', version: '8' },
+              { brand: 'Chromium', version: '144' },
+              { brand: 'Microsoft Edge', version: '144' }
+            ]
+          }
+        },
+        writable: true
+      });
+      
+      const result = utils.getBrowserInfo();
+      expect(result.browser).toBe('Edge');
+      expect(result.version).toBe('144');
+      // Verify UA string doesn't contain Edg/ but we still detected Edge
+      expect(result.userAgent).not.toContain('Edg/');
+    });
   });
   
-  it('should detect Edge browser', () => {
-    Object.defineProperty(global, 'navigator', {
-      value: { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0' },
-      writable: true
+  describe('User agent string detection (fallback)', () => {
+    it('should detect Chrome browser via UA string when Client Hints unavailable', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: {
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          userAgentData: undefined
+        },
+        writable: true
+      });
+      
+      const result = utils.getBrowserInfo();
+      expect(result.browser).toBe('Chrome');
+      expect(result.version).toBe('120');
     });
     
-    const result = utils.getBrowserInfo();
-    expect(result.browser).toBe('Edge');
-    expect(result.version).toBe('120');
-  });
-  
-  it('should detect Firefox browser', () => {
-    Object.defineProperty(global, 'navigator', {
-      value: { userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121' },
-      writable: true
+    it('should detect Edge browser via UA string when Client Hints unavailable', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: {
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
+          userAgentData: undefined
+        },
+        writable: true
+      });
+      
+      const result = utils.getBrowserInfo();
+      expect(result.browser).toBe('Edge');
+      expect(result.version).toBe('120');
     });
     
-    const result = utils.getBrowserInfo();
-    expect(result.browser).toBe('Firefox');
-    expect(result.version).toBe('121');
+    it('should detect Firefox browser', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: {
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121',
+          userAgentData: undefined
+        },
+        writable: true
+      });
+      
+      const result = utils.getBrowserInfo();
+      expect(result.browser).toBe('Firefox');
+      expect(result.version).toBe('121');
+    });
+    
+    it('should detect Safari browser', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: {
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17 Safari/605.1.15',
+          userAgentData: undefined
+        },
+        writable: true
+      });
+      
+      const result = utils.getBrowserInfo();
+      expect(result.browser).toBe('Safari');
+      expect(result.version).toBe('17');
+    });
   });
   
   it('should return userAgent string', () => {
     const result = utils.getBrowserInfo();
     expect(result.userAgent).toBeDefined();
     expect(typeof result.userAgent).toBe('string');
+  });
+  
+  it('should return Unknown for unrecognized browsers', () => {
+    Object.defineProperty(global, 'navigator', {
+      value: {
+        userAgent: 'SomeUnknownBrowser/1.0',
+        userAgentData: undefined
+      },
+      writable: true
+    });
+    
+    const result = utils.getBrowserInfo();
+    expect(result.browser).toBe('Unknown');
+    expect(result.version).toBe('');
   });
 });
 

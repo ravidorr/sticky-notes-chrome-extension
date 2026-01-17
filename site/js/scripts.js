@@ -567,6 +567,90 @@ function initDemo(selectors = {}) {
 }
 
 // ============================================
+// Browser Detection & Install Buttons
+// ============================================
+
+/**
+ * Extension store URLs
+ */
+const STORE_URLS = {
+    chrome: 'https://chrome.google.com/webstore/detail/miahokcndajlgenbmbdfnbaampbfmneh',
+    // Edge Add-ons URL will be updated once extension is published
+    edge: 'https://microsoftedge.microsoft.com/addons/detail/sticky-notes/TODO_EDGE_EXTENSION_ID'
+};
+
+/**
+ * Detect the user's browser type
+ * @returns {string} 'chrome', 'edge', or 'other'
+ */
+function getBrowserType() {
+    // Check User-Agent Client Hints API first (more reliable, modern browsers)
+    if (typeof navigator !== 'undefined' && navigator.userAgentData?.brands) {
+        const brands = navigator.userAgentData.brands;
+        if (brands.some(b => b.brand === 'Microsoft Edge')) return 'edge';
+        if (brands.some(b => b.brand === 'Google Chrome')) return 'chrome';
+    }
+    
+    // Fallback to user agent string parsing
+    if (typeof navigator !== 'undefined' && navigator.userAgent) {
+        // Edge includes "Edg/" in its user agent (not "Edge" - that was old EdgeHTML)
+        if (/Edg\//.test(navigator.userAgent)) return 'edge';
+        // Chrome includes "Chrome/" but Edge also does, so check Edge first
+        if (/Chrome\//.test(navigator.userAgent)) return 'chrome';
+    }
+    
+    // Default to Chrome for unsupported browsers
+    return 'chrome';
+}
+
+/**
+ * Update install buttons based on detected browser
+ * Buttons with data-install-btn attribute will be updated
+ */
+function updateInstallButtons() {
+    const browser = getBrowserType();
+    const buttons = document.querySelectorAll('[data-install-btn]');
+    
+    if (buttons.length === 0) return;
+    
+    const config = {
+        chrome: {
+            url: STORE_URLS.chrome,
+            logo: 'images/chrome-logo.svg',
+            text: 'Install Free Chrome Extension',
+            ctaText: 'Get Sticky Notes Free'
+        },
+        edge: {
+            url: STORE_URLS.edge,
+            logo: 'images/edge-logo.svg',
+            text: 'Install Free Edge Extension',
+            ctaText: 'Get Sticky Notes Free'
+        }
+    };
+    
+    const cfg = config[browser] || config.chrome;
+    
+    buttons.forEach(btn => {
+        // Update href
+        btn.href = cfg.url;
+        
+        // Update logo image if present
+        const img = btn.querySelector('img');
+        if (img) {
+            img.setAttribute('src', cfg.logo);
+        }
+        
+        // Update button text - check for .btn-text span first, then use data attribute
+        const textSpan = btn.querySelector('.btn-text');
+        if (textSpan) {
+            // Use cta text for CTA buttons, regular text otherwise
+            const isCta = btn.classList.contains('btn-cta');
+            textSpan.textContent = isCta ? cfg.ctaText : cfg.text;
+        }
+    });
+}
+
+// ============================================
 // Async CSS Loading
 // ============================================
 
@@ -606,6 +690,9 @@ function init() {
 
     // Initialize theme (do this first to prevent flash)
     cleanups.theme = initTheme();
+
+    // Update install buttons based on detected browser
+    updateInstallButtons();
 
     // Initialize navbar scroll effect
     const navbar = document.getElementById('navbar');
@@ -676,6 +763,10 @@ export {
     updateDemoUI,
     createNote,
     demoState,
+    // Browser Detection
+    STORE_URLS,
+    getBrowserType,
+    updateInstallButtons,
     // CSS Loading
     loadFullStylesheet,
     // Main
