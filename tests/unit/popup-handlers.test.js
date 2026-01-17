@@ -51,6 +51,7 @@ describe('Popup Handlers', () => {
 
     localThis.mockWindowClose = jest.fn();
     localThis.mockShowErrorToast = jest.fn();
+    localThis.mockShowSuccessToast = jest.fn();
     
     localThis.deps = {
       log: localThis.mockLog,
@@ -59,7 +60,8 @@ describe('Popup Handlers', () => {
       chromeScripting: localThis.mockChromeScripting,
       chromeStorage: localThis.mockChromeStorage,
       windowClose: localThis.mockWindowClose,
-      showErrorToast: localThis.mockShowErrorToast
+      showErrorToast: localThis.mockShowErrorToast,
+      showSuccessToast: localThis.mockShowSuccessToast
     };
     
     localThis.handlers = createPopupHandlers(localThis.deps);
@@ -439,6 +441,279 @@ describe('Popup Handlers', () => {
       await localThis.handlers.handleNoteClick('note-1', true);
       
       expect(localThis.mockWindowClose).toHaveBeenCalled();
+    });
+  });
+
+  describe('handleDeleteNote', () => {
+    it('should delete note and show success toast', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true });
+      
+      const result = await localThis.handlers.handleDeleteNote('note-123');
+      
+      expect(result.success).toBe(true);
+      expect(localThis.mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
+        action: 'deleteNote',
+        noteId: 'note-123'
+      });
+      expect(localThis.mockShowSuccessToast).toHaveBeenCalled();
+    });
+
+    it('should show error toast on failure', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: false, error: 'Not found' });
+      
+      const result = await localThis.handlers.handleDeleteNote('note-123');
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+    });
+
+    it('should handle exceptions', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockRejectedValue(new Error('Network error'));
+      
+      const result = await localThis.handlers.handleDeleteNote('note-123');
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+    });
+  });
+
+  describe('handleDeleteAllFromPage', () => {
+    it('should delete all notes and return count', async () => {
+      const notes = [{ id: '1' }, { id: '2' }, { id: '3' }];
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true });
+      
+      const result = await localThis.handlers.handleDeleteAllFromPage(notes);
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(3);
+      expect(localThis.mockChromeRuntime.sendMessage).toHaveBeenCalledTimes(3);
+      expect(localThis.mockShowSuccessToast).toHaveBeenCalled();
+    });
+
+    it('should handle partial failures', async () => {
+      const notes = [{ id: '1' }, { id: '2' }];
+      localThis.mockChromeRuntime.sendMessage
+        .mockResolvedValueOnce({ success: true })
+        .mockResolvedValueOnce({ success: false });
+      
+      const result = await localThis.handlers.handleDeleteAllFromPage(notes);
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(1);
+    });
+  });
+
+  describe('getAllNotes', () => {
+    it('should return all notes', async () => {
+      const mockNotes = [{ id: '1' }, { id: '2' }];
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true, notes: mockNotes });
+      
+      const result = await localThis.handlers.getAllNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.notes).toEqual(mockNotes);
+    });
+
+    it('should return empty array on failure', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: false, error: 'Error' });
+      
+      const result = await localThis.handlers.getAllNotes();
+      
+      expect(result.success).toBe(false);
+      expect(result.notes).toEqual([]);
+    });
+  });
+
+  describe('handleDeleteAllNotes', () => {
+    it('should delete all notes and show success', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true, count: 5 });
+      
+      const result = await localThis.handlers.handleDeleteAllNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(5);
+      expect(localThis.mockShowSuccessToast).toHaveBeenCalled();
+    });
+
+    it('should show error on failure', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: false, error: 'Failed' });
+      
+      const result = await localThis.handlers.handleDeleteAllNotes();
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+    });
+  });
+
+  describe('handleShareNote', () => {
+    it('should share note with valid email', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true });
+      
+      const result = await localThis.handlers.handleShareNote('note-123', 'test@example.com');
+      
+      expect(result.success).toBe(true);
+      expect(localThis.mockShowSuccessToast).toHaveBeenCalled();
+    });
+
+    it('should reject invalid email', async () => {
+      const result = await localThis.handlers.handleShareNote('note-123', 'invalid-email');
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+    });
+
+    it('should handle share failure', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: false, error: 'Permission denied' });
+      
+      const result = await localThis.handlers.handleShareNote('note-123', 'test@example.com');
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+    });
+  });
+
+  describe('handleExportCSV', () => {
+    let mockLink;
+    let originalCreateElement;
+    
+    beforeEach(() => {
+      // Mock URL.createObjectURL and URL.revokeObjectURL
+      globalThis.URL.createObjectURL = jest.fn().mockReturnValue('blob:test');
+      globalThis.URL.revokeObjectURL = jest.fn();
+      
+      // Mock document.createElement for anchor element
+      mockLink = { 
+        href: '',
+        download: '',
+        click: jest.fn() 
+      };
+      originalCreateElement = document.createElement.bind(document);
+    });
+    
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should export notes as CSV', async () => {
+      jest.spyOn(document, 'createElement').mockImplementation((tag) => {
+        if (tag === 'a') {
+          return mockLink;
+        }
+        return originalCreateElement(tag);
+      });
+      
+      const notes = [
+        { id: '1', url: 'http://test.com', selector: '#main', content: 'Test', theme: 'yellow', createdAt: '2024-01-01', ownerEmail: 'test@test.com' }
+      ];
+      
+      const result = await localThis.handlers.handleExportCSV(notes, 'test.csv');
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(1);
+      expect(localThis.mockShowSuccessToast).toHaveBeenCalled();
+    });
+
+    it('should show error when no notes to export', async () => {
+      const result = await localThis.handlers.handleExportCSV([], 'test.csv');
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+    });
+
+    it('should escape CSV fields with commas', async () => {
+      jest.spyOn(document, 'createElement').mockImplementation((tag) => {
+        if (tag === 'a') {
+          return mockLink;
+        }
+        return originalCreateElement(tag);
+      });
+      
+      const notes = [
+        { id: '1', url: 'http://test.com', selector: '#main', content: 'Test, with comma', theme: 'yellow' }
+      ];
+      
+      const result = await localThis.handlers.handleExportCSV(notes, 'test.csv');
+      
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('renderNoteItemExpanded', () => {
+    it('should render note item with actions', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test note', 
+        theme: 'blue', 
+        selector: '#main',
+        createdAt: new Date().toISOString(),
+        ownerEmail: 'owner@test.com'
+      };
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      
+      expect(html).toContain('data-id="note-1"');
+      expect(html).toContain('data-action="expand"');
+      expect(html).toContain('data-action="share"');
+      expect(html).toContain('data-action="delete"');
+      expect(html).toContain('note-item-details');
+    });
+
+    it('should show shared badge for shared notes', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test', 
+        theme: 'yellow', 
+        selector: '#main',
+        isShared: true
+      };
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      
+      expect(html).toContain('note-item-shared-badge');
+    });
+
+    it('should show orphaned indicator', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test', 
+        theme: 'yellow', 
+        selector: '#missing',
+        isOrphaned: true
+      };
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      
+      expect(html).toContain('note-item-orphaned');
+      expect(html).toContain('note-item-orphan-hint');
+    });
+
+    it('should display shared users list', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test', 
+        theme: 'yellow', 
+        selector: '#main',
+        sharedWith: ['user1@test.com', 'user2@test.com']
+      };
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      
+      expect(html).toContain('user1@test.com');
+      expect(html).toContain('user2@test.com');
+    });
+  });
+
+  describe('formatTimestamp', () => {
+    it('should format ISO date string', () => {
+      const result = localThis.handlers.formatTimestamp('2024-01-15T12:00:00.000Z');
+      expect(result).toBe('2024-01-15T12:00:00.000Z');
+    });
+
+    it('should format Firestore timestamp', () => {
+      const firestoreTimestamp = { seconds: 1705320000, nanoseconds: 0 };
+      const result = localThis.handlers.formatTimestamp(firestoreTimestamp);
+      expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+
+    it('should return empty string for null', () => {
+      expect(localThis.handlers.formatTimestamp(null)).toBe('');
+      expect(localThis.handlers.formatTimestamp(undefined)).toBe('');
     });
   });
 });

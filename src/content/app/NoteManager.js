@@ -762,8 +762,9 @@ export class NoteManager {
   /**
    * Highlight a specific note
    * @param {string} noteId - Note ID
+   * @param {boolean} maximize - Whether to also maximize the note (default: false)
    */
-  highlightNote(noteId) {
+  highlightNote(noteId, maximize = false) {
     const note = this.notes.get(noteId);
     
     if (!note) {
@@ -802,7 +803,20 @@ export class NoteManager {
       
       // Add highlight effect
       note.highlight();
+      
+      // Maximize note if requested
+      if (maximize) {
+        note.maximize();
+      }
     }, 400); // 400ms matches typical smooth scroll duration
+  }
+  
+  /**
+   * Highlight a note and expand it to maximized mode
+   * @param {string} noteId - Note ID
+   */
+  highlightAndMaximizeNote(noteId) {
+    this.highlightNote(noteId, true);
   }
   
   /**

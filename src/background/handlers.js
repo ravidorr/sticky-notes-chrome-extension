@@ -113,6 +113,12 @@ export function createHandlers(deps = {}) {
       case 'getTabUrl':
         return getTabUrl(sender);
       
+      case 'getAllNotes':
+        return getAllNotes();
+      
+      case 'deleteAllNotes':
+        return deleteAllNotes();
+      
       default:
         log.warn('Unknown action received:', message.action, 'Full message:', JSON.stringify(message));
         return { success: false, error: t('unknownAction') };
@@ -866,6 +872,88 @@ export function createHandlers(deps = {}) {
     }
   }
 
+  /**
+   * Get all notes for the current user
+   * Uses Firestore if configured, otherwise falls back to local storage
+   * @returns {Promise<Object>} Result with notes array
+   */
+  async function getAllNotes() {
+    try {
+      const user = await getCurrentUser();
+      
+      // TODO: Add Firestore getAllUserNotes when firebase/notes.js supports it
+      // For now, use local storage approach
+      
+      // Get notes from local storage
+      const result = await chromeStorage.local.get(['notes']);
+      const allNotes = result.notes || [];
+      
+      // If user is logged in, filter to their notes only
+      let userNotes = allNotes;
+      if (user) {
+        userNotes = allNotes.filter(note => 
+          note.ownerId === user.uid || note.ownerId === 'local'
+        );
+      }
+      
+      return { success: true, notes: userNotes };
+    } catch (error) {
+      log.error('Get all notes error:', error);
+      return { success: false, notes: [], error: error.message };
+    }
+  }
+
+  /**
+   * Delete all notes for the current user
+   * Uses Firestore if configured, otherwise falls back to local storage
+   * @returns {Promise<Object>} Result with count of deleted notes
+   */
+  async function deleteAllNotes() {
+    try {
+      const user = await getCurrentUser();
+      
+      // First get all notes to delete
+      const { notes } = await getAllNotes();
+      
+      if (notes.length === 0) {
+        return { success: true, count: 0 };
+      }
+      
+      let deletedCount = 0;
+      
+      // Try Firestore first if configured and user is logged in
+      if (isFirebaseConfigured() && user) {
+        for (const note of notes) {
+          try {
+            await deleteNoteFromFirestore(note.id, user.uid);
+            deletedCount++;
+          } catch (error) {
+            log.error('Failed to delete note from Firestore:', note.id, error);
+          }
+        }
+        
+        if (deletedCount > 0) {
+          return { success: true, count: deletedCount };
+        }
+      }
+      
+      // Fallback to local storage
+      const result = await chromeStorage.local.get(['notes']);
+      const allNotes = result.notes || [];
+      
+      // Filter out user's notes (keep notes from other users if any)
+      const noteIdsToDelete = new Set(notes.map(note => note.id));
+      const remainingNotes = allNotes.filter(note => !noteIdsToDelete.has(note.id));
+      
+      await chromeStorage.local.set({ notes: remainingNotes });
+      
+      return { success: true, count: notes.length };
+    } catch (error) {
+      log.error('Delete all notes error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   return {
     handleMessage,
     handleLogin,
@@ -890,7 +978,10 @@ export function createHandlers(deps = {}) {
     // Badge management
     updateOrphanedBadge,
     // Iframe support
-    getTabUrl
+    getTabUrl,
+    // Bulk operations
+    getAllNotes,
+    deleteAllNotes
   };
 }
 

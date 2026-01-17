@@ -327,6 +327,14 @@ export class StickyNotesApp {
   }
   
   /**
+   * Highlight a note and expand it to maximized mode
+   * @param {string} noteId - Note ID
+   */
+  highlightAndMaximizeNote(noteId) {
+    this.noteManager.highlightAndMaximizeNote(noteId);
+  }
+  
+  /**
    * Show an orphaned note centered on screen
    * @param {string} noteId - Note ID
    */

@@ -3,7 +3,7 @@
  * Extracted for testability with dependency injection
  */
 
-import { isRestrictedUrl, THEME_COLORS, escapeHtml, stripHtml, truncate } from '../shared/utils.js';
+import { isRestrictedUrl, THEME_COLORS, escapeHtml, stripHtml, truncate, isValidEmail, formatRelativeTime } from '../shared/utils.js';
 import { popupLogger as defaultLog } from '../shared/logger.js';
 import { t } from '../shared/i18n.js';
 
@@ -20,7 +20,8 @@ export function createPopupHandlers(deps = {}) {
     chromeScripting = chrome.scripting,
     chromeStorage = chrome.storage,
     windowClose = () => window.close(),
-    showErrorToast = null  // Will be provided by popup.js
+    showErrorToast = null,  // Will be provided by popup.js
+    showSuccessToast = null // Will be provided by popup.js
   } = deps;
 
   /**
@@ -315,6 +316,483 @@ export function createPopupHandlers(deps = {}) {
     `;
   }
 
+  /**
+   * Delete a single note
+   * @param {string} noteId - Note ID to delete
+   * @returns {Promise<Object>} Result with success flag
+   */
+  async function handleDeleteNote(noteId) {
+    try {
+      const response = await chromeRuntime.sendMessage({
+        action: 'deleteNote',
+        noteId
+      });
+      
+      if (response.success) {
+        if (showSuccessToast) {
+          showSuccessToast(t('noteDeleted'));
+        }
+        return { success: true };
+      } else {
+        log.error('Delete note failed:', response.error);
+        if (showErrorToast) {
+          showErrorToast(response.error || t('failedToDelete'));
+        }
+        return { success: false, error: response.error };
+      }
+    } catch (error) {
+      log.error('Delete note error:', error);
+      if (showErrorToast) {
+        showErrorToast(t('failedToDelete'));
+      }
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Delete all notes for the current page
+   * @param {Array} notes - Array of notes to delete
+   * @returns {Promise<Object>} Result with success flag and count
+   */
+  async function handleDeleteAllFromPage(notes) {
+    try {
+      let deletedCount = 0;
+      
+      for (const note of notes) {
+        const response = await chromeRuntime.sendMessage({
+          action: 'deleteNote',
+          noteId: note.id
+        });
+        
+        if (response.success) {
+          deletedCount++;
+        }
+      }
+      
+      if (showSuccessToast) {
+        showSuccessToast(t('notesDeleted', [deletedCount]));
+      }
+      
+      return { success: true, count: deletedCount };
+    } catch (error) {
+      log.error('Delete all from page error:', error);
+      if (showErrorToast) {
+        showErrorToast(t('failedToDelete'));
+      }
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get all notes for the current user
+   * @returns {Promise<Object>} Result with notes array
+   */
+  async function getAllNotes() {
+    try {
+      const response = await chromeRuntime.sendMessage({
+        action: 'getAllNotes'
+      });
+      
+      if (response.success) {
+        return { success: true, notes: response.notes || [] };
+      } else {
+        log.error('Get all notes failed:', response.error);
+        return { success: false, notes: [], error: response.error };
+      }
+    } catch (error) {
+      log.error('Get all notes error:', error);
+      return { success: false, notes: [], error: error.message };
+    }
+  }
+
+  /**
+   * Delete all notes for the user
+   * @returns {Promise<Object>} Result with success flag and count
+   */
+  async function handleDeleteAllNotes() {
+    try {
+      const response = await chromeRuntime.sendMessage({
+        action: 'deleteAllNotes'
+      });
+      
+      if (response.success) {
+        if (showSuccessToast) {
+          showSuccessToast(t('notesDeleted', [response.count || 0]));
+        }
+        return { success: true, count: response.count };
+      } else {
+        log.error('Delete all notes failed:', response.error);
+        if (showErrorToast) {
+          showErrorToast(response.error || t('failedToDelete'));
+        }
+        return { success: false, error: response.error };
+      }
+    } catch (error) {
+      log.error('Delete all notes error:', error);
+      if (showErrorToast) {
+        showErrorToast(t('failedToDelete'));
+      }
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Share a note with another user
+   * @param {string} noteId - Note ID to share
+   * @param {string} email - Email to share with
+   * @returns {Promise<Object>} Result with success flag
+   */
+  async function handleShareNote(noteId, email) {
+    try {
+      if (!isValidEmail(email)) {
+        if (showErrorToast) {
+          showErrorToast(t('invalidEmail'));
+        }
+        return { success: false, error: t('invalidEmail') };
+      }
+      
+      const response = await chromeRuntime.sendMessage({
+        action: 'shareNote',
+        noteId,
+        email
+      });
+      
+      if (response.success) {
+        if (showSuccessToast) {
+          showSuccessToast(t('noteShared'));
+        }
+        return { success: true };
+      } else {
+        log.error('Share note failed:', response.error);
+        if (showErrorToast) {
+          showErrorToast(response.error || t('failedToShare'));
+        }
+        return { success: false, error: response.error };
+      }
+    } catch (error) {
+      log.error('Share note error:', error);
+      if (showErrorToast) {
+        showErrorToast(t('failedToShare'));
+      }
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Export notes to CSV format
+   * @param {Array} notes - Array of notes to export
+   * @param {string} filename - Filename for the CSV
+   * @returns {Promise<Object>} Result with success flag
+   */
+  async function handleExportCSV(notes, filename = 'sticky-notes.csv') {
+    try {
+      if (!notes || notes.length === 0) {
+        if (showErrorToast) {
+          showErrorToast(t('noNotesToExport'));
+        }
+        return { success: false, error: t('noNotesToExport') };
+      }
+      
+      // CSV headers
+      const headers = ['ID', 'URL', 'Selector', 'Content', 'Theme', 'Created At', 'Updated At', 'Owner Email', 'Shared With'];
+      
+      // Escape CSV field
+      const escapeCSV = (field) => {
+        if (field === null || field === undefined) return '';
+        const str = String(field);
+        // If field contains comma, newline, or quote, wrap in quotes and escape internal quotes
+        if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+          return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+      };
+      
+      // Build CSV content
+      const rows = [headers.join(',')];
+      
+      for (const note of notes) {
+        const row = [
+          escapeCSV(note.id),
+          escapeCSV(note.url),
+          escapeCSV(note.selector),
+          escapeCSV(stripHtml(note.content)),
+          escapeCSV(note.theme),
+          escapeCSV(formatTimestamp(note.createdAt)),
+          escapeCSV(formatTimestamp(note.updatedAt)),
+          escapeCSV(note.ownerEmail),
+          escapeCSV(Array.isArray(note.sharedWith) ? note.sharedWith.join('; ') : '')
+        ];
+        rows.push(row.join(','));
+      }
+      
+      const csvContent = rows.join('\n');
+      
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      
+      if (showSuccessToast) {
+        showSuccessToast(t('exportedNotes', [notes.length]));
+      }
+      
+      return { success: true, count: notes.length };
+    } catch (error) {
+      log.error('Export CSV error:', error);
+      if (showErrorToast) {
+        showErrorToast('Failed to export notes');
+      }
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Format timestamp for display
+   * @param {any} timestamp - Timestamp (Date, string, or Firestore timestamp)
+   * @returns {string} Formatted date string
+   */
+  function formatTimestamp(timestamp) {
+    if (!timestamp) return '';
+    
+    let date;
+    if (typeof timestamp === 'object' && timestamp.seconds) {
+      // Firestore timestamp
+      date = new Date(timestamp.seconds * 1000);
+    } else {
+      date = new Date(timestamp);
+    }
+    
+    if (isNaN(date.getTime())) return '';
+    
+    return date.toISOString();
+  }
+
+  /**
+   * Render a note item with expanded functionality (actions, metadata)
+   * @param {Object} note - Note object
+   * @returns {string} HTML string
+   */
+  function renderNoteItemExpanded(note) {
+    const orphanedClass = note.isOrphaned ? ' note-item-orphaned' : '';
+    const orphanedAttr = note.isOrphaned ? ' data-orphaned="true"' : '';
+    const sharedBadge = note.isShared ? `
+      <span class="note-item-shared-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+          <path d="M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+        Shared
+      </span>` : '';
+    const orphanedHint = note.isOrphaned ? `
+      <div class="note-item-orphan-hint">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>${t('orphanedNoteHint')}</span>
+      </div>` : '';
+    
+    const sharedWithText = note.sharedWith && note.sharedWith.length > 0 
+      ? note.sharedWith.join(', ') 
+      : t('notShared');
+    
+    return `
+      <div class="note-item${orphanedClass}" data-id="${note.id}"${orphanedAttr}>
+        <div class="note-item-header">
+          <div class="note-item-color" style="background: ${getThemeColor(note.theme)}"></div>
+          <div class="note-item-content">
+            <div class="note-item-text">${stripHtml(note.content) || t('emptyNote')}</div>
+            <div class="note-item-meta">
+              <span class="note-item-selector">${escapeHtml(truncateSelector(note.selector))}</span>
+              ${sharedBadge}
+            </div>${orphanedHint}
+          </div>
+          <div class="note-item-actions">
+            <button class="note-item-btn note-item-btn-expand" data-action="expand" title="${t('viewMetadata')}">
+              <svg class="note-item-expand-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            <button class="note-item-btn note-item-btn-share" data-action="share" title="${t('share')}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3"/>
+                <circle cx="6" cy="12" r="3"/>
+                <circle cx="18" cy="19" r="3"/>
+                <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/>
+              </svg>
+            </button>
+            <button class="note-item-btn note-item-btn-danger" data-action="delete" title="${t('delete')}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="note-item-details">
+          <div class="note-item-detail-row">
+            <span class="note-item-detail-label">${t('metadataElement')}</span>
+            <span class="note-item-detail-value mono">${escapeHtml(note.selector)}</span>
+          </div>
+          <div class="note-item-detail-row">
+            <span class="note-item-detail-label">${t('theme')}</span>
+            <span class="note-item-detail-value">
+              <span class="note-item-theme-dot" style="background: ${getThemeColor(note.theme)}; display: inline-block;"></span>
+              ${note.theme || 'yellow'}
+            </span>
+          </div>
+          <div class="note-item-detail-row">
+            <span class="note-item-detail-label">${t('createdAt')}</span>
+            <span class="note-item-detail-value">${formatRelativeTime(note.createdAt)}</span>
+          </div>
+          <div class="note-item-detail-row">
+            <span class="note-item-detail-label">${t('metadataOwner')}</span>
+            <span class="note-item-detail-value">${escapeHtml(note.ownerEmail || t('anonymous'))}</span>
+          </div>
+          <div class="note-item-detail-row">
+            <span class="note-item-detail-label">${t('sharedWith')}</span>
+            <span class="note-item-detail-value">${escapeHtml(sharedWithText)}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Show share modal in popup
+   * @param {string} noteId - Note ID to share
+   * @returns {Promise<void>}
+   */
+  function showShareModal(noteId) {
+    return new Promise((resolve) => {
+      // Create modal overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-backdrop';
+      
+      const modal = document.createElement('div');
+      modal.className = 'confirm-dialog';
+      modal.innerHTML = `
+        <div class="confirm-message" style="margin-bottom: 12px;">
+          <strong>${t('shareNote')}</strong>
+          <p style="margin-top: 8px; font-size: 13px; color: #6b7280;">${t('shareDescription')}</p>
+        </div>
+        <input type="email" class="share-email-input" placeholder="${t('emailPlaceholder')}" style="
+          width: 100%;
+          padding: 10px 12px;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          font-size: 13px;
+          margin-bottom: 16px;
+          outline: none;
+        ">
+        <div class="confirm-actions">
+          <button class="confirm-btn confirm-btn-cancel">${t('cancel')}</button>
+          <button class="confirm-btn" style="background: #3b82f6; color: white;">${t('shareButton')}</button>
+        </div>
+      `;
+      
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      
+      const emailInput = modal.querySelector('.share-email-input');
+      const cancelBtn = modal.querySelector('.confirm-btn-cancel');
+      const shareBtn = modal.querySelector('.confirm-btn:not(.confirm-btn-cancel)');
+      
+      emailInput.focus();
+      
+      const cleanup = () => {
+        overlay.remove();
+        resolve();
+      };
+      
+      cancelBtn.addEventListener('click', cleanup);
+      
+      shareBtn.addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        if (email) {
+          await handleShareNote(noteId, email);
+        }
+        cleanup();
+      });
+      
+      emailInput.addEventListener('keydown', async (event) => {
+        if (event.key === 'Enter') {
+          const email = emailInput.value.trim();
+          if (email) {
+            await handleShareNote(noteId, email);
+          }
+          cleanup();
+        } else if (event.key === 'Escape') {
+          cleanup();
+        }
+      });
+      
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+          cleanup();
+        }
+      });
+    });
+  }
+
+  /**
+   * Show confirm dialog in popup
+   * @param {string} message - Confirmation message
+   * @returns {Promise<boolean>} True if confirmed
+   */
+  function showConfirmDialog(message) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-backdrop';
+      
+      const dialog = document.createElement('div');
+      dialog.className = 'confirm-dialog';
+      dialog.innerHTML = `
+        <p class="confirm-message">${message}</p>
+        <div class="confirm-actions">
+          <button class="confirm-btn confirm-btn-cancel">${t('cancel')}</button>
+          <button class="confirm-btn confirm-btn-confirm">${t('confirm')}</button>
+        </div>
+      `;
+      
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+      
+      const cancelBtn = dialog.querySelector('.confirm-btn-cancel');
+      const confirmBtn = dialog.querySelector('.confirm-btn-confirm');
+      
+      const cleanup = (result) => {
+        overlay.remove();
+        resolve(result);
+      };
+      
+      cancelBtn.addEventListener('click', () => cleanup(false));
+      confirmBtn.addEventListener('click', () => cleanup(true));
+      
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+          cleanup(false);
+        }
+      });
+      
+      document.addEventListener('keydown', function handler(event) {
+        if (event.key === 'Escape') {
+          document.removeEventListener('keydown', handler);
+          cleanup(false);
+        } else if (event.key === 'Enter') {
+          document.removeEventListener('keydown', handler);
+          cleanup(true);
+        }
+      });
+    });
+  }
+
   return {
     checkAuthState,
     handleLogin,
@@ -326,7 +804,18 @@ export function createPopupHandlers(deps = {}) {
     getThemeColor,
     truncateSelector,
     renderNoteItem,
-    renderEmptyNotes
+    renderNoteItemExpanded,
+    renderEmptyNotes,
+    // New handlers
+    handleDeleteNote,
+    handleDeleteAllFromPage,
+    handleDeleteAllNotes,
+    handleShareNote,
+    handleExportCSV,
+    getAllNotes,
+    showShareModal,
+    showConfirmDialog,
+    formatTimestamp
   };
 }
 

@@ -394,6 +394,185 @@ describe('NoteManager', () => {
     });
   });
   
+  describe('highlightNote', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+    
+    it('should highlight a note by ID', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'highlight-note-001',
+        selector: '#anchor-element',
+        content: 'Test content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      
+      manager.createNoteFromData(noteData);
+      const note = manager.notes.get(noteData.id);
+      const highlightSpy = jest.spyOn(note, 'highlight');
+      const showSpy = jest.spyOn(note, 'show');
+      const bringToFrontSpy = jest.spyOn(note, 'bringToFront');
+      
+      manager.highlightNote(noteData.id);
+      
+      // Advance timers past the 400ms delay
+      jest.advanceTimersByTime(500);
+      
+      expect(showSpy).toHaveBeenCalled();
+      expect(bringToFrontSpy).toHaveBeenCalled();
+      expect(highlightSpy).toHaveBeenCalled();
+      
+      note.destroy();
+    });
+    
+    it('should not maximize note by default when highlighting', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'highlight-no-max-001',
+        selector: '#anchor-element',
+        content: 'Test content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      
+      manager.createNoteFromData(noteData);
+      const note = manager.notes.get(noteData.id);
+      const maximizeSpy = jest.spyOn(note, 'maximize');
+      
+      manager.highlightNote(noteData.id);
+      
+      // Advance timers past the 400ms delay
+      jest.advanceTimersByTime(500);
+      
+      expect(maximizeSpy).not.toHaveBeenCalled();
+      
+      note.destroy();
+    });
+    
+    it('should maximize note when maximize parameter is true', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'highlight-max-001',
+        selector: '#anchor-element',
+        content: 'Test content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      
+      manager.createNoteFromData(noteData);
+      const note = manager.notes.get(noteData.id);
+      const maximizeSpy = jest.spyOn(note, 'maximize');
+      
+      manager.highlightNote(noteData.id, true);
+      
+      // Advance timers past the 400ms delay
+      jest.advanceTimersByTime(500);
+      
+      expect(maximizeSpy).toHaveBeenCalled();
+      
+      note.destroy();
+    });
+    
+    it('should do nothing for non-existent note', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Should not throw
+      expect(() => manager.highlightNote('non-existent-id')).not.toThrow();
+    });
+    
+    it('should scroll anchor into view', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      const scrollIntoViewSpy = jest.spyOn(anchor, 'scrollIntoView');
+      
+      const noteData = {
+        id: 'highlight-scroll-001',
+        selector: '#anchor-element',
+        content: 'Test content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      
+      manager.createNoteFromData(noteData);
+      
+      manager.highlightNote(noteData.id);
+      
+      expect(scrollIntoViewSpy).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+      
+      const note = manager.notes.get(noteData.id);
+      note.destroy();
+    });
+  });
+  
+  describe('highlightAndMaximizeNote', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+    
+    it('should call highlightNote with maximize=true', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const highlightNoteSpy = jest.spyOn(manager, 'highlightNote');
+      
+      manager.highlightAndMaximizeNote('some-note-id');
+      
+      expect(highlightNoteSpy).toHaveBeenCalledWith('some-note-id', true);
+      
+      highlightNoteSpy.mockRestore();
+    });
+    
+    it('should highlight and maximize an existing note', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'highlight-and-max-001',
+        selector: '#anchor-element',
+        content: 'Test content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      
+      // Create note as minimized (default)
+      manager.createNoteFromData(noteData);
+      const note = manager.notes.get(noteData.id);
+      expect(note.isMinimized).toBe(true);
+      
+      const highlightSpy = jest.spyOn(note, 'highlight');
+      const maximizeSpy = jest.spyOn(note, 'maximize');
+      
+      manager.highlightAndMaximizeNote(noteData.id);
+      
+      // Advance timers past the 400ms delay
+      jest.advanceTimersByTime(500);
+      
+      expect(highlightSpy).toHaveBeenCalled();
+      expect(maximizeSpy).toHaveBeenCalled();
+      expect(note.isMinimized).toBe(false);
+      
+      note.destroy();
+    });
+  });
+  
   describe('race condition simulation', () => {
     it('should handle real-time update winning the race - note still created maximized', async () => {
       const localThis = createMockDependencies();

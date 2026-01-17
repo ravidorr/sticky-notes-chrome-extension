@@ -12,6 +12,7 @@ describe('MessageHandler', () => {
       enableSelectionMode: jest.fn(),
       disableSelectionMode: jest.fn(),
       highlightNote: jest.fn(),
+      highlightAndMaximizeNote: jest.fn(),
       showOrphanedNote: jest.fn(),
       handleUrlChange: jest.fn(),
       handleUserChange: jest.fn(),
@@ -80,6 +81,12 @@ describe('MessageHandler', () => {
     it('should handle highlightNote', async () => {
       const result = await messageHandler.handleMessage({ action: 'highlightNote', noteId: '123' });
       expect(mockApp.highlightNote).toHaveBeenCalledWith('123');
+      expect(result).toEqual({ success: true });
+    });
+
+    it('should handle highlightAndMaximizeNote', async () => {
+      const result = await messageHandler.handleMessage({ action: 'highlightAndMaximizeNote', noteId: '123' });
+      expect(mockApp.highlightAndMaximizeNote).toHaveBeenCalledWith('123');
       expect(result).toEqual({ success: true });
     });
 

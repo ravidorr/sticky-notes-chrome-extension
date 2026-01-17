@@ -1581,4 +1581,131 @@ describe('Background Handlers', () => {
       expect(result.url).toBe('https://example.com/iframe-test');
     });
   });
+  
+  describe('getAllNotes', () => {
+    it('should return all notes from local storage when not using Firebase', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      localThis.mockChromeStorage.local.get.mockResolvedValue({
+        notes: [
+          { id: '1', ownerId: 'user-123', content: 'Note 1' },
+          { id: '2', ownerId: 'user-123', content: 'Note 2' }
+        ]
+      });
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.getAllNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.notes.length).toBe(2);
+    });
+    
+    it('should filter notes by current user', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      localThis.mockChromeStorage.local.get.mockResolvedValue({
+        notes: [
+          { id: '1', ownerId: 'user-123', content: 'My note' },
+          { id: '2', ownerId: 'other-user', content: 'Other user note' }
+        ]
+      });
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.getAllNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.notes.length).toBe(1);
+      expect(result.notes[0].ownerId).toBe('user-123');
+    });
+    
+    it('should return empty array on error', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      localThis.mockChromeStorage.local.get.mockRejectedValue(new Error('Storage error'));
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.getAllNotes();
+      
+      expect(result.success).toBe(false);
+      expect(result.notes).toEqual([]);
+    });
+  });
+  
+  describe('deleteAllNotes', () => {
+    it('should delete all notes from local storage', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      localThis.mockChromeStorage.local.get.mockResolvedValue({
+        notes: [
+          { id: '1', ownerId: 'user-123', content: 'Note 1' },
+          { id: '2', ownerId: 'user-123', content: 'Note 2' }
+        ]
+      });
+      localThis.mockChromeStorage.local.set.mockResolvedValue();
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.deleteAllNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(2);
+      expect(localThis.mockChromeStorage.local.set).toHaveBeenCalledWith({ notes: [] });
+    });
+    
+    it('should delete from Firebase when configured', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.deleteNoteFromFirestore.mockResolvedValue();
+      localThis.mockChromeStorage.local.get.mockResolvedValue({
+        notes: [
+          { id: '1', ownerId: 'user-123', content: 'Note 1' }
+        ]
+      });
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.deleteAllNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(1);
+      expect(localThis.deps.deleteNoteFromFirestore).toHaveBeenCalledWith('1', 'user-123');
+    });
+    
+    it('should return count 0 when no notes exist', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      localThis.mockChromeStorage.local.get.mockResolvedValue({ notes: [] });
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.deleteAllNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(0);
+    });
+  });
+  
+  describe('handleMessage getAllNotes', () => {
+    it('should route getAllNotes message to getAllNotes handler', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      localThis.mockChromeStorage.local.get.mockResolvedValue({ notes: [] });
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.handleMessage({ action: 'getAllNotes' }, null);
+      
+      expect(result.success).toBe(true);
+      expect(result.notes).toEqual([]);
+    });
+  });
+  
+  describe('handleMessage deleteAllNotes', () => {
+    it('should route deleteAllNotes message to deleteAllNotes handler', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      localThis.mockChromeStorage.local.get.mockResolvedValue({ notes: [] });
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.handleMessage({ action: 'deleteAllNotes' }, null);
+      
+      expect(result.success).toBe(true);
+    });
+  });
 });

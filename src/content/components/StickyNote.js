@@ -991,7 +991,33 @@ export class StickyNote {
    */
   toggleMinimize() {
     this.isMinimized = !this.isMinimized;
-    
+    this.updateMinimizeUI();
+  }
+  
+  /**
+   * Maximize the note (expand if minimized)
+   */
+  maximize() {
+    if (this.isMinimized) {
+      this.isMinimized = false;
+      this.updateMinimizeUI();
+    }
+  }
+  
+  /**
+   * Minimize the note (collapse if expanded)
+   */
+  minimize() {
+    if (!this.isMinimized) {
+      this.isMinimized = true;
+      this.updateMinimizeUI();
+    }
+  }
+  
+  /**
+   * Update the minimize button UI based on current state
+   */
+  updateMinimizeUI() {
     const minimizeBtn = this.element.querySelector('.sn-minimize-btn');
     
     if (this.isMinimized) {

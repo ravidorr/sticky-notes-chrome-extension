@@ -68,6 +68,11 @@ export class MessageHandler {
         this.app.highlightNote(message.noteId);
         return { success: true };
       
+      case 'highlightAndMaximizeNote':
+        log.debug(' Highlighting and maximizing note:', message.noteId);
+        this.app.highlightAndMaximizeNote(message.noteId);
+        return { success: true };
+      
       case 'showOrphanedNote':
         log.debug(' Showing orphaned note centered:', message.noteId);
         this.app.showOrphanedNote(message.noteId);

@@ -1360,5 +1360,77 @@ describe('StickyNote', () => {
       localThis.minimizedSvg = localThis.minimizeBtn.innerHTML;
       expect(localThis.minimizedSvg).toContain('6 15 12 9 18 15'); // up arrow points
     });
+    
+    it('should have maximize method', () => {
+      expect(typeof note.maximize).toBe('function');
+    });
+    
+    it('should have minimize method', () => {
+      expect(typeof note.minimize).toBe('function');
+    });
+    
+    it('should maximize when calling maximize() on minimized note', () => {
+      // Note starts minimized by default
+      expect(note.isMinimized).toBe(true);
+      
+      note.maximize();
+      
+      expect(note.isMinimized).toBe(false);
+      expect(note.element.classList.contains('sn-minimized')).toBe(false);
+    });
+    
+    it('should do nothing when calling maximize() on already maximized note', () => {
+      // First maximize the note
+      note.maximize();
+      expect(note.isMinimized).toBe(false);
+      
+      // Call maximize again - should not change state
+      note.maximize();
+      expect(note.isMinimized).toBe(false);
+    });
+    
+    it('should minimize when calling minimize() on maximized note', () => {
+      // First maximize the note
+      note.maximize();
+      expect(note.isMinimized).toBe(false);
+      
+      note.minimize();
+      
+      expect(note.isMinimized).toBe(true);
+      expect(note.element.classList.contains('sn-minimized')).toBe(true);
+    });
+    
+    it('should do nothing when calling minimize() on already minimized note', () => {
+      // Note starts minimized by default
+      expect(note.isMinimized).toBe(true);
+      
+      // Call minimize again - should not change state
+      note.minimize();
+      expect(note.isMinimized).toBe(true);
+    });
+    
+    it('should update UI correctly when maximize is called', () => {
+      const localThis = {};
+      localThis.minimizeBtn = note.element.querySelector('.sn-minimize-btn');
+      
+      note.maximize();
+      
+      expect(localThis.minimizeBtn.title).toBe('minimize');
+      expect(localThis.minimizeBtn.innerHTML).toContain('6 9 12 15 18 9'); // down arrow
+    });
+    
+    it('should update UI correctly when minimize is called', () => {
+      const localThis = {};
+      localThis.minimizeBtn = note.element.querySelector('.sn-minimize-btn');
+      
+      // First maximize
+      note.maximize();
+      
+      // Then minimize
+      note.minimize();
+      
+      expect(localThis.minimizeBtn.title).toBe('expand');
+      expect(localThis.minimizeBtn.innerHTML).toContain('6 15 12 9 18 15'); // up arrow
+    });
   });
 });

@@ -139,7 +139,7 @@ Features that differentiate for developer and QA workflows:
 - [x] "Copy screenshot" - one-click annotated screenshot
 - [] Shareable link that highlights the element
 - [x] Export all notes as JSON
-- [] Export all notes as CSV
+- [x] Export all notes as CSV (from popup)
 
 ### Issue Tracking Integration
 - [] Jira integration (one-click ticket creation)
@@ -246,8 +246,8 @@ Low-effort features to test market fit:
 
 Unplanned feature ideas for future consideration:
 
-- [] Minimize note (collapse to small indicator)
-- [] Delete/bulk delete notes from popup.html
+- [x] Minimize note (collapse to small indicator)
+- [x] Delete/bulk delete notes from popup.html
 - [] Delete old notes from popup UI (filter by age, cleanup stale notes)
 - [x] Add note through right-click context menu
 - [] Read-only user permissions (viewers who can see notes but not edit/comment) - pricing implications?
@@ -265,11 +265,15 @@ Unplanned feature ideas for future consideration:
 - [] Inline sharing via email detection in note content:
   - Option A: Auto-detect emails and prompt to share (Pro: seamless; Con: accidental shares, ambiguous intent)
   - Option B: Explicit mention syntax like @email or +email (Pro: clear intent; Con: learning curve)
-- [] Manage sticky notes from popup (needs refinement):
-  - View full note content in popup (expand/preview mode)
-  - Delete notes on current page from popup
-  - View and delete notes from other pages (cross-page note management)
-  - Potential UI: list view with page grouping, search/filter capabilities
+- [x] Manage sticky notes from popup:
+  - [x] View note metadata in popup (expand/preview mode)
+  - [x] Delete notes on current page from popup
+  - [x] Bulk delete all notes from current page
+  - [x] Bulk delete all notes
+  - [x] Share notes from popup
+  - [x] Jump to note and maximize it
+  - [] View and delete notes from other pages (cross-page note management)
+  - [] Potential UI: list view with page grouping, search/filter capabilities
 
 ---
 
