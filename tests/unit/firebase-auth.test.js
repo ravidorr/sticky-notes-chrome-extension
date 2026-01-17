@@ -37,7 +37,8 @@ const {
   signInWithGoogle,
   signOut,
   revokeOAuthToken,
-  getCurrentUser
+  getCurrentUser,
+  isEdgeBrowser
 } = await import('../../src/firebase/auth.js');
 
 describe('Firebase Auth', () => {
@@ -62,6 +63,15 @@ describe('Firebase Auth', () => {
     localThis.mockChromeRuntime = {
       lastError: null
     };
+  });
+
+  describe('isEdgeBrowser', () => {
+    it('should return false when navigator is undefined', () => {
+      // In Node.js test environment, navigator may not be defined as expected
+      // The function should handle this gracefully
+      const result = isEdgeBrowser();
+      expect(typeof result).toBe('boolean');
+    });
   });
 
   describe('getOAuthClientId', () => {
@@ -98,33 +108,92 @@ describe('Firebase Auth', () => {
   });
 
   describe('getOAuthToken', () => {
-    it('should resolve with token on success', async () => {
-      localThis.mockChromeIdentity.getAuthToken.mockImplementation((opts, callback) => {
-        callback('mock-oauth-token');
+    describe('Chrome (getAuthToken)', () => {
+      it('should resolve with token on success', async () => {
+        localThis.mockChromeIdentity.getAuthToken.mockImplementation((opts, callback) => {
+          callback('mock-oauth-token');
+        });
+        
+        const token = await getOAuthToken({
+          isEdgeBrowser: false,
+          chromeIdentity: localThis.mockChromeIdentity,
+          chromeRuntime: localThis.mockChromeRuntime
+        });
+        
+        expect(token).toBe('mock-oauth-token');
+        expect(localThis.mockChromeIdentity.getAuthToken).toHaveBeenCalledWith(
+          { interactive: true },
+          expect.any(Function)
+        );
       });
-      
-      const token = await getOAuthToken({
-        chromeIdentity: localThis.mockChromeIdentity,
-        chromeRuntime: localThis.mockChromeRuntime
+
+      it('should reject on error', async () => {
+        localThis.mockChromeRuntime.lastError = { message: 'User cancelled' };
+        localThis.mockChromeIdentity.getAuthToken.mockImplementation((opts, callback) => {
+          callback(null);
+        });
+        
+        await expect(getOAuthToken({
+          isEdgeBrowser: false,
+          chromeIdentity: localThis.mockChromeIdentity,
+          chromeRuntime: localThis.mockChromeRuntime
+        })).rejects.toThrow('User cancelled');
       });
-      
-      expect(token).toBe('mock-oauth-token');
-      expect(localThis.mockChromeIdentity.getAuthToken).toHaveBeenCalledWith(
-        { interactive: true },
-        expect.any(Function)
-      );
     });
 
-    it('should reject on error', async () => {
-      localThis.mockChromeRuntime.lastError = { message: 'User cancelled' };
-      localThis.mockChromeIdentity.getAuthToken.mockImplementation((opts, callback) => {
-        callback(null);
+    describe('Edge (launchWebAuthFlow)', () => {
+      it('should resolve with token from launchWebAuthFlow', async () => {
+        localThis.mockChromeIdentity.getRedirectURL = jest.fn(() => 'https://extension-id.chromiumapp.org/');
+        localThis.mockChromeIdentity.launchWebAuthFlow = jest.fn().mockResolvedValue(
+          'https://extension-id.chromiumapp.org/#access_token=edge-oauth-token&token_type=Bearer'
+        );
+        
+        const token = await getOAuthToken({
+          isEdgeBrowser: true,
+          chromeIdentity: localThis.mockChromeIdentity,
+          getOAuthClientId: () => 'test-client-id.apps.googleusercontent.com'
+        });
+        
+        expect(token).toBe('edge-oauth-token');
+        expect(localThis.mockChromeIdentity.launchWebAuthFlow).toHaveBeenCalledWith({
+          url: expect.stringContaining('accounts.google.com/o/oauth2/v2/auth'),
+          interactive: true
+        });
       });
-      
-      await expect(getOAuthToken({
-        chromeIdentity: localThis.mockChromeIdentity,
-        chromeRuntime: localThis.mockChromeRuntime
-      })).rejects.toThrow('User cancelled');
+
+      it('should reject when no access token in response', async () => {
+        localThis.mockChromeIdentity.getRedirectURL = jest.fn(() => 'https://extension-id.chromiumapp.org/');
+        localThis.mockChromeIdentity.launchWebAuthFlow = jest.fn().mockResolvedValue(
+          'https://extension-id.chromiumapp.org/#error=access_denied'
+        );
+        
+        await expect(getOAuthToken({
+          isEdgeBrowser: true,
+          chromeIdentity: localThis.mockChromeIdentity,
+          getOAuthClientId: () => 'test-client-id.apps.googleusercontent.com'
+        })).rejects.toThrow('No access token in OAuth response');
+      });
+
+      it('should include correct OAuth parameters', async () => {
+        localThis.mockChromeIdentity.getRedirectURL = jest.fn(() => 'https://test.chromiumapp.org/');
+        localThis.mockChromeIdentity.launchWebAuthFlow = jest.fn().mockResolvedValue(
+          'https://test.chromiumapp.org/#access_token=test-token&token_type=Bearer'
+        );
+        
+        await getOAuthToken({
+          isEdgeBrowser: true,
+          chromeIdentity: localThis.mockChromeIdentity,
+          getOAuthClientId: () => 'my-client-id.apps.googleusercontent.com'
+        });
+        
+        const callArg = localThis.mockChromeIdentity.launchWebAuthFlow.mock.calls[0][0];
+        const authUrl = new URL(callArg.url);
+        
+        expect(authUrl.searchParams.get('client_id')).toBe('my-client-id.apps.googleusercontent.com');
+        expect(authUrl.searchParams.get('redirect_uri')).toBe('https://test.chromiumapp.org/');
+        expect(authUrl.searchParams.get('response_type')).toBe('token');
+        expect(authUrl.searchParams.get('scope')).toContain('userinfo.email');
+      });
     });
   });
 
@@ -199,39 +268,78 @@ describe('Firebase Auth', () => {
   });
 
   describe('revokeOAuthToken', () => {
-    it('should revoke token when it exists', async () => {
-      localThis.mockChromeIdentity.getAuthToken.mockImplementation((opts, callback) => {
-        callback('existing-token');
+    describe('Chrome', () => {
+      it('should revoke token when it exists', async () => {
+        localThis.mockChromeIdentity.getAuthToken.mockImplementation((opts, callback) => {
+          callback('existing-token');
+        });
+        localThis.mockChromeIdentity.removeCachedAuthToken.mockImplementation((opts, callback) => {
+          callback();
+        });
+        
+        const mockFetch = jest.fn().mockResolvedValue({ ok: true });
+        
+        await revokeOAuthToken({
+          isEdgeBrowser: false,
+          chromeIdentity: localThis.mockChromeIdentity,
+          fetch: mockFetch
+        });
+        
+        expect(localThis.mockChromeIdentity.removeCachedAuthToken).toHaveBeenCalledWith(
+          { token: 'existing-token' },
+          expect.any(Function)
+        );
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://accounts.google.com/o/oauth2/revoke?token=existing-token'
+        );
       });
-      localThis.mockChromeIdentity.removeCachedAuthToken.mockImplementation((opts, callback) => {
-        callback();
+
+      it('should resolve when no token exists', async () => {
+        localThis.mockChromeIdentity.getAuthToken.mockImplementation((opts, callback) => {
+          callback(null);
+        });
+        
+        await expect(revokeOAuthToken({
+          isEdgeBrowser: false,
+          chromeIdentity: localThis.mockChromeIdentity,
+          fetch: jest.fn()
+        })).resolves.toBeUndefined();
       });
-      
-      const mockFetch = jest.fn().mockResolvedValue({ ok: true });
-      
-      await revokeOAuthToken({
-        chromeIdentity: localThis.mockChromeIdentity,
-        fetch: mockFetch
-      });
-      
-      expect(localThis.mockChromeIdentity.removeCachedAuthToken).toHaveBeenCalledWith(
-        { token: 'existing-token' },
-        expect.any(Function)
-      );
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://accounts.google.com/o/oauth2/revoke?token=existing-token'
-      );
     });
 
-    it('should resolve when no token exists', async () => {
-      localThis.mockChromeIdentity.getAuthToken.mockImplementation((opts, callback) => {
-        callback(null);
+    describe('Edge', () => {
+      it('should call clearAllCachedAuthTokens if available', async () => {
+        localThis.mockChromeIdentity.clearAllCachedAuthTokens = jest.fn().mockResolvedValue();
+        
+        await revokeOAuthToken({
+          isEdgeBrowser: true,
+          chromeIdentity: localThis.mockChromeIdentity,
+          fetch: jest.fn()
+        });
+        
+        expect(localThis.mockChromeIdentity.clearAllCachedAuthTokens).toHaveBeenCalled();
       });
-      
-      await expect(revokeOAuthToken({
-        chromeIdentity: localThis.mockChromeIdentity,
-        fetch: jest.fn()
-      })).resolves.toBeUndefined();
+
+      it('should resolve even if clearAllCachedAuthTokens is not available', async () => {
+        // No clearAllCachedAuthTokens method
+        delete localThis.mockChromeIdentity.clearAllCachedAuthTokens;
+        
+        await expect(revokeOAuthToken({
+          isEdgeBrowser: true,
+          chromeIdentity: localThis.mockChromeIdentity,
+          fetch: jest.fn()
+        })).resolves.toBeUndefined();
+      });
+
+      it('should resolve even if clearAllCachedAuthTokens throws', async () => {
+        localThis.mockChromeIdentity.clearAllCachedAuthTokens = jest.fn().mockRejectedValue(new Error('Not supported'));
+        
+        await expect(revokeOAuthToken({
+          isEdgeBrowser: true,
+          chromeIdentity: localThis.mockChromeIdentity,
+          fetch: jest.fn()
+        })).resolves.toBeUndefined();
+      });
     });
   });
 

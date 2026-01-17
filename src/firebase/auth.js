@@ -1,6 +1,7 @@
 /**
  * Firebase Authentication Service
  * Handles Google Sign-In using chrome.identity API
+ * Supports both Chrome (getAuthToken) and Edge (launchWebAuthFlow)
  */
 
 import { 
@@ -10,6 +11,22 @@ import {
 } from 'firebase/auth';
 import { auth, isFirebaseConfigured, initializeFirebase } from './config.js';
 import { firestoreLogger as log } from '../shared/logger.js';
+
+/**
+ * Detect if running in Edge browser
+ * @returns {boolean}
+ */
+export function isEdgeBrowser() {
+  if (typeof navigator === 'undefined') return false;
+  
+  // Use Client Hints API if available (more reliable)
+  if (navigator.userAgentData?.brands) {
+    return navigator.userAgentData.brands.some(b => b.brand === 'Microsoft Edge');
+  }
+  
+  // Fallback to user agent string
+  return navigator.userAgent.includes('Edg/');
+}
 
 /**
  * Get OAuth client ID from environment
@@ -35,10 +52,25 @@ export function isAuthConfigured(deps = {}) {
 
 /**
  * Get OAuth token using chrome.identity
+ * Uses getAuthToken() for Chrome, launchWebAuthFlow() for Edge
  * @param {Object} deps - Dependencies for testing
  * @returns {Promise<string|null>} OAuth token
  */
 export async function getOAuthToken(deps = {}) {
+  const isEdge = deps.isEdgeBrowser !== undefined ? deps.isEdgeBrowser : isEdgeBrowser();
+  
+  if (isEdge) {
+    return getOAuthTokenViaWebAuthFlow(deps);
+  }
+  return getOAuthTokenViaGetAuthToken(deps);
+}
+
+/**
+ * Chrome: Use chrome.identity.getAuthToken()
+ * @param {Object} deps - Dependencies for testing
+ * @returns {Promise<string>} OAuth token
+ */
+async function getOAuthTokenViaGetAuthToken(deps = {}) {
   const chromeIdentity = deps.chromeIdentity || chrome.identity;
   const chromeRuntime = deps.chromeRuntime || chrome.runtime;
   
@@ -52,6 +84,48 @@ export async function getOAuthToken(deps = {}) {
       resolve(token);
     });
   });
+}
+
+/**
+ * Edge/Firefox: Use chrome.identity.launchWebAuthFlow()
+ * @param {Object} deps - Dependencies for testing
+ * @returns {Promise<string>} OAuth token
+ */
+async function getOAuthTokenViaWebAuthFlow(deps = {}) {
+  const chromeIdentity = deps.chromeIdentity || chrome.identity;
+  const getClientId = deps.getOAuthClientId || getOAuthClientId;
+  const clientId = getClientId();
+  
+  // Get the redirect URL for this extension
+  const redirectUrl = chromeIdentity.getRedirectURL();
+  
+  // Build Google OAuth URL
+  const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  authUrl.searchParams.set('client_id', clientId);
+  authUrl.searchParams.set('redirect_uri', redirectUrl);
+  authUrl.searchParams.set('response_type', 'token');
+  authUrl.searchParams.set('scope', [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile'
+  ].join(' '));
+  
+  // Launch the auth flow in a popup
+  const responseUrl = await chromeIdentity.launchWebAuthFlow({
+    url: authUrl.toString(),
+    interactive: true
+  });
+  
+  // Parse the access token from the redirect URL fragment
+  const url = new URL(responseUrl);
+  const hash = url.hash.substring(1); // Remove leading #
+  const params = new URLSearchParams(hash);
+  const accessToken = params.get('access_token');
+  
+  if (!accessToken) {
+    throw new Error('No access token in OAuth response');
+  }
+  
+  return accessToken;
 }
 
 /**
@@ -122,7 +196,21 @@ export async function signInWithGoogle(deps = {}) {
 export async function revokeOAuthToken(deps = {}) {
   const chromeIdentity = deps.chromeIdentity || chrome.identity;
   const fetchFn = deps.fetch || fetch;
+  const isEdge = deps.isEdgeBrowser !== undefined ? deps.isEdgeBrowser : isEdgeBrowser();
   
+  // Edge uses launchWebAuthFlow which doesn't cache tokens the same way
+  // We can only clear any web auth flow cache
+  if (isEdge) {
+    try {
+      // Clear any cached web auth flow (Edge/Firefox)
+      await chromeIdentity.clearAllCachedAuthTokens?.();
+    } catch {
+      // clearAllCachedAuthTokens may not be available
+    }
+    return;
+  }
+  
+  // Chrome: Use getAuthToken to retrieve and revoke cached token
   return new Promise((resolve) => {
     chromeIdentity.getAuthToken({ interactive: false }, (token) => {
       if (token) {

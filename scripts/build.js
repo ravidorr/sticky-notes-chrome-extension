@@ -22,17 +22,24 @@ const rootDir = resolve(__dirname, '..');
 // Supported browsers
 const SUPPORTED_BROWSERS = ['chrome', 'edge'];
 
-// OAuth client IDs for different environments
+// OAuth client IDs for different environments and browsers
+// Chrome uses "Chrome Extension" type OAuth clients (for getAuthToken)
+// Edge uses "Web application" type OAuth clients (for launchWebAuthFlow)
 const OAUTH_CLIENTS = {
-  development: '413613230006-c8044e50sohrq813h1ejfjdojfcsfa2n.apps.googleusercontent.com',
-  production: '413613230006-ukaectcb0rd3gq1jjnthc0kd4444ccg3.apps.googleusercontent.com'
+  chrome: {
+    development: '413613230006-c8044e50sohrq813h1ejfjdojfcsfa2n.apps.googleusercontent.com',
+    production: '413613230006-ukaectcb0rd3gq1jjnthc0kd4444ccg3.apps.googleusercontent.com'
+  },
+  edge: {
+    development: '413613230006-mu05ttk6b7kvu3j88fp514rkqmghrmiq.apps.googleusercontent.com',
+    production: '413613230006-mu05ttk6b7kvu3j88fp514rkqmghrmiq.apps.googleusercontent.com' // TODO: Create separate production client
+  }
 };
 
 // Determine build environment from command line args or env var
 // Default is production; use --development flag or BUILD_ENV=development for dev builds
 const isDevelopment = process.argv.includes('--development') || process.env.BUILD_ENV === 'development';
 const buildEnv = isDevelopment ? 'development' : 'production';
-const oauthClientId = OAUTH_CLIENTS[buildEnv];
 
 // Determine target browser from command line args
 // Default is chrome; use --browser=edge for Edge builds
@@ -70,9 +77,9 @@ function copyStaticFiles() {
   const manifestPath = resolve(publicDir, manifestFilename);
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
   
-  // Update OAuth client ID based on build environment
+  // Update OAuth client ID based on build environment and browser
   if (manifest.oauth2) {
-    manifest.oauth2.client_id = oauthClientId;
+    manifest.oauth2.client_id = OAUTH_CLIENTS[targetBrowser][buildEnv];
   }
   
   // Always output as manifest.json regardless of source filename
@@ -120,6 +127,11 @@ function copyLocalesFolder(src, dest) {
   }
 }
 
+// Get OAuth client ID for current browser and environment
+function getOAuthClientIdForBuild() {
+  return OAUTH_CLIENTS[targetBrowser][buildEnv];
+}
+
 // Common build options
 const commonOptions = {
   configFile: false,
@@ -128,6 +140,10 @@ const commonOptions = {
     alias: {
       '@': resolve(rootDir, 'src')
     }
+  },
+  define: {
+    // Inject OAuth client ID at build time
+    'import.meta.env.VITE_OAUTH_CLIENT_ID': JSON.stringify(getOAuthClientIdForBuild())
   },
   build: {
     minify: false,
