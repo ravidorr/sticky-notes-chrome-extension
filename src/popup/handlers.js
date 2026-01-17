@@ -767,7 +767,16 @@ export function createPopupHandlers(deps = {}) {
       const cancelBtn = dialog.querySelector('.confirm-btn-cancel');
       const confirmBtn = dialog.querySelector('.confirm-btn-confirm');
       
+      const handleKeydown = (event) => {
+        if (event.key === 'Escape') {
+          cleanup(false);
+        } else if (event.key === 'Enter') {
+          cleanup(true);
+        }
+      };
+      
       const cleanup = (result) => {
+        document.removeEventListener('keydown', handleKeydown);
         overlay.remove();
         resolve(result);
       };
@@ -781,15 +790,7 @@ export function createPopupHandlers(deps = {}) {
         }
       });
       
-      document.addEventListener('keydown', function handler(event) {
-        if (event.key === 'Escape') {
-          document.removeEventListener('keydown', handler);
-          cleanup(false);
-        } else if (event.key === 'Enter') {
-          document.removeEventListener('keydown', handler);
-          cleanup(true);
-        }
-      });
+      document.addEventListener('keydown', handleKeydown);
     });
   }
 

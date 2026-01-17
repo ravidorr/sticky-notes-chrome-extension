@@ -716,4 +716,208 @@ describe('Popup Handlers', () => {
       expect(localThis.handlers.formatTimestamp(undefined)).toBe('');
     });
   });
+
+  describe('showConfirmDialog', () => {
+    beforeEach(() => {
+      // Clean up any existing dialogs
+      document.body.innerHTML = '';
+    });
+
+    afterEach(() => {
+      // Clean up after each test
+      document.body.innerHTML = '';
+    });
+
+    it('should create dialog with message and buttons', async () => {
+      const promise = localThis.handlers.showConfirmDialog('Test message');
+      
+      const overlay = document.querySelector('.confirm-backdrop');
+      const dialog = document.querySelector('.confirm-dialog');
+      const message = document.querySelector('.confirm-message');
+      const cancelBtn = document.querySelector('.confirm-btn-cancel');
+      const confirmBtn = document.querySelector('.confirm-btn-confirm');
+      
+      expect(overlay).not.toBeNull();
+      expect(dialog).not.toBeNull();
+      expect(message.textContent).toBe('Test message');
+      expect(cancelBtn).not.toBeNull();
+      expect(confirmBtn).not.toBeNull();
+      
+      // Clean up by clicking cancel
+      cancelBtn.click();
+      await promise;
+    });
+
+    it('should resolve with false when cancel button is clicked', async () => {
+      const promise = localThis.handlers.showConfirmDialog('Test');
+      
+      const cancelBtn = document.querySelector('.confirm-btn-cancel');
+      cancelBtn.click();
+      
+      const result = await promise;
+      expect(result).toBe(false);
+      expect(document.querySelector('.confirm-backdrop')).toBeNull();
+    });
+
+    it('should resolve with true when confirm button is clicked', async () => {
+      const promise = localThis.handlers.showConfirmDialog('Test');
+      
+      const confirmBtn = document.querySelector('.confirm-btn-confirm');
+      confirmBtn.click();
+      
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(document.querySelector('.confirm-backdrop')).toBeNull();
+    });
+
+    it('should resolve with false when backdrop is clicked', async () => {
+      const promise = localThis.handlers.showConfirmDialog('Test');
+      
+      const overlay = document.querySelector('.confirm-backdrop');
+      // Simulate click on backdrop (not on dialog)
+      const clickEvent = new MouseEvent('click', { bubbles: true });
+      Object.defineProperty(clickEvent, 'target', { value: overlay });
+      overlay.dispatchEvent(clickEvent);
+      
+      const result = await promise;
+      expect(result).toBe(false);
+      expect(document.querySelector('.confirm-backdrop')).toBeNull();
+    });
+
+    it('should resolve with false when Escape key is pressed', async () => {
+      const promise = localThis.handlers.showConfirmDialog('Test');
+      
+      const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' });
+      document.dispatchEvent(escapeEvent);
+      
+      const result = await promise;
+      expect(result).toBe(false);
+      expect(document.querySelector('.confirm-backdrop')).toBeNull();
+    });
+
+    it('should resolve with true when Enter key is pressed', async () => {
+      const promise = localThis.handlers.showConfirmDialog('Test');
+      
+      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter' });
+      document.dispatchEvent(enterEvent);
+      
+      const result = await promise;
+      expect(result).toBe(true);
+      expect(document.querySelector('.confirm-backdrop')).toBeNull();
+    });
+
+    it('should remove keydown listener when closed via cancel button click', async () => {
+      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+      const removeEventListenerSpy = jest.spyOn(document, 'removeEventListener');
+      
+      const promise = localThis.handlers.showConfirmDialog('Test');
+      
+      // Get the handler that was registered
+      const keydownCall = addEventListenerSpy.mock.calls.find(call => call[0] === 'keydown');
+      expect(keydownCall).toBeDefined();
+      const registeredHandler = keydownCall[1];
+      
+      // Close via cancel button
+      const cancelBtn = document.querySelector('.confirm-btn-cancel');
+      cancelBtn.click();
+      await promise;
+      
+      // Verify the keydown listener was removed
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', registeredHandler);
+      
+      addEventListenerSpy.mockRestore();
+      removeEventListenerSpy.mockRestore();
+    });
+
+    it('should remove keydown listener when closed via confirm button click', async () => {
+      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+      const removeEventListenerSpy = jest.spyOn(document, 'removeEventListener');
+      
+      const promise = localThis.handlers.showConfirmDialog('Test');
+      
+      const keydownCall = addEventListenerSpy.mock.calls.find(call => call[0] === 'keydown');
+      const registeredHandler = keydownCall[1];
+      
+      // Close via confirm button
+      const confirmBtn = document.querySelector('.confirm-btn-confirm');
+      confirmBtn.click();
+      await promise;
+      
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', registeredHandler);
+      
+      addEventListenerSpy.mockRestore();
+      removeEventListenerSpy.mockRestore();
+    });
+
+    it('should remove keydown listener when closed via backdrop click', async () => {
+      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+      const removeEventListenerSpy = jest.spyOn(document, 'removeEventListener');
+      
+      const promise = localThis.handlers.showConfirmDialog('Test');
+      
+      const keydownCall = addEventListenerSpy.mock.calls.find(call => call[0] === 'keydown');
+      const registeredHandler = keydownCall[1];
+      
+      // Close via backdrop click
+      const overlay = document.querySelector('.confirm-backdrop');
+      const clickEvent = new MouseEvent('click', { bubbles: true });
+      Object.defineProperty(clickEvent, 'target', { value: overlay });
+      overlay.dispatchEvent(clickEvent);
+      await promise;
+      
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', registeredHandler);
+      
+      addEventListenerSpy.mockRestore();
+      removeEventListenerSpy.mockRestore();
+    });
+
+    it('should not accumulate keydown listeners across multiple dialogs', async () => {
+      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+      const removeEventListenerSpy = jest.spyOn(document, 'removeEventListener');
+      
+      // Open and close first dialog via mouse click
+      const promise1 = localThis.handlers.showConfirmDialog('First');
+      document.querySelector('.confirm-btn-cancel').click();
+      await promise1;
+      
+      // Open and close second dialog via mouse click
+      const promise2 = localThis.handlers.showConfirmDialog('Second');
+      document.querySelector('.confirm-btn-confirm').click();
+      await promise2;
+      
+      // Open and close third dialog via mouse click
+      const promise3 = localThis.handlers.showConfirmDialog('Third');
+      const overlay = document.querySelector('.confirm-backdrop');
+      const clickEvent = new MouseEvent('click', { bubbles: true });
+      Object.defineProperty(clickEvent, 'target', { value: overlay });
+      overlay.dispatchEvent(clickEvent);
+      await promise3;
+      
+      // Count keydown addEventListener and removeEventListener calls
+      const keydownAddCalls = addEventListenerSpy.mock.calls.filter(call => call[0] === 'keydown');
+      const keydownRemoveCalls = removeEventListenerSpy.mock.calls.filter(call => call[0] === 'keydown');
+      
+      // Each dialog should add and remove exactly one keydown listener
+      expect(keydownAddCalls.length).toBe(3);
+      expect(keydownRemoveCalls.length).toBe(3);
+      
+      addEventListenerSpy.mockRestore();
+      removeEventListenerSpy.mockRestore();
+    });
+
+    it('should ignore other keys', async () => {
+      const promise = localThis.handlers.showConfirmDialog('Test');
+      
+      // Press a random key
+      const tabEvent = new KeyboardEvent('keydown', { key: 'Tab' });
+      document.dispatchEvent(tabEvent);
+      
+      // Dialog should still be open
+      expect(document.querySelector('.confirm-backdrop')).not.toBeNull();
+      
+      // Clean up
+      document.querySelector('.confirm-btn-cancel').click();
+      await promise;
+    });
+  });
 });
