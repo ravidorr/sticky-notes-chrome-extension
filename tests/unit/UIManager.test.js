@@ -2,7 +2,7 @@
  * UIManager Unit Tests
  */
 
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { UIManager } from '../../src/content/app/UIManager.js';
 
 describe('UIManager', () => {
@@ -11,6 +11,13 @@ describe('UIManager', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     document.body.innerHTML = '';
+    
+    // Mock chrome.runtime.sendMessage
+    global.chrome = {
+      runtime: {
+        sendMessage: jest.fn().mockReturnValue({ catch: jest.fn() })
+      }
+    };
 
     // Capture MutationObserver callback for manual triggering
     localThis.observerCallback = null;
@@ -113,6 +120,61 @@ describe('UIManager', () => {
       { textContent: 'C' }
     );
     expect(note.updateAnchor).toHaveBeenCalledWith(match1);
+  });
+
+  describe('disableSelectionModeAllFrames', () => {
+    it('should call disableSelectionMode locally', () => {
+      localThis.ui.createShadowContainer();
+      localThis.ui.isSelectionMode = true;
+      document.body.classList.add('sn-selection-mode');
+      
+      localThis.ui.disableSelectionModeAllFrames();
+      
+      expect(localThis.ui.isSelectionMode).toBe(false);
+      expect(document.body.classList.contains('sn-selection-mode')).toBe(false);
+    });
+    
+    it('should broadcast disableSelectionMode to background script', () => {
+      localThis.ui.createShadowContainer();
+      localThis.ui.isSelectionMode = true;
+      document.body.classList.add('sn-selection-mode');
+      
+      localThis.ui.disableSelectionModeAllFrames();
+      
+      // The sendMessage call is wrapped in try-catch, so verify it was called
+      expect(chrome.runtime.sendMessage).toHaveBeenCalled();
+      // Check the call includes the correct action
+      const calls = chrome.runtime.sendMessage.mock.calls;
+      expect(calls.some(call => call[0]?.action === 'broadcastDisableSelectionMode')).toBe(true);
+    });
+    
+    it('should handle chrome.runtime.sendMessage errors gracefully', async () => {
+      localThis.ui.createShadowContainer();
+      localThis.ui.isSelectionMode = true;
+      
+      // Simulate error - mockImplementation handles promise internally
+      const mockPromise = { catch: jest.fn().mockReturnThis() };
+      chrome.runtime.sendMessage.mockReturnValue(mockPromise);
+      
+      // Should not throw
+      expect(() => localThis.ui.disableSelectionModeAllFrames()).not.toThrow();
+      expect(localThis.ui.isSelectionMode).toBe(false);
+      
+      // Verify catch was called on the promise
+      expect(mockPromise.catch).toHaveBeenCalled();
+    });
+    
+    it('should handle missing chrome.runtime gracefully', () => {
+      localThis.ui.createShadowContainer();
+      localThis.ui.isSelectionMode = true;
+      
+      // Simulate missing chrome.runtime
+      delete global.chrome.runtime;
+      
+      // Should not throw
+      expect(() => localThis.ui.disableSelectionModeAllFrames()).not.toThrow();
+      expect(localThis.ui.isSelectionMode).toBe(false);
+    });
   });
 });
 

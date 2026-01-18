@@ -119,6 +119,10 @@ export function createHandlers(deps = {}) {
       case 'deleteAllNotes':
         return deleteAllNotes();
       
+      // Selection mode broadcast (for iframe support)
+      case 'broadcastDisableSelectionMode':
+        return broadcastDisableSelectionMode(sender);
+      
       default:
         log.warn('Unknown action received:', message.action, 'Full message:', JSON.stringify(message));
         return { success: false, error: t('unknownAction') };
@@ -172,6 +176,47 @@ export function createHandlers(deps = {}) {
       return { success: false, error: 'Tab URL not available' };
     }
     return { success: true, url: tabUrl };
+  }
+
+  /**
+   * Broadcast disableSelectionMode to all frames in the tab
+   * This ensures all frames (main + iframes) exit selection mode when ESC is pressed
+   * @param {Object} sender - Message sender (contains tab info)
+   * @returns {Promise<Object>} Result
+   */
+  async function broadcastDisableSelectionMode(sender) {
+    try {
+      const tabId = sender?.tab?.id;
+      if (!tabId) {
+        return { success: false, error: 'Tab ID not available' };
+      }
+      
+      log.debug('Broadcasting disableSelectionMode to all frames in tab', tabId);
+      
+      // Get all frames in the tab
+      const frames = await chrome.webNavigation.getAllFrames({ tabId });
+      
+      if (!frames || frames.length === 0) {
+        return { success: true }; // No frames to notify
+      }
+      
+      // Send to each frame
+      const sendPromises = frames.map(async (frame) => {
+        try {
+          await chromeTabs.sendMessage(tabId, { action: 'disableSelectionMode' }, { frameId: frame.frameId });
+          log.debug('Sent disableSelectionMode to frame', frame.frameId);
+        } catch {
+          // Frame might not have content script or is already closed, that's okay
+        }
+      });
+      
+      await Promise.all(sendPromises);
+      
+      return { success: true };
+    } catch (error) {
+      log.error('Broadcast disableSelectionMode error:', error);
+      return { success: false, error: error.message };
+    }
   }
 
   /**
@@ -979,6 +1024,7 @@ export function createHandlers(deps = {}) {
     updateOrphanedBadge,
     // Iframe support
     getTabUrl,
+    broadcastDisableSelectionMode,
     // Bulk operations
     getAllNotes,
     deleteAllNotes

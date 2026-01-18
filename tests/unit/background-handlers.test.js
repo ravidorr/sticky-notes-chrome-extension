@@ -1708,4 +1708,113 @@ describe('Background Handlers', () => {
       expect(result.success).toBe(true);
     });
   });
+  
+  describe('broadcastDisableSelectionMode', () => {
+    it('should send disableSelectionMode to all frames in tab', async () => {
+      const sender = { tab: { id: 123 } };
+      
+      // Mock chrome.webNavigation.getAllFrames
+      global.chrome = {
+        ...global.chrome,
+        webNavigation: {
+          getAllFrames: jest.fn().mockResolvedValue([
+            { frameId: 0 },
+            { frameId: 1 },
+            { frameId: 2 }
+          ])
+        }
+      };
+      
+      localThis.deps.chromeTabs = {
+        sendMessage: jest.fn().mockResolvedValue({ success: true })
+      };
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.broadcastDisableSelectionMode(sender);
+      
+      expect(result.success).toBe(true);
+      expect(localThis.deps.chromeTabs.sendMessage).toHaveBeenCalledTimes(3);
+      expect(localThis.deps.chromeTabs.sendMessage).toHaveBeenCalledWith(
+        123,
+        { action: 'disableSelectionMode' },
+        { frameId: 0 }
+      );
+      expect(localThis.deps.chromeTabs.sendMessage).toHaveBeenCalledWith(
+        123,
+        { action: 'disableSelectionMode' },
+        { frameId: 1 }
+      );
+    });
+    
+    it('should return error when tab ID not available', async () => {
+      const sender = {}; // No tab
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.broadcastDisableSelectionMode(sender);
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Tab ID not available');
+    });
+    
+    it('should succeed even if no frames are found', async () => {
+      const sender = { tab: { id: 123 } };
+      
+      global.chrome = {
+        ...global.chrome,
+        webNavigation: {
+          getAllFrames: jest.fn().mockResolvedValue([])
+        }
+      };
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.broadcastDisableSelectionMode(sender);
+      
+      expect(result.success).toBe(true);
+    });
+    
+    it('should handle sendMessage failures gracefully', async () => {
+      const sender = { tab: { id: 123 } };
+      
+      global.chrome = {
+        ...global.chrome,
+        webNavigation: {
+          getAllFrames: jest.fn().mockResolvedValue([
+            { frameId: 0 },
+            { frameId: 1 }
+          ])
+        }
+      };
+      
+      localThis.deps.chromeTabs = {
+        sendMessage: jest.fn().mockRejectedValue(new Error('Frame closed'))
+      };
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.broadcastDisableSelectionMode(sender);
+      
+      // Should still succeed even if individual sends fail
+      expect(result.success).toBe(true);
+    });
+  });
+  
+  describe('handleMessage broadcastDisableSelectionMode', () => {
+    it('should route broadcastDisableSelectionMode to handler', async () => {
+      const sender = { tab: { id: 456 } };
+      
+      global.chrome = {
+        ...global.chrome,
+        webNavigation: {
+          getAllFrames: jest.fn().mockResolvedValue([])
+        }
+      };
+      
+      const handlers = createHandlers(localThis.deps);
+      const result = await handlers.handleMessage(
+        { action: 'broadcastDisableSelectionMode' },
+        sender
+      );
+      
+      expect(result.success).toBe(true);
+    });
+  });
 });

@@ -94,12 +94,31 @@ export class UIManager {
     log.debug(' Creating SelectionOverlay...');
     this.selectionOverlay = new SelectionOverlay({
       onSelect: (element) => this.handleElementSelect(element),
-      onCancel: () => this.disableSelectionMode()
+      onCancel: () => this.disableSelectionModeAllFrames()
     });
     
     log.debug(' Appending overlay to container');
     this.container.appendChild(this.selectionOverlay.element);
     log.debug('Selection mode fully enabled - click an element to add a note');
+  }
+  
+  /**
+   * Disable selection mode in all frames (broadcast via background script)
+   * Called when ESC is pressed to ensure all frames exit selection mode
+   */
+  disableSelectionModeAllFrames() {
+    // First disable locally
+    this.disableSelectionMode();
+    
+    // Then broadcast to all other frames via background script
+    // This ensures iframes also exit selection mode when ESC is pressed in any frame
+    try {
+      chrome.runtime.sendMessage({ action: 'broadcastDisableSelectionMode' }).catch(() => {
+        // Ignore errors - context may be invalidated or background not available
+      });
+    } catch {
+      // Ignore - extension context may be invalidated
+    }
   }
   
   /**
