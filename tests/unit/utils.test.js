@@ -77,6 +77,13 @@ describe('isValidEmail', () => {
     expect(utils.isValidEmail('')).toBe(false);
     expect(utils.isValidEmail(null)).toBe(false);
   });
+  
+  it('should reject emails without TLD (no dot in domain)', () => {
+    expect(utils.isValidEmail('test@localhost')).toBe(false);
+    expect(utils.isValidEmail('user@domain')).toBe(false);
+    expect(utils.isValidEmail('test@g')).toBe(false);
+    expect(utils.isValidEmail('partial@example')).toBe(false);
+  });
 });
 
 describe('extractEmails', () => {

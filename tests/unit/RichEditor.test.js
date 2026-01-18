@@ -178,5 +178,228 @@ describe('RichEditor', () => {
       expect(styles).toContain('.sn-editor-toolbar');
       expect(styles).toContain('.sn-editor-content');
     });
+    
+    it('should include email share styles', () => {
+      const styles = RichEditor.getStyles();
+      expect(styles).toContain('.sn-email-share');
+      expect(styles).toContain('.sn-email-share-pending');
+      expect(styles).toContain('.sn-email-share-success');
+      expect(styles).toContain('.sn-email-share-failed');
+    });
+  });
+  
+  describe('email detection and sharing', () => {
+    let onEmailShare;
+    let onEmailUnshare;
+    let editorWithCallbacks;
+    
+    beforeEach(() => {
+      onEmailShare = jest.fn();
+      onEmailUnshare = jest.fn();
+      editorWithCallbacks = new RichEditor({
+        content: '',
+        placeholder: 'Write here...',
+        onChange: jest.fn(),
+        onEmailShare,
+        onEmailUnshare
+      });
+      document.body.appendChild(editorWithCallbacks.element);
+    });
+    
+    afterEach(() => {
+      if (editorWithCallbacks && editorWithCallbacks.element && editorWithCallbacks.element.parentNode) {
+        editorWithCallbacks.destroy();
+      }
+    });
+    
+    describe('processEmailsInContent', () => {
+      it('should detect email followed by space and trigger share callback', () => {
+        editorWithCallbacks.editor.innerHTML = 'test@example.com ';
+        editorWithCallbacks.processEmailsInContent();
+        
+        expect(onEmailShare).toHaveBeenCalledWith('test@example.com');
+      });
+      
+      it('should NOT detect email at end of content (user still typing)', () => {
+        editorWithCallbacks.editor.innerHTML = 'test@example.com';
+        editorWithCallbacks.processEmailsInContent();
+        
+        expect(onEmailShare).not.toHaveBeenCalled();
+      });
+      
+      it('should NOT detect partial email without TLD', () => {
+        editorWithCallbacks.editor.innerHTML = 'test@g ';
+        editorWithCallbacks.processEmailsInContent();
+        
+        expect(onEmailShare).not.toHaveBeenCalled();
+      });
+      
+      it('should detect email followed by newline', () => {
+        editorWithCallbacks.editor.innerHTML = 'test@example.com\nmore text';
+        editorWithCallbacks.processEmailsInContent();
+        
+        expect(onEmailShare).toHaveBeenCalledWith('test@example.com');
+      });
+      
+      it('should trigger unshare callback when email is removed', () => {
+        // First, add and track an email
+        editorWithCallbacks.editor.innerHTML = 'test@example.com ';
+        editorWithCallbacks.processEmailsInContent();
+        expect(onEmailShare).toHaveBeenCalledWith('test@example.com');
+        
+        // Now remove the email
+        editorWithCallbacks.editor.innerHTML = 'some other text';
+        editorWithCallbacks.processEmailsInContent();
+        
+        expect(onEmailUnshare).toHaveBeenCalledWith('test@example.com');
+      });
+      
+      it('should not trigger share for already tracked emails', () => {
+        editorWithCallbacks.editor.innerHTML = 'test@example.com ';
+        editorWithCallbacks.processEmailsInContent();
+        expect(onEmailShare).toHaveBeenCalledTimes(1);
+        
+        // Process again - should not trigger
+        editorWithCallbacks.processEmailsInContent();
+        expect(onEmailShare).toHaveBeenCalledTimes(1);
+      });
+    });
+    
+    describe('wrapEmailInSpan', () => {
+      it('should wrap email in span with pending class', () => {
+        editorWithCallbacks.editor.innerHTML = 'Contact test@example.com please';
+        editorWithCallbacks.wrapEmailInSpan('test@example.com');
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span).not.toBeNull();
+        expect(span.classList.contains('sn-email-share-pending')).toBe(true);
+        expect(span.dataset.email).toBe('test@example.com');
+        expect(span.textContent).toBe('test@example.com');
+      });
+      
+      it('should set data-tooltip attribute', () => {
+        editorWithCallbacks.editor.innerHTML = 'test@example.com ';
+        editorWithCallbacks.wrapEmailInSpan('test@example.com');
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span.dataset.tooltip).toBeDefined();
+      });
+      
+      it('should not wrap email that is already wrapped', () => {
+        editorWithCallbacks.editor.innerHTML = '<span class="sn-email-share" data-email="test@example.com">test@example.com</span>';
+        editorWithCallbacks.wrapEmailInSpan('test@example.com');
+        
+        const spans = editorWithCallbacks.editor.querySelectorAll('.sn-email-share');
+        expect(spans.length).toBe(1);
+      });
+    });
+    
+    describe('cleanupEmailSpans', () => {
+      it('should extract extra text typed after email in span', () => {
+        // Simulate user typing inside the span (browser behavior)
+        editorWithCallbacks.editor.innerHTML = '<span class="sn-email-share sn-email-share-success" data-email="test@example.com" data-tooltip="Shared">test@example.com extra text</span>';
+        editorWithCallbacks.cleanupEmailSpans();
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span.textContent).toBe('test@example.com');
+        expect(editorWithCallbacks.editor.textContent).toContain('extra text');
+      });
+      
+      it('should extract text typed before email in span', () => {
+        editorWithCallbacks.editor.innerHTML = '<span class="sn-email-share" data-email="test@example.com">before test@example.com</span>';
+        editorWithCallbacks.cleanupEmailSpans();
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span.textContent).toBe('test@example.com');
+        expect(editorWithCallbacks.editor.textContent).toContain('before');
+      });
+      
+      it('should remove span if no valid email remains', () => {
+        editorWithCallbacks.editor.innerHTML = '<span class="sn-email-share" data-email="test@example.com">not an email anymore</span>';
+        editorWithCallbacks.cleanupEmailSpans();
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span).toBeNull();
+        expect(editorWithCallbacks.editor.textContent).toBe('not an email anymore');
+      });
+      
+      it('should preserve span if content matches email exactly', () => {
+        editorWithCallbacks.editor.innerHTML = '<span class="sn-email-share" data-email="test@example.com">test@example.com</span>';
+        const htmlBefore = editorWithCallbacks.editor.innerHTML;
+        editorWithCallbacks.cleanupEmailSpans();
+        
+        expect(editorWithCallbacks.editor.innerHTML).toBe(htmlBefore);
+      });
+    });
+    
+    describe('updateEmailStatus', () => {
+      beforeEach(() => {
+        // Set up a wrapped email
+        editorWithCallbacks.editor.innerHTML = 'test@example.com ';
+        editorWithCallbacks.processEmailsInContent();
+      });
+      
+      it('should update span to success status', () => {
+        editorWithCallbacks.updateEmailStatus('test@example.com', true, 'Shared with test@example.com');
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span.classList.contains('sn-email-share-success')).toBe(true);
+        expect(span.classList.contains('sn-email-share-pending')).toBe(false);
+        expect(span.dataset.tooltip).toBe('Shared with test@example.com');
+      });
+      
+      it('should update span to failed status', () => {
+        editorWithCallbacks.updateEmailStatus('test@example.com', false, 'Failed to share');
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span.classList.contains('sn-email-share-failed')).toBe(true);
+        expect(span.classList.contains('sn-email-share-pending')).toBe(false);
+      });
+      
+      it('should match email case-insensitively', () => {
+        editorWithCallbacks.updateEmailStatus('TEST@EXAMPLE.COM', true, 'Shared');
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span.classList.contains('sn-email-share-success')).toBe(true);
+      });
+      
+      it('should update tracked emails map', () => {
+        editorWithCallbacks.updateEmailStatus('test@example.com', true, 'Shared');
+        
+        const tracked = editorWithCallbacks.getTrackedEmails();
+        expect(tracked.get('test@example.com')).toEqual({
+          status: 'success',
+          tooltip: 'Shared'
+        });
+      });
+    });
+    
+    describe('getTrackedEmails', () => {
+      it('should return map of tracked emails', () => {
+        editorWithCallbacks.editor.innerHTML = 'test@example.com ';
+        editorWithCallbacks.processEmailsInContent();
+        
+        const tracked = editorWithCallbacks.getTrackedEmails();
+        expect(tracked.has('test@example.com')).toBe(true);
+        expect(tracked.get('test@example.com').status).toBe('pending');
+      });
+    });
+    
+    describe('setEmailStatuses', () => {
+      it('should set initial email statuses', () => {
+        editorWithCallbacks.editor.innerHTML = '<span class="sn-email-share" data-email="test@example.com">test@example.com</span>';
+        
+        editorWithCallbacks.setEmailStatuses([
+          { email: 'test@example.com', status: 'success', tooltip: 'Already shared' }
+        ]);
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span.classList.contains('sn-email-share-success')).toBe(true);
+        expect(span.dataset.tooltip).toBe('Already shared');
+        
+        const tracked = editorWithCallbacks.getTrackedEmails();
+        expect(tracked.get('test@example.com').status).toBe('success');
+      });
+    });
   });
 });

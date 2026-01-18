@@ -35,13 +35,15 @@ export function stripHtml(html) {
 
 /**
  * Validate email format
- * Uses RFC 5322 compliant regex
+ * Uses RFC 5322 compliant regex, requires at least one dot in domain (e.g., test@example.com)
  * @param {string} email - Email to validate
  * @returns {boolean} True if valid email format
  */
 export function isValidEmail(email) {
   if (!email || typeof email !== 'string') return false;
-  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  // Require at least one dot in domain part (changed * to + at end)
+  // This prevents partial emails like "test@g" from being considered valid
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
   return emailRegex.test(email);
 }
 
@@ -54,7 +56,8 @@ export function isValidEmail(email) {
 export function extractEmails(text) {
   if (!text || typeof text !== 'string') return [];
   // Use the same pattern as isValidEmail but with global flag for matching
-  const emailRegex = /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*/g;
+  // Requires at least one dot in domain (changed * to +)
+  const emailRegex = /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+/g;
   const matches = text.match(emailRegex) || [];
   // Filter with isValidEmail to ensure only valid emails are returned, and dedupe
   return [...new Set(matches.filter(email => isValidEmail(email)))];

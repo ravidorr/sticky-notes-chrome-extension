@@ -417,6 +417,9 @@ export class RichEditor {
     const currentEmails = extractEmails(plainText);
     const currentEmailSet = new Set(currentEmails.map(e => e.toLowerCase()));
     
+    // FIRST: Clean up any spans that have accumulated extra text
+    this.cleanupEmailSpans();
+    
     // Find emails that were removed
     for (const [email] of this.trackedEmails) {
       if (!currentEmailSet.has(email.toLowerCase())) {
@@ -436,8 +439,9 @@ export class RichEditor {
         const emailIndex = plainText.indexOf(email);
         const charAfterEmail = plainText[emailIndex + email.length];
         
-        // Only trigger share if email is followed by space, newline, or is at end of content
-        if (charAfterEmail === ' ' || charAfterEmail === '\n' || charAfterEmail === undefined || charAfterEmail === '\u00A0') {
+        // Only trigger share if email is EXPLICITLY followed by space or newline
+        // Do NOT trigger when email is at end of content (undefined) - user may still be typing
+        if (charAfterEmail === ' ' || charAfterEmail === '\n' || charAfterEmail === '\u00A0') {
           // New email detected - wrap it and trigger share
           this.wrapEmailInSpan(email);
           this.trackedEmails.set(normalizedEmail, { status: 'pending', tooltip: '' });
@@ -451,18 +455,143 @@ export class RichEditor {
   }
   
   /**
+   * Clean up email spans that have accumulated extra text
+   * This happens when user types inside the span after the email
+   */
+  cleanupEmailSpans() {
+    const spans = this.editor.querySelectorAll('.sn-email-share');
+    
+    for (const span of spans) {
+      const spanText = span.textContent;
+      
+      // Check if span contains text that doesn't match the data-email
+      // Extract just the email part from the span text
+      const emailsInSpan = extractEmails(spanText);
+      
+      if (emailsInSpan.length === 0) {
+        // No valid email in span - remove the span styling but keep the text
+        const textNode = document.createTextNode(spanText);
+        span.parentNode.replaceChild(textNode, span);
+        this.content = this.editor.innerHTML;
+        continue;
+      }
+      
+      const actualEmail = emailsInSpan[0]; // Use the first valid email found
+      
+      // Check if the span text has extra content beyond the email
+      if (spanText !== actualEmail) {
+        // Find where the email is in the span text
+        const emailIndex = spanText.indexOf(actualEmail);
+        const before = spanText.substring(0, emailIndex);
+        const after = spanText.substring(emailIndex + actualEmail.length);
+        
+        // Create new span with just the email
+        const newSpan = document.createElement('span');
+        newSpan.className = span.className;
+        newSpan.dataset.email = actualEmail.toLowerCase();
+        newSpan.dataset.tooltip = span.dataset.tooltip;
+        newSpan.textContent = actualEmail;
+        
+        // Create fragment with before text, new span, and after text
+        const fragment = document.createDocumentFragment();
+        if (before) {
+          fragment.appendChild(document.createTextNode(before));
+        }
+        fragment.appendChild(newSpan);
+        if (after) {
+          fragment.appendChild(document.createTextNode(after));
+        }
+        
+        // Replace old span with the fixed content
+        span.parentNode.replaceChild(fragment, span);
+        
+        // Update internal content
+        this.content = this.editor.innerHTML;
+      }
+    }
+  }
+  
+  /**
    * Wrap an email address in a styled span for visual feedback
    * @param {string} email - Email to wrap
    */
   wrapEmailInSpan(email) {
-    // Save current selection
-    const selection = window.getSelection();
-    let savedRange = null;
-    if (selection.rangeCount > 0) {
-      savedRange = selection.getRangeAt(0).cloneRange();
+    // First, check if this email is inside an existing span that needs updating
+    const existingSpans = this.editor.querySelectorAll('.sn-email-share');
+    for (const span of existingSpans) {
+      const spanText = span.textContent;
+      // Check if the span contains this email (possibly with extra text that shouldn't be there)
+      if (spanText.includes(email)) {
+        // The span contains more than just the email - need to fix it
+        if (spanText !== email) {
+          // Extract the email and any text before/after it
+          const emailIndex = spanText.indexOf(email);
+          const before = spanText.substring(0, emailIndex);
+          const after = spanText.substring(emailIndex + email.length);
+          
+          // Create new span with just the email
+          const newSpan = document.createElement('span');
+          newSpan.className = span.className;
+          newSpan.dataset.email = email.toLowerCase();
+          newSpan.dataset.tooltip = span.dataset.tooltip;
+          newSpan.textContent = email;
+          
+          // Create fragment with before text, new span, and after text
+          const fragment = document.createDocumentFragment();
+          if (before) {
+            fragment.appendChild(document.createTextNode(before));
+          }
+          fragment.appendChild(newSpan);
+          
+          let afterTextNode = null;
+          if (after) {
+            afterTextNode = document.createTextNode(after);
+            fragment.appendChild(afterTextNode);
+          }
+          
+          // Replace old span with the fixed content
+          span.parentNode.replaceChild(fragment, span);
+          
+          // Update the span's data attributes
+          newSpan.dataset.email = email.toLowerCase();
+          
+          // Update internal content
+          this.content = this.editor.innerHTML;
+          
+          // Position cursor after the span
+          try {
+            const selection = window.getSelection();
+            const range = document.createRange();
+            if (afterTextNode) {
+              range.setStart(afterTextNode, 0);
+              range.setEnd(afterTextNode, 0);
+            } else {
+              range.setStartAfter(newSpan);
+              range.setEndAfter(newSpan);
+            }
+            selection.removeAllRanges();
+            selection.addRange(range);
+          } catch {
+            // Selection positioning may fail
+          }
+          
+          return;
+        } else if (span.dataset.email !== email.toLowerCase()) {
+          // Span text matches email but data-email attribute is outdated - update it
+          span.dataset.email = email.toLowerCase();
+          span.dataset.tooltip = t('sharingInProgress') || 'Sharing...';
+          span.classList.remove('sn-email-share-success', 'sn-email-share-failed');
+          span.classList.add('sn-email-share-pending');
+          this.content = this.editor.innerHTML;
+          return;
+        } else {
+          // Already properly wrapped, skip
+          return;
+        }
+      }
     }
     
-    // Find and wrap the email in the editor content
+    // Find and wrap the email in the editor content (for emails not yet in a span)
     const walker = document.createTreeWalker(
       this.editor,
       NodeFilter.SHOW_TEXT,
@@ -498,23 +627,39 @@ export class RichEditor {
           fragment.appendChild(document.createTextNode(before));
         }
         fragment.appendChild(span);
+        
+        // Create the "after" text node - we'll use this to position cursor
+        let afterTextNode = null;
         if (after) {
-          fragment.appendChild(document.createTextNode(after));
+          afterTextNode = document.createTextNode(after);
+          fragment.appendChild(afterTextNode);
         }
         
-        node.parentNode.replaceChild(fragment, node);
+        const parentNode = node.parentNode;
+        parentNode.replaceChild(fragment, node);
         
         // Update internal content
         this.content = this.editor.innerHTML;
         
-        // Restore selection/cursor position
-        if (savedRange) {
-          try {
-            selection.removeAllRanges();
-            selection.addRange(savedRange);
-          } catch {
-            // Selection restoration may fail if DOM changed significantly
+        // Position cursor AFTER the span (at start of afterTextNode, or after span if no after text)
+        try {
+          const selection = window.getSelection();
+          const range = document.createRange();
+          
+          if (afterTextNode) {
+            // Position at the start of the text after the email
+            range.setStart(afterTextNode, 0);
+            range.setEnd(afterTextNode, 0);
+          } else {
+            // No text after email - position right after the span
+            range.setStartAfter(span);
+            range.setEndAfter(span);
           }
+          
+          selection.removeAllRanges();
+          selection.addRange(range);
+        } catch {
+          // Selection positioning may fail in some edge cases
         }
         
         break; // Only wrap first occurrence
@@ -540,12 +685,19 @@ export class RichEditor {
     }
     
     // Find and update the span in the editor
+    // Match by data-email attribute OR by text content containing the email
     const spans = this.editor.querySelectorAll('.sn-email-share');
     for (const span of spans) {
-      if (span.dataset.email === normalizedEmail) {
+      // Match by data-email OR by text content (in case data-email is outdated)
+      const spanEmail = span.dataset.email;
+      const spanText = span.textContent.toLowerCase();
+      
+      if (spanEmail === normalizedEmail || spanText === normalizedEmail || spanText.includes(normalizedEmail)) {
         span.classList.remove('sn-email-share-pending', 'sn-email-share-success', 'sn-email-share-failed');
         span.classList.add(success ? 'sn-email-share-success' : 'sn-email-share-failed');
         span.dataset.tooltip = tooltip;
+        // Also update data-email to match the current email
+        span.dataset.email = normalizedEmail;
       }
     }
     
@@ -700,11 +852,11 @@ export class RichEditor {
         text-decoration-color: #ef4444;
       }
       
-      /* Tooltip on hover */
+      /* Tooltip on hover - positioned below to avoid overflow clipping */
       .sn-email-share[data-tooltip]:hover::after {
         content: attr(data-tooltip);
         position: absolute;
-        bottom: 100%;
+        top: 100%;
         left: 50%;
         transform: translateX(-50%);
         padding: 4px 8px;
@@ -713,20 +865,20 @@ export class RichEditor {
         font-size: 12px;
         white-space: nowrap;
         border-radius: 4px;
-        z-index: 10;
+        z-index: 9999;
         pointer-events: none;
-        margin-bottom: 4px;
+        margin-top: 4px;
       }
       
       .sn-email-share[data-tooltip]:hover::before {
         content: '';
         position: absolute;
-        bottom: 100%;
+        top: 100%;
         left: 50%;
         transform: translateX(-50%);
         border: 5px solid transparent;
-        border-top-color: #1f2937;
-        z-index: 10;
+        border-bottom-color: #1f2937;
+        z-index: 9999;
         pointer-events: none;
       }
     `;
