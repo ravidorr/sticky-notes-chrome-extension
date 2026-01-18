@@ -15,7 +15,10 @@ import {
   updateNote as updateNoteInFirestore, 
   deleteNote as deleteNoteFromFirestore,
   shareNote as shareNoteInFirestore,
-  subscribeToNotesForUrl
+  unshareNote as unshareNoteInFirestore,
+  subscribeToNotesForUrl,
+  subscribeToSharedNotes,
+  getSharedNotesForUser
 } from '../firebase/notes.js';
 import {
   createComment as createCommentInFirestore,
@@ -34,6 +37,9 @@ import { getUrlChangedMessageFromHistoryUpdate } from './navigation.js';
 const noteSubscriptions = new Map(); // tabId -> { url: string, unsubscribe: Function }
 const commentSubscriptions = new Map(); // `${tabId}-${noteId}` -> unsubscribe Function
 
+// Track global shared notes subscription
+const sharedNotesSubscription = { current: null };
+
 // Create handlers with actual dependencies
 const handlers = createHandlers({
   signInWithGoogle,
@@ -44,6 +50,7 @@ const handlers = createHandlers({
   updateNoteInFirestore,
   deleteNoteFromFirestore,
   shareNoteInFirestore,
+  unshareNoteInFirestore,
   isFirebaseConfigured,
   // Comment service functions
   createCommentInFirestore,
@@ -53,13 +60,18 @@ const handlers = createHandlers({
   // Real-time subscription functions
   subscribeToNotesForUrl,
   subscribeToComments,
+  // Global shared notes subscription
+  subscribeToSharedNotes,
+  getSharedNotesForUser,
   noteSubscriptions,
   commentSubscriptions,
+  sharedNotesSubscription,
   generateId,
   isValidEmail,
   log,
   chromeStorage: chrome.storage,
-  chromeTabs: chrome.tabs
+  chromeTabs: chrome.tabs,
+  chromeAction: chrome.action
 });
 
 const { handleMessage } = handlers;
@@ -178,6 +190,21 @@ export function bootstrap() {
   log.info('Sticky Notes background service worker started');
   log.info('Firebase configured:', isFirebaseConfigured());
   log.info('Auth configured:', isAuthConfigured());
+  
+  // Initialize shared notes subscription if user is already logged in
+  if (isFirebaseConfigured()) {
+    getCurrentUser().then(user => {
+      if (user && user.email) {
+        handlers.subscribeToSharedNotesGlobal().then(() => {
+          log.info('Initialized shared notes subscription for logged-in user');
+        }).catch(error => {
+          log.error('Failed to initialize shared notes subscription:', error);
+        });
+      }
+    }).catch(error => {
+      log.debug('Could not check user state on startup:', error.message);
+    });
+  }
 }
 
 // Only bootstrap in non-test environment

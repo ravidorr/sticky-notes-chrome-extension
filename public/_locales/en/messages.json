@@ -204,6 +204,24 @@
     "message": "Please enter a valid email address",
     "description": "Error message for invalid email"
   },
+  "sharedWithEmail": {
+    "message": "Shared with $EMAIL$",
+    "description": "Tooltip text when note is shared with an email",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "colleague@example.com"
+      }
+    }
+  },
+  "sharingInProgress": {
+    "message": "Sharing...",
+    "description": "Tooltip text while sharing is in progress"
+  },
+  "noteNotSavedYet": {
+    "message": "Save note first",
+    "description": "Error when trying to share before note is saved"
+  },
 
   "metadataUrl": {
     "message": "URL",

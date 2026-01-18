@@ -1,11 +1,14 @@
 /**
  * RichEditor Component
  * Lightweight contenteditable-based rich text editor
- * Supports: Bold, Italic, Lists, Links
+ * Supports: Bold, Italic, Lists, Links, Auto-share via email detection
  */
 
-import { escapeHtml } from '../../shared/utils.js';
+import { escapeHtml, isValidEmail, extractEmails } from '../../shared/utils.js';
 import { t } from '../../shared/i18n.js';
+
+// Email detection regex - matches email followed by space, newline, or end
+const EMAIL_PATTERN = /([a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)(?=\s|$|<)/g;
 
 export class RichEditor {
   /**
@@ -14,11 +17,18 @@ export class RichEditor {
    * @param {string} options.content - Initial HTML content
    * @param {string} options.placeholder - Placeholder text
    * @param {Function} options.onChange - Change callback
+   * @param {Function} options.onEmailShare - Callback when email detected for sharing (email) => void
+   * @param {Function} options.onEmailUnshare - Callback when email removed (email) => void
    */
   constructor(options = {}) {
     this.content = options.content || '';
     this.placeholder = options.placeholder || 'Write your note here...';
     this.onChange = options.onChange || (() => {});
+    this.onEmailShare = options.onEmailShare || null;
+    this.onEmailUnshare = options.onEmailUnshare || null;
+    
+    // Track detected emails: Map<email, { status: 'pending'|'success'|'failed', tooltip: string }>
+    this.trackedEmails = new Map();
     
     this.element = null;
     this.toolbar = null;
@@ -26,6 +36,11 @@ export class RichEditor {
     
     this.render();
     this.setupEventListeners();
+    
+    // Process initial content for existing emails
+    if (this.content) {
+      this.processEmailsInContent();
+    }
   }
   
   /**
@@ -120,6 +135,7 @@ export class RichEditor {
       this.content = this.editor.innerHTML;
       this.onChange(this.content);
       this.updatePlaceholder();
+      this.processEmailsInContent();
     });
     
     // Keyboard shortcuts - stop propagation to prevent page shortcuts from interfering
@@ -179,6 +195,7 @@ export class RichEditor {
       
       this.content = this.editor.innerHTML;
       this.onChange(this.content);
+      this.processEmailsInContent();
     });
     
     // Initial placeholder state
@@ -324,13 +341,17 @@ export class RichEditor {
     const unwanted = temp.querySelectorAll('script, style, meta, link, head');
     unwanted.forEach(el => el.remove());
     
-    // Remove most attributes except href on links
+    // Remove most attributes except href on links and data-* on email share spans
     const allElements = temp.querySelectorAll('*');
     allElements.forEach(el => {
       const attrs = Array.from(el.attributes);
+      const isEmailShareSpan = el.tagName === 'SPAN' && el.classList.contains('sn-email-share');
       attrs.forEach(attr => {
         if (el.tagName === 'A' && attr.name === 'href') {
           return; // Keep href on links
+        }
+        if (isEmailShareSpan && (attr.name === 'class' || attr.name.startsWith('data-'))) {
+          return; // Keep class and data attributes on email share spans
         }
         el.removeAttribute(attr.name);
       });
@@ -384,6 +405,181 @@ export class RichEditor {
    */
   getPlainText() {
     return this.editor.textContent || '';
+  }
+  
+  /**
+   * Process emails in content - detect new emails and wrap them, detect removed emails
+   * Called on input and paste events
+   */
+  processEmailsInContent() {
+    // Get plain text to find emails
+    const plainText = this.getPlainText();
+    const currentEmails = extractEmails(plainText);
+    const currentEmailSet = new Set(currentEmails.map(e => e.toLowerCase()));
+    
+    // Find emails that were removed
+    for (const [email] of this.trackedEmails) {
+      if (!currentEmailSet.has(email.toLowerCase())) {
+        // Email was removed from content
+        this.trackedEmails.delete(email);
+        if (this.onEmailUnshare) {
+          this.onEmailUnshare(email);
+        }
+      }
+    }
+    
+    // Find new emails that need to be shared
+    for (const email of currentEmails) {
+      const normalizedEmail = email.toLowerCase();
+      if (!this.trackedEmails.has(normalizedEmail) && isValidEmail(email)) {
+        // Check if this email is followed by a space (completed typing)
+        const emailIndex = plainText.indexOf(email);
+        const charAfterEmail = plainText[emailIndex + email.length];
+        
+        // Only trigger share if email is followed by space, newline, or is at end of content
+        if (charAfterEmail === ' ' || charAfterEmail === '\n' || charAfterEmail === undefined || charAfterEmail === '\u00A0') {
+          // New email detected - wrap it and trigger share
+          this.wrapEmailInSpan(email);
+          this.trackedEmails.set(normalizedEmail, { status: 'pending', tooltip: '' });
+          
+          if (this.onEmailShare) {
+            this.onEmailShare(email);
+          }
+        }
+      }
+    }
+  }
+  
+  /**
+   * Wrap an email address in a styled span for visual feedback
+   * @param {string} email - Email to wrap
+   */
+  wrapEmailInSpan(email) {
+    // Save current selection
+    const selection = window.getSelection();
+    let savedRange = null;
+    if (selection.rangeCount > 0) {
+      savedRange = selection.getRangeAt(0).cloneRange();
+    }
+    
+    // Find and wrap the email in the editor content
+    const walker = document.createTreeWalker(
+      this.editor,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+    
+    let node;
+    while ((node = walker.nextNode())) {
+      const text = node.textContent;
+      const emailIndex = text.indexOf(email);
+      
+      if (emailIndex !== -1) {
+        // Check if this text node's email is not already wrapped
+        const parent = node.parentElement;
+        if (parent && parent.classList && parent.classList.contains('sn-email-share')) {
+          // Already wrapped, skip
+          continue;
+        }
+        
+        // Split the text node and wrap the email
+        const before = text.substring(0, emailIndex);
+        const after = text.substring(emailIndex + email.length);
+        
+        const span = document.createElement('span');
+        span.className = 'sn-email-share sn-email-share-pending';
+        span.dataset.email = email.toLowerCase();
+        span.dataset.tooltip = t('sharingInProgress') || 'Sharing...';
+        span.textContent = email;
+        
+        const fragment = document.createDocumentFragment();
+        if (before) {
+          fragment.appendChild(document.createTextNode(before));
+        }
+        fragment.appendChild(span);
+        if (after) {
+          fragment.appendChild(document.createTextNode(after));
+        }
+        
+        node.parentNode.replaceChild(fragment, node);
+        
+        // Update internal content
+        this.content = this.editor.innerHTML;
+        
+        // Restore selection/cursor position
+        if (savedRange) {
+          try {
+            selection.removeAllRanges();
+            selection.addRange(savedRange);
+          } catch {
+            // Selection restoration may fail if DOM changed significantly
+          }
+        }
+        
+        break; // Only wrap first occurrence
+      }
+    }
+  }
+  
+  /**
+   * Update the visual status of an email share
+   * @param {string} email - Email address
+   * @param {boolean} success - Whether the share succeeded
+   * @param {string} tooltip - Tooltip text to display
+   */
+  updateEmailStatus(email, success, tooltip = '') {
+    const normalizedEmail = email.toLowerCase();
+    
+    // Update tracked status
+    if (this.trackedEmails.has(normalizedEmail)) {
+      this.trackedEmails.set(normalizedEmail, {
+        status: success ? 'success' : 'failed',
+        tooltip: tooltip
+      });
+    }
+    
+    // Find and update the span in the editor
+    const spans = this.editor.querySelectorAll('.sn-email-share');
+    for (const span of spans) {
+      if (span.dataset.email === normalizedEmail) {
+        span.classList.remove('sn-email-share-pending', 'sn-email-share-success', 'sn-email-share-failed');
+        span.classList.add(success ? 'sn-email-share-success' : 'sn-email-share-failed');
+        span.dataset.tooltip = tooltip;
+      }
+    }
+    
+    // Update internal content
+    this.content = this.editor.innerHTML;
+  }
+  
+  /**
+   * Get all tracked emails with their statuses
+   * @returns {Map} Map of email -> { status, tooltip }
+   */
+  getTrackedEmails() {
+    return new Map(this.trackedEmails);
+  }
+  
+  /**
+   * Set initial email statuses (e.g., when loading a note that's already shared)
+   * @param {Array<{email: string, status: string, tooltip: string}>} emailStatuses - Array of email statuses
+   */
+  setEmailStatuses(emailStatuses) {
+    for (const { email, status, tooltip } of emailStatuses) {
+      const normalizedEmail = email.toLowerCase();
+      this.trackedEmails.set(normalizedEmail, { status, tooltip });
+      
+      // If the span exists, update it
+      const spans = this.editor.querySelectorAll('.sn-email-share');
+      for (const span of spans) {
+        if (span.dataset.email === normalizedEmail) {
+          span.classList.remove('sn-email-share-pending', 'sn-email-share-success', 'sn-email-share-failed');
+          span.classList.add(`sn-email-share-${status}`);
+          span.dataset.tooltip = tooltip;
+        }
+      }
+    }
   }
   
   /**
@@ -481,6 +677,57 @@ export class RichEditor {
       
       .sn-editor-content li {
         margin: 2px 0;
+      }
+      
+      /* Email share styles */
+      .sn-email-share {
+        text-decoration: underline;
+        text-decoration-style: solid;
+        text-decoration-thickness: 2px;
+        cursor: default;
+        position: relative;
+      }
+      
+      .sn-email-share-pending {
+        text-decoration-color: #9ca3af;
+      }
+      
+      .sn-email-share-success {
+        text-decoration-color: #22c55e;
+      }
+      
+      .sn-email-share-failed {
+        text-decoration-color: #ef4444;
+      }
+      
+      /* Tooltip on hover */
+      .sn-email-share[data-tooltip]:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 4px 8px;
+        background: #1f2937;
+        color: white;
+        font-size: 12px;
+        white-space: nowrap;
+        border-radius: 4px;
+        z-index: 10;
+        pointer-events: none;
+        margin-bottom: 4px;
+      }
+      
+      .sn-email-share[data-tooltip]:hover::before {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: #1f2937;
+        z-index: 10;
+        pointer-events: none;
       }
     `;
   }

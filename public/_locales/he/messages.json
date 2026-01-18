@@ -204,6 +204,24 @@
     "message": "נא להזין כתובת אימייל תקינה",
     "description": "Error message for invalid email"
   },
+  "sharedWithEmail": {
+    "message": "שותף עם $EMAIL$",
+    "description": "Tooltip text when note is shared with an email",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "colleague@example.com"
+      }
+    }
+  },
+  "sharingInProgress": {
+    "message": "משתף...",
+    "description": "Tooltip text while sharing is in progress"
+  },
+  "noteNotSavedYet": {
+    "message": "שמור את הפתקית קודם",
+    "description": "Error when trying to share before note is saved"
+  },
 
   "metadataUrl": {
     "message": "כתובת",

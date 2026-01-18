@@ -25,6 +25,7 @@ export function createHandlers(deps = {}) {
     updateNoteInFirestore,
     deleteNoteFromFirestore,
     shareNoteInFirestore,
+    unshareNoteInFirestore,
     isFirebaseConfigured,
     // Comment service functions
     createCommentInFirestore,
@@ -34,13 +35,18 @@ export function createHandlers(deps = {}) {
     // Real-time subscription functions
     subscribeToNotesForUrl,
     subscribeToComments,
+    // Global shared notes subscription
+    subscribeToSharedNotes,
+    getSharedNotesForUser,
     noteSubscriptions = new Map(),
     commentSubscriptions = new Map(),
+    sharedNotesSubscription = { current: null },
     generateId = defaultGenerateId,
     isValidEmail = defaultIsValidEmail,
     log = defaultLog,
     chromeStorage = typeof chrome !== 'undefined' ? chrome.storage : null,
-    chromeTabs = typeof chrome !== 'undefined' ? chrome.tabs : null
+    chromeTabs = typeof chrome !== 'undefined' ? chrome.tabs : null,
+    chromeAction = typeof chrome !== 'undefined' ? chrome.action : null
   } = deps;
 
   /**
@@ -72,6 +78,9 @@ export function createHandlers(deps = {}) {
       
       case 'shareNote':
         return shareNote(message.noteId, message.email);
+      
+      case 'unshareNote':
+        return unshareNote(message.noteId, message.email);
       
       case 'getUser':
         return getUser();
@@ -122,6 +131,19 @@ export function createHandlers(deps = {}) {
       // Selection mode broadcast (for iframe support)
       case 'broadcastDisableSelectionMode':
         return broadcastDisableSelectionMode(sender);
+      
+      // Unread shared notes badge management
+      case 'getUnreadSharedCount':
+        return getUnreadSharedCount();
+      
+      case 'markSharedNoteRead':
+        return markSharedNoteRead(message.noteId);
+      
+      case 'subscribeToSharedNotesGlobal':
+        return subscribeToSharedNotesGlobal();
+      
+      case 'unsubscribeFromSharedNotesGlobal':
+        return unsubscribeFromSharedNotesGlobal();
       
       default:
         log.warn('Unknown action received:', message.action, 'Full message:', JSON.stringify(message));
@@ -300,6 +322,11 @@ export function createHandlers(deps = {}) {
         log.debug(`Migrated ${migrationResult.migrated} local notes to Firebase`);
       }
       
+      // Subscribe to global shared notes after login
+      if (user && user.email) {
+        await subscribeToSharedNotesGlobal();
+      }
+      
       return { success: true, user, migration: migrationResult };
     } catch (error) {
       log.error('Login error:', error);
@@ -312,6 +339,9 @@ export function createHandlers(deps = {}) {
    */
   async function handleLogout() {
     try {
+      // Unsubscribe from global shared notes before logout
+      await unsubscribeFromSharedNotesGlobal();
+      
       await signOut();
       return { success: true };
     } catch (error) {
@@ -542,6 +572,46 @@ export function createHandlers(deps = {}) {
       return { success: true };
     } catch (error) {
       log.error('Share note error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Unshare a note (remove a user from shared list)
+   * @param {string} noteId - Note ID
+   * @param {string} email - Email of user to remove from sharing
+   */
+  async function unshareNote(noteId, email) {
+    try {
+      const user = await getCurrentUser();
+      
+      if (!user) {
+        return { success: false, error: t('mustBeLoggedInToShare') };
+      }
+      
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('sharingRequiresFirebase') };
+      }
+      
+      // Validate noteId format
+      if (!noteId || typeof noteId !== 'string' || noteId.length === 0) {
+        return { success: false, error: t('invalidNoteId') };
+      }
+      
+      // Validate email format (server-side validation)
+      if (!isValidEmail(email)) {
+        return { success: false, error: t('invalidEmailAddress') };
+      }
+      
+      if (!unshareNoteInFirestore) {
+        return { success: false, error: 'Unshare service not available' };
+      }
+      
+      await unshareNoteInFirestore(noteId, email.toLowerCase(), user.uid);
+      
+      return { success: true };
+    } catch (error) {
+      log.error('Unshare note error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -999,6 +1069,178 @@ export function createHandlers(deps = {}) {
     }
   }
 
+  /**
+   * Get the count of unread shared notes
+   * @returns {Promise<Object>} Result with count
+   */
+  async function getUnreadSharedCount() {
+    try {
+      const user = await getCurrentUser();
+      
+      if (!user || !user.email) {
+        return { success: true, count: 0 };
+      }
+      
+      if (!isFirebaseConfigured() || !getSharedNotesForUser) {
+        return { success: true, count: 0 };
+      }
+      
+      // Get all shared notes for the user
+      const sharedNotes = await getSharedNotesForUser(user.email);
+      
+      // Get seen notes from storage
+      const storageKey = `seenSharedNotes_${user.uid}`;
+      const result = await chromeStorage.local.get([storageKey]);
+      const seenNoteIds = new Set(result[storageKey] || []);
+      
+      // Count unread notes
+      const unreadCount = sharedNotes.filter(note => !seenNoteIds.has(note.id)).length;
+      
+      return { success: true, count: unreadCount };
+    } catch (error) {
+      log.error('Get unread shared count error:', error);
+      return { success: false, count: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Mark a shared note as read
+   * @param {string} noteId - Note ID to mark as read
+   * @returns {Promise<Object>} Result
+   */
+  async function markSharedNoteRead(noteId) {
+    try {
+      const user = await getCurrentUser();
+      
+      if (!user) {
+        return { success: false, error: t('mustBeLoggedInToShare') };
+      }
+      
+      if (!noteId) {
+        return { success: false, error: 'Note ID required' };
+      }
+      
+      const storageKey = `seenSharedNotes_${user.uid}`;
+      const result = await chromeStorage.local.get([storageKey]);
+      const seenNoteIds = result[storageKey] || [];
+      
+      if (!seenNoteIds.includes(noteId)) {
+        seenNoteIds.push(noteId);
+        await chromeStorage.local.set({ [storageKey]: seenNoteIds });
+        
+        // Update the badge after marking as read
+        await updateUnreadSharedBadge();
+      }
+      
+      return { success: true };
+    } catch (error) {
+      log.error('Mark shared note read error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Update the extension icon badge with unread shared notes count
+   * Called internally when shared notes change
+   * @returns {Promise<Object>} Result
+   */
+  async function updateUnreadSharedBadge() {
+    try {
+      const result = await getUnreadSharedCount();
+      const count = result.count || 0;
+      
+      if (!chromeAction) {
+        return { success: false, error: 'Action API not available' };
+      }
+      
+      if (count > 0) {
+        // Show badge with count (global, not per-tab)
+        await chromeAction.setBadgeText({ text: count.toString() });
+        await chromeAction.setBadgeBackgroundColor({ color: '#3b82f6' }); // Blue for shared notes
+      } else {
+        // Clear badge
+        await chromeAction.setBadgeText({ text: '' });
+      }
+      
+      return { success: true, count };
+    } catch (error) {
+      log.error('Update unread shared badge error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Subscribe to global shared notes updates
+   * This provides real-time updates for all notes shared with the user
+   * @returns {Promise<Object>} Result
+   */
+  async function subscribeToSharedNotesGlobal() {
+    try {
+      const user = await getCurrentUser();
+      
+      if (!user || !user.email) {
+        return { success: false, error: t('mustBeLoggedInForRealtime') };
+      }
+      
+      if (!isFirebaseConfigured() || !subscribeToSharedNotes) {
+        return { success: false, error: t('realtimeSyncRequiresFirebase') };
+      }
+      
+      // Clean up existing subscription
+      if (sharedNotesSubscription.current) {
+        sharedNotesSubscription.current();
+        sharedNotesSubscription.current = null;
+      }
+      
+      // Set up new subscription
+      sharedNotesSubscription.current = subscribeToSharedNotes(
+        user.email,
+        async (sharedNotes) => {
+          // Update the badge whenever shared notes change
+          await updateUnreadSharedBadge();
+          
+          log.debug('Shared notes updated, count:', sharedNotes.length);
+        },
+        (error) => {
+          log.error('Shared notes subscription error:', error);
+        }
+      );
+      
+      // Update badge immediately
+      await updateUnreadSharedBadge();
+      
+      log.debug('Subscribed to global shared notes for user:', user.email);
+      return { success: true };
+    } catch (error) {
+      log.error('Subscribe to shared notes global error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Unsubscribe from global shared notes updates
+   * @returns {Promise<Object>} Result
+   */
+  async function unsubscribeFromSharedNotesGlobal() {
+    try {
+      if (sharedNotesSubscription.current) {
+        sharedNotesSubscription.current();
+        sharedNotesSubscription.current = null;
+        log.debug('Unsubscribed from global shared notes');
+      }
+      
+      // Clear the badge
+      if (chromeAction) {
+        await chromeAction.setBadgeText({ text: '' });
+      }
+      
+      return { success: true };
+    } catch (error) {
+      log.error('Unsubscribe from shared notes global error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   return {
     handleMessage,
     handleLogin,
@@ -1009,6 +1251,7 @@ export function createHandlers(deps = {}) {
     updateNote,
     deleteNote,
     shareNote,
+    unshareNote,
     captureScreenshot,
     // Comment handlers
     addComment,
@@ -1027,7 +1270,13 @@ export function createHandlers(deps = {}) {
     broadcastDisableSelectionMode,
     // Bulk operations
     getAllNotes,
-    deleteAllNotes
+    deleteAllNotes,
+    // Unread shared notes
+    getUnreadSharedCount,
+    markSharedNoteRead,
+    updateUnreadSharedBadge,
+    subscribeToSharedNotesGlobal,
+    unsubscribeFromSharedNotesGlobal
   };
 }
 

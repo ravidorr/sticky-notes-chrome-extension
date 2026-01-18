@@ -79,6 +79,73 @@ describe('isValidEmail', () => {
   });
 });
 
+describe('extractEmails', () => {
+  it('should extract a single email from text', () => {
+    const text = 'Please contact user@example.com for more info';
+    const result = utils.extractEmails(text);
+    expect(result).toEqual(['user@example.com']);
+  });
+  
+  it('should extract multiple emails from text', () => {
+    const text = 'Send to alice@example.com and bob@company.org';
+    const result = utils.extractEmails(text);
+    expect(result).toContain('alice@example.com');
+    expect(result).toContain('bob@company.org');
+    expect(result).toHaveLength(2);
+  });
+  
+  it('should return unique emails (no duplicates)', () => {
+    const text = 'Contact user@example.com or user@example.com again';
+    const result = utils.extractEmails(text);
+    expect(result).toEqual(['user@example.com']);
+  });
+  
+  it('should handle emails with special characters', () => {
+    const text = 'Contact user+tag@example.com and user.name@domain.co.uk';
+    const result = utils.extractEmails(text);
+    expect(result).toContain('user+tag@example.com');
+    expect(result).toContain('user.name@domain.co.uk');
+  });
+  
+  it('should return empty array for text with no emails', () => {
+    const text = 'This text has no email addresses';
+    const result = utils.extractEmails(text);
+    expect(result).toEqual([]);
+  });
+  
+  it('should return empty array for null/undefined/empty input', () => {
+    expect(utils.extractEmails(null)).toEqual([]);
+    expect(utils.extractEmails(undefined)).toEqual([]);
+    expect(utils.extractEmails('')).toEqual([]);
+  });
+  
+  it('should return empty array for non-string input', () => {
+    expect(utils.extractEmails(123)).toEqual([]);
+    expect(utils.extractEmails({})).toEqual([]);
+    expect(utils.extractEmails([])).toEqual([]);
+  });
+  
+  it('should only return valid emails', () => {
+    const text = 'Valid: test@example.com Invalid: not-an-email @missing';
+    const result = utils.extractEmails(text);
+    expect(result).toEqual(['test@example.com']);
+  });
+  
+  it('should handle email at start and end of text', () => {
+    const text = 'start@example.com is first and end@example.com';
+    const result = utils.extractEmails(text);
+    expect(result).toContain('start@example.com');
+    expect(result).toContain('end@example.com');
+  });
+  
+  it('should handle email followed by punctuation', () => {
+    const text = 'Contact user@example.com, or visit user2@example.com.';
+    const result = utils.extractEmails(text);
+    expect(result).toContain('user@example.com');
+    expect(result).toContain('user2@example.com');
+  });
+});
+
 describe('truncate', () => {
   it('should truncate long strings', () => {
     expect(utils.truncate('This is a very long string that needs truncation', 20)).toBe('This is a very long ...');

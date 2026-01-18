@@ -88,6 +88,7 @@ Add comment threads to notes for Q&A and discussions.
 ### Real-time Features
 - [x] Real-time collaborative updates (live sync for notes)
 - [x] Real-time sync for comments
+- [x] Unread shared notes badge (extension icon shows count of new shared notes)
 
 ### Data Model
 ```javascript
@@ -262,9 +263,11 @@ Unplanned feature ideas for future consideration:
 - [] Note content length validation (e.g., 10,000-50,000 chars) for UX, performance, and cost control
 - [] Image support in notes (Pro feature - requires Firebase Storage, upload flow, cost considerations)
 - [] RichEditor enhancements: code/monospace, strikethrough, checkboxes, blockquotes
-- [] Inline sharing via email detection in note content:
-  - Option A: Auto-detect emails and prompt to share (Pro: seamless; Con: accidental shares, ambiguous intent)
-  - Option B: Explicit mention syntax like @email or +email (Pro: clear intent; Con: learning curve)
+- [x] Inline sharing via email detection in note content:
+  - Implemented: Auto-share when email + space is typed
+  - Visual feedback: green underline (success), red underline (failed)
+  - Hover tooltip shows share status
+  - Auto-unshare when email is removed from note
 - [x] Manage sticky notes from popup:
   - [x] View note metadata in popup (expand/preview mode)
   - [x] Delete notes on current page from popup

@@ -46,6 +46,21 @@ export function isValidEmail(email) {
 }
 
 /**
+ * Extract all valid email addresses from text
+ * Returns unique emails found in the text
+ * @param {string} text - Text to search for emails
+ * @returns {Array<string>} Array of unique email addresses found
+ */
+export function extractEmails(text) {
+  if (!text || typeof text !== 'string') return [];
+  // Use the same pattern as isValidEmail but with global flag for matching
+  const emailRegex = /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*/g;
+  const matches = text.match(emailRegex) || [];
+  // Filter with isValidEmail to ensure only valid emails are returned, and dedupe
+  return [...new Set(matches.filter(email => isValidEmail(email)))];
+}
+
+/**
  * Truncate string to specified length with ellipsis
  * @param {string} str - String to truncate
  * @param {number} maxLength - Maximum length (default 30)

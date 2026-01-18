@@ -302,7 +302,9 @@ export class StickyNote {
     this.richEditor = new RichEditor({
       content: this.content,
       placeholder: t('notePlaceholder'),
-      onChange: (html) => this.handleEditorChange(html)
+      onChange: (html) => this.handleEditorChange(html),
+      onEmailShare: (email) => this.handleAutoShare(email),
+      onEmailUnshare: (email) => this.handleAutoUnshare(email)
     });
     editorContainer.appendChild(this.richEditor.element);
     
@@ -1445,6 +1447,99 @@ export class StickyNote {
    */
   handleShare() {
     this.showShareModal();
+  }
+  
+  /**
+   * Handle auto-share when email is detected in note content
+   * Called by RichEditor when user types an email followed by space
+   * @param {string} email - Email address to share with
+   */
+  async handleAutoShare(email) {
+    // Don't share if note hasn't been saved yet (no ID)
+    if (!this.id) {
+      log.debug('Cannot auto-share: note has no ID yet');
+      if (this.richEditor) {
+        this.richEditor.updateEmailStatus(email, false, t('noteNotSavedYet') || 'Save note first');
+      }
+      return;
+    }
+    
+    // Don't share with self
+    if (this.user && email.toLowerCase() === this.user.email?.toLowerCase()) {
+      log.debug('Cannot auto-share with self:', email);
+      if (this.richEditor) {
+        this.richEditor.updateEmailStatus(email, false, t('cannotShareWithSelf'));
+      }
+      return;
+    }
+    
+    try {
+      // Check if extension context is still valid
+      if (!chrome?.runtime?.id) {
+        throw new Error('Extension context invalidated');
+      }
+      
+      log.debug('Auto-sharing note:', this.id, 'with:', email);
+      const response = await chrome.runtime.sendMessage({
+        action: 'shareNote',
+        noteId: this.id,
+        email: email
+      });
+      
+      log.debug('Auto-share response:', response);
+      
+      if (response?.success) {
+        // Update email visual status to success
+        if (this.richEditor) {
+          this.richEditor.updateEmailStatus(email, true, t('sharedWithEmail', [email]) || `Shared with ${email}`);
+        }
+      } else {
+        // Update email visual status to failed
+        if (this.richEditor) {
+          this.richEditor.updateEmailStatus(email, false, response?.error || t('failedToShare'));
+        }
+      }
+    } catch (error) {
+      log.error('Auto-share error:', error);
+      if (this.richEditor) {
+        this.richEditor.updateEmailStatus(email, false, t('failedToShare'));
+      }
+    }
+  }
+  
+  /**
+   * Handle auto-unshare when email is removed from note content
+   * Called by RichEditor when user deletes an email from the note
+   * @param {string} email - Email address to unshare
+   */
+  async handleAutoUnshare(email) {
+    // Don't unshare if note hasn't been saved yet (no ID)
+    if (!this.id) {
+      log.debug('Cannot auto-unshare: note has no ID');
+      return;
+    }
+    
+    try {
+      // Check if extension context is still valid
+      if (!chrome?.runtime?.id) {
+        throw new Error('Extension context invalidated');
+      }
+      
+      log.debug('Auto-unsharing note:', this.id, 'from:', email);
+      const response = await chrome.runtime.sendMessage({
+        action: 'unshareNote',
+        noteId: this.id,
+        email: email
+      });
+      
+      log.debug('Auto-unshare response:', response);
+      
+      if (!response?.success) {
+        log.warn('Failed to unshare:', response?.error);
+      }
+    } catch (error) {
+      log.error('Auto-unshare error:', error);
+    }
   }
   
   /**

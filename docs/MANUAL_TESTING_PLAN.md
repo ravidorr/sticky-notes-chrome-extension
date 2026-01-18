@@ -546,6 +546,61 @@
 | 1 | Create note while NOT logged in | Local note created |
 | 2 | Click share button | Error/prompt to sign in first |
 
+### TEST-10.8: Auto-Share via Email Detection
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Sign in and create a note | Note exists |
+| 2 | Type `colleague@example.com` followed by a space | Email detected |
+| 3 | Observe email in note | Email underlined with gray (pending) color |
+| 4 | Wait for share to complete | Email underline changes to green (success) |
+| 5 | Hover over email | Tooltip shows "Shared with colleague@example.com" |
+
+### TEST-10.9: Auto-Share - Failed Share
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Sign in and create a note | Note exists |
+| 2 | Type your own email followed by a space | Own email detected |
+| 3 | Observe email in note | Email underline changes to red (failed) |
+| 4 | Hover over email | Tooltip shows "You cannot share a note with yourself" |
+
+### TEST-10.10: Auto-Unshare on Email Removal
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create note with shared email (from TEST-10.8) | Email shared, green underline |
+| 2 | Delete the email from the note content | Email removed |
+| 3 | Note is automatically unshared | Share revoked in Firestore |
+| 4 | User B (if viewing) loses access | Real-time sync removes access |
+
+### TEST-10.11: Auto-Share - Multiple Emails
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create note and type `user1@example.com ` | First email shared |
+| 2 | Type `user2@example.com ` | Second email shared |
+| 3 | Both emails have green underlines | Both shares successful |
+| 4 | Delete one email | Only that share revoked |
+
+### TEST-10.12: Auto-Share - Paste with Emails
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create a new note | Note exists |
+| 2 | Paste text containing `test@example.com ` | Email detected in pasted content |
+| 3 | Email is auto-shared | Green underline appears |
+
+### TEST-10.13: Unread Shared Notes Badge
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Sign in as User A | Authenticated |
+| 2 | User B shares a note with User A | Note shared |
+| 3 | Observe extension icon in toolbar | Blue badge with "1" appears |
+| 4 | User A views the shared note | Badge count decreases |
+| 5 | All shared notes viewed | Badge disappears |
+
 ---
 
 ## 11. Comments & Threaded Discussions

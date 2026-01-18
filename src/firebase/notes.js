@@ -329,6 +329,68 @@ export async function shareNote(noteId, shareWithUserId, ownerId, deps = {}) {
 }
 
 /**
+ * Remove a user from a note's shared list (unshare)
+ * 
+ * @param {string} noteId - Note ID
+ * @param {string} emailToRemove - Email address to remove from shared list
+ * @param {string} ownerId - Current owner's user ID
+ * @param {Object} deps - Optional dependencies for testing
+ * @returns {Promise<void>}
+ */
+export async function unshareNote(noteId, emailToRemove, ownerId, deps = {}) {
+  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const dbInstance = deps.db !== undefined ? deps.db : db;
+  const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
+  
+  if (!isConfigured || !dbInstance) {
+    throw new Error('Firebase is not configured');
+  }
+  
+  // Validate inputs
+  if (!noteId || typeof noteId !== 'string') {
+    throw new Error('Invalid note ID');
+  }
+  
+  if (!emailToRemove || typeof emailToRemove !== 'string') {
+    throw new Error('Invalid email address');
+  }
+  
+  if (!ownerId || typeof ownerId !== 'string') {
+    throw new Error('Invalid owner ID');
+  }
+  
+  // Sanitize the email (trim and lowercase for comparison)
+  const sanitizedEmail = emailToRemove.trim().toLowerCase();
+  
+  // Prevent empty values after sanitization
+  if (sanitizedEmail.length === 0) {
+    throw new Error('Email address cannot be empty');
+  }
+  
+  const docRef = firebaseDeps.doc(dbInstance, NOTES_COLLECTION, noteId);
+  const docSnap = await firebaseDeps.getDoc(docRef);
+  
+  if (!docSnap.exists()) {
+    throw new Error('Note not found');
+  }
+  
+  const noteData = docSnap.data();
+  
+  // Only owner can unshare
+  if (noteData.ownerId !== ownerId) {
+    throw new Error('Only the owner can modify sharing');
+  }
+  
+  // Remove email from sharedWith array
+  const sharedWith = (noteData.sharedWith || []).filter(email => email !== sanitizedEmail);
+  
+  await firebaseDeps.updateDoc(docRef, { 
+    sharedWith,
+    updatedAt: firebaseDeps.serverTimestamp()
+  });
+}
+
+/**
  * Subscribe to real-time updates for notes on a URL
  * @param {string} url - Page URL
  * @param {string} userId - Current user ID
@@ -456,4 +518,98 @@ export function subscribeToNotesForUrl(url, userId, userEmail, onUpdate, onError
     unsubOwned();
     unsubShared();
   };
+}
+
+/**
+ * Get all notes shared with a user (across all URLs)
+ * @param {string} userEmail - User's email address
+ * @param {Object} deps - Optional dependencies for testing
+ * @returns {Promise<Array>} Array of shared notes
+ */
+export async function getSharedNotesForUser(userEmail, deps = {}) {
+  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const dbInstance = deps.db !== undefined ? deps.db : db;
+  const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
+  
+  if (!isConfigured || !dbInstance) {
+    throw new Error('Firebase is not configured');
+  }
+  
+  if (!userEmail) {
+    return [];
+  }
+  
+  const normalizedEmail = userEmail.toLowerCase();
+  
+  const sharedQuery = firebaseDeps.query(
+    firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
+    firebaseDeps.where('sharedWith', 'array-contains', normalizedEmail),
+    firebaseDeps.orderBy('createdAt', 'desc')
+  );
+  
+  const snapshot = await firebaseDeps.getDocs(sharedQuery);
+  
+  const notes = [];
+  snapshot.forEach(doc => {
+    notes.push({ id: doc.id, ...doc.data(), isShared: true });
+  });
+  
+  return notes;
+}
+
+/**
+ * Subscribe to real-time updates for all notes shared with a user (across all URLs)
+ * @param {string} userEmail - User's email address
+ * @param {Function} onUpdate - Callback when shared notes change (receives array of notes)
+ * @param {Function} onError - Callback on error
+ * @param {Object} deps - Optional dependencies for testing
+ * @returns {Function} Unsubscribe function
+ */
+export function subscribeToSharedNotes(userEmail, onUpdate, onError, deps = {}) {
+  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const dbInstance = deps.db !== undefined ? deps.db : db;
+  const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
+  
+  if (!isConfigured || !dbInstance) {
+    onError(new Error('Firebase is not configured'));
+    return () => {};
+  }
+  
+  if (!userEmail) {
+    onError(new Error('User email required'));
+    return () => {};
+  }
+  
+  if (typeof onUpdate !== 'function') {
+    onError(new Error('onUpdate callback required'));
+    return () => {};
+  }
+  
+  if (typeof onError !== 'function') {
+    return () => {};
+  }
+  
+  const normalizedEmail = userEmail.toLowerCase();
+  
+  const sharedQuery = firebaseDeps.query(
+    firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
+    firebaseDeps.where('sharedWith', 'array-contains', normalizedEmail),
+    firebaseDeps.orderBy('createdAt', 'desc')
+  );
+  
+  const unsubscribe = firebaseDeps.onSnapshot(
+    sharedQuery,
+    (snapshot) => {
+      const notes = [];
+      snapshot.forEach(doc => {
+        notes.push({ id: doc.id, ...doc.data(), isShared: true });
+      });
+      onUpdate(notes);
+    },
+    (error) => {
+      onError(error);
+    }
+  );
+  
+  return unsubscribe;
 }

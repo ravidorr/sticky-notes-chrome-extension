@@ -630,5 +630,91 @@ describe('NoteManager', () => {
       
       note.destroy();
     });
+    
+    it('should mark shared notes as read when created', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const sharedNoteData = {
+        id: 'shared-note-001',
+        selector: '#anchor-element',
+        content: 'Shared content',
+        theme: 'blue',
+        position: { anchor: 'top-right' },
+        isShared: true
+      };
+      
+      manager.createNoteFromData(sharedNoteData);
+      
+      // Should have called sendMessage with markSharedNoteRead action
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'markSharedNoteRead',
+        noteId: 'shared-note-001'
+      });
+      
+      const note = manager.notes.get('shared-note-001');
+      note.destroy();
+    });
+    
+    it('should not mark non-shared notes as read', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const ownedNoteData = {
+        id: 'owned-note-001',
+        selector: '#anchor-element',
+        content: 'My note',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        isShared: false
+      };
+      
+      manager.createNoteFromData(ownedNoteData);
+      
+      // Should NOT have called markSharedNoteRead
+      expect(localThis.sendMessage).not.toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'markSharedNoteRead' })
+      );
+      
+      const note = manager.notes.get('owned-note-001');
+      note.destroy();
+    });
+  });
+  
+  describe('markSharedNoteAsRead', () => {
+    it('should send markSharedNoteRead message', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({ success: true });
+      const manager = new NoteManager(localThis);
+      
+      await manager.markSharedNoteAsRead('note-123');
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'markSharedNoteRead',
+        noteId: 'note-123'
+      });
+    });
+    
+    it('should handle errors gracefully', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('Network error'));
+      const manager = new NoteManager(localThis);
+      
+      // Should not throw
+      await expect(manager.markSharedNoteAsRead('note-123')).resolves.toBeUndefined();
+    });
+    
+    it('should not log error for context invalidated errors', async () => {
+      const localThis = createMockDependencies();
+      const contextError = new Error('Extension context invalidated');
+      localThis.sendMessage.mockRejectedValue(contextError);
+      localThis.isContextInvalidatedError.mockReturnValue(true);
+      const manager = new NoteManager(localThis);
+      
+      await manager.markSharedNoteAsRead('note-123');
+      
+      // Should have checked if it's a context error
+      expect(localThis.isContextInvalidatedError).toHaveBeenCalledWith(contextError);
+    });
   });
 });

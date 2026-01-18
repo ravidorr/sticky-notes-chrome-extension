@@ -39,6 +39,7 @@ describe('Background Handlers', () => {
       updateNoteInFirestore: jest.fn(),
       deleteNoteFromFirestore: jest.fn(),
       shareNoteInFirestore: jest.fn(),
+      unshareNoteInFirestore: jest.fn(),
       isFirebaseConfigured: jest.fn(),
       generateId: jest.fn(() => 'note_123_abc'),
       isValidEmail: jest.fn((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)),
@@ -676,6 +677,103 @@ describe('Background Handlers', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Share failed');
       expect(localThis.mockLog.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('unshareNote', () => {
+    it('should unshare note successfully', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.unshareNoteInFirestore.mockResolvedValue();
+      
+      const result = await localThis.handlers.unshareNote('note-1', 'friend@example.com');
+      
+      expect(result.success).toBe(true);
+      expect(localThis.deps.unshareNoteInFirestore).toHaveBeenCalledWith('note-1', 'friend@example.com', 'user-123');
+    });
+
+    it('should require login', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(null);
+      
+      const result = await localThis.handlers.unshareNote('note-1', 'friend@example.com');
+      
+      expect(result.success).toBe(false);
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(You must be logged in to share notes|mustBeLoggedInToShare)$/);
+    });
+
+    it('should require Firebase configuration', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      
+      const result = await localThis.handlers.unshareNote('note-1', 'friend@example.com');
+      
+      expect(result.success).toBe(false);
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(Sharing requires Firebase to be configured|sharingRequiresFirebase)$/);
+    });
+
+    it('should validate note ID', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      
+      const result1 = await localThis.handlers.unshareNote('', 'friend@example.com');
+      expect(result1.success).toBe(false);
+      // Check for either translated text or i18n key
+      expect(result1.error).toMatch(/^(Invalid note ID|invalidNoteId)$/);
+      
+      const result2 = await localThis.handlers.unshareNote(null, 'friend@example.com');
+      expect(result2.success).toBe(false);
+      // Check for either translated text or i18n key
+      expect(result2.error).toMatch(/^(Invalid note ID|invalidNoteId)$/);
+    });
+
+    it('should validate email format', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.isValidEmail.mockReturnValue(false);
+      
+      const result = await localThis.handlers.unshareNote('note-1', 'invalid-email');
+      
+      expect(result.success).toBe(false);
+      // Check for either translated text or i18n key
+      expect(result.error).toMatch(/^(Invalid email address|invalidEmailAddress)$/);
+    });
+
+    it('should lowercase email before unsharing', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.unshareNoteInFirestore.mockResolvedValue();
+      
+      await localThis.handlers.unshareNote('note-1', 'FRIEND@EXAMPLE.COM');
+      
+      expect(localThis.deps.unshareNoteInFirestore).toHaveBeenCalledWith('note-1', 'friend@example.com', 'user-123');
+    });
+
+    it('should return error on failure', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.unshareNoteInFirestore.mockRejectedValue(new Error('Unshare failed'));
+      
+      const result = await localThis.handlers.unshareNote('note-1', 'friend@example.com');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Unshare failed');
+      expect(localThis.mockLog.error).toHaveBeenCalled();
+    });
+
+    it('should return error when unshareNoteInFirestore is not available', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.unshareNoteInFirestore = null;
+      
+      // Recreate handlers with updated deps
+      localThis.handlers = createHandlers(localThis.deps);
+      
+      const result = await localThis.handlers.unshareNote('note-1', 'friend@example.com');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Unshare service not available');
     });
   });
 
@@ -1815,6 +1913,263 @@ describe('Background Handlers', () => {
       );
       
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('getUnreadSharedCount', () => {
+    beforeEach(() => {
+      localThis.deps.getSharedNotesForUser = jest.fn();
+      localThis.deps.chromeAction = {
+        setBadgeText: jest.fn().mockResolvedValue(),
+        setBadgeBackgroundColor: jest.fn().mockResolvedValue()
+      };
+      localThis.handlers = createHandlers(localThis.deps);
+    });
+
+    it('should return count of unread shared notes', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.getSharedNotesForUser.mockResolvedValue([
+        { id: 'note-1' },
+        { id: 'note-2' },
+        { id: 'note-3' }
+      ]);
+      localThis.deps.chromeStorage.local.get.mockResolvedValue({
+        [`seenSharedNotes_${localThis.mockUser.uid}`]: ['note-1']
+      });
+      
+      const result = await localThis.handlers.getUnreadSharedCount();
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(2); // note-2 and note-3 are unread
+    });
+
+    it('should return 0 when user is not logged in', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(null);
+      
+      const result = await localThis.handlers.getUnreadSharedCount();
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(0);
+    });
+
+    it('should return 0 when Firebase is not configured', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      
+      const result = await localThis.handlers.getUnreadSharedCount();
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(0);
+    });
+
+    it('should return 0 when no shared notes exist', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.getSharedNotesForUser.mockResolvedValue([]);
+      localThis.deps.chromeStorage.local.get.mockResolvedValue({});
+      
+      const result = await localThis.handlers.getUnreadSharedCount();
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(0);
+    });
+
+    it('should handle errors gracefully', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.getSharedNotesForUser.mockRejectedValue(new Error('Network error'));
+      
+      const result = await localThis.handlers.getUnreadSharedCount();
+      
+      expect(result.success).toBe(false);
+      expect(result.count).toBe(0);
+      expect(result.error).toBe('Network error');
+    });
+  });
+
+  describe('markSharedNoteRead', () => {
+    beforeEach(() => {
+      localThis.deps.getSharedNotesForUser = jest.fn().mockResolvedValue([]);
+      localThis.deps.chromeAction = {
+        setBadgeText: jest.fn().mockResolvedValue(),
+        setBadgeBackgroundColor: jest.fn().mockResolvedValue()
+      };
+      localThis.handlers = createHandlers(localThis.deps);
+    });
+
+    it('should mark a note as read', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.chromeStorage.local.get.mockResolvedValue({
+        [`seenSharedNotes_${localThis.mockUser.uid}`]: ['existing-note']
+      });
+      localThis.deps.chromeStorage.local.set.mockResolvedValue();
+      
+      const result = await localThis.handlers.markSharedNoteRead('new-note');
+      
+      expect(result.success).toBe(true);
+      expect(localThis.deps.chromeStorage.local.set).toHaveBeenCalledWith({
+        [`seenSharedNotes_${localThis.mockUser.uid}`]: ['existing-note', 'new-note']
+      });
+    });
+
+    it('should not duplicate already-read note', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.chromeStorage.local.get.mockResolvedValue({
+        [`seenSharedNotes_${localThis.mockUser.uid}`]: ['note-1']
+      });
+      
+      const result = await localThis.handlers.markSharedNoteRead('note-1');
+      
+      expect(result.success).toBe(true);
+      expect(localThis.deps.chromeStorage.local.set).not.toHaveBeenCalled();
+    });
+
+    it('should require login', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(null);
+      
+      const result = await localThis.handlers.markSharedNoteRead('note-1');
+      
+      expect(result.success).toBe(false);
+    });
+
+    it('should require note ID', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      
+      const result = await localThis.handlers.markSharedNoteRead(null);
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Note ID required');
+    });
+  });
+
+  describe('subscribeToSharedNotesGlobal', () => {
+    beforeEach(() => {
+      localThis.deps.subscribeToSharedNotes = jest.fn();
+      localThis.deps.getSharedNotesForUser = jest.fn().mockResolvedValue([]);
+      localThis.deps.sharedNotesSubscription = { current: null };
+      localThis.deps.chromeAction = {
+        setBadgeText: jest.fn().mockResolvedValue(),
+        setBadgeBackgroundColor: jest.fn().mockResolvedValue()
+      };
+      localThis.handlers = createHandlers(localThis.deps);
+    });
+
+    it('should subscribe to shared notes', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.subscribeToSharedNotes.mockReturnValue(() => {});
+      localThis.deps.chromeStorage.local.get.mockResolvedValue({});
+      
+      const result = await localThis.handlers.subscribeToSharedNotesGlobal();
+      
+      expect(result.success).toBe(true);
+      expect(localThis.deps.subscribeToSharedNotes).toHaveBeenCalledWith(
+        localThis.mockUser.email,
+        expect.any(Function),
+        expect.any(Function)
+      );
+    });
+
+    it('should require login', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(null);
+      
+      const result = await localThis.handlers.subscribeToSharedNotesGlobal();
+      
+      expect(result.success).toBe(false);
+    });
+
+    it('should require Firebase configuration', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      
+      const result = await localThis.handlers.subscribeToSharedNotesGlobal();
+      
+      expect(result.success).toBe(false);
+    });
+
+    it('should clean up existing subscription before creating new one', async () => {
+      const mockUnsubscribe = jest.fn();
+      localThis.deps.sharedNotesSubscription.current = mockUnsubscribe;
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.subscribeToSharedNotes.mockReturnValue(() => {});
+      localThis.deps.chromeStorage.local.get.mockResolvedValue({});
+      
+      await localThis.handlers.subscribeToSharedNotesGlobal();
+      
+      expect(mockUnsubscribe).toHaveBeenCalled();
+    });
+  });
+
+  describe('unsubscribeFromSharedNotesGlobal', () => {
+    beforeEach(() => {
+      localThis.deps.sharedNotesSubscription = { current: null };
+      localThis.deps.chromeAction = {
+        setBadgeText: jest.fn().mockResolvedValue(),
+        setBadgeBackgroundColor: jest.fn().mockResolvedValue()
+      };
+      localThis.handlers = createHandlers(localThis.deps);
+    });
+
+    it('should unsubscribe and clear badge', async () => {
+      const mockUnsubscribe = jest.fn();
+      localThis.deps.sharedNotesSubscription.current = mockUnsubscribe;
+      
+      const result = await localThis.handlers.unsubscribeFromSharedNotesGlobal();
+      
+      expect(result.success).toBe(true);
+      expect(mockUnsubscribe).toHaveBeenCalled();
+      expect(localThis.deps.chromeAction.setBadgeText).toHaveBeenCalledWith({ text: '' });
+    });
+
+    it('should succeed even if no subscription exists', async () => {
+      localThis.deps.sharedNotesSubscription.current = null;
+      
+      const result = await localThis.handlers.unsubscribeFromSharedNotesGlobal();
+      
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('updateUnreadSharedBadge', () => {
+    beforeEach(() => {
+      localThis.deps.getSharedNotesForUser = jest.fn().mockResolvedValue([]);
+      localThis.deps.chromeAction = {
+        setBadgeText: jest.fn().mockResolvedValue(),
+        setBadgeBackgroundColor: jest.fn().mockResolvedValue()
+      };
+      localThis.handlers = createHandlers(localThis.deps);
+    });
+
+    it('should set badge when there are unread notes', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.getSharedNotesForUser.mockResolvedValue([
+        { id: 'note-1' },
+        { id: 'note-2' }
+      ]);
+      localThis.deps.chromeStorage.local.get.mockResolvedValue({});
+      
+      const result = await localThis.handlers.updateUnreadSharedBadge();
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(2);
+      expect(localThis.deps.chromeAction.setBadgeText).toHaveBeenCalledWith({ text: '2' });
+      expect(localThis.deps.chromeAction.setBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#3b82f6' });
+    });
+
+    it('should clear badge when no unread notes', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.getSharedNotesForUser.mockResolvedValue([]);
+      localThis.deps.chromeStorage.local.get.mockResolvedValue({});
+      
+      const result = await localThis.handlers.updateUnreadSharedBadge();
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(0);
+      expect(localThis.deps.chromeAction.setBadgeText).toHaveBeenCalledWith({ text: '' });
     });
   });
 });

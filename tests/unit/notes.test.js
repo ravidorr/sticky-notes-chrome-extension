@@ -42,7 +42,10 @@ const {
   updateNote,
   deleteNote,
   shareNote,
-  subscribeToNotesForUrl
+  unshareNote,
+  subscribeToNotesForUrl,
+  getSharedNotesForUser,
+  subscribeToSharedNotes
 } = await import('../../src/firebase/notes.js');
 
 describe('Firebase Notes', () => {
@@ -434,6 +437,105 @@ describe('Firebase Notes', () => {
     });
   });
 
+  describe('unshareNote', () => {
+    it('should unshare note successfully', async () => {
+      localThis.deps.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({ ownerId: 'user-123', sharedWith: ['friend@example.com', 'other@example.com'] })
+      });
+      localThis.deps.updateDoc.mockResolvedValue();
+      
+      await expect(unshareNote('note-123', 'friend@example.com', 'user-123', localThis.deps))
+        .resolves.toBeUndefined();
+      
+      const updateCall = localThis.deps.updateDoc.mock.calls[0][1];
+      expect(updateCall.sharedWith).not.toContain('friend@example.com');
+      expect(updateCall.sharedWith).toContain('other@example.com');
+    });
+
+    it('should lowercase email before unsharing', async () => {
+      localThis.deps.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({ ownerId: 'user-123', sharedWith: ['friend@example.com'] })
+      });
+      localThis.deps.updateDoc.mockResolvedValue();
+      
+      await unshareNote('note-123', 'FRIEND@EXAMPLE.COM', 'user-123', localThis.deps);
+      
+      const updateCall = localThis.deps.updateDoc.mock.calls[0][1];
+      expect(updateCall.sharedWith).not.toContain('friend@example.com');
+      expect(updateCall.sharedWith).toEqual([]);
+    });
+
+    it('should handle unsharing when email not in list', async () => {
+      localThis.deps.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({ ownerId: 'user-123', sharedWith: ['other@example.com'] })
+      });
+      localThis.deps.updateDoc.mockResolvedValue();
+      
+      await unshareNote('note-123', 'friend@example.com', 'user-123', localThis.deps);
+      
+      const updateCall = localThis.deps.updateDoc.mock.calls[0][1];
+      expect(updateCall.sharedWith).toEqual(['other@example.com']);
+    });
+
+    it('should throw error when Firebase is not configured', async () => {
+      localThis.deps.isFirebaseConfigured = jest.fn(() => false);
+      
+      await expect(unshareNote('note-123', 'friend@example.com', 'user-123', localThis.deps))
+        .rejects.toThrow('Firebase is not configured');
+    });
+
+    it('should throw error for invalid note ID', async () => {
+      await expect(unshareNote('', 'friend@example.com', 'user-123', localThis.deps))
+        .rejects.toThrow('Invalid note ID');
+      
+      await expect(unshareNote(null, 'friend@example.com', 'user-123', localThis.deps))
+        .rejects.toThrow('Invalid note ID');
+    });
+
+    it('should throw error for invalid email address', async () => {
+      await expect(unshareNote('note-123', '', 'user-123', localThis.deps))
+        .rejects.toThrow('Invalid email address');
+      
+      await expect(unshareNote('note-123', null, 'user-123', localThis.deps))
+        .rejects.toThrow('Invalid email address');
+    });
+
+    it('should throw error for invalid owner ID', async () => {
+      await expect(unshareNote('note-123', 'friend@example.com', '', localThis.deps))
+        .rejects.toThrow('Invalid owner ID');
+      
+      await expect(unshareNote('note-123', 'friend@example.com', null, localThis.deps))
+        .rejects.toThrow('Invalid owner ID');
+    });
+
+    it('should throw error for empty email after trim', async () => {
+      await expect(unshareNote('note-123', '   ', 'user-123', localThis.deps))
+        .rejects.toThrow('Email address cannot be empty');
+    });
+
+    it('should throw error when note not found', async () => {
+      localThis.deps.getDoc.mockResolvedValue({
+        exists: () => false
+      });
+      
+      await expect(unshareNote('note-123', 'friend@example.com', 'user-123', localThis.deps))
+        .rejects.toThrow('Note not found');
+    });
+
+    it('should throw error when not owner', async () => {
+      localThis.deps.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({ ownerId: 'other-user' })
+      });
+      
+      await expect(unshareNote('note-123', 'friend@example.com', 'user-123', localThis.deps))
+        .rejects.toThrow('Only the owner can modify sharing');
+    });
+  });
+
   describe('subscribeToNotesForUrl', () => {
     it('should call onError when Firebase is not configured', () => {
       const onUpdate = jest.fn();
@@ -709,6 +811,237 @@ describe('Firebase Notes', () => {
       // Should return without error
       expect(typeof unsubscribe).toBe('function');
       expect(onUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getSharedNotesForUser', () => {
+    it('should get all shared notes for a user', async () => {
+      const mockSharedDocs = [
+        { id: 'shared-1', data: () => ({ url: 'https://example.com', content: 'Shared note 1' }) },
+        { id: 'shared-2', data: () => ({ url: 'https://other.com', content: 'Shared note 2' }) }
+      ];
+      
+      localThis.deps.getDocs.mockResolvedValue({ forEach: (cb) => mockSharedDocs.forEach(cb), size: 2 });
+      
+      const notes = await getSharedNotesForUser('user@example.com', localThis.deps);
+      
+      expect(notes).toHaveLength(2);
+      expect(notes[0].id).toBe('shared-1');
+      expect(notes[0].isShared).toBe(true);
+      expect(notes[1].id).toBe('shared-2');
+      expect(notes[1].isShared).toBe(true);
+    });
+
+    it('should return empty array when no email provided', async () => {
+      const notes = await getSharedNotesForUser(null, localThis.deps);
+      
+      expect(notes).toHaveLength(0);
+      expect(localThis.deps.getDocs).not.toHaveBeenCalled();
+    });
+
+    it('should lowercase email for query', async () => {
+      localThis.deps.getDocs.mockResolvedValue({ forEach: () => {}, size: 0 });
+      
+      await getSharedNotesForUser('USER@EXAMPLE.COM', localThis.deps);
+      
+      expect(localThis.deps.where).toHaveBeenCalledWith('sharedWith', 'array-contains', 'user@example.com');
+    });
+
+    it('should throw error when Firebase is not configured', async () => {
+      localThis.deps.isFirebaseConfigured = jest.fn(() => false);
+      
+      await expect(getSharedNotesForUser('user@example.com', localThis.deps))
+        .rejects.toThrow('Firebase is not configured');
+    });
+
+    it('should throw error when db is null', async () => {
+      localThis.deps.db = null;
+      
+      await expect(getSharedNotesForUser('user@example.com', localThis.deps))
+        .rejects.toThrow('Firebase is not configured');
+    });
+  });
+
+  describe('subscribeToSharedNotes', () => {
+    it('should call onError when Firebase is not configured', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      
+      const unsubscribe = subscribeToSharedNotes(
+        'user@example.com',
+        onUpdate,
+        onError,
+        { ...localThis.deps, db: null, isFirebaseConfigured: () => false }
+      );
+      
+      expect(onError).toHaveBeenCalledWith(expect.any(Error));
+      expect(onError.mock.calls[0][0].message).toBe('Firebase is not configured');
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should call onError when email is not provided', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      
+      const unsubscribe = subscribeToSharedNotes(
+        null,
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      expect(onError).toHaveBeenCalledWith(expect.any(Error));
+      expect(onError.mock.calls[0][0].message).toBe('User email required');
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should call onError when onUpdate is not a function', () => {
+      const onError = jest.fn();
+      
+      const unsubscribe = subscribeToSharedNotes(
+        'user@example.com',
+        'not a function',
+        onError,
+        localThis.deps
+      );
+      
+      expect(onError).toHaveBeenCalledWith(expect.any(Error));
+      expect(onError.mock.calls[0][0].message).toBe('onUpdate callback required');
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should return noop when onError is not a function', () => {
+      const onUpdate = jest.fn();
+      
+      const unsubscribe = subscribeToSharedNotes(
+        'user@example.com',
+        onUpdate,
+        'not a function',
+        localThis.deps
+      );
+      
+      // Should return without error
+      expect(typeof unsubscribe).toBe('function');
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should set up onSnapshot listener for shared notes', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      const mockUnsubscribe = jest.fn();
+      
+      localThis.deps.onSnapshot.mockReturnValue(mockUnsubscribe);
+      localThis.deps.query.mockReturnValue({ _query: 'mock' });
+      localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
+      
+      const unsubscribe = subscribeToSharedNotes(
+        'user@example.com',
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      expect(localThis.deps.onSnapshot).toHaveBeenCalledTimes(1);
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should call onUpdate with shared notes when snapshot fires', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      let snapshotCallback;
+      
+      localThis.deps.onSnapshot.mockImplementation((query, successCb) => {
+        snapshotCallback = successCb;
+        return jest.fn();
+      });
+      localThis.deps.query.mockReturnValue({ _query: 'mock' });
+      localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
+      
+      subscribeToSharedNotes(
+        'user@example.com',
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      // Simulate snapshot with notes
+      const mockSnapshot = {
+        forEach: (cb) => {
+          cb({ id: 'note-1', data: () => ({ content: 'Shared 1' }) });
+          cb({ id: 'note-2', data: () => ({ content: 'Shared 2' }) });
+        }
+      };
+      snapshotCallback(mockSnapshot);
+      
+      expect(onUpdate).toHaveBeenCalledWith([
+        { id: 'note-1', content: 'Shared 1', isShared: true },
+        { id: 'note-2', content: 'Shared 2', isShared: true }
+      ]);
+    });
+
+    it('should call onError when snapshot listener errors', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      let errorCallback;
+      
+      localThis.deps.onSnapshot.mockImplementation((query, successCb, errorCb) => {
+        errorCallback = errorCb;
+        return jest.fn();
+      });
+      localThis.deps.query.mockReturnValue({ _query: 'mock' });
+      localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
+      
+      subscribeToSharedNotes(
+        'user@example.com',
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      // Simulate error
+      const mockError = new Error('Firestore error');
+      errorCallback(mockError);
+      
+      expect(onError).toHaveBeenCalledWith(mockError);
+    });
+
+    it('should unsubscribe when unsubscribe function is called', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      const mockUnsubscribe = jest.fn();
+      
+      localThis.deps.onSnapshot.mockReturnValue(mockUnsubscribe);
+      localThis.deps.query.mockReturnValue({ _query: 'mock' });
+      localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
+      
+      const unsubscribe = subscribeToSharedNotes(
+        'user@example.com',
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      unsubscribe();
+      
+      expect(mockUnsubscribe).toHaveBeenCalled();
+    });
+
+    it('should lowercase email for query', () => {
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      
+      localThis.deps.onSnapshot.mockReturnValue(jest.fn());
+      localThis.deps.query.mockReturnValue({ _query: 'mock' });
+      localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
+      
+      subscribeToSharedNotes(
+        'USER@EXAMPLE.COM',
+        onUpdate,
+        onError,
+        localThis.deps
+      );
+      
+      expect(localThis.deps.where).toHaveBeenCalledWith('sharedWith', 'array-contains', 'user@example.com');
     });
   });
 });

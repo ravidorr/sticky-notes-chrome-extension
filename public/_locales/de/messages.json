@@ -204,6 +204,24 @@
     "message": "Bitte geben Sie eine gultige E-Mail-Adresse ein",
     "description": "Error message for invalid email"
   },
+  "sharedWithEmail": {
+    "message": "Geteilt mit $EMAIL$",
+    "description": "Tooltip text when note is shared with an email",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "colleague@example.com"
+      }
+    }
+  },
+  "sharingInProgress": {
+    "message": "Wird geteilt...",
+    "description": "Tooltip text while sharing is in progress"
+  },
+  "noteNotSavedYet": {
+    "message": "Notiz zuerst speichern",
+    "description": "Error when trying to share before note is saved"
+  },
 
   "metadataUrl": {
     "message": "URL",

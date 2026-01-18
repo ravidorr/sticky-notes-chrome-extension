@@ -314,6 +314,28 @@ export class NoteManager {
 
     // Setup visibility observer
     this.visibilityManager.observe(anchorElement, note);
+    
+    // Mark shared notes as read when viewed
+    if (noteData.isShared) {
+      this.markSharedNoteAsRead(noteData.id);
+    }
+  }
+  
+  /**
+   * Mark a shared note as read (removes from unread count badge)
+   * @param {string} noteId - Note ID to mark as read
+   */
+  async markSharedNoteAsRead(noteId) {
+    try {
+      await this.sendMessage({
+        action: 'markSharedNoteRead',
+        noteId
+      });
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.debug('Failed to mark shared note as read:', error);
+      }
+    }
   }
   
   /**

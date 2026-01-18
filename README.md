@@ -27,6 +27,7 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 ### Collaboration Features (Phase 3)
 - **Note Sharing**: Share notes with other users by email
 - **Real-time Updates**: See changes immediately when collaborators edit shared notes
+- **Unread Badge**: Extension icon shows count of new shared notes you haven't viewed yet
 
 ### Advanced Features (Phase 4)
 - **Fuzzy Matching**: Finds elements even when selectors change
