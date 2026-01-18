@@ -2172,4 +2172,109 @@ describe('Background Handlers', () => {
       expect(localThis.deps.chromeAction.setBadgeText).toHaveBeenCalledWith({ text: '' });
     });
   });
+
+  describe('getUnreadSharedNotes', () => {
+    beforeEach(() => {
+      localThis.deps.getSharedNotesForUser = jest.fn().mockResolvedValue([]);
+      localThis.handlers = createHandlers(localThis.deps);
+    });
+
+    it('should return unread shared notes', async () => {
+      const sharedNotes = [
+        { id: 'note-1', content: 'Note 1', url: 'https://example.com' },
+        { id: 'note-2', content: 'Note 2', url: 'https://example.com/page' },
+        { id: 'note-3', content: 'Note 3', url: 'https://other.com' }
+      ];
+      
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.getSharedNotesForUser.mockResolvedValue(sharedNotes);
+      // note-1 has been seen, so only note-2 and note-3 should be returned
+      localThis.deps.chromeStorage.local.get.mockResolvedValue({
+        [`seenSharedNotes_${localThis.mockUser.uid}`]: ['note-1']
+      });
+      
+      const result = await localThis.handlers.getUnreadSharedNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.notes).toHaveLength(2);
+      expect(result.notes.map(n => n.id)).toEqual(['note-2', 'note-3']);
+    });
+
+    it('should return empty array when user not logged in', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(null);
+      
+      const result = await localThis.handlers.getUnreadSharedNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.notes).toEqual([]);
+    });
+
+    it('should return empty array when user has no email', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue({ uid: 'user-123', email: null });
+      
+      const result = await localThis.handlers.getUnreadSharedNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.notes).toEqual([]);
+    });
+
+    it('should return empty array when Firebase not configured', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      
+      const result = await localThis.handlers.getUnreadSharedNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.notes).toEqual([]);
+    });
+
+    it('should return all notes when none are seen', async () => {
+      const sharedNotes = [
+        { id: 'note-1', content: 'Note 1' },
+        { id: 'note-2', content: 'Note 2' }
+      ];
+      
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.getSharedNotesForUser.mockResolvedValue(sharedNotes);
+      localThis.deps.chromeStorage.local.get.mockResolvedValue({});
+      
+      const result = await localThis.handlers.getUnreadSharedNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.notes).toHaveLength(2);
+    });
+
+    it('should handle errors gracefully', async () => {
+      localThis.deps.getCurrentUser.mockRejectedValue(new Error('Auth error'));
+      
+      const result = await localThis.handlers.getUnreadSharedNotes();
+      
+      expect(result.success).toBe(false);
+      expect(result.notes).toEqual([]);
+      expect(localThis.mockLog.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('handleMessage - getUnreadSharedNotes', () => {
+    beforeEach(() => {
+      localThis.deps.getSharedNotesForUser = jest.fn().mockResolvedValue([]);
+      localThis.handlers = createHandlers(localThis.deps);
+    });
+
+    it('should route getUnreadSharedNotes action correctly', async () => {
+      const sharedNotes = [{ id: 'note-1', content: 'Test' }];
+      
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.getSharedNotesForUser.mockResolvedValue(sharedNotes);
+      localThis.deps.chromeStorage.local.get.mockResolvedValue({});
+      
+      const result = await localThis.handlers.handleMessage({ action: 'getUnreadSharedNotes' }, null);
+      
+      expect(result.success).toBe(true);
+      expect(result.notes).toHaveLength(1);
+    });
+  });
 });

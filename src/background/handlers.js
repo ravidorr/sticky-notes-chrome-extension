@@ -136,6 +136,9 @@ export function createHandlers(deps = {}) {
       case 'getUnreadSharedCount':
         return getUnreadSharedCount();
       
+      case 'getUnreadSharedNotes':
+        return getUnreadSharedNotes();
+      
       case 'markSharedNoteRead':
         return markSharedNoteRead(message.noteId);
       
@@ -1104,6 +1107,40 @@ export function createHandlers(deps = {}) {
   }
 
   /**
+   * Get all unread shared notes (notes shared with user that haven't been viewed)
+   * @returns {Promise<Object>} Result with notes array
+   */
+  async function getUnreadSharedNotes() {
+    try {
+      const user = await getCurrentUser();
+      
+      if (!user || !user.email) {
+        return { success: true, notes: [] };
+      }
+      
+      if (!isFirebaseConfigured() || !getSharedNotesForUser) {
+        return { success: true, notes: [] };
+      }
+      
+      // Get all shared notes for the user
+      const sharedNotes = await getSharedNotesForUser(user.email);
+      
+      // Get seen notes from storage
+      const storageKey = `seenSharedNotes_${user.uid}`;
+      const result = await chromeStorage.local.get([storageKey]);
+      const seenNoteIds = new Set(result[storageKey] || []);
+      
+      // Filter to only unread notes
+      const unreadNotes = sharedNotes.filter(note => !seenNoteIds.has(note.id));
+      
+      return { success: true, notes: unreadNotes };
+    } catch (error) {
+      log.error('Get unread shared notes error:', error);
+      return { success: false, notes: [], error: error.message };
+    }
+  }
+
+  /**
    * Mark a shared note as read
    * @param {string} noteId - Note ID to mark as read
    * @returns {Promise<Object>} Result
@@ -1273,6 +1310,7 @@ export function createHandlers(deps = {}) {
     deleteAllNotes,
     // Unread shared notes
     getUnreadSharedCount,
+    getUnreadSharedNotes,
     markSharedNoteRead,
     updateUnreadSharedBadge,
     subscribeToSharedNotesGlobal,

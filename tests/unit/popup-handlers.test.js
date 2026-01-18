@@ -937,4 +937,177 @@ describe('Popup Handlers', () => {
       await promise;
     });
   });
+
+  describe('getUnreadSharedNotes', () => {
+    it('should return notes on success', async () => {
+      const mockNotes = [
+        { id: 'note-1', content: 'Test note 1', url: 'https://example.com' },
+        { id: 'note-2', content: 'Test note 2', url: 'https://example.com/page' }
+      ];
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true, notes: mockNotes });
+      
+      const result = await localThis.handlers.getUnreadSharedNotes();
+      
+      expect(result.success).toBe(true);
+      expect(result.notes).toEqual(mockNotes);
+      expect(localThis.mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
+        action: 'getUnreadSharedNotes'
+      });
+    });
+
+    it('should return empty array on failure', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: false, error: 'Not logged in' });
+      
+      const result = await localThis.handlers.getUnreadSharedNotes();
+      
+      expect(result.success).toBe(false);
+      expect(result.notes).toEqual([]);
+    });
+
+    it('should handle errors', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockRejectedValue(new Error('Network error'));
+      
+      const result = await localThis.handlers.getUnreadSharedNotes();
+      
+      expect(result.success).toBe(false);
+      expect(result.notes).toEqual([]);
+      expect(localThis.mockLog.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('getUnreadSharedCount', () => {
+    it('should return count on success', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true, count: 5 });
+      
+      const result = await localThis.handlers.getUnreadSharedCount();
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(5);
+      expect(localThis.mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
+        action: 'getUnreadSharedCount'
+      });
+    });
+
+    it('should return 0 on failure', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: false, error: 'Error' });
+      
+      const result = await localThis.handlers.getUnreadSharedCount();
+      
+      expect(result.success).toBe(false);
+      expect(result.count).toBe(0);
+    });
+
+    it('should handle errors', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockRejectedValue(new Error('Network error'));
+      
+      const result = await localThis.handlers.getUnreadSharedCount();
+      
+      expect(result.success).toBe(false);
+      expect(result.count).toBe(0);
+    });
+  });
+
+  describe('markSharedNoteAsRead', () => {
+    it('should mark note as read', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true });
+      
+      const result = await localThis.handlers.markSharedNoteAsRead('note-123');
+      
+      expect(result.success).toBe(true);
+      expect(localThis.mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
+        action: 'markSharedNoteRead',
+        noteId: 'note-123'
+      });
+    });
+
+    it('should handle failure', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: false });
+      
+      const result = await localThis.handlers.markSharedNoteAsRead('note-123');
+      
+      expect(result.success).toBe(false);
+    });
+
+    it('should handle errors', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockRejectedValue(new Error('Error'));
+      
+      const result = await localThis.handlers.markSharedNoteAsRead('note-123');
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockLog.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('renderSharedNoteItem', () => {
+    it('should render shared note with all fields', () => {
+      const note = {
+        id: 'note-123',
+        content: 'Test note content',
+        url: 'https://example.com/page/subpage',
+        theme: 'blue',
+        ownerEmail: 'owner@example.com',
+        createdAt: new Date('2024-01-15T10:30:00Z')
+      };
+      
+      const html = localThis.handlers.renderSharedNoteItem(note);
+      
+      expect(html).toContain('data-id="note-123"');
+      expect(html).toContain('data-url="https://example.com/page/subpage"');
+      expect(html).toContain('Test note content');
+      expect(html).toContain('example.com/page/subpage');
+      expect(html).toContain('owner@example.com');
+    });
+
+    it('should truncate long URLs', () => {
+      const note = {
+        id: 'note-123',
+        content: 'Test',
+        url: 'https://example.com/very/long/path/that/exceeds/forty/characters/limit/here',
+        theme: 'yellow',
+        ownerEmail: 'test@example.com'
+      };
+      
+      const html = localThis.handlers.renderSharedNoteItem(note);
+      
+      expect(html).toContain('...');
+    });
+
+    it('should handle empty content', () => {
+      const note = {
+        id: 'note-123',
+        content: '',
+        url: 'https://example.com',
+        theme: 'yellow'
+      };
+      
+      const html = localThis.handlers.renderSharedNoteItem(note);
+      
+      // Should show empty note fallback text
+      expect(html).toContain('note-123');
+    });
+
+    it('should handle missing owner email', () => {
+      const note = {
+        id: 'note-123',
+        content: 'Test',
+        url: 'https://example.com',
+        theme: 'yellow',
+        ownerEmail: null
+      };
+      
+      const html = localThis.handlers.renderSharedNoteItem(note);
+      
+      // Should not crash and should render the note
+      expect(html).toContain('data-id="note-123"');
+    });
+  });
+
+  describe('renderEmptySharedNotes', () => {
+    it('should render empty state message', () => {
+      const html = localThis.handlers.renderEmptySharedNotes();
+      
+      expect(html).toContain('notes-empty');
+      expect(html).toContain('svg');
+    });
+  });
 });

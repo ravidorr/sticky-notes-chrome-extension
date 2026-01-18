@@ -12,7 +12,10 @@ import {
     showAuthSection,
     showUserSection,
     renderNotesList,
-    initDOMElements
+    initDOMElements,
+    switchTab,
+    updateSharedNotesCount,
+    setupTabs
 } from '../../src/popup/popup.js';
 
 // Import createPopupHandlers to use for renderNotesList tests
@@ -36,6 +39,18 @@ describe('src/popup/popup.js', () => {
             <div id="notesList"></div>
             <span id="notesCount">0</span>
             <div class="action-hint"></div>
+            <!-- Tab elements -->
+            <button id="thisPageTab" class="popup-tab active" data-tab="this-page">
+                <span>This Page</span>
+                <span id="thisPageCount" class="tab-count">0</span>
+            </button>
+            <button id="sharedTab" class="popup-tab" data-tab="shared">
+                <span>Shared</span>
+                <span id="sharedCount" class="tab-count tab-count-unread hidden">0</span>
+            </button>
+            <section id="thisPageContent" class="tab-content notes-section"></section>
+            <section id="sharedContent" class="tab-content notes-section hidden"></section>
+            <div id="sharedNotesList" class="notes-list"></div>
         `;
 
         // Initialize DOM elements by calling the function
@@ -219,6 +234,67 @@ describe('src/popup/popup.js', () => {
             expect(handlers).toHaveProperty('handleLogout');
             expect(handlers).toHaveProperty('checkAuthState');
             expect(handlers).toHaveProperty('loadNotesForCurrentTab');
+        });
+
+        it('should create handlers with shared notes methods', () => {
+            const handlers = createPopupHandlers({});
+            
+            expect(handlers).toHaveProperty('getUnreadSharedNotes');
+            expect(handlers).toHaveProperty('getUnreadSharedCount');
+            expect(handlers).toHaveProperty('markSharedNoteAsRead');
+            expect(handlers).toHaveProperty('renderSharedNoteItem');
+            expect(handlers).toHaveProperty('renderEmptySharedNotes');
+        });
+    });
+
+    // ============================================
+    // Tab Navigation Tests
+    // ============================================
+
+    describe('switchTab', () => {
+        beforeEach(() => {
+            localThis.thisPageTab = document.getElementById('thisPageTab');
+            localThis.sharedTab = document.getElementById('sharedTab');
+            localThis.thisPageContent = document.getElementById('thisPageContent');
+            localThis.sharedContent = document.getElementById('sharedContent');
+        });
+
+        it('should activate this-page tab', async () => {
+            // First switch to shared, then back to this-page
+            await switchTab('shared');
+            await switchTab('this-page');
+            
+            expect(localThis.thisPageTab.classList.contains('active')).toBe(true);
+            expect(localThis.sharedTab.classList.contains('active')).toBe(false);
+            expect(localThis.thisPageContent.classList.contains('hidden')).toBe(false);
+            expect(localThis.sharedContent.classList.contains('hidden')).toBe(true);
+        });
+
+        it('should activate shared tab', async () => {
+            await switchTab('shared');
+            
+            expect(localThis.thisPageTab.classList.contains('active')).toBe(false);
+            expect(localThis.sharedTab.classList.contains('active')).toBe(true);
+            expect(localThis.thisPageContent.classList.contains('hidden')).toBe(true);
+            expect(localThis.sharedContent.classList.contains('hidden')).toBe(false);
+        });
+    });
+
+    describe('setupTabs', () => {
+        it('should set up tab click handlers without throwing', () => {
+            expect(() => setupTabs()).not.toThrow();
+        });
+    });
+
+    describe('updateSharedNotesCount', () => {
+        beforeEach(() => {
+            localThis.sharedCount = document.getElementById('sharedCount');
+        });
+
+        it('should not throw when called', async () => {
+            // This will make a chrome.runtime.sendMessage call that will fail in test,
+            // but it should handle the error gracefully
+            await expect(updateSharedNotesCount()).resolves.not.toThrow();
         });
     });
 });

@@ -43,9 +43,14 @@ let userAvatar, userName, userEmail;
 let addNoteBtn, notesList, notesCount, actionHint;
 let actionsBtn, actionsMenu, exportPageBtn, exportAllBtn, deletePageNotesBtn, deleteAllNotesBtn;
 let totalNotesCount;
+// Tab elements
+let thisPageTab, sharedTab, thisPageContent, sharedContent;
+let thisPageCount, sharedCount, sharedNotesList;
 
 // Current page notes (for actions)
 let currentPageNotes = [];
+// Current active tab
+let activeTab = 'this-page';
 
 /**
  * Initialize DOM elements
@@ -72,6 +77,15 @@ function initDOMElements() {
   deletePageNotesBtn = document.getElementById('deletePageNotesBtn');
   deleteAllNotesBtn = document.getElementById('deleteAllNotesBtn');
   totalNotesCount = document.getElementById('totalNotesCount');
+  
+  // Tab elements
+  thisPageTab = document.getElementById('thisPageTab');
+  sharedTab = document.getElementById('sharedTab');
+  thisPageContent = document.getElementById('thisPageContent');
+  sharedContent = document.getElementById('sharedContent');
+  thisPageCount = document.getElementById('thisPageCount');
+  sharedCount = document.getElementById('sharedCount');
+  sharedNotesList = document.getElementById('sharedNotesList');
 }
 
 /**
@@ -205,6 +219,9 @@ async function refreshNotes() {
   renderNotesList(notesResult.notes);
   notesCount.textContent = notesResult.notes.length;
   
+  // Update "This Page" tab count badge
+  thisPageCount.textContent = notesResult.notes.length.toString();
+  
   // Also update total notes count
   await updateTotalNotesCount();
 }
@@ -219,6 +236,89 @@ async function updateTotalNotesCount() {
   } else {
     totalNotesCount.textContent = '';
   }
+}
+
+/**
+ * Switch between tabs
+ * @param {string} tabName - 'this-page' or 'shared'
+ */
+async function switchTab(tabName) {
+  activeTab = tabName;
+  
+  // Update tab button states
+  thisPageTab.classList.toggle('active', tabName === 'this-page');
+  sharedTab.classList.toggle('active', tabName === 'shared');
+  
+  // Update tab content visibility
+  thisPageContent.classList.toggle('hidden', tabName !== 'this-page');
+  sharedContent.classList.toggle('hidden', tabName !== 'shared');
+  
+  // Load shared notes when switching to shared tab
+  if (tabName === 'shared') {
+    await loadAndRenderSharedNotes();
+  }
+}
+
+/**
+ * Load and render shared notes
+ */
+async function loadAndRenderSharedNotes() {
+  const result = await handlers.getUnreadSharedNotes();
+  
+  if (result.notes.length === 0) {
+    sharedNotesList.innerHTML = handlers.renderEmptySharedNotes();
+    return;
+  }
+  
+  sharedNotesList.innerHTML = result.notes.map(note => handlers.renderSharedNoteItem(note)).join('');
+  
+  // Add click handlers for each shared note item
+  sharedNotesList.querySelectorAll('.shared-note-item').forEach(item => {
+    item.addEventListener('click', () => handleSharedNoteClick(item));
+  });
+}
+
+/**
+ * Handle clicking on a shared note - mark as read and open URL in new tab
+ * @param {HTMLElement} item - The clicked note item element
+ */
+async function handleSharedNoteClick(item) {
+  const noteId = item.dataset.id;
+  const noteUrl = item.dataset.url;
+  
+  if (!noteId || !noteUrl) return;
+  
+  try {
+    // Mark as read first
+    await handlers.markSharedNoteAsRead(noteId);
+    
+    // Open in new tab
+    await chrome.tabs.create({ url: noteUrl });
+    
+    // Close popup
+    window.close();
+  } catch (error) {
+    showToast(t('failedToOpenNote') || 'Failed to open note', 'error');
+  }
+}
+
+/**
+ * Update the shared notes count badge
+ */
+async function updateSharedNotesCount() {
+  const result = await handlers.getUnreadSharedCount();
+  const count = result.count || 0;
+  
+  sharedCount.textContent = count.toString();
+  sharedCount.classList.toggle('hidden', count === 0);
+}
+
+/**
+ * Setup tab navigation
+ */
+function setupTabs() {
+  thisPageTab.addEventListener('click', () => switchTab('this-page'));
+  sharedTab.addEventListener('click', () => switchTab('shared'));
 }
 
 /**
@@ -285,14 +385,23 @@ async function init() {
   renderNotesList(notesResult.notes);
   notesCount.textContent = notesResult.notes.length;
   
+  // Update "This Page" tab count badge
+  thisPageCount.textContent = notesResult.notes.length.toString();
+  
   // Update total notes count
   await updateTotalNotesCount();
+  
+  // Update shared notes count badge
+  await updateSharedNotesCount();
   
   // Setup event listeners
   loginBtn.addEventListener('click', onLogin);
   logoutBtn.addEventListener('click', onLogout);
   addNoteBtn.addEventListener('click', () => handlers.handleAddNote());
   closeBtn.addEventListener('click', () => window.close());
+  
+  // Setup tabs
+  setupTabs();
   
   // Actions dropdown
   setupActionsDropdown();
@@ -388,6 +497,12 @@ export {
   refreshNotes,
   handleNoteNavigate,
   updateTotalNotesCount,
-  setupActionsDropdown
+  setupActionsDropdown,
+  // Tab functions
+  switchTab,
+  loadAndRenderSharedNotes,
+  handleSharedNoteClick,
+  updateSharedNotesCount,
+  setupTabs
 };
 export { createPopupHandlers } from './handlers.js';

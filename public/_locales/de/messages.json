@@ -779,5 +779,40 @@
   "goToNote": {
     "message": "Zur Notiz gehen",
     "description": "Tooltip for clicking to jump to a note"
+  },
+
+  "tabThisPage": {
+    "message": "Diese Seite",
+    "description": "Tab label for notes on current page"
+  },
+  "tabShared": {
+    "message": "Geteilt",
+    "description": "Tab label for shared notes"
+  },
+  "sharedNotesTitle": {
+    "message": "Mit Ihnen geteilt",
+    "description": "Header for shared notes section"
+  },
+  "noUnreadSharedNotes": {
+    "message": "Keine ungelesenen geteilten Notizen",
+    "description": "Empty state message when no unread shared notes"
+  },
+  "sharedBy": {
+    "message": "Geteilt von $EMAIL$",
+    "description": "Text showing who shared a note",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "colleague@example.com"
+      }
+    }
+  },
+  "openInNewTab": {
+    "message": "In neuem Tab offnen",
+    "description": "Tooltip for opening shared note in new tab"
+  },
+  "failedToOpenNote": {
+    "message": "Notiz konnte nicht geoffnet werden",
+    "description": "Error message when opening shared note fails"
   }
 }

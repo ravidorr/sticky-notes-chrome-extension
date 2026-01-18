@@ -779,5 +779,40 @@
   "goToNote": {
     "message": "Go to note",
     "description": "Tooltip for clicking to jump to a note"
+  },
+
+  "tabThisPage": {
+    "message": "This Page",
+    "description": "Tab label for notes on current page"
+  },
+  "tabShared": {
+    "message": "Shared",
+    "description": "Tab label for shared notes"
+  },
+  "sharedNotesTitle": {
+    "message": "Shared with you",
+    "description": "Header for shared notes section"
+  },
+  "noUnreadSharedNotes": {
+    "message": "No unread shared notes",
+    "description": "Empty state message when no unread shared notes"
+  },
+  "sharedBy": {
+    "message": "Shared by $EMAIL$",
+    "description": "Text showing who shared a note",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "colleague@example.com"
+      }
+    }
+  },
+  "openInNewTab": {
+    "message": "Open in new tab",
+    "description": "Tooltip for opening shared note in new tab"
+  },
+  "failedToOpenNote": {
+    "message": "Failed to open note",
+    "description": "Error message when opening shared note fails"
   }
 }

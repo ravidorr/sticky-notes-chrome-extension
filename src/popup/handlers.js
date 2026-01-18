@@ -794,6 +794,145 @@ export function createPopupHandlers(deps = {}) {
     });
   }
 
+  /**
+   * Get unread shared notes
+   * @returns {Promise<Object>} Result with notes array
+   */
+  async function getUnreadSharedNotes() {
+    try {
+      const response = await chromeRuntime.sendMessage({
+        action: 'getUnreadSharedNotes'
+      });
+      
+      if (response.success) {
+        return { success: true, notes: response.notes || [] };
+      } else {
+        log.error('Get unread shared notes failed:', response.error);
+        return { success: false, notes: [], error: response.error };
+      }
+    } catch (error) {
+      log.error('Get unread shared notes error:', error);
+      return { success: false, notes: [], error: error.message };
+    }
+  }
+
+  /**
+   * Get the count of unread shared notes
+   * @returns {Promise<Object>} Result with count
+   */
+  async function getUnreadSharedCount() {
+    try {
+      const response = await chromeRuntime.sendMessage({
+        action: 'getUnreadSharedCount'
+      });
+      
+      if (response.success) {
+        return { success: true, count: response.count || 0 };
+      } else {
+        log.error('Get unread shared count failed:', response.error);
+        return { success: false, count: 0, error: response.error };
+      }
+    } catch (error) {
+      log.error('Get unread shared count error:', error);
+      return { success: false, count: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Mark a shared note as read
+   * @param {string} noteId - Note ID to mark as read
+   * @returns {Promise<Object>} Result
+   */
+  async function markSharedNoteAsRead(noteId) {
+    try {
+      const response = await chromeRuntime.sendMessage({
+        action: 'markSharedNoteRead',
+        noteId
+      });
+      
+      return { success: response.success };
+    } catch (error) {
+      log.error('Mark shared note read error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Render a shared note item HTML
+   * @param {Object} note - Note object
+   * @returns {string} HTML string
+   */
+  function renderSharedNoteItem(note) {
+    // Extract hostname from URL for display
+    let displayUrl = '';
+    try {
+      const url = new URL(note.url);
+      displayUrl = url.hostname + (url.pathname !== '/' ? url.pathname : '');
+      // Truncate if too long
+      if (displayUrl.length > 40) {
+        displayUrl = displayUrl.substring(0, 40) + '...';
+      }
+    } catch (_e) {
+      displayUrl = note.url || '';
+    }
+    
+    return `
+      <div class="shared-note-item" data-id="${note.id}" data-url="${escapeHtml(note.url)}">
+        <div class="shared-note-header">
+          <div class="shared-note-unread-dot"></div>
+          <div class="note-item-color" style="background: ${getThemeColor(note.theme)}"></div>
+          <div class="shared-note-content">
+            <div class="shared-note-text">${stripHtml(note.content) || t('emptyNote')}</div>
+            <div class="shared-note-meta">
+              <div class="shared-note-url">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                  <polyline points="15 3 21 3 21 9"/>
+                  <line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                <span class="shared-note-url-text">${escapeHtml(displayUrl)}</span>
+              </div>
+              <div class="shared-note-info">
+                <span class="shared-note-owner">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  ${escapeHtml(note.ownerEmail || t('anonymous'))}
+                </span>
+                <span class="shared-note-time">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  ${formatRelativeTime(note.createdAt)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Render empty shared notes message
+   * @returns {string} HTML string
+   */
+  function renderEmptySharedNotes() {
+    return `
+      <div class="notes-empty">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+          <path d="M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+        <p>${t('noUnreadSharedNotes')}</p>
+      </div>
+    `;
+  }
+
   return {
     checkAuthState,
     handleLogin,
@@ -816,7 +955,13 @@ export function createPopupHandlers(deps = {}) {
     getAllNotes,
     showShareModal,
     showConfirmDialog,
-    formatTimestamp
+    formatTimestamp,
+    // Shared notes handlers
+    getUnreadSharedNotes,
+    getUnreadSharedCount,
+    markSharedNoteAsRead,
+    renderSharedNoteItem,
+    renderEmptySharedNotes
   };
 }
 

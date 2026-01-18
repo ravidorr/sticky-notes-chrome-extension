@@ -758,3 +758,209 @@ body {
   width: 10px;
   height: 10px;
 }
+
+/* Tab Navigation */
+.popup-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #f3f4f6;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.popup-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.popup-tab:hover {
+  color: #374151;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.popup-tab.active {
+  background: white;
+  color: #1f2937;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Tab count badges */
+.tab-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 9px;
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.popup-tab.active .tab-count {
+  background: #facc15;
+  color: #713f12;
+}
+
+/* Unread badge styling (blue for shared) */
+.tab-count-unread {
+  background: #3b82f6;
+  color: white;
+}
+
+.popup-tab.active .tab-count-unread {
+  background: #3b82f6;
+  color: white;
+}
+
+/* Tab content */
+.tab-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.tab-content.hidden {
+  display: none;
+}
+
+/* Shared note item specific styles */
+.shared-note-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.shared-note-item:hover {
+  background: #f9fafb;
+}
+
+.shared-note-item:last-child {
+  border-bottom: none;
+}
+
+.shared-note-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.shared-note-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.shared-note-text {
+  font-size: 13px;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.shared-note-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shared-note-url {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #3b82f6;
+  max-width: 100%;
+}
+
+.shared-note-url svg {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+}
+
+.shared-note-url-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shared-note-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.shared-note-owner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shared-note-owner svg {
+  width: 12px;
+  height: 12px;
+}
+
+.shared-note-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shared-note-time svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Open indicator on hover */
+.shared-note-item::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E");
+  background-size: contain;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.shared-note-item:hover::after {
+  opacity: 0.5;
+}
+
+/* Unread indicator dot */
+.shared-note-unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3b82f6;
+  flex-shrink: 0;
+  margin-top: 4px;
+}

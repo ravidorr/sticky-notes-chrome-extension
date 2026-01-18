@@ -89,6 +89,7 @@ Add comment threads to notes for Q&A and discussions.
 - [x] Real-time collaborative updates (live sync for notes)
 - [x] Real-time sync for comments
 - [x] Unread shared notes badge (extension icon shows count of new shared notes)
+- [x] View unread shared notes in popup (tabbed interface with "This Page" and "Shared" tabs)
 
 ### Data Model
 ```javascript
