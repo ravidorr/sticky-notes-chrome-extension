@@ -12,7 +12,9 @@ import { API_BASE_URL } from './config.js';
 const state = {
     apiKey: null,
     currentFilter: 'all',
-    refreshInterval: null
+    refreshInterval: null,
+    searchQuery: '',
+    allNotes: []
 };
 
 // ============================================
@@ -138,6 +140,52 @@ function renderConsoleErrors(errors) {
     `;
 }
 
+/**
+ * Filter notes by search query
+ * @param {Object[]} notes - Array of note objects
+ * @param {string} query - Search query string
+ * @returns {Object[]} Filtered notes array
+ */
+function filterNotesBySearch(notes, query) {
+    if (!query || !query.trim()) return notes;
+    
+    const lowerQuery = query.toLowerCase().trim();
+    return notes.filter(note => {
+        const content = stripHtml(note.content || '').toLowerCase();
+        const url = (note.url || '').toLowerCase();
+        const selector = (note.selector || '').toLowerCase();
+        
+        return content.includes(lowerQuery) || 
+               url.includes(lowerQuery) || 
+               selector.includes(lowerQuery);
+    });
+}
+
+/**
+ * Create a debounced version of a function
+ * @param {Function} fn - Function to debounce
+ * @param {number} delay - Delay in milliseconds
+ * @returns {Function} Debounced function
+ */
+function debounce(fn, delay) {
+    let timeoutId;
+    return function(...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+/**
+ * Update the last updated timestamp display
+ */
+function updateLastUpdated() {
+    const lastUpdated = document.getElementById('lastUpdated');
+    if (lastUpdated) {
+        const now = new Date();
+        lastUpdated.textContent = `Updated ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+}
+
 // ============================================
 // DOM Helpers
 // ============================================
@@ -161,7 +209,12 @@ function getDOMElements() {
         filterTabs: document.querySelectorAll('.filter-tab'),
         keyIndicator: document.getElementById('keyIndicator'),
         domainSelect: document.getElementById('domainSelect'),
-        userEmailSpan: document.getElementById('userEmail')
+        userEmailSpan: document.getElementById('userEmail'),
+        searchInput: document.getElementById('searchInput'),
+        lastUpdated: document.getElementById('lastUpdated'),
+        tabCountAll: document.getElementById('tabCountAll'),
+        tabCountOwned: document.getElementById('tabCountOwned'),
+        tabCountShared: document.getElementById('tabCountShared')
     };
 }
 
@@ -298,12 +351,38 @@ function populateDomainDropdown(domainSelect, domains) {
  * Render notes to the DOM
  * @param {HTMLElement} notesList - The notes list container
  * @param {Object[]} notes - Array of note objects
+ * @param {Object} context - Optional context for empty state messages
  */
-function renderNotes(notesList, notes) {
+function renderNotes(notesList, notes, context = {}) {
     if (!notesList) return;
     
     if (notes.length === 0) {
-        notesList.innerHTML = '<p class="empty-state-msg">No notes found</p>';
+        let emptyMessage = 'No notes found';
+        let emptyAction = '';
+        
+        if (context.isSearch) {
+            emptyMessage = 'No notes match your search';
+            emptyAction = '<p class="empty-state-hint">Try a different search term or clear the search.</p>';
+        } else if (context.filter === 'shared') {
+            emptyMessage = 'No notes have been shared with you yet';
+            emptyAction = '<p class="empty-state-hint">Ask a teammate to share a note with your email address.</p>';
+        } else if (context.filter === 'commented') {
+            emptyMessage = 'No commented notes';
+            emptyAction = '<p class="empty-state-hint">Comments you add or receive will appear here.</p>';
+        } else if (context.filter === 'owned') {
+            emptyMessage = 'You haven\'t created any notes yet';
+            emptyAction = '<p class="empty-state-hint">Use the Sticky Notes extension to pin notes on any webpage.</p>';
+        } else if (context.domain) {
+            emptyMessage = `No notes on ${escapeHtml(context.domain)}`;
+            emptyAction = '<p class="empty-state-hint">Try selecting "All domains" to see all your notes.</p>';
+        }
+        
+        notesList.innerHTML = `
+            <div class="empty-state">
+                <p class="empty-state-msg">${emptyMessage}</p>
+                ${emptyAction}
+            </div>
+        `;
         return;
     }
 
@@ -408,18 +487,31 @@ async function loadStats(apiKey, elements) {
         if (statShared) statShared.textContent = stats.shared;
         if (statDomains) statDomains.textContent = stats.domainCount;
         
-        // Update theme breakdown
+        // Update tab counts
+        if (elements.tabCountAll) elements.tabCountAll.textContent = stats.total || '';
+        if (elements.tabCountOwned) elements.tabCountOwned.textContent = stats.owned || '';
+        if (elements.tabCountShared) elements.tabCountShared.textContent = stats.shared || '';
+        
+        // Update theme breakdown with percentages for proper visualization
         const themes = stats.byTheme || {};
+        const themeTotal = (themes.yellow || 0) + (themes.blue || 0) + (themes.green || 0) + (themes.pink || 0);
         
         const themeYellow = document.getElementById('themeYellow');
         const themeBlue = document.getElementById('themeBlue');
         const themeGreen = document.getElementById('themeGreen');
         const themePink = document.getElementById('themePink');
         
-        if (themeYellow) themeYellow.style.flex = themes.yellow || 0;
-        if (themeBlue) themeBlue.style.flex = themes.blue || 0;
-        if (themeGreen) themeGreen.style.flex = themes.green || 0;
-        if (themePink) themePink.style.flex = themes.pink || 0;
+        if (themeTotal > 0) {
+            if (themeYellow) themeYellow.style.flex = ((themes.yellow || 0) / themeTotal * 100).toFixed(2);
+            if (themeBlue) themeBlue.style.flex = ((themes.blue || 0) / themeTotal * 100).toFixed(2);
+            if (themeGreen) themeGreen.style.flex = ((themes.green || 0) / themeTotal * 100).toFixed(2);
+            if (themePink) themePink.style.flex = ((themes.pink || 0) / themeTotal * 100).toFixed(2);
+        } else {
+            if (themeYellow) themeYellow.style.flex = 0;
+            if (themeBlue) themeBlue.style.flex = 0;
+            if (themeGreen) themeGreen.style.flex = 0;
+            if (themePink) themePink.style.flex = 0;
+        }
         
         const legendYellow = document.getElementById('legendYellow');
         const legendBlue = document.getElementById('legendBlue');
@@ -431,9 +523,17 @@ async function loadStats(apiKey, elements) {
         if (legendGreen) legendGreen.textContent = themes.green || 0;
         if (legendPink) legendPink.textContent = themes.pink || 0;
         
+        // Update accessible description for theme breakdown
+        const themeBreakdown = document.getElementById('themeBreakdown');
+        if (themeBreakdown && themeTotal > 0) {
+            themeBreakdown.setAttribute('aria-label', 
+                `Notes by color: ${themes.yellow || 0} yellow, ${themes.blue || 0} blue, ${themes.green || 0} green, ${themes.pink || 0} pink`
+            );
+        }
+        
         // Update user email in header
         if (stats.user?.email && elements.userEmailSpan) {
-            elements.userEmailSpan.textContent = stats.user.email + ' ';
+            elements.userEmailSpan.textContent = `Signed in as ${stats.user.email}`;
             elements.userEmailSpan.title = `Signed in as ${stats.user.email}`;
         }
         
@@ -447,6 +547,9 @@ async function loadStats(apiKey, elements) {
         if (elements.domainSelect) {
             populateDomainDropdown(elements.domainSelect, stats.domains || []);
         }
+        
+        // Update last updated timestamp
+        updateLastUpdated();
         
         return stats;
     } catch (error) {
@@ -550,8 +653,22 @@ async function loadNotes(options = {}) {
             notes = notesWithComments;
         }
         
+        // Cache notes for search filtering
+        state.allNotes = notes;
+        
+        // Apply search filter if active
+        const searchQuery = elements?.searchInput?.value?.trim() || state.searchQuery;
+        const displayNotes = filterNotesBySearch(notes, searchQuery);
+        
+        // Build context for empty states
+        const context = {
+            filter: currentFilter,
+            domain: selectedDomain && selectedDomain !== '__custom__' ? selectedDomain : null,
+            isSearch: !!searchQuery
+        };
+        
         if (elements?.notesList) {
-            renderNotes(elements.notesList, notes);
+            renderNotes(elements.notesList, displayNotes, context);
         }
         
         const filterLabel = {
@@ -562,8 +679,12 @@ async function loadNotes(options = {}) {
         }[currentFilter];
         
         if (elements?.status) {
-            showStatus(elements.status, `Found ${notes.length} ${filterLabel} note${notes.length !== 1 ? 's' : ''}`, 'success');
+            const countLabel = searchQuery ? `${displayNotes.length} of ${notes.length}` : displayNotes.length;
+            showStatus(elements.status, `Found ${countLabel} ${filterLabel} note${displayNotes.length !== 1 ? 's' : ''}`, 'success');
         }
+        
+        // Update last updated timestamp
+        updateLastUpdated();
         
         return notes;
     } catch (error) {
@@ -670,7 +791,9 @@ function setupEventListeners(elements, appState, handlers = {}) {
         domainSelect, 
         filterTabs, 
         autoRefreshCheckbox, 
-        settingsBtn 
+        settingsBtn,
+        searchInput,
+        notesList
     } = elements;
     
     // API key events
@@ -717,8 +840,31 @@ function setupEventListeners(elements, appState, handlers = {}) {
         settingsBtn.addEventListener('click', () => handlers.onOpenSettings?.());
     }
     
+    // Search input with debouncing
+    if (searchInput && notesList) {
+        const handleSearch = debounce((query) => {
+            appState.searchQuery = query;
+            const filtered = filterNotesBySearch(appState.allNotes, query);
+            const context = {
+                filter: appState.currentFilter,
+                isSearch: !!query
+            };
+            renderNotes(notesList, filtered, context);
+            
+            const statusEl = document.getElementById('status');
+            if (statusEl) {
+                if (query) {
+                    showStatus(statusEl, `Found ${filtered.length} of ${appState.allNotes.length} notes matching "${query}"`, 'success');
+                } else {
+                    showStatus(statusEl, `Found ${appState.allNotes.length} note${appState.allNotes.length !== 1 ? 's' : ''}`, 'success');
+                }
+            }
+        }, 300);
+        
+        searchInput.addEventListener('input', (e) => handleSearch(e.target.value));
+    }
+    
     // Console errors toggle (event delegation for dynamically loaded notes)
-    const notesList = elements.notesList;
     if (notesList) {
         notesList.addEventListener('click', (event) => {
             const toggle = event.target.closest('.console-errors-header');
@@ -853,6 +999,9 @@ export {
     formatDate,
     getErrorTypeLabel,
     renderConsoleErrors,
+    filterNotesBySearch,
+    debounce,
+    updateLastUpdated,
     // DOM helpers
     getDOMElements,
     showStatus,

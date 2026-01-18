@@ -15,6 +15,9 @@ import {
     formatDate,
     getErrorTypeLabel,
     renderConsoleErrors,
+    filterNotesBySearch,
+    debounce,
+    updateLastUpdated,
     // DOM helpers
     showStatus,
     // UI functions
@@ -55,6 +58,8 @@ describe('site/js/dashboard.js', () => {
         state.apiKey = null;
         state.currentFilter = 'all';
         state.refreshInterval = null;
+        state.searchQuery = '';
+        state.allNotes = [];
         
         // Mock fetch
         global.fetch = jest.fn();
@@ -330,6 +335,120 @@ describe('site/js/dashboard.js', () => {
         });
     });
 
+    describe('filterNotesBySearch', () => {
+        const localThis = {};
+
+        beforeEach(() => {
+            localThis.notes = [
+                { id: '1', url: 'https://example.com', selector: '.header', content: '<p>Bug in header</p>' },
+                { id: '2', url: 'https://test.com', selector: '.footer', content: '<p>Footer issue</p>' },
+                { id: '3', url: 'https://example.com/page', selector: '#main', content: '<p>Main content problem</p>' }
+            ];
+        });
+
+        it('should return all notes when query is empty', () => {
+            expect(filterNotesBySearch(localThis.notes, '')).toEqual(localThis.notes);
+            expect(filterNotesBySearch(localThis.notes, null)).toEqual(localThis.notes);
+            expect(filterNotesBySearch(localThis.notes, '   ')).toEqual(localThis.notes);
+        });
+
+        it('should filter notes by content', () => {
+            const result = filterNotesBySearch(localThis.notes, 'header');
+            expect(result.length).toBe(1);
+            expect(result[0].id).toBe('1');
+        });
+
+        it('should filter notes by URL', () => {
+            const result = filterNotesBySearch(localThis.notes, 'test.com');
+            expect(result.length).toBe(1);
+            expect(result[0].id).toBe('2');
+        });
+
+        it('should filter notes by selector', () => {
+            const result = filterNotesBySearch(localThis.notes, '#main');
+            expect(result.length).toBe(1);
+            expect(result[0].id).toBe('3');
+        });
+
+        it('should be case insensitive', () => {
+            const result = filterNotesBySearch(localThis.notes, 'HEADER');
+            expect(result.length).toBe(1);
+            expect(result[0].id).toBe('1');
+        });
+
+        it('should match partial strings', () => {
+            const result = filterNotesBySearch(localThis.notes, 'example');
+            expect(result.length).toBe(2);
+        });
+
+        it('should return empty array when no matches', () => {
+            const result = filterNotesBySearch(localThis.notes, 'nonexistent');
+            expect(result.length).toBe(0);
+        });
+    });
+
+    describe('debounce', () => {
+        beforeEach(() => {
+            jest.useFakeTimers();
+        });
+
+        afterEach(() => {
+            jest.useRealTimers();
+        });
+
+        it('should delay function execution', () => {
+            const fn = jest.fn();
+            const debouncedFn = debounce(fn, 300);
+            
+            debouncedFn();
+            expect(fn).not.toHaveBeenCalled();
+            
+            jest.advanceTimersByTime(300);
+            expect(fn).toHaveBeenCalledTimes(1);
+        });
+
+        it('should reset timer on subsequent calls', () => {
+            const fn = jest.fn();
+            const debouncedFn = debounce(fn, 300);
+            
+            debouncedFn();
+            jest.advanceTimersByTime(200);
+            debouncedFn();
+            jest.advanceTimersByTime(200);
+            
+            expect(fn).not.toHaveBeenCalled();
+            
+            jest.advanceTimersByTime(100);
+            expect(fn).toHaveBeenCalledTimes(1);
+        });
+
+        it('should pass arguments to the debounced function', () => {
+            const fn = jest.fn();
+            const debouncedFn = debounce(fn, 300);
+            
+            debouncedFn('arg1', 'arg2');
+            jest.advanceTimersByTime(300);
+            
+            expect(fn).toHaveBeenCalledWith('arg1', 'arg2');
+        });
+    });
+
+    describe('updateLastUpdated', () => {
+        it('should update the last updated element', () => {
+            document.body.innerHTML = '<span id="lastUpdated"></span>';
+            
+            updateLastUpdated();
+            
+            const element = document.getElementById('lastUpdated');
+            expect(element.textContent).toContain('Updated');
+        });
+
+        it('should handle missing element gracefully', () => {
+            document.body.innerHTML = '';
+            expect(() => updateLastUpdated()).not.toThrow();
+        });
+    });
+
     // ============================================
     // DOM Helper Tests
     // ============================================
@@ -591,6 +710,37 @@ describe('site/js/dashboard.js', () => {
             expect(localThis.notesList.innerHTML).toContain('No notes found');
         });
 
+        it('should show contextual empty state for search', () => {
+            renderNotes(localThis.notesList, [], { isSearch: true });
+            
+            expect(localThis.notesList.innerHTML).toContain('No notes match your search');
+            expect(localThis.notesList.innerHTML).toContain('empty-state-hint');
+        });
+
+        it('should show contextual empty state for shared filter', () => {
+            renderNotes(localThis.notesList, [], { filter: 'shared' });
+            
+            expect(localThis.notesList.innerHTML).toContain('No notes have been shared with you yet');
+        });
+
+        it('should show contextual empty state for commented filter', () => {
+            renderNotes(localThis.notesList, [], { filter: 'commented' });
+            
+            expect(localThis.notesList.innerHTML).toContain('No commented notes');
+        });
+
+        it('should show contextual empty state for owned filter', () => {
+            renderNotes(localThis.notesList, [], { filter: 'owned' });
+            
+            expect(localThis.notesList.innerHTML).toContain('haven\'t created any notes yet');
+        });
+
+        it('should show contextual empty state for domain filter', () => {
+            renderNotes(localThis.notesList, [], { domain: 'example.com' });
+            
+            expect(localThis.notesList.innerHTML).toContain('No notes on example.com');
+        });
+
         it('should render note cards', () => {
             const notes = [{
                 id: 'note-123456789',
@@ -794,8 +944,13 @@ describe('site/js/dashboard.js', () => {
                 <span id="legendBlue"></span>
                 <span id="legendGreen"></span>
                 <span id="legendPink"></span>
+                <div id="themeBreakdown"></div>
                 <span id="userEmail"></span>
                 <span id="keyIndicator"></span>
+                <span id="lastUpdated"></span>
+                <span id="tabCountAll"></span>
+                <span id="tabCountOwned"></span>
+                <span id="tabCountShared"></span>
                 <select id="domainSelect">
                     <option value="">All</option>
                     <option value="__custom__">Custom</option>
@@ -804,7 +959,10 @@ describe('site/js/dashboard.js', () => {
             localThis.elements = {
                 userEmailSpan: document.getElementById('userEmail'),
                 keyIndicator: document.getElementById('keyIndicator'),
-                domainSelect: document.getElementById('domainSelect')
+                domainSelect: document.getElementById('domainSelect'),
+                tabCountAll: document.getElementById('tabCountAll'),
+                tabCountOwned: document.getElementById('tabCountOwned'),
+                tabCountShared: document.getElementById('tabCountShared')
             };
         });
 
@@ -836,6 +994,96 @@ describe('site/js/dashboard.js', () => {
             expect(document.getElementById('statOwned').textContent).toBe('5');
         });
 
+        it('should update tab counts', async () => {
+            const mockStats = {
+                total: 10,
+                owned: 5,
+                shared: 5,
+                domainCount: 3,
+                byTheme: {},
+                domains: []
+            };
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(mockStats)
+            });
+            
+            await loadStats('test-api-key', localThis.elements);
+            
+            expect(localThis.elements.tabCountAll.textContent).toBe('10');
+            expect(localThis.elements.tabCountOwned.textContent).toBe('5');
+            expect(localThis.elements.tabCountShared.textContent).toBe('5');
+        });
+
+        it('should use percentages for theme bar', async () => {
+            const mockStats = {
+                total: 10,
+                owned: 5,
+                shared: 5,
+                domainCount: 3,
+                byTheme: { yellow: 50, blue: 30, green: 15, pink: 5 },
+                domains: []
+            };
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(mockStats)
+            });
+            
+            await loadStats('test-api-key', localThis.elements);
+            
+            // Total is 100, so percentages should be: yellow=50%, blue=30%, green=15%, pink=5%
+            // Browser normalizes the flex value (removes trailing zeros)
+            const themeYellow = document.getElementById('themeYellow');
+            const themeBlue = document.getElementById('themeBlue');
+            expect(parseFloat(themeYellow.style.flex)).toBe(50);
+            expect(parseFloat(themeBlue.style.flex)).toBe(30);
+        });
+
+        it('should update accessible label for theme breakdown', async () => {
+            const mockStats = {
+                total: 10,
+                owned: 5,
+                shared: 5,
+                domainCount: 3,
+                byTheme: { yellow: 4, blue: 3, green: 2, pink: 1 },
+                domains: []
+            };
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(mockStats)
+            });
+            
+            await loadStats('test-api-key', localThis.elements);
+            
+            const themeBreakdown = document.getElementById('themeBreakdown');
+            expect(themeBreakdown.getAttribute('aria-label')).toContain('4 yellow');
+            expect(themeBreakdown.getAttribute('aria-label')).toContain('3 blue');
+        });
+
+        it('should update last updated timestamp', async () => {
+            const mockStats = {
+                total: 10,
+                owned: 5,
+                shared: 5,
+                domainCount: 3,
+                byTheme: {},
+                domains: []
+            };
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(mockStats)
+            });
+            
+            await loadStats('test-api-key', localThis.elements);
+            
+            const lastUpdated = document.getElementById('lastUpdated');
+            expect(lastUpdated.textContent).toContain('Updated');
+        });
+
         it('should handle API errors gracefully', async () => {
             global.fetch.mockResolvedValueOnce({
                 ok: false,
@@ -863,12 +1111,15 @@ describe('site/js/dashboard.js', () => {
                     <option value="">All</option>
                 </select>
                 <input id="urlInput" value="" />
+                <input id="searchInput" value="" />
+                <span id="lastUpdated"></span>
             `;
             localThis.elements = {
                 status: document.getElementById('status'),
                 notesList: document.getElementById('notesList'),
                 domainSelect: document.getElementById('domainSelect'),
-                urlInput: document.getElementById('urlInput')
+                urlInput: document.getElementById('urlInput'),
+                searchInput: document.getElementById('searchInput')
             };
         });
 
@@ -969,6 +1220,68 @@ describe('site/js/dashboard.js', () => {
                 expect.stringContaining('url=https'),
                 expect.any(Object)
             );
+        });
+
+        it('should cache notes in state.allNotes', async () => {
+            const mockNotes = {
+                notes: [
+                    { id: '1', url: 'https://example.com', selector: '.test', content: 'Test', createdAt: '2024-01-15T10:00:00Z' },
+                    { id: '2', url: 'https://test.com', selector: '.other', content: 'Other', createdAt: '2024-01-15T11:00:00Z' }
+                ]
+            };
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(mockNotes)
+            });
+            
+            await loadNotes({
+                apiKey: 'test-key',
+                elements: localThis.elements
+            });
+            
+            expect(state.allNotes.length).toBe(2);
+            expect(state.allNotes[0].id).toBe('1');
+        });
+
+        it('should apply search filter from searchInput', async () => {
+            localThis.elements.searchInput.value = 'example';
+            
+            const mockNotes = {
+                notes: [
+                    { id: '1', url: 'https://example.com', selector: '.test', content: 'Test', createdAt: '2024-01-15T10:00:00Z' },
+                    { id: '2', url: 'https://test.com', selector: '.other', content: 'Other', createdAt: '2024-01-15T11:00:00Z' }
+                ]
+            };
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(mockNotes)
+            });
+            
+            await loadNotes({
+                apiKey: 'test-key',
+                elements: localThis.elements
+            });
+            
+            // Only one note matches 'example' in URL
+            expect(localThis.elements.notesList.innerHTML).toContain('note-card');
+            expect(localThis.elements.status.textContent).toContain('1 of 2');
+        });
+
+        it('should update last updated timestamp', async () => {
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({ notes: [] })
+            });
+            
+            await loadNotes({
+                apiKey: 'test-key',
+                elements: localThis.elements
+            });
+            
+            const lastUpdated = document.getElementById('lastUpdated');
+            expect(lastUpdated.textContent).toContain('Updated');
         });
     });
 
@@ -1118,6 +1431,9 @@ describe('site/js/dashboard.js', () => {
                 <button class="filter-tab" data-filter="all"></button>
                 <input type="checkbox" id="autoRefresh" />
                 <button id="settingsBtn"></button>
+                <input type="search" id="searchInput" />
+                <div id="notesList"></div>
+                <div id="status"></div>
             `;
             localThis.elements = {
                 saveApiKeyBtn: document.getElementById('saveApiKeyBtn'),
@@ -1127,9 +1443,11 @@ describe('site/js/dashboard.js', () => {
                 domainSelect: document.getElementById('domainSelect'),
                 filterTabs: document.querySelectorAll('.filter-tab'),
                 autoRefreshCheckbox: document.getElementById('autoRefresh'),
-                settingsBtn: document.getElementById('settingsBtn')
+                settingsBtn: document.getElementById('settingsBtn'),
+                searchInput: document.getElementById('searchInput'),
+                notesList: document.getElementById('notesList')
             };
-            localThis.appState = { currentFilter: 'all' };
+            localThis.appState = { currentFilter: 'all', searchQuery: '', allNotes: [] };
             localThis.handlers = {
                 onSaveApiKey: jest.fn(),
                 onLoadNotes: jest.fn(),
@@ -1170,6 +1488,35 @@ describe('site/js/dashboard.js', () => {
             localThis.elements.apiKeyInput.dispatchEvent(event);
             
             expect(localThis.handlers.onSaveApiKey).toHaveBeenCalled();
+        });
+
+        it('should set up search input with debounced filtering', () => {
+            jest.useFakeTimers();
+            
+            // Set up some notes in state
+            localThis.appState.allNotes = [
+                { id: '1', url: 'https://example.com', selector: '.test', content: '<p>Example content</p>' },
+                { id: '2', url: 'https://other.com', selector: '.other', content: '<p>Other content</p>' }
+            ];
+            
+            setupEventListeners(localThis.elements, localThis.appState, localThis.handlers);
+            
+            // Simulate typing in search
+            localThis.elements.searchInput.value = 'example';
+            localThis.elements.searchInput.dispatchEvent(new Event('input'));
+            
+            // Before debounce, notesList should not be updated yet
+            expect(localThis.elements.notesList.innerHTML).toBe('');
+            
+            // Advance past debounce delay
+            jest.advanceTimersByTime(300);
+            
+            // After debounce, notes should be filtered
+            expect(localThis.appState.searchQuery).toBe('example');
+            expect(localThis.elements.notesList.innerHTML).toContain('example.com');
+            expect(localThis.elements.notesList.innerHTML).not.toContain('other.com');
+            
+            jest.useRealTimers();
         });
 
         it('should set up console errors toggle via event delegation', () => {

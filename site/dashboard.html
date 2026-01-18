@@ -38,21 +38,30 @@
 <main id="main-content" class="dashboard-page">
         <div class="container">
             <header class="dashboard-header">
-                <h1><span id="userEmail" class="user-email" aria-hidden="true"></span>Sticky Notes Dashboard</h1>
+                <div class="dashboard-title">
+                    <h1>Sticky Notes Dashboard</h1>
+                    <span id="userEmail" class="user-email" role="status"></span>
+                </div>
                 <div class="dashboard-controls">
                     <label class="auto-refresh">
                         <input type="checkbox" id="autoRefresh">
-                        Auto-refresh
+                        Auto-refresh <span class="refresh-interval">(5s)</span>
                     </label>
-                    <button id="settingsBtn" class="btn btn-secondary" title="Change API Key">Settings</button>
+                    <span id="lastUpdated" class="last-updated" aria-live="polite"></span>
+                    <button id="settingsBtn" class="btn btn-secondary" title="Change API Key">API Key</button>
                 </div>
             </header>
 
             <!-- API Key Setup Section -->
             <div id="apiKeySection" class="api-key-overlay" style="display: none;">
                 <div class="api-key-card">
-                    <h2>API Key Required</h2>
-                    <p>Enter your Sticky Notes API key to view notes.</p>
+                    <div class="api-key-icon" aria-hidden="true">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                        </svg>
+                    </div>
+                    <h2>Connect Your Dashboard</h2>
+                    <p>Enter your API key to view and manage notes from all your devices. Your key connects this dashboard to your Sticky Notes account.</p>
                     <div class="api-key-input-container">
                         <label for="apiKeyInput" class="sr-only">API Key</label>
                         <input 
@@ -62,9 +71,9 @@
                             class="api-key-input"
                             aria-describedby="apiKeyHint"
                         >
-                        <button id="saveApiKeyBtn" class="btn btn-primary">Save Key</button>
+                        <button id="saveApiKeyBtn" class="btn btn-primary">Connect</button>
                     </div>
-                    <p id="apiKeyHint" class="api-key-hint">Your API key is stored locally in your browser. <a href="generate-key.html">Generate a new key</a></p>
+                    <p id="apiKeyHint" class="api-key-hint">Your API key is stored locally and never shared. <a href="generate-key.html">Generate a new key</a> from the extension popup.</p>
                 </div>
             </div>
 
@@ -99,19 +108,44 @@
                         <div class="theme-segment theme-pink" id="themePink" style="flex: 0" aria-hidden="true"></div>
                     </div>
                     <div class="theme-legend" aria-label="Theme counts">
-                        <span class="legend-count yellow" aria-label="Yellow notes"><span id="legendYellow">0</span></span>
-                        <span class="legend-count blue" aria-label="Blue notes"><span id="legendBlue">0</span></span>
-                        <span class="legend-count green" aria-label="Green notes"><span id="legendGreen">0</span></span>
-                        <span class="legend-count pink" aria-label="Pink notes"><span id="legendPink">0</span></span>
+                        <span class="legend-item">
+                            <span class="legend-swatch yellow" aria-hidden="true"></span>
+                            <span class="legend-count yellow" aria-label="Yellow notes"><span id="legendYellow">0</span></span>
+                        </span>
+                        <span class="legend-item">
+                            <span class="legend-swatch blue" aria-hidden="true"></span>
+                            <span class="legend-count blue" aria-label="Blue notes"><span id="legendBlue">0</span></span>
+                        </span>
+                        <span class="legend-item">
+                            <span class="legend-swatch green" aria-hidden="true"></span>
+                            <span class="legend-count green" aria-label="Green notes"><span id="legendGreen">0</span></span>
+                        </span>
+                        <span class="legend-item">
+                            <span class="legend-swatch pink" aria-hidden="true"></span>
+                            <span class="legend-count pink" aria-label="Pink notes"><span id="legendPink">0</span></span>
+                        </span>
                     </div>
                 </div>
 
                 <!-- Filter Tabs -->
                 <div class="filter-tabs" role="tablist" aria-label="Note filters">
-                    <button class="filter-tab active" data-filter="all" role="tab" aria-selected="true" aria-controls="notesList">All Notes</button>
-                    <button class="filter-tab" data-filter="owned" role="tab" aria-selected="false" aria-controls="notesList">My Notes</button>
-                    <button class="filter-tab" data-filter="shared" role="tab" aria-selected="false" aria-controls="notesList">Shared With Me</button>
+                    <button class="filter-tab active" data-filter="all" role="tab" aria-selected="true" aria-controls="notesList">All <span class="tab-count" id="tabCountAll"></span></button>
+                    <button class="filter-tab" data-filter="owned" role="tab" aria-selected="false" aria-controls="notesList">My Notes <span class="tab-count" id="tabCountOwned"></span></button>
+                    <button class="filter-tab" data-filter="shared" role="tab" aria-selected="false" aria-controls="notesList">Shared <span class="tab-count" id="tabCountShared"></span></button>
                     <button class="filter-tab" data-filter="commented" role="tab" aria-selected="false" aria-controls="notesList">Commented</button>
+                </div>
+
+                <!-- Search -->
+                <div class="search-container">
+                    <label for="searchInput" class="sr-only">Search notes</label>
+                    <input 
+                        type="search" 
+                        id="searchInput" 
+                        placeholder="Search notes by content, URL, or selector..."
+                        class="search-input"
+                        aria-describedby="searchHint"
+                    >
+                    <span id="searchHint" class="sr-only">Search filters notes by content, URL, or selector</span>
                 </div>
 
                 <!-- URL/Domain Filter -->
@@ -133,7 +167,7 @@
                     <button id="loadBtn" class="btn btn-primary">Load Notes</button>
                 </div>
 
-                <div id="status" class="status"></div>
+                <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true"></div>
 
                 <div id="notesList" class="notes-list" role="tabpanel" aria-label="Notes list">
                     <p class="empty-state-msg">Loading notes...</p>
