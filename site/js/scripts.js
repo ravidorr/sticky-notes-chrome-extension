@@ -685,6 +685,65 @@ function loadFullStylesheet() {
 }
 
 // ============================================
+// FAQ Accordion
+// ============================================
+
+/**
+ * Initialize FAQ accordion functionality
+ * @param {string} containerSelector - CSS selector for the FAQ container
+ * @returns {Function} Cleanup function to remove event listeners
+ */
+function initFAQ(containerSelector = '.faq-list') {
+    const container = document.querySelector(containerSelector);
+    if (!container) {
+        return () => {};
+    }
+
+    const questions = container.querySelectorAll('.faq-question');
+    const handlers = [];
+
+    questions.forEach(question => {
+        const handleClick = () => {
+            const isExpanded = question.getAttribute('aria-expanded') === 'true';
+            const answerId = question.getAttribute('aria-controls');
+            const answer = document.getElementById(answerId);
+
+            if (!answer) return;
+
+            // Toggle expanded state
+            question.setAttribute('aria-expanded', !isExpanded);
+
+            if (isExpanded) {
+                // Collapse
+                answer.setAttribute('hidden', '');
+            } else {
+                // Expand
+                answer.removeAttribute('hidden');
+            }
+        };
+
+        const handleKeydown = (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleClick();
+            }
+        };
+
+        question.addEventListener('click', handleClick);
+        question.addEventListener('keydown', handleKeydown);
+        handlers.push({ element: question, event: 'click', handler: handleClick });
+        handlers.push({ element: question, event: 'keydown', handler: handleKeydown });
+    });
+
+    // Return cleanup function
+    return () => {
+        handlers.forEach(({ element, event, handler }) => {
+            element.removeEventListener(event, handler);
+        });
+    };
+}
+
+// ============================================
 // Main Initialization
 // ============================================
 
@@ -722,6 +781,9 @@ function init() {
     // Initialize demo
     const demoControl = initDemo();
     cleanups.demo = demoControl.cleanup;
+
+    // Initialize FAQ accordion
+    cleanups.faq = initFAQ();
 
     // Return master cleanup function
     return {
@@ -773,6 +835,8 @@ export {
     updateDemoUI,
     createNote,
     demoState,
+    // FAQ
+    initFAQ,
     // Browser Detection
     STORE_URLS,
     getBrowserType,

@@ -32,7 +32,7 @@
                     Pin notes directly to UI elements on any website. Your team sees 
                     exactly what you see - no screenshots, no confusion, no context lost.
                 </p>
-                <div class="flex flex-col gap-4 mb-8">
+                <div class="hero-buttons">
                     <a href="https://chrome.google.com/webstore/detail/miahokcndajlgenbmbdfnbaampbfmneh" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-lg gap-2" data-install-btn>
                         <img src="images/chrome-logo.svg" width="20" height="20" alt="" aria-hidden="true">
                         <span class="btn-text">Install Free Chrome Extension</span>
@@ -276,7 +276,7 @@
                             <path d="M13 13l6 6"></path>
                         </svg>
                     </div>
-                    <h3>Notes that stick - literally</h3>
+                    <h3>Element Anchoring</h3>
                     <p class="text-body">Click any button, image, or text to attach a note. It stays put even after page refreshes or content changes.</p>
                 </div>
                 <!-- Feature 2 -->
@@ -287,7 +287,7 @@
                             <circle cx="12" cy="12" r="3"></circle>
                         </svg>
                     </div>
-                    <h3>Out of sight, out of mind</h3>
+                    <h3>Smart Visibility</h3>
                     <p class="text-body">Notes only appear when their element is visible. Scroll away and they hide. No clutter, no distraction.</p>
                 </div>
                 <!-- Feature 3 -->
@@ -300,8 +300,8 @@
                             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                         </svg>
                     </div>
-                    <h3>Built for teams</h3>
-                    <p class="text-body">Share notes via email or create team groups. See updates in real-time as your colleagues add comments.</p>
+                    <h3>Built for Teams</h3>
+                    <p class="text-body">Share notes by entering a teammate's email. They install the extension, visit the same page, and see your notes anchored in place. Comments sync in real-time.</p>
                 </div>
                 <!-- Feature 4 -->
                 <div class="card card--accent-blue">
@@ -480,7 +480,7 @@
                         <li>Priority support</li>
                         <li>All note features</li>
                     </ul>
-                    <a href="https://chrome.google.com/webstore/detail/miahokcndajlgenbmbdfnbaampbfmneh" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-block" data-install-btn><span class="btn-text">Try Team Free</span></a>
+                    <a href="https://chrome.google.com/webstore/detail/miahokcndajlgenbmbdfnbaampbfmneh" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-block" data-install-btn><span class="btn-text">Start Free, Upgrade Later</span></a>
                 </div>
                 <div class="pricing-card">
                     <div class="pricing-header">
@@ -496,7 +496,7 @@
                         <li>Metadata capture</li>
                         <li>Custom branding</li>
                     </ul>
-                    <a href="https://chrome.google.com/webstore/detail/miahokcndajlgenbmbdfnbaampbfmneh" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-block" data-install-btn><span class="btn-text">Try Pro Free</span></a>
+                    <a href="https://chrome.google.com/webstore/detail/miahokcndajlgenbmbdfnbaampbfmneh" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-block" data-install-btn><span class="btn-text">Start Free, Upgrade Later</span></a>
                 </div>
             </div>
         </div>
@@ -509,48 +509,60 @@
                 <h2 class="h2-title">Frequently asked questions</h2>
                 <p class="text-body text-lg">Everything you need to know about Sticky Notes.</p>
             </div>
-            <div class="faq-grid">
-                <div class="faq-item">
-                    <h3 class="faq-question">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 12v4"/><path d="M12 8v.01"/></svg>
-                        Is my data secure?
-                    </h3>
-                    <p class="faq-answer">Yes. We use Firebase Authentication and Cloud Firestore with encryption in transit and at rest. Your notes are private by default and only shared when you explicitly choose to share them.</p>
+            <div class="faq-list" role="list">
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="true" aria-controls="faq-1">
+                        <span>Is my data secure?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div id="faq-1" class="faq-answer">
+                        <p>Yes. We use Firebase Authentication and Cloud Firestore with encryption in transit and at rest. Your notes are private by default and only shared when you explicitly choose to share them.</p>
+                    </div>
                 </div>
-                <div class="faq-item">
-                    <h3 class="faq-question">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 12v4"/><path d="M12 8v.01"/></svg>
-                        Which browsers are supported?
-                    </h3>
-                    <p class="faq-answer">Sticky Notes is available for Chrome and Microsoft Edge. Firefox support is on our roadmap.</p>
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="true" aria-controls="faq-2">
+                        <span>Which browsers are supported?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div id="faq-2" class="faq-answer">
+                        <p>Sticky Notes is available for Chrome and Microsoft Edge. Firefox support is on our roadmap.</p>
+                    </div>
                 </div>
-                <div class="faq-item">
-                    <h3 class="faq-question">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 12v4"/><path d="M12 8v.01"/></svg>
-                        Can I use it without an account?
-                    </h3>
-                    <p class="faq-answer">Yes! You can use Sticky Notes locally without signing in. Your notes will be stored in your browser. Sign in with Google to sync across devices and share with teammates.</p>
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="false" aria-controls="faq-3">
+                        <span>Can I use it without an account?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div id="faq-3" class="faq-answer" hidden>
+                        <p>Yes! You can use Sticky Notes locally without signing in. Your notes will be stored in your browser. Sign in with Google to sync across devices and share with teammates.</p>
+                    </div>
                 </div>
-                <div class="faq-item">
-                    <h3 class="faq-question">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 12v4"/><path d="M12 8v.01"/></svg>
-                        How does element anchoring work?
-                    </h3>
-                    <p class="faq-answer">We use smart CSS selectors to identify elements. When a page changes, we re-anchor notes to their original elements using multiple fallback strategies to ensure your notes stay in place.</p>
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="false" aria-controls="faq-4">
+                        <span>How does element anchoring work?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div id="faq-4" class="faq-answer" hidden>
+                        <p>We use smart CSS selectors to identify elements. When a page changes, we re-anchor notes to their original elements using multiple fallback strategies to ensure your notes stay in place.</p>
+                    </div>
                 </div>
-                <div class="faq-item">
-                    <h3 class="faq-question">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 12v4"/><path d="M12 8v.01"/></svg>
-                        Is there a trial period?
-                    </h3>
-                    <p class="faq-answer">The Starter plan is free forever with up to 10 cloud notes. Team and Pro plans include a 14-day free trial with no credit card required.</p>
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="false" aria-controls="faq-5">
+                        <span>Is there a trial period?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div id="faq-5" class="faq-answer" hidden>
+                        <p>The Starter plan is free forever with up to 10 cloud notes. Team and Pro plans include a 14-day free trial with no credit card required.</p>
+                    </div>
                 </div>
-                <div class="faq-item">
-                    <h3 class="faq-question">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 12v4"/><path d="M12 8v.01"/></svg>
-                        Can I export my notes?
-                    </h3>
-                    <p class="faq-answer">Export functionality is coming soon. For now, you can access all your notes through the extension and copy content as needed.</p>
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="false" aria-controls="faq-6">
+                        <span>Can I export my notes?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div id="faq-6" class="faq-answer" hidden>
+                        <p>Export functionality is coming soon. For now, you can access all your notes through the extension and copy content as needed.</p>
+                    </div>
                 </div>
             </div>
         </div>

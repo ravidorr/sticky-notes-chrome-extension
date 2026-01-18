@@ -66,53 +66,105 @@
 }
 
 /* ============================================
-   FAQ Section
+   FAQ Section - Accordion
    ============================================ */
 .section-faq {
     padding: 5rem 0;
     background: var(--color-bg-secondary);
 }
 
-.faq-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 1.5rem;
+.faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
     margin-top: 3rem;
-    max-width: 900px;
+    max-width: 800px;
     margin-right: auto;
     margin-left: auto;
 }
 
-@media (max-width: 480px) {
-    .faq-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
 .faq-item {
-    padding: 1.5rem;
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: var(--radius-xl);
+    overflow: hidden;
+    transition: border-color var(--transition);
 }
 
+.faq-item:hover {
+    border-color: var(--c-yellow-400);
+}
+
+/* Question Button */
 .faq-question {
-    font-weight: 600;
-    color: var(--color-text);
-    margin-bottom: 0.75rem;
+    width: 100%;
+    padding: 1.25rem 1.5rem;
     display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--color-text);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color var(--transition);
 }
 
-.faq-question svg {
+.faq-question:hover {
+    background: var(--color-bg-tertiary);
+}
+
+.faq-question:focus-visible {
+    outline: 2px solid var(--c-blue-500);
+    outline-offset: -2px;
+}
+
+.faq-question span {
+    flex: 1;
+}
+
+/* Chevron Icon */
+.faq-chevron {
     flex-shrink: 0;
-    color: var(--c-yellow-500);
-    margin-top: 0.125rem;
+    color: var(--c-yellow-600);
+    transition: transform 0.3s ease;
 }
 
+[data-theme="dark"] .faq-chevron {
+    color: var(--c-yellow-400);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .faq-chevron {
+        color: var(--c-yellow-400);
+    }
+}
+
+.faq-question[aria-expanded="true"] .faq-chevron {
+    transform: rotate(180deg);
+}
+
+/* Answer Content */
 .faq-answer {
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.faq-answer:not([hidden]) {
+    padding: 0 1.5rem 1.25rem;
+}
+
+.faq-answer[hidden] {
+    display: block;
+    max-height: 0;
+    padding: 0 1.5rem;
+}
+
+.faq-answer p {
     color: var(--color-text-secondary);
     line-height: 1.7;
-    padding-left: 1.75rem;
+    margin: 0;
 }
