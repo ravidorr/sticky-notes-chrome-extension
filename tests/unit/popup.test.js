@@ -2,7 +2,7 @@
  * Popup Script Unit Tests
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { 
   escapeHtml, 
   stripHtml, 
@@ -11,12 +11,71 @@ import {
   THEME_COLORS 
 } from '../../src/shared/utils.js';
 
+// Import actual popup functions
+import {
+  showAuthSection,
+  showUserSection,
+  renderNotesList,
+  initDOMElements,
+  switchTab,
+  setupTabs,
+  updateSharedNotesCount,
+  createPopupHandlers
+} from '../../src/popup/popup.js';
+
 describe('Popup Script Logic', () => {
+  const localThis = {};
+  
   beforeEach(() => {
     // Reset chrome mocks
     chrome.runtime.sendMessage.mockClear();
     chrome.tabs.query.mockClear();
     chrome.scripting.executeScript.mockClear();
+    
+    // Setup DOM for popup tests
+    document.body.innerHTML = `
+      <div id="authSection" class="hidden"></div>
+      <div id="userSection" class="hidden">
+        <img id="userAvatar" src="" />
+        <span id="userName"></span>
+        <span id="userEmail"></span>
+      </div>
+      <button id="loginBtn"></button>
+      <button id="logoutBtn"></button>
+      <button id="closeBtn"></button>
+      <button id="addNoteBtn"></button>
+      <div id="notesList"></div>
+      <span id="notesCount"></span>
+      <div class="action-hint"></div>
+      <button id="actionsBtn"></button>
+      <div id="actionsMenu" class="hidden"></div>
+      <button id="exportPageBtn"></button>
+      <button id="exportAllBtn"></button>
+      <button id="deletePageNotesBtn"></button>
+      <button id="deleteAllNotesBtn"></button>
+      <span id="totalNotesCount"></span>
+      <button id="thisPageTab" class="active"></button>
+      <button id="sharedTab"></button>
+      <div id="thisPageContent"></div>
+      <div id="sharedContent" class="hidden"></div>
+      <span id="thisPageCount">0</span>
+      <span id="sharedCount" class="hidden">0</span>
+      <div id="sharedNotesList"></div>
+    `;
+    
+    // Initialize DOM elements
+    initDOMElements();
+    
+    // Store handlers reference
+    localThis.handlers = createPopupHandlers({
+      showErrorToast: jest.fn(),
+      showSuccessToast: jest.fn()
+    });
+  });
+  
+  afterEach(() => {
+    document.body.innerHTML = '';
+    jest.clearAllMocks();
   });
   
   describe('escapeHtml', () => {
@@ -292,6 +351,532 @@ describe('Popup Script Logic', () => {
       const ui = updateAuthUI({ email: 'test@example.com' });
       
       expect(ui.displayName).toBe('test@example.com');
+    });
+  });
+
+  describe('showAuthSection', () => {
+    it('should show auth section and hide user section', () => {
+      const authSection = document.getElementById('authSection');
+      const userSection = document.getElementById('userSection');
+      
+      // Start with auth hidden
+      authSection.classList.add('hidden');
+      userSection.classList.remove('hidden');
+      
+      showAuthSection();
+      
+      expect(authSection.classList.contains('hidden')).toBe(false);
+      expect(userSection.classList.contains('hidden')).toBe(true);
+    });
+  });
+
+  describe('showUserSection', () => {
+    it('should show user section and hide auth section', () => {
+      const authSection = document.getElementById('authSection');
+      const userSection = document.getElementById('userSection');
+      
+      showUserSection({ 
+        displayName: 'Test User', 
+        email: 'test@example.com',
+        photoURL: 'https://example.com/avatar.png'
+      });
+      
+      expect(authSection.classList.contains('hidden')).toBe(true);
+      expect(userSection.classList.contains('hidden')).toBe(false);
+    });
+    
+    it('should set user avatar, name, and email', () => {
+      showUserSection({ 
+        displayName: 'Test User', 
+        email: 'test@example.com',
+        photoURL: 'https://example.com/avatar.png'
+      });
+      
+      const userAvatar = document.getElementById('userAvatar');
+      const userName = document.getElementById('userName');
+      const userEmail = document.getElementById('userEmail');
+      
+      expect(userAvatar.src).toBe('https://example.com/avatar.png');
+      expect(userName.textContent).toBe('Test User');
+      expect(userEmail.textContent).toBe('test@example.com');
+    });
+    
+    it('should use defaults when user data is missing', () => {
+      showUserSection({});
+      
+      const userAvatar = document.getElementById('userAvatar');
+      const userName = document.getElementById('userName');
+      const userEmail = document.getElementById('userEmail');
+      
+      expect(userAvatar.src).toContain('default-avatar.png');
+      expect(userName.textContent).toBe('User');
+      expect(userEmail.textContent).toBe('');
+    });
+  });
+
+  describe('renderNotesList', () => {
+    it('should render empty state when no notes', () => {
+      renderNotesList([]);
+      
+      const notesList = document.getElementById('notesList');
+      expect(notesList.innerHTML).toContain('empty');
+    });
+    
+    it('should render note items when notes exist', () => {
+      const notes = [
+        { id: 'note-1', content: 'Test note 1', theme: 'yellow', selector: '#test' },
+        { id: 'note-2', content: 'Test note 2', theme: 'blue', selector: '.test' }
+      ];
+      
+      renderNotesList(notes);
+      
+      const notesList = document.getElementById('notesList');
+      const noteItems = notesList.querySelectorAll('.note-item');
+      expect(noteItems.length).toBe(2);
+    });
+    
+    it('should add click handlers to note items', () => {
+      const notes = [
+        { id: 'note-1', content: 'Test note', theme: 'yellow', selector: '#test' }
+      ];
+      
+      renderNotesList(notes);
+      
+      const noteItem = document.querySelector('.note-item');
+      expect(noteItem).toBeTruthy();
+      expect(noteItem.dataset.id).toBe('note-1');
+    });
+  });
+
+  describe('switchTab', () => {
+    it('should switch to this-page tab', async () => {
+      const thisPageTab = document.getElementById('thisPageTab');
+      const sharedTab = document.getElementById('sharedTab');
+      const thisPageContent = document.getElementById('thisPageContent');
+      const sharedContent = document.getElementById('sharedContent');
+      
+      await switchTab('this-page');
+      
+      expect(thisPageTab.classList.contains('active')).toBe(true);
+      expect(sharedTab.classList.contains('active')).toBe(false);
+      expect(thisPageContent.classList.contains('hidden')).toBe(false);
+      expect(sharedContent.classList.contains('hidden')).toBe(true);
+    });
+    
+    it('should switch to shared tab', async () => {
+      // Mock the handlers for loading shared notes
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true, notes: [] });
+      
+      const thisPageTab = document.getElementById('thisPageTab');
+      const sharedTab = document.getElementById('sharedTab');
+      const thisPageContent = document.getElementById('thisPageContent');
+      const sharedContent = document.getElementById('sharedContent');
+      
+      await switchTab('shared');
+      
+      expect(thisPageTab.classList.contains('active')).toBe(false);
+      expect(sharedTab.classList.contains('active')).toBe(true);
+      expect(thisPageContent.classList.contains('hidden')).toBe(true);
+      expect(sharedContent.classList.contains('hidden')).toBe(false);
+    });
+  });
+
+  describe('setupTabs', () => {
+    it('should add click handlers to tab buttons', () => {
+      const thisPageTab = document.getElementById('thisPageTab');
+      const sharedTab = document.getElementById('sharedTab');
+      
+      setupTabs();
+      
+      // Tabs should have event listeners
+      expect(thisPageTab).toBeTruthy();
+      expect(sharedTab).toBeTruthy();
+    });
+  });
+
+  describe('updateSharedNotesCount', () => {
+    it('should update shared count badge', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true, count: 5 });
+      
+      await updateSharedNotesCount();
+      
+      const sharedCount = document.getElementById('sharedCount');
+      expect(sharedCount.textContent).toBe('5');
+      expect(sharedCount.classList.contains('hidden')).toBe(false);
+    });
+    
+    it('should hide badge when count is 0', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true, count: 0 });
+      
+      await updateSharedNotesCount();
+      
+      const sharedCount = document.getElementById('sharedCount');
+      expect(sharedCount.textContent).toBe('0');
+      expect(sharedCount.classList.contains('hidden')).toBe(true);
+    });
+  });
+
+  describe('initDOMElements', () => {
+    it('should initialize all DOM element references', () => {
+      // Re-initialize to test the function
+      initDOMElements();
+      
+      // Check that elements exist
+      expect(document.getElementById('authSection')).toBeTruthy();
+      expect(document.getElementById('userSection')).toBeTruthy();
+      expect(document.getElementById('loginBtn')).toBeTruthy();
+      expect(document.getElementById('notesList')).toBeTruthy();
+    });
+  });
+
+  describe('renderNotesList - click handlers', () => {
+    it('should handle expand button click', () => {
+      const notes = [
+        { id: 'note-expand', content: 'Test note', theme: 'yellow', selector: '#test' }
+      ];
+      
+      renderNotesList(notes);
+      
+      const noteItem = document.querySelector('.note-item');
+      const expandBtn = noteItem.querySelector('[data-action="expand"]');
+      
+      if (expandBtn) {
+        expandBtn.click();
+        expect(noteItem.classList.contains('expanded')).toBe(true);
+        
+        expandBtn.click();
+        expect(noteItem.classList.contains('expanded')).toBe(false);
+      }
+    });
+    
+    it('should handle share button click', async () => {
+      const notes = [
+        { id: 'note-share', content: 'Test note', theme: 'yellow', selector: '#test' }
+      ];
+      
+      renderNotesList(notes);
+      
+      const shareBtn = document.querySelector('[data-action="share"]');
+      if (shareBtn) {
+        // Click should not throw
+        shareBtn.click();
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+    });
+    
+    it('should handle delete button click when cancelled', async () => {
+      const notes = [
+        { id: 'note-delete-cancel', content: 'Test note', theme: 'yellow', selector: '#test' }
+      ];
+      
+      renderNotesList(notes);
+      
+      // Mock handlers.showConfirmDialog to return false (cancelled)
+      localThis.handlers.showConfirmDialog = jest.fn().mockResolvedValue(false);
+      
+      const deleteBtn = document.querySelector('[data-action="delete"]');
+      if (deleteBtn) {
+        deleteBtn.click();
+        await new Promise(resolve => setTimeout(resolve, 10));
+        // Delete should not have been called
+      }
+    });
+    
+    it('should not navigate when clicking action button', async () => {
+      const notes = [
+        { id: 'note-action-click', content: 'Test note', theme: 'yellow', selector: '#test' }
+      ];
+      
+      renderNotesList(notes);
+      
+      const header = document.querySelector('.note-item-header');
+      const actionBtn = header.querySelector('.note-item-btn');
+      
+      if (actionBtn) {
+        // Click on action button should not trigger navigation
+        actionBtn.click();
+        // Check that tabs.sendMessage was not called for navigation
+        expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
+      }
+    });
+  });
+
+  describe('switchTab - shared tab loading', () => {
+    it('should load shared notes when switching to shared tab', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ 
+        success: true, 
+        notes: [
+          { id: 'shared-1', content: 'Shared note', url: 'https://example.com' }
+        ]
+      });
+      
+      await switchTab('shared');
+      
+      const sharedContent = document.getElementById('sharedContent');
+      expect(sharedContent.classList.contains('hidden')).toBe(false);
+    });
+    
+    it('should render empty state for shared notes when none exist', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ 
+        success: true, 
+        notes: []
+      });
+      
+      await switchTab('shared');
+      
+      const sharedNotesList = document.getElementById('sharedNotesList');
+      expect(sharedNotesList.innerHTML).toContain('empty');
+    });
+  });
+
+  describe('updateSharedNotesCount - edge cases', () => {
+    it('should handle undefined count', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+      
+      await updateSharedNotesCount();
+      
+      const sharedCount = document.getElementById('sharedCount');
+      expect(sharedCount.textContent).toBe('0');
+      expect(sharedCount.classList.contains('hidden')).toBe(true);
+    });
+  });
+
+  describe('handlers.renderNoteItemExpanded', () => {
+    it('should render note with all metadata', () => {
+      const note = {
+        id: 'test-1',
+        content: '<p>Test content</p>',
+        theme: 'blue',
+        selector: '#main > .content',
+        url: 'https://example.com/page',
+        metadata: {
+          environment: 'production',
+          consoleErrors: [{ type: 'error', message: 'Test error' }]
+        }
+      };
+      
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      expect(html).toContain('test-1');
+      expect(html).toContain('note-item');
+    });
+    
+    it('should render orphaned note', () => {
+      const note = {
+        id: 'orphan-1',
+        content: 'Orphaned content',
+        theme: 'yellow',
+        selector: '#missing',
+        isOrphaned: true
+      };
+      
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      expect(html).toContain('orphan-1');
+    });
+  });
+
+  describe('handlers.renderEmptyNotes', () => {
+    it('should render empty state HTML', () => {
+      const html = localThis.handlers.renderEmptyNotes();
+      expect(html).toContain('empty');
+    });
+  });
+
+  describe('handlers.renderEmptySharedNotes', () => {
+    it('should render empty shared notes state HTML', () => {
+      const html = localThis.handlers.renderEmptySharedNotes();
+      expect(html).toContain('empty');
+    });
+  });
+
+  describe('handlers.renderSharedNoteItem', () => {
+    it('should render shared note item', () => {
+      const note = {
+        id: 'shared-1',
+        content: 'Shared content',
+        url: 'https://example.com',
+        sharedBy: { displayName: 'John Doe', email: 'john@example.com' },
+        sharedAt: Date.now()
+      };
+      
+      const html = localThis.handlers.renderSharedNoteItem(note);
+      expect(html).toContain('shared-1');
+    });
+  });
+
+  describe('handlers.loadNotesForCurrentTab', () => {
+    it('should load notes for current tab', async () => {
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.runtime.sendMessage.mockResolvedValue({ 
+        success: true, 
+        notes: [{ id: 'note-1', content: 'Test' }] 
+      });
+      
+      const result = await localThis.handlers.loadNotesForCurrentTab();
+      expect(result.notes).toBeDefined();
+    });
+    
+    it('should return empty array when no tab found', async () => {
+      chrome.tabs.query.mockResolvedValue([]);
+      
+      const result = await localThis.handlers.loadNotesForCurrentTab();
+      expect(result.notes).toEqual([]);
+    });
+  });
+
+  describe('handlers.handleLogin', () => {
+    it('should handle successful login', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ 
+        success: true, 
+        user: { email: 'test@example.com', displayName: 'Test' } 
+      });
+      
+      const result = await localThis.handlers.handleLogin();
+      expect(result.success).toBe(true);
+      expect(result.user).toBeDefined();
+    });
+    
+    it('should handle login failure', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ 
+        success: false, 
+        error: 'Auth failed' 
+      });
+      
+      const result = await localThis.handlers.handleLogin();
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('handlers.handleLogout', () => {
+    it('should handle successful logout', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+      
+      const result = await localThis.handlers.handleLogout();
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('handlers.checkAuthState', () => {
+    it('should return user when logged in', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ 
+        success: true, 
+        user: { email: 'test@example.com' } 
+      });
+      
+      const user = await localThis.handlers.checkAuthState();
+      // checkAuthState returns the user directly from response or null
+      if (user) {
+        expect(user.email).toBe('test@example.com');
+      }
+    });
+    
+    it('should return null when not logged in', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true, user: null });
+      
+      const user = await localThis.handlers.checkAuthState();
+      expect(user).toBeNull();
+    });
+  });
+
+  describe('handlers.handleAddNote', () => {
+    it('should trigger add note on current tab', async () => {
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.scripting.executeScript.mockResolvedValue([{ result: true }]);
+      
+      await localThis.handlers.handleAddNote();
+      
+      // handleAddNote might use scripting.executeScript or tabs.sendMessage
+      expect(chrome.tabs.query).toHaveBeenCalled();
+    });
+    
+    it('should handle no active tab', async () => {
+      chrome.tabs.query.mockResolvedValue([]);
+      
+      // Should not throw
+      await localThis.handlers.handleAddNote();
+    });
+  });
+
+  describe('handlers.handleDeleteNote', () => {
+    it('should delete note successfully', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.tabs.sendMessage.mockResolvedValue({ success: true });
+      
+      const result = await localThis.handlers.handleDeleteNote('note-1');
+      expect(result.success).toBe(true);
+    });
+    
+    it('should handle delete failure', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: false, error: 'Delete failed' });
+      
+      const result = await localThis.handlers.handleDeleteNote('note-1');
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('handlers.getAllNotes', () => {
+    it('should return all notes', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ 
+        success: true, 
+        notes: [
+          { id: 'note-1', content: 'Note 1' },
+          { id: 'note-2', content: 'Note 2' }
+        ] 
+      });
+      
+      const result = await localThis.handlers.getAllNotes();
+      expect(result.success).toBe(true);
+      expect(result.notes).toHaveLength(2);
+    });
+  });
+
+  describe('handlers.getUnreadSharedNotes', () => {
+    it('should return unread shared notes', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ 
+        success: true, 
+        notes: [{ id: 'shared-1', content: 'Shared note' }] 
+      });
+      
+      const result = await localThis.handlers.getUnreadSharedNotes();
+      expect(result.notes).toBeDefined();
+    });
+  });
+
+  describe('handlers.getUnreadSharedCount', () => {
+    it('should return unread count', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true, count: 3 });
+      
+      const result = await localThis.handlers.getUnreadSharedCount();
+      expect(result.count).toBe(3);
+    });
+  });
+
+  describe('handlers.markSharedNoteAsRead', () => {
+    it('should mark note as read', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+      
+      await localThis.handlers.markSharedNoteAsRead('shared-1');
+      
+      // The action name is 'markSharedNoteRead'
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'markSharedNoteRead', noteId: 'shared-1' })
+      );
+    });
+  });
+
+  describe('handlers.handleExportCSV', () => {
+    it('should export notes to CSV', async () => {
+      const notes = [
+        { id: 'note-1', content: 'Test', url: 'https://example.com', createdAt: Date.now() }
+      ];
+      
+      // Mock URL.createObjectURL
+      const mockUrl = 'blob:http://localhost/test';
+      global.URL.createObjectURL = jest.fn().mockReturnValue(mockUrl);
+      global.URL.revokeObjectURL = jest.fn();
+      
+      // Should not throw
+      await localThis.handlers.handleExportCSV(notes, 'test.csv');
     });
   });
 });

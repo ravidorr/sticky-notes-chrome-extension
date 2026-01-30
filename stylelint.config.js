@@ -1,7 +1,14 @@
 /** @type {import('stylelint').Config} */
 export default {
   extends: ['stylelint-config-standard'],
+  plugins: ['./scripts/stylelint-no-emoji.js'],
   rules: {
+    // Disallow emojis in CSS values and comments
+    'declaration-property-value-disallowed-list': {
+      '/.*/': [/\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F|\u200D\p{Extended_Pictographic})*/u]
+    },
+    'plugin/no-emoji': true,
+
     // Allow CSS custom properties (variables)
     'custom-property-empty-line-before': null,
     

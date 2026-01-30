@@ -286,6 +286,58 @@ describe('NotificationManager', () => {
       jest.advanceTimersByTime(200);
       await promise;
     });
+
+    it('should apply custom zIndex when provided', async () => {
+      const promise = notificationManager.showModal({
+        message: 'Custom z-index',
+        zIndex: 999999
+      });
+      
+      const overlay = container.querySelector('.sn-modal-overlay');
+      expect(overlay.style.zIndex).toBe('999999');
+      
+      container.querySelector('.sn-btn-secondary').click();
+      jest.advanceTimersByTime(200);
+      await promise;
+    });
+
+    it('should close on Escape key press', async () => {
+      const promise = notificationManager.showModal({
+        message: 'Press Escape'
+      });
+      
+      const overlay = container.querySelector('.sn-modal-overlay');
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+      event.preventDefault = jest.fn();
+      overlay.dispatchEvent(event);
+      
+      jest.advanceTimersByTime(200);
+      
+      const result = await promise;
+      expect(result.confirmed).toBe(false);
+    });
+
+    it('should submit on Enter key in input field', async () => {
+      const promise = notificationManager.showModal({
+        message: 'Enter value',
+        inputPlaceholder: 'Type here'
+      });
+      
+      const input = container.querySelector('.sn-modal-input');
+      input.value = 'submitted value';
+      
+      const overlay = container.querySelector('.sn-modal-overlay');
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+      Object.defineProperty(event, 'target', { value: input });
+      event.preventDefault = jest.fn();
+      overlay.dispatchEvent(event);
+      
+      jest.advanceTimersByTime(200);
+      
+      const result = await promise;
+      expect(result.confirmed).toBe(true);
+      expect(result.value).toBe('submitted value');
+    });
   });
 
   describe('showBanner', () => {
@@ -567,6 +619,61 @@ describe('NotificationManager', () => {
       // Check that buttons have text (from i18n mock)
       expect(buttons[0].textContent).toBeTruthy();
       expect(buttons[1].textContent).toBeTruthy();
+    });
+
+    it('should submit on Enter key in input field', () => {
+      const onConfirm = jest.fn();
+      
+      notificationManager.showInlinePopup({
+        anchor,
+        inputPlaceholder: 'Enter value',
+        onConfirm
+      });
+      
+      const input = anchor.querySelector('.sn-inline-popup-input');
+      input.value = 'enter pressed';
+      
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+      event.preventDefault = jest.fn();
+      input.dispatchEvent(event);
+      
+      expect(onConfirm).toHaveBeenCalledWith('enter pressed');
+      expect(anchor.querySelector('.sn-inline-popup')).toBeNull();
+    });
+
+    it('should cancel on Escape key in input field', () => {
+      const onCancel = jest.fn();
+      
+      notificationManager.showInlinePopup({
+        anchor,
+        inputPlaceholder: 'Press Escape',
+        onCancel
+      });
+      
+      const input = anchor.querySelector('.sn-inline-popup-input');
+      
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+      event.preventDefault = jest.fn();
+      input.dispatchEvent(event);
+      
+      expect(onCancel).toHaveBeenCalled();
+      expect(anchor.querySelector('.sn-inline-popup')).toBeNull();
+    });
+
+    it('should cleanup on Escape even without onCancel callback', () => {
+      notificationManager.showInlinePopup({
+        anchor,
+        inputPlaceholder: 'Press Escape'
+        // No onCancel provided
+      });
+      
+      const input = anchor.querySelector('.sn-inline-popup-input');
+      
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+      event.preventDefault = jest.fn();
+      input.dispatchEvent(event);
+      
+      expect(anchor.querySelector('.sn-inline-popup')).toBeNull();
     });
   });
 

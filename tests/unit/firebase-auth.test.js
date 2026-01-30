@@ -72,12 +72,93 @@ describe('Firebase Auth', () => {
       const result = isEdgeBrowser();
       expect(typeof result).toBe('boolean');
     });
+    
+    it('should detect Edge using userAgentData brands', () => {
+      const localThis = {};
+      localThis.originalUserAgentData = navigator.userAgentData;
+      
+      Object.defineProperty(navigator, 'userAgentData', {
+        value: {
+          brands: [
+            { brand: 'Microsoft Edge', version: '120' },
+            { brand: 'Chromium', version: '120' }
+          ]
+        },
+        configurable: true
+      });
+      
+      const result = isEdgeBrowser();
+      expect(result).toBe(true);
+      
+      Object.defineProperty(navigator, 'userAgentData', {
+        value: localThis.originalUserAgentData,
+        configurable: true
+      });
+    });
+    
+    it('should return false when userAgentData has no Edge brand', () => {
+      const localThis = {};
+      localThis.originalUserAgentData = navigator.userAgentData;
+      
+      Object.defineProperty(navigator, 'userAgentData', {
+        value: {
+          brands: [
+            { brand: 'Google Chrome', version: '120' },
+            { brand: 'Chromium', version: '120' }
+          ]
+        },
+        configurable: true
+      });
+      
+      const result = isEdgeBrowser();
+      expect(result).toBe(false);
+      
+      Object.defineProperty(navigator, 'userAgentData', {
+        value: localThis.originalUserAgentData,
+        configurable: true
+      });
+    });
+    
+    it('should detect Edge using userAgent string fallback', () => {
+      const localThis = {};
+      localThis.originalUserAgentData = navigator.userAgentData;
+      localThis.originalUserAgent = navigator.userAgent;
+      
+      // Remove userAgentData to force fallback
+      Object.defineProperty(navigator, 'userAgentData', {
+        value: undefined,
+        configurable: true
+      });
+      
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Edg/120.0.0.0',
+        configurable: true
+      });
+      
+      const result = isEdgeBrowser();
+      expect(result).toBe(true);
+      
+      Object.defineProperty(navigator, 'userAgentData', {
+        value: localThis.originalUserAgentData,
+        configurable: true
+      });
+      Object.defineProperty(navigator, 'userAgent', {
+        value: localThis.originalUserAgent,
+        configurable: true
+      });
+    });
   });
 
   describe('getOAuthClientId', () => {
     it('should return default placeholder when import.meta.env is undefined', () => {
       const clientId = getOAuthClientId();
       expect(typeof clientId).toBe('string');
+    });
+    
+    it('should return the placeholder value when env var is not set', () => {
+      // Since we can't easily modify import.meta.env in tests, just verify the return type
+      const clientId = getOAuthClientId();
+      expect(clientId).toMatch(/\.apps\.googleusercontent\.com$/);
     });
   });
 

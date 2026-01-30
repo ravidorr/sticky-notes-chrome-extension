@@ -1,0 +1,23 @@
+{
+  "customRules": ["markdownlint-rule-search-replace"],
+  "config": {
+    "default": true,
+    "MD013": false,
+    "MD033": false,
+    "MD041": false,
+    "MD029": false,
+    "MD036": false,
+    "MD058": false,
+    "MD060": false,
+    "search-replace": {
+      "rules": [
+        {
+          "name": "no-emoji",
+          "message": "Emojis are not allowed",
+          "searchPattern": "/\\p{Extended_Pictographic}(?:\\p{Emoji_Modifier}|\\uFE0F|\\u200D\\p{Extended_Pictographic})*/gu",
+          "searchScope": "all"
+        }
+      ]
+    }
+  }
+}

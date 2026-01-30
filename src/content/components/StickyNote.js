@@ -890,6 +890,14 @@ export class StickyNote {
   }
   
   /**
+   * Trigger a save of the note content
+   * Used when metadata changes that should be persisted
+   */
+  triggerSave() {
+    this.onSave(this.content);
+  }
+  
+  /**
    * Handle document click to close environment dropdown
    * @param {MouseEvent} event - Click event
    */

@@ -1,6 +1,6 @@
 {
   "name": "sticky-notes-chrome-extension",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "Element-anchored sticky notes for annotating any website",
   "type": "module",
   "scripts": {
@@ -19,7 +19,7 @@
     "lint:js:fix": "eslint src/ --fix",
     "lint:css": "stylelint \"site/**/*.css\" \"src/**/*.css\"",
     "lint:css:fix": "stylelint \"site/**/*.css\" \"src/**/*.css\" --fix",
-    "lint:html": "htmlhint \"site/templates/*.html\" \"site/partials/*.html\" \"src/**/*.html\" \"public/**/*.html\"",
+    "lint:html": "htmlhint --rulesdir ./scripts/htmlhint-rules \"site/templates/*.html\" \"site/partials/*.html\" \"src/**/*.html\" \"public/**/*.html\"",
     "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#**/node_modules\" && node scripts/lint-md-extra.js",
     "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#**/node_modules\"",
     "lint:fix": "npm run lint:js:fix && npm run lint:css:fix && npm run lint:md:fix",
@@ -61,6 +61,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "lint-staged": "^16.2.7",
     "markdownlint-cli2": "^0.20.0",
+    "markdownlint-rule-search-replace": "^1.2.0",
     "serve": "^14.2.4",
     "stylelint": "^16.26.1",
     "stylelint-config-standard": "^39.0.1",

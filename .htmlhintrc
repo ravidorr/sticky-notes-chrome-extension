@@ -14,5 +14,6 @@
   "alt-require": true,
   "doctype-html5": true,
   "style-disabled": false,
-  "head-script-disabled": false
+  "head-script-disabled": false,
+  "no-emoji": true
 }

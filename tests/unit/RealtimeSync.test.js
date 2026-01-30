@@ -42,10 +42,18 @@ describe('RealtimeSync', () => {
       // No exception thrown, logs warning
     });
 
-    it('should handle exception', async () => {
-      mockSendMessage.mockRejectedValue(new Error('error'));
+    it('should handle exception and log error', async () => {
+      mockSendMessage.mockRejectedValue(new Error('network error'));
+      mockIsContextInvalidatedError.mockReturnValue(false);
       await realtimeSync.subscribeToNotes('url1');
-      // No exception thrown, logs error
+      expect(mockIsContextInvalidatedError).toHaveBeenCalled();
+    });
+
+    it('should handle context invalidated error silently', async () => {
+      mockSendMessage.mockRejectedValue(new Error('context invalidated'));
+      mockIsContextInvalidatedError.mockReturnValue(true);
+      await realtimeSync.subscribeToNotes('url1');
+      expect(mockIsContextInvalidatedError).toHaveBeenCalled();
     });
   });
 
@@ -57,6 +65,20 @@ describe('RealtimeSync', () => {
       expect(mockSendMessage).toHaveBeenCalledWith({
         action: 'unsubscribeFromNotes'
       });
+    });
+
+    it('should handle exception and log error', async () => {
+      mockSendMessage.mockRejectedValue(new Error('network error'));
+      mockIsContextInvalidatedError.mockReturnValue(false);
+      await realtimeSync.unsubscribeFromNotes();
+      expect(mockIsContextInvalidatedError).toHaveBeenCalled();
+    });
+
+    it('should handle context invalidated error silently', async () => {
+      mockSendMessage.mockRejectedValue(new Error('context invalidated'));
+      mockIsContextInvalidatedError.mockReturnValue(true);
+      await realtimeSync.unsubscribeFromNotes();
+      expect(mockIsContextInvalidatedError).toHaveBeenCalled();
     });
   });
 
@@ -74,6 +96,34 @@ describe('RealtimeSync', () => {
       });
       expect(mockNote.commentSubscribed).toBe(true);
     });
+
+    it('should handle success when note not found in map', async () => {
+      mockSendMessage.mockResolvedValue({ success: true });
+      mockGetNotes.mockReturnValue(new Map());
+      
+      await realtimeSync.subscribeToComments('nonexistent');
+      // Should not throw
+    });
+
+    it('should handle failure response', async () => {
+      mockSendMessage.mockResolvedValue({ success: false, error: 'permission denied' });
+      await realtimeSync.subscribeToComments('n1');
+      // Should log warning but not throw
+    });
+
+    it('should handle exception and log error', async () => {
+      mockSendMessage.mockRejectedValue(new Error('network error'));
+      mockIsContextInvalidatedError.mockReturnValue(false);
+      await realtimeSync.subscribeToComments('n1');
+      expect(mockIsContextInvalidatedError).toHaveBeenCalled();
+    });
+
+    it('should handle context invalidated error silently', async () => {
+      mockSendMessage.mockRejectedValue(new Error('context invalidated'));
+      mockIsContextInvalidatedError.mockReturnValue(true);
+      await realtimeSync.subscribeToComments('n1');
+      expect(mockIsContextInvalidatedError).toHaveBeenCalled();
+    });
   });
 
   describe('unsubscribeFromComments', () => {
@@ -89,6 +139,28 @@ describe('RealtimeSync', () => {
         noteId: 'n1'
       });
       expect(mockNote.commentSubscribed).toBe(false);
+    });
+
+    it('should handle when note not found in map', async () => {
+      mockSendMessage.mockResolvedValue({ success: true });
+      mockGetNotes.mockReturnValue(new Map());
+      
+      await realtimeSync.unsubscribeFromComments('nonexistent');
+      // Should not throw
+    });
+
+    it('should handle exception and log error', async () => {
+      mockSendMessage.mockRejectedValue(new Error('network error'));
+      mockIsContextInvalidatedError.mockReturnValue(false);
+      await realtimeSync.unsubscribeFromComments('n1');
+      expect(mockIsContextInvalidatedError).toHaveBeenCalled();
+    });
+
+    it('should handle context invalidated error silently', async () => {
+      mockSendMessage.mockRejectedValue(new Error('context invalidated'));
+      mockIsContextInvalidatedError.mockReturnValue(true);
+      await realtimeSync.unsubscribeFromComments('n1');
+      expect(mockIsContextInvalidatedError).toHaveBeenCalled();
     });
   });
 

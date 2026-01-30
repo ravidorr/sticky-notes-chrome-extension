@@ -9,7 +9,7 @@
 - Bug reports lack context ("The button is broken" with no URL, screenshot, or element reference)
 - Screenshot + Jira ping-pong (back and forth asking "which button? which page?")
 - Staging environments change - hard to reproduce issues
-- Designer ↔ Dev handoff friction ("This margin looks off" - where exactly?)
+- Designer - Dev handoff friction ("This margin looks off" - where exactly?)
 
 ### Value Proposition
 >

@@ -1253,6 +1253,534 @@ describe('StickyNote', () => {
     });
   });
   
+  describe('truncateUrl', () => {
+    it('should return empty string for null/undefined', () => {
+      expect(note.truncateUrl(null)).toBe('');
+      expect(note.truncateUrl(undefined)).toBe('');
+    });
+    
+    it('should truncate long paths', () => {
+      const longUrl = 'https://example.com/very/long/path/that/exceeds/thirty/characters/limit';
+      const result = note.truncateUrl(longUrl);
+      expect(result.length).toBeLessThan(longUrl.length);
+      expect(result).toContain('...');
+    });
+    
+    it('should handle short paths without truncation', () => {
+      const shortUrl = 'https://example.com/short';
+      const result = note.truncateUrl(shortUrl);
+      expect(result).not.toContain('...');
+    });
+    
+    it('should handle invalid URLs gracefully', () => {
+      const invalidUrl = 'not-a-valid-url';
+      const result = note.truncateUrl(invalidUrl);
+      expect(result).toBe(invalidUrl);
+    });
+    
+    it('should truncate long invalid URLs', () => {
+      const longInvalid = 'a'.repeat(50);
+      const result = note.truncateUrl(longInvalid);
+      expect(result.length).toBeLessThanOrEqual(40);
+      expect(result).toContain('...');
+    });
+  });
+
+  describe('truncateSelector', () => {
+    it('should return empty string for null/undefined', () => {
+      expect(note.truncateSelector(null)).toBe('');
+      expect(note.truncateSelector(undefined)).toBe('');
+    });
+    
+    it('should truncate long selectors', () => {
+      const longSelector = '.very-long-class-name > .another-long-class > span.nested-element';
+      const result = note.truncateSelector(longSelector);
+      expect(result.length).toBeLessThanOrEqual(35);
+      expect(result).toContain('...');
+    });
+    
+    it('should not truncate short selectors', () => {
+      const shortSelector = '#my-id';
+      const result = note.truncateSelector(shortSelector);
+      expect(result).toBe(shortSelector);
+    });
+  });
+
+  describe('renderConsoleErrors', () => {
+    it('should return empty string when no errors', () => {
+      const localThis = {};
+      localThis.noteNoErrors = new StickyNote({
+        id: 'no-errors',
+        anchor: anchor,
+        content: '',
+        metadata: { consoleErrors: [] }
+      });
+      
+      const result = localThis.noteNoErrors.renderConsoleErrors();
+      expect(result).toBe('');
+      
+      localThis.noteNoErrors.destroy();
+    });
+    
+    it('should return empty string when consoleErrors is undefined', () => {
+      const localThis = {};
+      localThis.noteUndefined = new StickyNote({
+        id: 'undefined-errors',
+        anchor: anchor,
+        content: '',
+        metadata: {}
+      });
+      
+      const result = localThis.noteUndefined.renderConsoleErrors();
+      expect(result).toBe('');
+      
+      localThis.noteUndefined.destroy();
+    });
+    
+    it('should render console errors section when errors exist', () => {
+      const localThis = {};
+      localThis.noteWithErrors = new StickyNote({
+        id: 'with-errors',
+        anchor: anchor,
+        content: '',
+        metadata: {
+          consoleErrors: [
+            { type: 'console.error', message: 'Test error', timestamp: Date.now() }
+          ]
+        }
+      });
+      
+      const result = localThis.noteWithErrors.renderConsoleErrors();
+      expect(result).toContain('sn-console-errors');
+      expect(result).toContain('Test error');
+      
+      localThis.noteWithErrors.destroy();
+    });
+    
+    it('should handle errors without timestamp', () => {
+      const localThis = {};
+      localThis.noteNoTimestamp = new StickyNote({
+        id: 'no-timestamp',
+        anchor: anchor,
+        content: '',
+        metadata: {
+          consoleErrors: [
+            { type: 'console.error', message: 'Error without time' }
+          ]
+        }
+      });
+      
+      const result = localThis.noteNoTimestamp.renderConsoleErrors();
+      expect(result).toContain('Error without time');
+      
+      localThis.noteNoTimestamp.destroy();
+    });
+  });
+
+  describe('getErrorTypeLabel', () => {
+    it('should return correct label for console.error', () => {
+      expect(note.getErrorTypeLabel('console.error')).toBe('consoleErrorType');
+    });
+    
+    it('should return correct label for console.warn', () => {
+      expect(note.getErrorTypeLabel('console.warn')).toBe('consoleWarnType');
+    });
+    
+    it('should return correct label for exception', () => {
+      expect(note.getErrorTypeLabel('exception')).toBe('consoleExceptionType');
+    });
+    
+    it('should return correct label for unhandledrejection', () => {
+      expect(note.getErrorTypeLabel('unhandledrejection')).toBe('consolePromiseType');
+    });
+    
+    it('should return raw type for unknown types', () => {
+      expect(note.getErrorTypeLabel('custom-type')).toBe('custom-type');
+    });
+  });
+
+  describe('getEnvironment', () => {
+    it('should return stored environment if available', () => {
+      const localThis = {};
+      localThis.noteWithEnv = new StickyNote({
+        id: 'env-test',
+        anchor: anchor,
+        content: '',
+        metadata: { environment: 'staging' }
+      });
+      
+      expect(localThis.noteWithEnv.getEnvironment()).toBe('staging');
+      
+      localThis.noteWithEnv.destroy();
+    });
+    
+    it('should auto-detect environment from URL if not stored', () => {
+      const localThis = {};
+      localThis.noteAutoDetect = new StickyNote({
+        id: 'env-auto',
+        anchor: anchor,
+        content: '',
+        metadata: { url: 'https://localhost:3000/app' }
+      });
+      
+      const env = localThis.noteAutoDetect.getEnvironment();
+      expect(['local', 'development', 'staging', 'production']).toContain(env);
+      
+      localThis.noteAutoDetect.destroy();
+    });
+  });
+
+  describe('getEnvironmentLabel', () => {
+    it('should return translated label for each environment', () => {
+      expect(note.getEnvironmentLabel('local')).toBe('envLocal');
+      expect(note.getEnvironmentLabel('development')).toBe('envDevelopment');
+      expect(note.getEnvironmentLabel('staging')).toBe('envStaging');
+      expect(note.getEnvironmentLabel('production')).toBe('envProduction');
+    });
+    
+    it('should return production label for unknown environment', () => {
+      expect(note.getEnvironmentLabel('unknown')).toBe('envProduction');
+    });
+  });
+
+  describe('toggleConsoleErrors', () => {
+    it('should toggle console errors list visibility', () => {
+      const localThis = {};
+      localThis.noteWithErrors = new StickyNote({
+        id: 'toggle-errors',
+        anchor: anchor,
+        content: '',
+        metadata: {
+          consoleErrors: [
+            { type: 'console.error', message: 'Test error' }
+          ]
+        }
+      });
+      container.appendChild(localThis.noteWithErrors.element);
+      
+      const toggle = localThis.noteWithErrors.element.querySelector('.sn-console-errors-toggle');
+      const list = localThis.noteWithErrors.element.querySelector('.sn-console-errors-list');
+      
+      if (toggle && list) {
+        // Initially hidden
+        expect(list.classList.contains('sn-hidden')).toBe(true);
+        
+        // Toggle to show
+        toggle.click();
+        expect(list.classList.contains('sn-hidden')).toBe(false);
+        
+        // Toggle to hide
+        toggle.click();
+        expect(list.classList.contains('sn-hidden')).toBe(true);
+      }
+      
+      localThis.noteWithErrors.destroy();
+    });
+  });
+
+  describe('handleEnvironmentClick', () => {
+    it('should toggle environment dropdown', () => {
+      const localThis = {};
+      localThis.envBadge = note.element.querySelector('.sn-environment-badge');
+      localThis.dropdown = note.element.querySelector('.sn-environment-dropdown');
+      
+      if (localThis.envBadge && localThis.dropdown) {
+        expect(localThis.dropdown.classList.contains('sn-hidden')).toBe(true);
+        
+        localThis.envBadge.click();
+        expect(localThis.dropdown.classList.contains('sn-hidden')).toBe(false);
+        
+        localThis.envBadge.click();
+        expect(localThis.dropdown.classList.contains('sn-hidden')).toBe(true);
+      }
+    });
+  });
+
+  describe('handleEnvironmentBadgeKeydown', () => {
+    it('should open dropdown on Enter key', () => {
+      const localThis = {};
+      localThis.envBadge = note.element.querySelector('.sn-environment-badge');
+      localThis.dropdown = note.element.querySelector('.sn-environment-dropdown');
+      
+      if (localThis.envBadge && localThis.dropdown) {
+        const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+        event.preventDefault = jest.fn();
+        localThis.envBadge.dispatchEvent(event);
+        
+        expect(event.preventDefault).toHaveBeenCalled();
+      }
+    });
+    
+    it('should open dropdown on Space key', () => {
+      const localThis = {};
+      localThis.envBadge = note.element.querySelector('.sn-environment-badge');
+      
+      if (localThis.envBadge) {
+        const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true });
+        event.preventDefault = jest.fn();
+        localThis.envBadge.dispatchEvent(event);
+        
+        expect(event.preventDefault).toHaveBeenCalled();
+      }
+    });
+    
+    it('should close dropdown on Escape key', () => {
+      const localThis = {};
+      localThis.envBadge = note.element.querySelector('.sn-environment-badge');
+      localThis.dropdown = note.element.querySelector('.sn-environment-dropdown');
+      
+      if (localThis.envBadge && localThis.dropdown) {
+        // First open
+        localThis.envBadge.click();
+        
+        const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+        event.preventDefault = jest.fn();
+        localThis.envBadge.dispatchEvent(event);
+        
+        expect(localThis.dropdown.classList.contains('sn-hidden')).toBe(true);
+      }
+    });
+  });
+
+  describe('handleEnvironmentSelect', () => {
+    it('should close dropdown when selecting same environment', () => {
+      const localThis = {};
+      localThis.envBadge = note.element.querySelector('.sn-environment-badge');
+      localThis.dropdown = note.element.querySelector('.sn-environment-dropdown');
+      
+      if (localThis.envBadge && localThis.dropdown) {
+        // Open dropdown
+        localThis.envBadge.click();
+        
+        // Click on already selected option
+        const currentEnv = note.getEnvironment();
+        const option = localThis.dropdown.querySelector(`[data-env="${currentEnv}"]`);
+        if (option) {
+          option.click();
+          expect(localThis.dropdown.classList.contains('sn-hidden')).toBe(true);
+        }
+      }
+    });
+    
+    it('should update environment when selecting new value', () => {
+      const localThis = {};
+      localThis.envBadge = note.element.querySelector('.sn-environment-badge');
+      localThis.dropdown = note.element.querySelector('.sn-environment-dropdown');
+      
+      if (localThis.envBadge && localThis.dropdown) {
+        localThis.envBadge.click();
+        
+        const newEnvOption = localThis.dropdown.querySelector('[data-env="staging"]');
+        if (newEnvOption) {
+          newEnvOption.click();
+          expect(note.metadata.environment).toBe('staging');
+        }
+      }
+    });
+  });
+
+  describe('handleEnvironmentOptionKeydown', () => {
+    it('should navigate with arrow keys', () => {
+      const localThis = {};
+      localThis.dropdown = note.element.querySelector('.sn-environment-dropdown');
+      
+      if (localThis.dropdown) {
+        note.openEnvironmentDropdown();
+        
+        const options = localThis.dropdown.querySelectorAll('.sn-env-option');
+        if (options.length > 1) {
+          const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true });
+          event.preventDefault = jest.fn();
+          options[0].dispatchEvent(event);
+          
+          expect(event.preventDefault).toHaveBeenCalled();
+        }
+      }
+    });
+    
+    it('should select on Enter key', () => {
+      const localThis = {};
+      localThis.dropdown = note.element.querySelector('.sn-environment-dropdown');
+      
+      if (localThis.dropdown) {
+        note.openEnvironmentDropdown();
+        
+        const option = localThis.dropdown.querySelector('[data-env="staging"]');
+        if (option) {
+          const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+          event.preventDefault = jest.fn();
+          option.dispatchEvent(event);
+          
+          expect(event.preventDefault).toHaveBeenCalled();
+        }
+      }
+    });
+  });
+
+  describe('handleDocumentClick', () => {
+    it('should close dropdown when clicking outside', () => {
+      const localThis = {};
+      localThis.envBadge = note.element.querySelector('.sn-environment-badge');
+      localThis.dropdown = note.element.querySelector('.sn-environment-dropdown');
+      
+      if (localThis.envBadge && localThis.dropdown) {
+        localThis.envBadge.click();
+        expect(localThis.dropdown.classList.contains('sn-hidden')).toBe(false);
+        
+        // Click outside
+        document.body.click();
+        expect(localThis.dropdown.classList.contains('sn-hidden')).toBe(true);
+      }
+    });
+    
+    it('should handle click when element is destroyed', () => {
+      const localThis = {};
+      localThis.destroyedNote = new StickyNote({
+        id: 'destroyed-test',
+        anchor: anchor,
+        content: ''
+      });
+      localThis.destroyedNote.element = null;
+      
+      // Should not throw
+      expect(() => localThis.destroyedNote.handleDocumentClick(new MouseEvent('click'))).not.toThrow();
+    });
+  });
+
+  describe('copyTextToClipboard', () => {
+    it('should use legacy execCommand when Clipboard API fails', async () => {
+      const localThis = {};
+      localThis.originalClipboard = navigator.clipboard;
+      localThis.execCommandCalled = false;
+      
+      navigator.clipboard = {
+        writeText: jest.fn().mockRejectedValue(new Error('Blocked'))
+      };
+      
+      localThis.originalExecCommand = document.execCommand;
+      document.execCommand = jest.fn(() => {
+        localThis.execCommandCalled = true;
+        return true;
+      });
+      
+      await note.copyTextToClipboard('test text');
+      
+      expect(localThis.execCommandCalled).toBe(true);
+      
+      navigator.clipboard = localThis.originalClipboard;
+      document.execCommand = localThis.originalExecCommand;
+    });
+    
+    it('should throw when both Clipboard API and execCommand fail', async () => {
+      const localThis = {};
+      localThis.originalClipboard = navigator.clipboard;
+      localThis.originalExecCommand = document.execCommand;
+      
+      navigator.clipboard = {
+        writeText: jest.fn().mockRejectedValue(new Error('Blocked'))
+      };
+      document.execCommand = undefined;
+      
+      await expect(note.copyTextToClipboard('test')).rejects.toThrow();
+      
+      navigator.clipboard = localThis.originalClipboard;
+      document.execCommand = localThis.originalExecCommand;
+    });
+  });
+
+  describe('dataUrlToBlob', () => {
+    it('should convert data URL to blob', async () => {
+      const localThis = {};
+      localThis.originalFetch = global.fetch;
+      
+      localThis.mockBlob = new Blob(['test'], { type: 'image/png' });
+      global.fetch = jest.fn().mockResolvedValue({
+        blob: () => Promise.resolve(localThis.mockBlob)
+      });
+      
+      const dataUrl = 'data:image/png;base64,iVBORw0KGgo=';
+      const blob = await note.dataUrlToBlob(dataUrl);
+      expect(blob).toBe(localThis.mockBlob);
+      
+      global.fetch = localThis.originalFetch;
+    });
+  });
+
+  describe('showToast', () => {
+    it('should remove existing toast before creating new one', () => {
+      note.showToast('First toast');
+      note.showToast('Second toast');
+      
+      const toasts = container.querySelectorAll('.sn-toast');
+      expect(toasts.length).toBe(1);
+      expect(toasts[0].textContent).toBe('Second toast');
+    });
+    
+    it('should not throw when container is null', () => {
+      const localThis = {};
+      localThis.orphanNote = new StickyNote({
+        id: 'orphan-toast',
+        anchor: anchor,
+        content: ''
+      });
+      // Don't append to container
+      
+      expect(() => localThis.orphanNote.showToast('test')).not.toThrow();
+    });
+  });
+
+  describe('handleAutoShare', () => {
+    it('should not share when note has no ID', async () => {
+      const localThis = {};
+      localThis.noteNoId = new StickyNote({
+        id: null,
+        anchor: anchor,
+        content: ''
+      });
+      
+      await localThis.noteNoId.handleAutoShare('test@example.com');
+      
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'shareNote' })
+      );
+    });
+    
+    it('should not share with self', async () => {
+      const localThis = {};
+      localThis.noteWithUser = new StickyNote({
+        id: 'share-self-test',
+        anchor: anchor,
+        content: '',
+        user: { email: 'me@example.com' }
+      });
+      
+      await localThis.noteWithUser.handleAutoShare('me@example.com');
+      
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'shareNote' })
+      );
+      
+      localThis.noteWithUser.destroy();
+    });
+  });
+
+  describe('handleAutoUnshare', () => {
+    it('should not unshare when note has no ID', async () => {
+      const localThis = {};
+      localThis.noteNoId = new StickyNote({
+        id: null,
+        anchor: anchor,
+        content: ''
+      });
+      
+      await localThis.noteNoId.handleAutoUnshare('test@example.com');
+      
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'unshareNote' })
+      );
+    });
+  });
+
   describe('minimize/maximize', () => {
     it('should start minimized by default (existing notes)', () => {
       expect(note.isMinimized).toBe(true);

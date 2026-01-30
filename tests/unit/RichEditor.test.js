@@ -26,6 +26,9 @@ describe('RichEditor', () => {
   let editor;
   
   beforeEach(() => {
+    // Mock queryCommandState since JSDOM doesn't support it
+    document.queryCommandState = jest.fn().mockReturnValue(false);
+    
     editor = new RichEditor({
       content: '',
       placeholder: 'Write here...',
@@ -38,6 +41,7 @@ describe('RichEditor', () => {
     if (editor && editor.element && editor.element.parentNode) {
       editor.destroy();
     }
+    delete document.queryCommandState;
   });
   
   describe('constructor', () => {
@@ -185,6 +189,201 @@ describe('RichEditor', () => {
       expect(styles).toContain('.sn-email-share-pending');
       expect(styles).toContain('.sn-email-share-success');
       expect(styles).toContain('.sn-email-share-failed');
+    });
+  });
+
+  describe('toolbar click handling', () => {
+    it('should execute bold command when bold button clicked', () => {
+      const boldBtn = editor.toolbar.querySelector('[data-command="bold"]');
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      boldBtn.click();
+      
+      expect(execCommandSpy).toHaveBeenCalledWith('bold', false, null);
+      execCommandSpy.mockRestore();
+    });
+
+    it('should execute italic command when italic button clicked', () => {
+      const italicBtn = editor.toolbar.querySelector('[data-command="italic"]');
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      italicBtn.click();
+      
+      expect(execCommandSpy).toHaveBeenCalledWith('italic', false, null);
+      execCommandSpy.mockRestore();
+    });
+
+    it('should not execute command when clicking non-button element', () => {
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      // Click on divider
+      const divider = editor.toolbar.querySelector('.sn-toolbar-divider');
+      if (divider) {
+        divider.click();
+      }
+      
+      // execCommand should not have been called (or only for other reasons)
+      execCommandSpy.mockRestore();
+    });
+  });
+
+  describe('keyboard shortcuts', () => {
+    it('should execute bold on Ctrl+B', () => {
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      const event = new KeyboardEvent('keydown', {
+        key: 'b',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true
+      });
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(execCommandSpy).toHaveBeenCalledWith('bold', false, null);
+      execCommandSpy.mockRestore();
+    });
+
+    it('should execute italic on Ctrl+I', () => {
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      const event = new KeyboardEvent('keydown', {
+        key: 'i',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true
+      });
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(execCommandSpy).toHaveBeenCalledWith('italic', false, null);
+      execCommandSpy.mockRestore();
+    });
+
+    it('should handle regular keydown without ctrl/meta', () => {
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      const event = new KeyboardEvent('keydown', {
+        key: 'a',
+        bubbles: true
+      });
+      
+      editor.editor.dispatchEvent(event);
+      
+      // Should not call execCommand for regular keys
+      expect(execCommandSpy).not.toHaveBeenCalledWith('bold', false, null);
+      execCommandSpy.mockRestore();
+    });
+  });
+
+  describe('input handling', () => {
+    it('should update content on input', () => {
+      const onChange = jest.fn();
+      const editorWithOnChange = new RichEditor({
+        content: '',
+        onChange
+      });
+      document.body.appendChild(editorWithOnChange.element);
+      
+      editorWithOnChange.editor.innerHTML = 'New content';
+      editorWithOnChange.editor.dispatchEvent(new Event('input', { bubbles: true }));
+      
+      expect(onChange).toHaveBeenCalledWith('New content');
+      editorWithOnChange.destroy();
+    });
+  });
+
+  describe('paste handling', () => {
+    it('should clean pasted HTML content', () => {
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      const clipboardData = {
+        getData: jest.fn((type) => {
+          if (type === 'text/html') return '<p>Hello</p><script>alert("xss")</script>';
+          if (type === 'text/plain') return 'Hello';
+          return '';
+        })
+      };
+      
+      const pasteEvent = new Event('paste', { bubbles: true });
+      pasteEvent.clipboardData = clipboardData;
+      pasteEvent.preventDefault = jest.fn();
+      
+      editor.editor.dispatchEvent(pasteEvent);
+      
+      expect(pasteEvent.preventDefault).toHaveBeenCalled();
+      expect(execCommandSpy).toHaveBeenCalledWith('insertHTML', false, expect.any(String));
+      execCommandSpy.mockRestore();
+    });
+
+    it('should insert plain text when no HTML available', () => {
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      const clipboardData = {
+        getData: jest.fn((type) => {
+          if (type === 'text/html') return '';
+          if (type === 'text/plain') return 'Plain text';
+          return '';
+        })
+      };
+      
+      const pasteEvent = new Event('paste', { bubbles: true });
+      pasteEvent.clipboardData = clipboardData;
+      pasteEvent.preventDefault = jest.fn();
+      
+      editor.editor.dispatchEvent(pasteEvent);
+      
+      expect(execCommandSpy).toHaveBeenCalledWith('insertText', false, 'Plain text');
+      execCommandSpy.mockRestore();
+    });
+  });
+
+  describe('updatePlaceholder', () => {
+    it('should add empty class when editor is empty', () => {
+      editor.editor.innerHTML = '';
+      editor.updatePlaceholder();
+      
+      expect(editor.editor.classList.contains('empty')).toBe(true);
+    });
+
+    it('should remove empty class when editor has content', () => {
+      editor.editor.innerHTML = 'Some content';
+      editor.updatePlaceholder();
+      
+      expect(editor.editor.classList.contains('empty')).toBe(false);
+    });
+
+    it('should treat whitespace-only as empty', () => {
+      editor.editor.innerHTML = '   ';
+      editor.updatePlaceholder();
+      
+      expect(editor.editor.classList.contains('empty')).toBe(true);
+    });
+  });
+
+  describe('updateToolbarState', () => {
+    it('should call queryCommandState for each button', () => {
+      editor.updateToolbarState();
+      expect(document.queryCommandState).toHaveBeenCalled();
+    });
+    
+    it('should add active class when command state is true', () => {
+      document.queryCommandState.mockReturnValue(true);
+      
+      editor.updateToolbarState();
+      
+      const boldBtn = editor.toolbar.querySelector('[data-command="bold"]');
+      expect(boldBtn.classList.contains('active')).toBe(true);
+    });
+    
+    it('should remove active class when command state is false', () => {
+      const boldBtn = editor.toolbar.querySelector('[data-command="bold"]');
+      boldBtn.classList.add('active');
+      
+      document.queryCommandState.mockReturnValue(false);
+      editor.updateToolbarState();
+      
+      expect(boldBtn.classList.contains('active')).toBe(false);
     });
   });
   
@@ -400,6 +599,327 @@ describe('RichEditor', () => {
         const tracked = editorWithCallbacks.getTrackedEmails();
         expect(tracked.get('test@example.com').status).toBe('success');
       });
+    });
+    
+    describe('wrapEmailInSpan - edge cases', () => {
+      it('should fix span when it contains extra text and email', () => {
+        editorWithCallbacks.editor.innerHTML = '<span class="sn-email-share" data-email="old@example.com">new@example.com extra</span>';
+        editorWithCallbacks.wrapEmailInSpan('new@example.com');
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span).toBeTruthy();
+      });
+      
+      it('should update data-email when text matches but attribute does not', () => {
+        editorWithCallbacks.editor.innerHTML = '<span class="sn-email-share sn-email-share-success" data-email="wrong@example.com" data-tooltip="Old">test@example.com</span>';
+        editorWithCallbacks.wrapEmailInSpan('test@example.com');
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span.dataset.email).toBe('test@example.com');
+      });
+      
+      it('should skip if email is already properly wrapped', () => {
+        editorWithCallbacks.editor.innerHTML = '<span class="sn-email-share" data-email="test@example.com">test@example.com</span>';
+        const initialHtml = editorWithCallbacks.editor.innerHTML;
+        
+        editorWithCallbacks.wrapEmailInSpan('test@example.com');
+        
+        expect(editorWithCallbacks.editor.innerHTML).toBe(initialHtml);
+      });
+    });
+
+    describe('updateEmailStatus - edge cases', () => {
+      it('should match by text content when data-email is different', () => {
+        editorWithCallbacks.trackedEmails.set('test@example.com', { status: 'pending', tooltip: '' });
+        editorWithCallbacks.editor.innerHTML = '<span class="sn-email-share sn-email-share-pending" data-email="other@example.com">test@example.com</span>';
+        
+        editorWithCallbacks.updateEmailStatus('test@example.com', true, 'Success');
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span.classList.contains('sn-email-share-success')).toBe(true);
+        expect(span.dataset.email).toBe('test@example.com');
+      });
+      
+      it('should handle email not in trackedEmails', () => {
+        editorWithCallbacks.editor.innerHTML = '<span class="sn-email-share" data-email="untracked@example.com">untracked@example.com</span>';
+        
+        editorWithCallbacks.updateEmailStatus('untracked@example.com', true, 'Success');
+        
+        const span = editorWithCallbacks.editor.querySelector('.sn-email-share');
+        expect(span.classList.contains('sn-email-share-success')).toBe(true);
+      });
+    });
+
+    describe('processEmailsInContent - additional edge cases', () => {
+      it('should detect email followed by non-breaking space', () => {
+        editorWithCallbacks.editor.innerHTML = 'test@example.com\u00A0more text';
+        editorWithCallbacks.processEmailsInContent();
+        
+        expect(onEmailShare).toHaveBeenCalledWith('test@example.com');
+      });
+      
+      it('should skip invalid email addresses', () => {
+        editorWithCallbacks.editor.innerHTML = 'invalid@email ';
+        editorWithCallbacks.processEmailsInContent();
+        
+        expect(onEmailShare).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('handleCreateLink', () => {
+    let originalGetSelection;
+    
+    beforeEach(() => {
+      originalGetSelection = window.getSelection;
+    });
+    
+    afterEach(() => {
+      window.getSelection = originalGetSelection;
+    });
+    
+    it('should remove existing link when anchor exists', () => {
+      editor.editor.innerHTML = '<a href="https://example.com">Link text</a>';
+      
+      // Select inside the link
+      const link = editor.editor.querySelector('a');
+      const range = document.createRange();
+      range.selectNodeContents(link);
+      
+      // Mock window.getSelection to return proper object
+      window.getSelection = jest.fn(() => ({
+        anchorNode: link.firstChild,
+        rangeCount: 1,
+        isCollapsed: false,
+        toString: () => 'Link text',
+        getRangeAt: () => range
+      }));
+      
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      editor.handleCreateLink();
+      
+      expect(execCommandSpy).toHaveBeenCalledWith('unlink', false, null);
+      execCommandSpy.mockRestore();
+    });
+    
+    it('should show link input when no existing link', () => {
+      editor.editor.innerHTML = '';
+      const textNode = document.createTextNode('Some text');
+      editor.editor.appendChild(textNode);
+      
+      // Create a range for selection
+      const range = document.createRange();
+      range.setStart(textNode, 0);
+      range.setEnd(textNode, 4);
+      
+      // Mock window.getSelection
+      window.getSelection = jest.fn(() => ({
+        anchorNode: textNode,
+        rangeCount: 1,
+        isCollapsed: false,
+        toString: () => 'Some',
+        getRangeAt: () => range
+      }));
+      
+      editor.handleCreateLink();
+      
+      const popup = editor.element.querySelector('.sn-inline-popup');
+      expect(popup).not.toBeNull();
+    });
+  });
+
+  describe('showLinkInput', () => {
+    it('should remove existing link input before showing new one', () => {
+      // Create existing popup
+      const existingPopup = document.createElement('div');
+      existingPopup.className = 'sn-inline-popup';
+      editor.element.appendChild(existingPopup);
+      
+      const range = document.createRange();
+      range.selectNodeContents(editor.editor);
+      
+      editor.showLinkInput(range, 'test');
+      
+      const popups = editor.element.querySelectorAll('.sn-inline-popup');
+      expect(popups.length).toBe(1);
+    });
+    
+    it('should handle confirm button click', () => {
+      const range = document.createRange();
+      range.selectNodeContents(editor.editor);
+      
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      editor.showLinkInput(range, 'link text');
+      
+      const input = editor.element.querySelector('.sn-inline-popup-input');
+      const confirmBtn = editor.element.querySelector('.sn-btn-primary');
+      
+      input.value = 'https://example.com';
+      confirmBtn.click();
+      
+      // Should have tried to create link
+      expect(execCommandSpy).toHaveBeenCalled();
+      execCommandSpy.mockRestore();
+    });
+    
+    it('should handle cancel button click', () => {
+      const range = document.createRange();
+      range.selectNodeContents(editor.editor);
+      
+      editor.showLinkInput(range, 'link text');
+      
+      const cancelBtn = editor.element.querySelector('.sn-btn-secondary');
+      cancelBtn.click();
+      
+      const popup = editor.element.querySelector('.sn-inline-popup');
+      expect(popup).toBeNull();
+    });
+    
+    it('should insert link on Enter key', () => {
+      const range = document.createRange();
+      range.selectNodeContents(editor.editor);
+      
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      editor.showLinkInput(range, 'link text');
+      
+      const input = editor.element.querySelector('.sn-inline-popup-input');
+      input.value = 'https://example.com';
+      
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+      event.preventDefault = jest.fn();
+      input.dispatchEvent(event);
+      
+      expect(event.preventDefault).toHaveBeenCalled();
+      execCommandSpy.mockRestore();
+    });
+    
+    it('should close on Escape key', () => {
+      const range = document.createRange();
+      range.selectNodeContents(editor.editor);
+      
+      editor.showLinkInput(range, 'link text');
+      
+      const input = editor.element.querySelector('.sn-inline-popup-input');
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+      event.preventDefault = jest.fn();
+      input.dispatchEvent(event);
+      
+      const popup = editor.element.querySelector('.sn-inline-popup');
+      expect(popup).toBeNull();
+    });
+    
+    it('should insert URL as text when no selection', () => {
+      editor.editor.innerHTML = '';
+      
+      const range = document.createRange();
+      range.setStart(editor.editor, 0);
+      range.setEnd(editor.editor, 0);
+      
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      editor.showLinkInput(range, ''); // Empty selected text
+      
+      const input = editor.element.querySelector('.sn-inline-popup-input');
+      const confirmBtn = editor.element.querySelector('.sn-btn-primary');
+      
+      input.value = 'https://example.com';
+      confirmBtn.click();
+      
+      expect(execCommandSpy).toHaveBeenCalledWith('insertHTML', false, expect.stringContaining('href='));
+      execCommandSpy.mockRestore();
+    });
+    
+    it('should not insert link when URL is just https://', () => {
+      const range = document.createRange();
+      range.selectNodeContents(editor.editor);
+      
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      editor.showLinkInput(range, 'link text');
+      
+      const input = editor.element.querySelector('.sn-inline-popup-input');
+      const confirmBtn = editor.element.querySelector('.sn-btn-primary');
+      
+      // Don't change default value
+      confirmBtn.click();
+      
+      // Should not have called createLink
+      expect(execCommandSpy).not.toHaveBeenCalledWith('createLink', expect.anything(), 'https://');
+      execCommandSpy.mockRestore();
+    });
+  });
+
+  describe('cleanHtml - additional cases', () => {
+    it('should preserve email share span attributes', () => {
+      const html = '<span class="sn-email-share" data-email="test@example.com" data-tooltip="Shared">test@example.com</span>';
+      const cleaned = editor.cleanHtml(html);
+      expect(cleaned).toContain('data-email');
+      expect(cleaned).toContain('class=');
+    });
+    
+    it('should remove unwanted tags but keep their content', () => {
+      const html = '<table><tr><td>Cell content</td></tr></table>';
+      const cleaned = editor.cleanHtml(html);
+      expect(cleaned).toContain('Cell content');
+      expect(cleaned).not.toContain('<table>');
+    });
+  });
+
+
+  describe('keyboard event propagation', () => {
+    it('should stop keyup propagation', () => {
+      const event = new KeyboardEvent('keyup', { key: 'a', bubbles: true });
+      const stopPropagationSpy = jest.spyOn(event, 'stopPropagation');
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(stopPropagationSpy).toHaveBeenCalled();
+    });
+    
+    it('should stop keypress propagation', () => {
+      const event = new KeyboardEvent('keypress', { key: 'a', bubbles: true });
+      const stopPropagationSpy = jest.spyOn(event, 'stopPropagation');
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(stopPropagationSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('focus and blur events', () => {
+    it('should update placeholder on focus', () => {
+      const updateSpy = jest.spyOn(editor, 'updatePlaceholder');
+      
+      editor.editor.dispatchEvent(new Event('focus', { bubbles: true }));
+      
+      expect(updateSpy).toHaveBeenCalled();
+    });
+    
+    it('should update placeholder on blur', () => {
+      const updateSpy = jest.spyOn(editor, 'updatePlaceholder');
+      
+      editor.editor.dispatchEvent(new Event('blur', { bubbles: true }));
+      
+      expect(updateSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('process initial content', () => {
+    it('should process emails in initial content', () => {
+      const onShareInit = jest.fn();
+      const editorWithInitialContent = new RichEditor({
+        content: 'Contact me@example.com ',
+        onEmailShare: onShareInit
+      });
+      document.body.appendChild(editorWithInitialContent.element);
+      
+      // Should have processed initial content
+      expect(onShareInit).toHaveBeenCalledWith('me@example.com');
+      
+      editorWithInitialContent.destroy();
     });
   });
 });

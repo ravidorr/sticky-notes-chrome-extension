@@ -206,6 +206,75 @@ describe('i18n Module', () => {
       // Should not throw
       expect(() => initializeI18n()).not.toThrow();
     });
+
+    it('should not change placeholder when translation matches key', () => {
+      document.body.innerHTML = `
+        <input data-i18n-placeholder="unknownPlaceholder" placeholder="Original">
+      `;
+      
+      localThis.mockGetMessage.mockReturnValue('');
+      
+      initializeI18n();
+      
+      // Should keep original placeholder when translation not found
+      expect(document.querySelector('input').placeholder).toBe('Original');
+    });
+
+    it('should not change title when translation matches key', () => {
+      document.body.innerHTML = `
+        <button data-i18n-title="unknownTitle" title="Original">Button</button>
+      `;
+      
+      localThis.mockGetMessage.mockReturnValue('');
+      
+      initializeI18n();
+      
+      // Should keep original title when translation not found
+      expect(document.querySelector('button').title).toBe('Original');
+    });
+
+    it('should not change aria-label when translation matches key', () => {
+      document.body.innerHTML = `
+        <button data-i18n-aria-label="unknownLabel" aria-label="Original">Button</button>
+      `;
+      
+      localThis.mockGetMessage.mockReturnValue('');
+      
+      initializeI18n();
+      
+      // Should keep original aria-label when translation not found
+      expect(document.querySelector('button').getAttribute('aria-label')).toBe('Original');
+    });
+
+    it('should handle empty data-i18n-placeholder value', () => {
+      document.body.innerHTML = `
+        <input data-i18n-placeholder="" placeholder="Original">
+      `;
+      
+      // Should not throw and should keep original
+      expect(() => initializeI18n()).not.toThrow();
+      expect(document.querySelector('input').placeholder).toBe('Original');
+    });
+
+    it('should handle empty data-i18n-title value', () => {
+      document.body.innerHTML = `
+        <button data-i18n-title="" title="Original">Button</button>
+      `;
+      
+      // Should not throw and should keep original
+      expect(() => initializeI18n()).not.toThrow();
+      expect(document.querySelector('button').title).toBe('Original');
+    });
+
+    it('should handle empty data-i18n-aria-label value', () => {
+      document.body.innerHTML = `
+        <button data-i18n-aria-label="" aria-label="Original">Button</button>
+      `;
+      
+      // Should not throw and should keep original
+      expect(() => initializeI18n()).not.toThrow();
+      expect(document.querySelector('button').getAttribute('aria-label')).toBe('Original');
+    });
   });
 
   describe('createTranslatedElement()', () => {

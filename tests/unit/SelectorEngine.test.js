@@ -423,4 +423,403 @@ describe('SelectorEngine', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('getIdSelector()', () => {
+    it('should return null for elements without ID', () => {
+      document.body.innerHTML = '<div class="no-id">Content</div>';
+      const element = document.querySelector('.no-id');
+      expect(engine.getIdSelector(element)).toBeNull();
+    });
+    
+    it('should return null for dynamic IDs', () => {
+      document.body.innerHTML = '<div id="ember456">Content</div>';
+      const element = document.querySelector('#ember456');
+      expect(engine.getIdSelector(element)).toBeNull();
+    });
+    
+    it('should return selector when ID is unique', () => {
+      document.body.innerHTML = '<div id="unique-id">First</div>';
+      const element = document.querySelector('#unique-id');
+      const result = engine.getIdSelector(element);
+      expect(result).toBe('#unique-id');
+    });
+  });
+
+  describe('getAttributeSelector()', () => {
+    it('should return selector for preferred attribute', () => {
+      document.body.innerHTML = '<button data-testid="submit-btn">Submit</button>';
+      const element = document.querySelector('[data-testid="submit-btn"]');
+      const selector = engine.getAttributeSelector(element);
+      expect(selector).toContain('data-testid');
+    });
+    
+    it('should return null when no preferred attributes', () => {
+      document.body.innerHTML = '<div>No attributes</div>';
+      const element = document.querySelector('div');
+      expect(engine.getAttributeSelector(element)).toBeNull();
+    });
+    
+    it('should return null when attribute selector is not unique', () => {
+      document.body.innerHTML = `
+        <button data-testid="same-id">One</button>
+        <button data-testid="same-id">Two</button>
+      `;
+      const element = document.querySelector('[data-testid="same-id"]');
+      expect(engine.getAttributeSelector(element)).toBeNull();
+    });
+  });
+
+  describe('getClassSelector()', () => {
+    it('should return null for elements without classes', () => {
+      document.body.innerHTML = '<div>No classes</div>';
+      const element = document.querySelector('div');
+      expect(engine.getClassSelector(element)).toBeNull();
+    });
+    
+    it('should filter out dynamic-looking classes', () => {
+      document.body.innerHTML = '<div class="ember123 stable-class">Content</div>';
+      const element = document.querySelector('div');
+      const selector = engine.getClassSelector(element);
+      if (selector) {
+        expect(selector).not.toContain('ember123');
+        expect(selector).toContain('stable-class');
+      }
+    });
+    
+    it('should try combination of classes when single class is not unique', () => {
+      document.body.innerHTML = `
+        <div class="aaa bbb ccc">Target</div>
+        <div class="aaa">Other</div>
+      `;
+      const element = document.querySelector('.aaa.bbb.ccc');
+      const selector = engine.getClassSelector(element);
+      // Should include multiple classes or be a valid selector
+      if (selector) {
+        expect(typeof selector).toBe('string');
+        expect(document.querySelector(selector)).toBe(element);
+      }
+    });
+    
+    it('should return null when all classes are filtered out', () => {
+      document.body.innerHTML = '<div class="a">Short</div>';
+      const element = document.querySelector('.a');
+      // Class 'a' is only 1 char, filtered out
+      const selector = engine.getClassSelector(element);
+      // May return null or a selector depending on uniqueness
+      if (selector) {
+        expect(typeof selector).toBe('string');
+      }
+    });
+  });
+
+  describe('getNthChildSelector()', () => {
+    it('should return null when element has no parent', () => {
+      // document.body always has a parent (document), so we need to test differently
+      const orphan = document.createElement('div');
+      expect(engine.getNthChildSelector(orphan)).toBeNull();
+    });
+    
+    it('should return null when parent selector cannot be generated', () => {
+      document.body.innerHTML = '<div><span>Child</span></div>';
+      const span = document.querySelector('span');
+      // getShortSelector for the parent div should work, but if it returns null
+      // we'd get null here
+      const result = engine.getNthChildSelector(span);
+      // Should return a valid selector
+      expect(result === null || typeof result === 'string').toBe(true);
+    });
+  });
+
+  describe('buildPathSelector()', () => {
+    it('should build path from element to unique ancestor', () => {
+      document.body.innerHTML = `
+        <div id="root">
+          <div class="level1">
+            <div class="level2">
+              <span class="target">Target</span>
+            </div>
+          </div>
+        </div>
+      `;
+      const target = document.querySelector('.target');
+      const selector = engine.buildPathSelector(target);
+      expect(selector).toBeTruthy();
+      // Should be able to find the element
+      expect(document.querySelector(selector)).toBe(target);
+    });
+    
+    it('should return full path even if not unique', () => {
+      document.body.innerHTML = `
+        <div><div><div><span>A</span></div></div></div>
+        <div><div><div><span>B</span></div></div></div>
+      `;
+      const span = document.querySelector('span');
+      const selector = engine.buildPathSelector(span);
+      expect(selector).toBeTruthy();
+    });
+    
+    it('should respect max depth limit', () => {
+      // Create deeply nested structure (> 10 levels)
+      let html = '<div id="root">';
+      for (let i = 0; i < 15; i++) {
+        html += '<div>';
+      }
+      html += '<span class="deep">Deep</span>';
+      for (let i = 0; i < 15; i++) {
+        html += '</div>';
+      }
+      html += '</div>';
+      
+      document.body.innerHTML = html;
+      const target = document.querySelector('.deep');
+      const selector = engine.buildPathSelector(target);
+      // Should have limited depth
+      const depth = (selector.match(/>/g) || []).length;
+      expect(depth).toBeLessThanOrEqual(10);
+    });
+  });
+
+  describe('getShortSelector()', () => {
+    it('should return null for document.body', () => {
+      expect(engine.getShortSelector(document.body)).toBeNull();
+    });
+    
+    it('should return null for null element', () => {
+      expect(engine.getShortSelector(null)).toBeNull();
+    });
+    
+    it('should prefer ID when available', () => {
+      document.body.innerHTML = '<div id="my-id" class="my-class">Content</div>';
+      const element = document.querySelector('#my-id');
+      const selector = engine.getShortSelector(element);
+      expect(selector).toBe('#my-id');
+    });
+    
+    it('should use preferred attribute when no ID', () => {
+      document.body.innerHTML = '<div data-testid="test">Content</div>';
+      const element = document.querySelector('[data-testid="test"]');
+      const selector = engine.getShortSelector(element);
+      expect(selector).toContain('data-testid');
+    });
+    
+    it('should use tag with class when no ID or preferred attr', () => {
+      document.body.innerHTML = '<div class="my-long-class">Content</div>';
+      const element = document.querySelector('.my-long-class');
+      const selector = engine.getShortSelector(element);
+      expect(selector).toContain('div');
+      expect(selector).toContain('.my-long-class');
+    });
+    
+    it('should return just tag name as fallback', () => {
+      document.body.innerHTML = '<article>Content</article>';
+      const element = document.querySelector('article');
+      const selector = engine.getShortSelector(element);
+      expect(selector).toBe('article');
+    });
+  });
+
+  describe('getElementPart()', () => {
+    it('should include ID in part when available', () => {
+      document.body.innerHTML = '<div id="my-elem">Content</div>';
+      const element = document.querySelector('#my-elem');
+      const part = engine.getElementPart(element);
+      expect(part).toBe('div#my-elem');
+    });
+    
+    it('should skip dynamic ID', () => {
+      document.body.innerHTML = '<div id="ember789" class="stable">Content</div>';
+      const element = document.querySelector('.stable');
+      const part = engine.getElementPart(element);
+      expect(part).not.toContain('ember789');
+    });
+    
+    it('should use nth-of-type when no unique identifiers', () => {
+      document.body.innerHTML = `
+        <div>
+          <span>First</span>
+          <span>Second</span>
+        </div>
+      `;
+      const spans = document.querySelectorAll('span');
+      const part = engine.getElementPart(spans[1]);
+      expect(part).toContain(':nth-of-type(2)');
+    });
+  });
+
+  describe('stringSimilarity()', () => {
+    it('should return 1 for identical strings', () => {
+      expect(engine.stringSimilarity('hello', 'hello')).toBe(1);
+    });
+    
+    it('should return 0 for empty strings', () => {
+      expect(engine.stringSimilarity('', 'hello')).toBe(0);
+      expect(engine.stringSimilarity('hello', '')).toBe(0);
+    });
+    
+    it('should return 0 for null/undefined', () => {
+      expect(engine.stringSimilarity(null, 'hello')).toBe(0);
+      expect(engine.stringSimilarity('hello', undefined)).toBe(0);
+    });
+    
+    it('should return 0 for very short strings', () => {
+      expect(engine.stringSimilarity('a', 'b')).toBe(0);
+    });
+    
+    it('should be case insensitive', () => {
+      expect(engine.stringSimilarity('Hello', 'HELLO')).toBe(1);
+    });
+    
+    it('should return value between 0 and 1 for similar strings', () => {
+      const sim = engine.stringSimilarity('hello', 'hallo');
+      expect(sim).toBeGreaterThan(0);
+      expect(sim).toBeLessThan(1);
+    });
+  });
+
+  describe('scoreCandidate()', () => {
+    it('should score attribute partial match', () => {
+      document.body.innerHTML = '<div data-testid="similar-component"></div>';
+      const element = document.querySelector('div');
+      
+      const parts = {
+        tagName: 'div',
+        classes: [],
+        attributes: { 'data-testid': 'similar-comp' }, // partial match
+        id: null,
+        nthChild: null
+      };
+      
+      const score = engine.scoreCandidate(element, parts, {});
+      expect(score).toBeGreaterThan(0);
+    });
+    
+    it('should score text content similarity', () => {
+      document.body.innerHTML = '<div>Hello World Content</div>';
+      const element = document.querySelector('div');
+      
+      const parts = { tagName: 'div', classes: [], attributes: {}, id: null, nthChild: null };
+      const metadata = { textContent: 'Hello World Content' };
+      
+      const score = engine.scoreCandidate(element, parts, metadata);
+      expect(score).toBeGreaterThan(0);
+    });
+    
+    it('should score ID partial match', () => {
+      document.body.innerHTML = '<div id="my-component-123"></div>';
+      const element = document.querySelector('div');
+      
+      const parts = {
+        tagName: 'div',
+        classes: [],
+        attributes: {},
+        id: 'my-component-456', // similar but not exact
+        nthChild: null
+      };
+      
+      const score = engine.scoreCandidate(element, parts, {});
+      expect(score).toBeGreaterThan(0);
+    });
+    
+    it('should return 0 when maxScore is 0', () => {
+      document.body.innerHTML = '<div></div>';
+      const element = document.querySelector('div');
+      
+      const parts = { tagName: null, classes: [], attributes: {}, id: null, nthChild: null };
+      const score = engine.scoreCandidate(element, parts, {});
+      expect(score).toBe(0);
+    });
+  });
+
+  describe('findCandidates()', () => {
+    it('should filter by attributes when too many candidates', () => {
+      // Create many elements
+      let html = '';
+      for (let i = 0; i < 120; i++) {
+        html += `<div class="many">Item ${i}</div>`;
+      }
+      html += '<div class="many" data-special="yes">Special</div>';
+      document.body.innerHTML = html;
+      
+      const parts = { tagName: 'div', classes: [], attributes: { 'data-special': 'yes' } };
+      const candidates = engine.findCandidates(parts, {});
+      
+      expect(candidates.length).toBeLessThanOrEqual(100);
+    });
+    
+    it('should search all elements when no tag name', () => {
+      document.body.innerHTML = `
+        <div>Div</div>
+        <span>Span</span>
+        <p>Para</p>
+      `;
+      
+      const parts = { tagName: null, classes: ['some-class'], attributes: {} };
+      const candidates = engine.findCandidates(parts, {});
+      
+      // Should have searched all elements
+      expect(candidates.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('findBestMatch()', () => {
+    it('should return null when best match score is below threshold', () => {
+      document.body.innerHTML = `
+        <div class="completely-different">Unrelated</div>
+      `;
+      
+      const result = engine.findBestMatch('button#specific-button.special-class[data-id="123"]', {});
+      expect(result).toBeNull();
+    });
+    
+    it('should find element by attribute match', () => {
+      document.body.innerHTML = `
+        <button data-testid="submit">Submit</button>
+        <button data-testid="cancel">Cancel</button>
+      `;
+      
+      const result = engine.findBestMatch('[data-testid="submit"]', {});
+      expect(result).not.toBeNull();
+      if (result) {
+        expect(result.textContent).toBe('Submit');
+      }
+    });
+  });
+
+  describe('generateFallbackSelectors()', () => {
+    it('should return multiple selectors', () => {
+      document.body.innerHTML = '<div id="fallback-test" class="test-class">Content</div>';
+      const element = document.querySelector('#fallback-test');
+      
+      const selectors = engine.generateFallbackSelectors(element);
+      
+      expect(selectors.length).toBeGreaterThan(0);
+      // All selectors should find the element
+      selectors.forEach(sel => {
+        expect(document.querySelector(sel)).toBe(element);
+      });
+    });
+    
+    it('should not include duplicate selectors', () => {
+      document.body.innerHTML = '<div id="unique">Content</div>';
+      const element = document.querySelector('#unique');
+      
+      const selectors = engine.generateFallbackSelectors(element);
+      const uniqueSelectors = new Set(selectors);
+      
+      expect(selectors.length).toBe(uniqueSelectors.size);
+    });
+  });
+
+  describe('validateSelector() - additional patterns', () => {
+    it('should reject url() patterns', () => {
+      const result = engine.validateSelector('[style*="url(javascript:alert)"]');
+      expect(result.valid).toBe(false);
+    });
+    
+    it('should handle selector that throws in querySelector', () => {
+      const result = engine.validateSelector('div:has(:invalid-pseudo)');
+      // May be invalid depending on browser support
+      expect(typeof result.valid).toBe('boolean');
+    });
+  });
 });

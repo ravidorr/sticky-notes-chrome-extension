@@ -353,5 +353,85 @@ describe('pageContext', () => {
       expect(message.length).toBeLessThanOrEqual(203); // 200 + '...'
       expect(message).toContain('...');
     });
+
+    it('should stringify DOM elements', async () => {
+      await loadPageContext();
+      window.__stickyNotesListenerReady = true;
+      
+      const div = document.createElement('div');
+      div.id = 'test-id';
+      div.className = 'class1 class2';
+      console.error(div);
+      
+      const message = localThis.dispatchedEvents[0].detail.message;
+      expect(message).toContain('div');
+      expect(message).toContain('#test-id');
+      expect(message).toContain('.class1');
+      expect(message).toContain('.class2');
+    });
+
+    it('should stringify DOM elements without id or class', async () => {
+      await loadPageContext();
+      window.__stickyNotesListenerReady = true;
+      
+      const span = document.createElement('span');
+      console.error(span);
+      
+      const message = localThis.dispatchedEvents[0].detail.message;
+      expect(message).toBe('span');
+    });
+
+    it('should handle circular references in objects', async () => {
+      await loadPageContext();
+      window.__stickyNotesListenerReady = true;
+      
+      const circular = { name: 'test' };
+      circular.self = circular;
+      console.error(circular);
+      
+      // Should not throw and should return object string representation
+      const message = localThis.dispatchedEvents[0].detail.message;
+      expect(message).toContain('[object Object]');
+    });
+
+    it('should handle Error objects without stack trace', async () => {
+      await loadPageContext();
+      window.__stickyNotesListenerReady = true;
+      
+      const error = new Error('No stack');
+      delete error.stack;
+      console.error(error);
+      
+      const message = localThis.dispatchedEvents[0].detail.message;
+      expect(message).toBe('No stack');
+    });
+  });
+
+  describe('unhandled rejection edge cases', () => {
+    it('should handle rejection with Error that has stack', async () => {
+      await loadPageContext();
+      
+      const handler = localThis.rejectionListeners[0];
+      const error = new Error('Test');
+      error.stack = 'Error: Test\n    at test.js:1:1';
+      handler({ reason: error });
+      
+      expect(window.__stickyNotesErrorBuffer[0].message).toContain('Error: Test');
+    });
+
+    it('should handle rejection when stringify throws', async () => {
+      await loadPageContext();
+      
+      const handler = localThis.rejectionListeners[0];
+      // Create a proxy that throws on any property access
+      const badReason = new Proxy({}, {
+        get() { throw new Error('Proxy trap error'); }
+      });
+      
+      handler({ reason: badReason });
+      
+      // stringify() catches the error and returns '[Unable to stringify]'
+      expect(window.__stickyNotesErrorBuffer[0].message).toBe('[Unable to stringify]');
+    });
   });
 });

@@ -712,4 +712,1160 @@ describe('NoteManager', () => {
       expect(localThis.isContextInvalidatedError).toHaveBeenCalledWith(contextError);
     });
   });
+
+  describe('addPendingNote', () => {
+    it('should add note to orphanedNotes and pendingNotes', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = { id: 'pending-note-1', selector: '.missing', content: 'Test' };
+      manager.addPendingNote(noteData);
+      
+      expect(manager.orphanedNotes.has('pending-note-1')).toBe(true);
+      expect(manager.pendingNotes.has('pending-note-1')).toBe(true);
+      expect(manager.orphanedNotes.get('pending-note-1').noteData).toBe(noteData);
+    });
+    
+    it('should call updateOrphanedBadge', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = { id: 'pending-note-2', selector: '.missing', content: 'Test' };
+      manager.addPendingNote(noteData);
+      
+      // updateOrphanedBadge should have been called
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'updateOrphanedCount',
+        count: 1
+      });
+    });
+  });
+
+  describe('updateOrphanedBadge', () => {
+    it('should send updateOrphanedCount message with count', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      manager.orphanedNotes.set('orphan-1', { noteData: {}, addedAt: Date.now() });
+      manager.orphanedNotes.set('orphan-2', { noteData: {}, addedAt: Date.now() });
+      
+      await manager.updateOrphanedBadge();
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'updateOrphanedCount',
+        count: 2
+      });
+    });
+    
+    it('should handle errors gracefully', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('Network error'));
+      const manager = new NoteManager(localThis);
+      
+      // Should not throw
+      await expect(manager.updateOrphanedBadge()).resolves.toBeUndefined();
+    });
+  });
+
+  describe('getOrphanedNotes', () => {
+    it('should return array of orphaned note data with isOrphaned flag', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData1 = { id: 'orphan-1', content: 'Content 1' };
+      const noteData2 = { id: 'orphan-2', content: 'Content 2' };
+      manager.orphanedNotes.set('orphan-1', { noteData: noteData1, addedAt: Date.now() });
+      manager.orphanedNotes.set('orphan-2', { noteData: noteData2, addedAt: Date.now() });
+      
+      const result = manager.getOrphanedNotes();
+      
+      expect(result).toHaveLength(2);
+      expect(result[0].isOrphaned).toBe(true);
+      expect(result[1].isOrphaned).toBe(true);
+    });
+    
+    it('should return empty array when no orphaned notes', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const result = manager.getOrphanedNotes();
+      
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('checkPendingNotes', () => {
+    it('should do nothing when no pending notes', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Should not throw
+      manager.checkPendingNotes();
+      expect(manager.pendingNotes.size).toBe(0);
+    });
+    
+    it('should resolve pending notes when anchor element appears', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'pending-resolve-1',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      
+      // Add as pending
+      manager.pendingNotes.set(noteData.id, { noteData, addedAt: Date.now() });
+      manager.orphanedNotes.set(noteData.id, { noteData, addedAt: Date.now() });
+      
+      // Check pending notes - anchor element exists
+      manager.checkPendingNotes();
+      
+      // Should have been removed from pending and orphaned
+      expect(manager.pendingNotes.has(noteData.id)).toBe(false);
+      expect(manager.orphanedNotes.has(noteData.id)).toBe(false);
+      
+      // Should have created the note
+      expect(manager.notes.has(noteData.id)).toBe(true);
+      
+      manager.notes.get(noteData.id).destroy();
+    });
+    
+    it('should use fuzzy matching when exact selector fails', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'pending-fuzzy-1',
+        selector: '.non-existent-selector',
+        anchorText: 'Anchor Content',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      
+      // Set up fuzzy match to return the anchor element
+      const anchor = document.getElementById('anchor-element');
+      localThis.selectorEngine.findBestMatch.mockReturnValue(anchor);
+      
+      manager.pendingNotes.set(noteData.id, { noteData, addedAt: Date.now() });
+      manager.orphanedNotes.set(noteData.id, { noteData, addedAt: Date.now() });
+      
+      manager.checkPendingNotes();
+      
+      expect(localThis.selectorEngine.findBestMatch).toHaveBeenCalled();
+    });
+  });
+
+  describe('clearPendingNotes', () => {
+    it('should clear both pending and orphaned notes', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      manager.pendingNotes.set('p1', { noteData: {}, addedAt: Date.now() });
+      manager.orphanedNotes.set('o1', { noteData: {}, addedAt: Date.now() });
+      
+      manager.clearPendingNotes();
+      
+      expect(manager.pendingNotes.size).toBe(0);
+      expect(manager.orphanedNotes.size).toBe(0);
+    });
+    
+    it('should update badge after clearing', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      manager.orphanedNotes.set('o1', { noteData: {}, addedAt: Date.now() });
+      
+      manager.clearPendingNotes();
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'updateOrphanedCount',
+        count: 0
+      });
+    });
+  });
+
+  describe('loadNotes', () => {
+    it('should fetch notes and create them', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({
+        success: true,
+        notes: [
+          { id: 'loaded-1', selector: '#anchor-element', content: 'Note 1', theme: 'yellow', position: { anchor: 'top-right' } }
+        ]
+      });
+      const manager = new NoteManager(localThis);
+      const subscribeToNotes = jest.fn();
+      
+      await manager.loadNotes(subscribeToNotes);
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'getNotes',
+        url: 'https://example.com/page'
+      });
+      expect(manager.notes.has('loaded-1')).toBe(true);
+      
+      manager.notes.get('loaded-1').destroy();
+    });
+    
+    it('should subscribe to notes when user is logged in', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({ success: true, notes: [] });
+      const manager = new NoteManager(localThis);
+      const subscribeToNotes = jest.fn();
+      
+      await manager.loadNotes(subscribeToNotes);
+      
+      expect(subscribeToNotes).toHaveBeenCalled();
+    });
+    
+    it('should not subscribe when user is not logged in', async () => {
+      const localThis = createMockDependencies();
+      localThis.getCurrentUser.mockReturnValue(null);
+      localThis.sendMessage.mockResolvedValue({ success: true, notes: [] });
+      const manager = new NoteManager(localThis);
+      const subscribeToNotes = jest.fn();
+      
+      await manager.loadNotes(subscribeToNotes);
+      
+      expect(subscribeToNotes).not.toHaveBeenCalled();
+    });
+    
+    it('should handle errors gracefully', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('Network error'));
+      const manager = new NoteManager(localThis);
+      const subscribeToNotes = jest.fn();
+      
+      // Should not throw
+      await expect(manager.loadNotes(subscribeToNotes)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('handleNoteSave', () => {
+    it('should send updateNote message', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      await manager.handleNoteSave('note-1', 'Updated content');
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'updateNote',
+        note: { id: 'note-1', content: 'Updated content' }
+      });
+    });
+    
+    it('should handle errors gracefully', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('Save failed'));
+      const manager = new NoteManager(localThis);
+      
+      await expect(manager.handleNoteSave('note-1', 'content')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('handleThemeChange', () => {
+    it('should send updateNote message with theme', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      await manager.handleThemeChange('note-1', 'blue');
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'updateNote',
+        note: { id: 'note-1', theme: 'blue' }
+      });
+    });
+  });
+
+  describe('handlePositionChange', () => {
+    it('should send updateNote message with position', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      await manager.handlePositionChange('note-1', { anchor: 'bottom-left' });
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'updateNote',
+        note: { id: 'note-1', position: { anchor: 'bottom-left' } }
+      });
+    });
+  });
+
+  describe('handleNoteDelete', () => {
+    it('should delete note and clean up', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({ success: true });
+      const manager = new NoteManager(localThis);
+      
+      // Create a note first
+      const noteData = {
+        id: 'delete-me',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      manager.createNoteFromData(noteData);
+      expect(manager.notes.has('delete-me')).toBe(true);
+      
+      await manager.handleNoteDelete('delete-me');
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'deleteNote',
+        noteId: 'delete-me'
+      });
+      expect(manager.notes.has('delete-me')).toBe(false);
+    });
+    
+    it('should not remove note if delete fails', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({ success: false });
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'keep-me',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      manager.createNoteFromData(noteData);
+      
+      await manager.handleNoteDelete('keep-me');
+      
+      expect(manager.notes.has('keep-me')).toBe(true);
+      manager.notes.get('keep-me').destroy();
+    });
+  });
+
+  describe('comment handlers', () => {
+    describe('handleAddComment', () => {
+      it('should send addComment message and return comment', async () => {
+        const localThis = createMockDependencies();
+        const createdComment = { id: 'comment-1', content: 'Test comment' };
+        localThis.sendMessage.mockResolvedValue({ success: true, comment: createdComment });
+        const manager = new NoteManager(localThis);
+        
+        const result = await manager.handleAddComment('note-1', { content: 'Test comment' });
+        
+        expect(localThis.sendMessage).toHaveBeenCalledWith({
+          action: 'addComment',
+          noteId: 'note-1',
+          comment: { content: 'Test comment' }
+        });
+        expect(result).toBe(createdComment);
+      });
+      
+      it('should throw error on failure', async () => {
+        const localThis = createMockDependencies();
+        localThis.sendMessage.mockResolvedValue({ success: false, error: 'Failed' });
+        const manager = new NoteManager(localThis);
+        
+        await expect(manager.handleAddComment('note-1', { content: 'Test' }))
+          .rejects.toThrow();
+      });
+    });
+
+    describe('handleEditComment', () => {
+      it('should send editComment message', async () => {
+        const localThis = createMockDependencies();
+        localThis.sendMessage.mockResolvedValue({ success: true });
+        const manager = new NoteManager(localThis);
+        
+        const result = await manager.handleEditComment('note-1', 'comment-1', { content: 'Updated' });
+        
+        expect(localThis.sendMessage).toHaveBeenCalledWith({
+          action: 'editComment',
+          noteId: 'note-1',
+          commentId: 'comment-1',
+          updates: { content: 'Updated' }
+        });
+        expect(result).toBe(true);
+      });
+    });
+
+    describe('handleDeleteComment', () => {
+      it('should send deleteComment message', async () => {
+        const localThis = createMockDependencies();
+        localThis.sendMessage.mockResolvedValue({ success: true });
+        const manager = new NoteManager(localThis);
+        
+        const result = await manager.handleDeleteComment('note-1', 'comment-1');
+        
+        expect(localThis.sendMessage).toHaveBeenCalledWith({
+          action: 'deleteComment',
+          noteId: 'note-1',
+          commentId: 'comment-1'
+        });
+        expect(result).toBe(true);
+      });
+    });
+
+    describe('handleLoadComments', () => {
+      it('should send getComments message and return comments', async () => {
+        const localThis = createMockDependencies();
+        const comments = [{ id: 'c1' }, { id: 'c2' }];
+        localThis.sendMessage.mockResolvedValue({ success: true, comments });
+        const manager = new NoteManager(localThis);
+        
+        const result = await manager.handleLoadComments('note-1');
+        
+        expect(localThis.sendMessage).toHaveBeenCalledWith({
+          action: 'getComments',
+          noteId: 'note-1'
+        });
+        expect(result).toEqual(comments);
+      });
+      
+      it('should return empty array when comments is undefined', async () => {
+        const localThis = createMockDependencies();
+        localThis.sendMessage.mockResolvedValue({ success: true });
+        const manager = new NoteManager(localThis);
+        
+        const result = await manager.handleLoadComments('note-1');
+        
+        expect(result).toEqual([]);
+      });
+    });
+  });
+
+  describe('handleReanchor', () => {
+    it('should update note with new selector', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      await manager.handleReanchor('note-1', anchor);
+      
+      expect(localThis.selectorEngine.generate).toHaveBeenCalledWith(anchor);
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'updateNote',
+        note: expect.objectContaining({
+          id: 'note-1',
+          selector: '#anchor-element'
+        })
+      });
+    });
+    
+    it('should not update if selector generation fails', async () => {
+      const localThis = createMockDependencies();
+      localThis.selectorEngine.generate.mockReturnValue(null);
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      await manager.handleReanchor('note-1', anchor);
+      
+      expect(localThis.sendMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleElementSelect', () => {
+    it('should handle reanchor when pendingReanchor is provided', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      const pendingReanchor = {
+        id: 'reanchor-note',
+        selector: '.old-selector',
+        content: 'Test',
+        theme: 'yellow'
+      };
+      
+      await manager.handleElementSelect(anchor, pendingReanchor);
+      
+      // Should have called handleReanchor (which sends updateNote)
+      expect(localThis.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'updateNote' })
+      );
+    });
+    
+    it('should create new note when no pendingReanchor', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({
+        success: true,
+        note: {
+          id: 'new-note-from-select',
+          selector: '#anchor-element',
+          content: '',
+          theme: 'yellow',
+          position: { anchor: 'top-right' }
+        }
+      });
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      await manager.handleElementSelect(anchor);
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'saveNote' })
+      );
+      expect(manager.notes.has('new-note-from-select')).toBe(true);
+      
+      manager.notes.get('new-note-from-select').destroy();
+    });
+  });
+
+  describe('createNoteAtElement', () => {
+    it('should not create note if element is missing', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      await manager.createNoteAtElement(null, '#selector');
+      
+      expect(localThis.sendMessage).not.toHaveBeenCalled();
+    });
+    
+    it('should not create note if selector is missing', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      await manager.createNoteAtElement(anchor, null);
+      
+      expect(localThis.sendMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleRealtimeCommentsUpdate', () => {
+    it('should update comments on note with comment section', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Create a note
+      const noteData = {
+        id: 'note-with-comments',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      manager.createNoteFromData(noteData);
+      
+      const note = manager.notes.get('note-with-comments');
+      // Mock the commentSection with all required methods
+      note.commentSection = { updateComments: jest.fn(), destroy: jest.fn() };
+      
+      const comments = [{ id: 'c1' }, { id: 'c2' }];
+      manager.handleRealtimeCommentsUpdate('note-with-comments', comments);
+      
+      expect(note.commentSection.updateComments).toHaveBeenCalledWith(comments);
+      
+      note.destroy();
+    });
+    
+    it('should do nothing if note does not exist', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Should not throw
+      manager.handleRealtimeCommentsUpdate('non-existent', []);
+    });
+  });
+
+  describe('updateUser', () => {
+    it('should update user on all notes', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Create notes
+      manager.createNoteFromData({
+        id: 'user-note-1',
+        selector: '#anchor-element',
+        content: 'Test 1',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      });
+      
+      const note = manager.notes.get('user-note-1');
+      const setUserSpy = jest.spyOn(note, 'setUser');
+      
+      const newUser = { uid: 'new-user', email: 'new@example.com' };
+      manager.updateUser(newUser);
+      
+      expect(setUserSpy).toHaveBeenCalledWith(newUser);
+      
+      note.destroy();
+    });
+  });
+
+  describe('getAllNotesWithOrphanStatus', () => {
+    it('should return active notes with isOrphaned false', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      manager.createNoteFromData({
+        id: 'active-note-1',
+        selector: '#anchor-element',
+        content: 'Active',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      });
+      
+      const result = manager.getAllNotesWithOrphanStatus();
+      
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('active-note-1');
+      expect(result[0].isOrphaned).toBe(false);
+      
+      manager.notes.get('active-note-1').destroy();
+    });
+    
+    it('should include orphaned notes with isOrphaned true', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      manager.orphanedNotes.set('orphan-1', {
+        noteData: { id: 'orphan-1', content: 'Orphaned' },
+        addedAt: Date.now()
+      });
+      
+      const result = manager.getAllNotesWithOrphanStatus();
+      
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('orphan-1');
+      expect(result[0].isOrphaned).toBe(true);
+    });
+    
+    it('should not duplicate notes that are in both maps', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Create active note
+      manager.createNoteFromData({
+        id: 'both-note',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      });
+      
+      // Also add to orphaned (shouldn't happen normally but test the guard)
+      manager.orphanedNotes.set('both-note', {
+        noteData: { id: 'both-note', content: 'Test' },
+        addedAt: Date.now()
+      });
+      
+      const result = manager.getAllNotesWithOrphanStatus();
+      
+      // Should only have one entry
+      expect(result).toHaveLength(1);
+      
+      manager.notes.get('both-note').destroy();
+    });
+  });
+
+  describe('showOrphanedNote', () => {
+    it('should log warning if orphaned note not found', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Should not throw
+      manager.showOrphanedNote('non-existent');
+    });
+    
+    it('should create note UI for orphaned note', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'orphan-show-1',
+        selector: '.missing',
+        content: 'Orphaned content',
+        theme: 'blue',
+        position: { anchor: 'top-right' }
+      };
+      manager.orphanedNotes.set('orphan-show-1', { noteData, addedAt: Date.now() });
+      
+      manager.showOrphanedNote('orphan-show-1');
+      
+      expect(manager.notes.has('orphan-show-1')).toBe(true);
+      
+      manager.notes.get('orphan-show-1').destroy();
+    });
+  });
+
+  describe('positionNoteCentered', () => {
+    it('should position note in center of viewport', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Create a note
+      manager.createNoteFromData({
+        id: 'center-note',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      });
+      
+      const note = manager.notes.get('center-note');
+      
+      manager.positionNoteCentered(note);
+      
+      // Should have set left and top styles
+      expect(note.element.style.left).toBeDefined();
+      expect(note.element.style.top).toBeDefined();
+      expect(note.customPosition).toBeDefined();
+      
+      note.destroy();
+    });
+    
+    it('should do nothing if note has no element', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Should not throw
+      manager.positionNoteCentered({ element: null });
+    });
+  });
+
+  describe('handleOrphanedNoteDelete', () => {
+    it('should delete orphaned note and clean up', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({ success: true });
+      const manager = new NoteManager(localThis);
+      
+      // Add orphaned note
+      const noteData = { id: 'orphan-delete', content: 'Test' };
+      manager.orphanedNotes.set('orphan-delete', { noteData, addedAt: Date.now() });
+      manager.pendingNotes.set('orphan-delete', { noteData, addedAt: Date.now() });
+      
+      await manager.handleOrphanedNoteDelete('orphan-delete');
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'deleteNote',
+        noteId: 'orphan-delete'
+      });
+      expect(manager.orphanedNotes.has('orphan-delete')).toBe(false);
+      expect(manager.pendingNotes.has('orphan-delete')).toBe(false);
+    });
+    
+    it('should not clean up when delete fails', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({ success: false });
+      const manager = new NoteManager(localThis);
+      
+      const noteData = { id: 'orphan-fail', content: 'Test' };
+      manager.orphanedNotes.set('orphan-fail', { noteData, addedAt: Date.now() });
+      manager.pendingNotes.set('orphan-fail', { noteData, addedAt: Date.now() });
+      
+      await manager.handleOrphanedNoteDelete('orphan-fail');
+      
+      // Should still be present since delete failed
+      expect(manager.orphanedNotes.has('orphan-fail')).toBe(true);
+      expect(manager.pendingNotes.has('orphan-fail')).toBe(true);
+    });
+    
+    it('should handle context invalidated error silently', async () => {
+      const localThis = createMockDependencies();
+      const contextError = new Error('Extension context invalidated');
+      localThis.sendMessage.mockRejectedValue(contextError);
+      localThis.isContextInvalidatedError.mockReturnValue(true);
+      const manager = new NoteManager(localThis);
+      
+      await manager.handleOrphanedNoteDelete('orphan-context');
+      
+      expect(localThis.isContextInvalidatedError).toHaveBeenCalledWith(contextError);
+    });
+    
+    it('should destroy note UI when present in notes map', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({ success: true });
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      // Create a note UI first
+      const existingNote = new StickyNote({
+        id: 'orphan-ui-test',
+        anchor: anchor,
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      });
+      manager.notes.set('orphan-ui-test', existingNote);
+      manager.orphanedNotes.set('orphan-ui-test', { noteData: { id: 'orphan-ui-test' }, addedAt: Date.now() });
+      
+      const destroySpy = jest.spyOn(existingNote, 'destroy');
+      
+      await manager.handleOrphanedNoteDelete('orphan-ui-test');
+      
+      expect(destroySpy).toHaveBeenCalled();
+      expect(manager.notes.has('orphan-ui-test')).toBe(false);
+    });
+  });
+
+  describe('createNoteFromData - edge cases', () => {
+    it('should expand minimized note when isNewNote and note already exists', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Create note initially minimized
+      const noteData = {
+        id: 'expand-test',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      manager.createNoteFromData(noteData); // Created minimized by default
+      
+      const note = manager.notes.get('expand-test');
+      expect(note.isMinimized).toBe(true);
+      
+      // Try to create again with isNewNote: true - should expand existing note
+      manager.createNoteFromData(noteData, { isNewNote: true });
+      
+      // Note should now be maximized
+      expect(note.isMinimized).toBe(false);
+      
+      note.destroy();
+    });
+    
+    it('should skip already pending notes', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'pending-skip',
+        selector: '.missing-selector',
+        content: 'Test'
+      };
+      
+      // Add to pending first
+      manager.pendingNotes.set('pending-skip', { noteData, addedAt: Date.now() });
+      
+      // Try to create - should skip
+      manager.createNoteFromData(noteData);
+      
+      // Should not be in notes (since it's pending)
+      expect(manager.notes.has('pending-skip')).toBe(false);
+    });
+    
+    it('should handle invalid selector gracefully', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'invalid-selector',
+        selector: '[[[invalid',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      
+      // Should not throw, should add to pending
+      manager.createNoteFromData(noteData);
+      
+      expect(manager.orphanedNotes.has('invalid-selector')).toBe(true);
+    });
+    
+    it('should disambiguate using fuzzy match when anchorText does not match exactly', () => {
+      document.body.innerHTML = `
+        <div class="sn-multi-target">First</div>
+        <div class="sn-multi-target">Second</div>
+      `;
+
+      const localThis = createMockDependencies();
+      const fuzzyMatch = document.querySelectorAll('.sn-multi-target')[1];
+      localThis.selectorEngine.findBestMatch.mockReturnValue(fuzzyMatch);
+      const manager = new NoteManager(localThis);
+
+      const noteData = {
+        id: 'note-fuzzy-disambig',
+        selector: '.sn-multi-target',
+        anchorText: 'SomeTextThatDoesNotMatchExactly',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+
+      manager.createNoteFromData(noteData);
+
+      expect(localThis.selectorEngine.findBestMatch).toHaveBeenCalled();
+      
+      const note = manager.notes.get('note-fuzzy-disambig');
+      if (note) {
+        note.destroy();
+      }
+    });
+  });
+
+  describe('handleRealtimeNotesUpdate - edge cases', () => {
+    it('should handle null updatedNotes gracefully', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Should not throw
+      manager.handleRealtimeNotesUpdate(null);
+    });
+    
+    it('should remove notes that are no longer in the update', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      // Create existing note
+      const existingNote = new StickyNote({
+        id: 'to-remove',
+        anchor: anchor,
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      });
+      manager.notes.set('to-remove', existingNote);
+      localThis.container.appendChild(existingNote.element);
+      
+      // Call with empty array - should remove
+      manager.handleRealtimeNotesUpdate([]);
+      
+      expect(manager.notes.has('to-remove')).toBe(false);
+    });
+    
+    it('should update note theme when changed', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      // Create existing note
+      const existingNote = new StickyNote({
+        id: 'theme-update',
+        anchor: anchor,
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      });
+      manager.notes.set('theme-update', existingNote);
+      
+      // Update with new theme
+      manager.handleRealtimeNotesUpdate([{
+        id: 'theme-update',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'blue',
+        position: { anchor: 'top-right' }
+      }]);
+      
+      expect(existingNote.theme).toBe('blue');
+      
+      existingNote.destroy();
+    });
+  });
+  
+  describe('error handling with context invalidated', () => {
+    it('should not log handleThemeChange error for context invalidated', async () => {
+      const localThis = createMockDependencies();
+      const contextError = new Error('Extension context invalidated');
+      localThis.sendMessage.mockRejectedValue(contextError);
+      localThis.isContextInvalidatedError.mockReturnValue(true);
+      const manager = new NoteManager(localThis);
+      
+      await manager.handleThemeChange('note-1', 'blue');
+      
+      expect(localThis.isContextInvalidatedError).toHaveBeenCalledWith(contextError);
+    });
+    
+    it('should not log handlePositionChange error for context invalidated', async () => {
+      const localThis = createMockDependencies();
+      const contextError = new Error('Extension context invalidated');
+      localThis.sendMessage.mockRejectedValue(contextError);
+      localThis.isContextInvalidatedError.mockReturnValue(true);
+      const manager = new NoteManager(localThis);
+      
+      await manager.handlePositionChange('note-1', { anchor: 'top-left' });
+      
+      expect(localThis.isContextInvalidatedError).toHaveBeenCalledWith(contextError);
+    });
+    
+    it('should not log handleNoteDelete error for context invalidated', async () => {
+      const localThis = createMockDependencies();
+      const contextError = new Error('Extension context invalidated');
+      localThis.sendMessage.mockRejectedValue(contextError);
+      localThis.isContextInvalidatedError.mockReturnValue(true);
+      const manager = new NoteManager(localThis);
+      
+      await manager.handleNoteDelete('note-1');
+      
+      expect(localThis.isContextInvalidatedError).toHaveBeenCalledWith(contextError);
+    });
+    
+    it('should re-throw handleAddComment error', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('Network error'));
+      localThis.isContextInvalidatedError.mockReturnValue(false);
+      const manager = new NoteManager(localThis);
+      
+      await expect(manager.handleAddComment('note-1', { content: 'test' }))
+        .rejects.toThrow('Network error');
+    });
+    
+    it('should re-throw handleEditComment error', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('Edit failed'));
+      localThis.isContextInvalidatedError.mockReturnValue(false);
+      const manager = new NoteManager(localThis);
+      
+      await expect(manager.handleEditComment('note-1', 'comment-1', { content: 'updated' }))
+        .rejects.toThrow('Edit failed');
+    });
+    
+    it('should re-throw handleDeleteComment error', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('Delete failed'));
+      localThis.isContextInvalidatedError.mockReturnValue(false);
+      const manager = new NoteManager(localThis);
+      
+      await expect(manager.handleDeleteComment('note-1', 'comment-1'))
+        .rejects.toThrow('Delete failed');
+    });
+    
+    it('should re-throw handleLoadComments error', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('Load failed'));
+      localThis.isContextInvalidatedError.mockReturnValue(false);
+      const manager = new NoteManager(localThis);
+      
+      await expect(manager.handleLoadComments('note-1'))
+        .rejects.toThrow('Load failed');
+    });
+  });
+
+  describe('highlightNote - anchor not found', () => {
+    it('should try to find anchor element when note.anchor is null', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'anchor-null-test',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      manager.createNoteFromData(noteData);
+      
+      const note = manager.notes.get('anchor-null-test');
+      // Set anchor to null
+      note.anchor = null;
+      
+      manager.highlightNote('anchor-null-test');
+      
+      // Should have re-found the anchor
+      expect(note.anchor).not.toBeNull();
+      
+      note.destroy();
+    });
+    
+    it('should return early when anchor cannot be found', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'no-anchor-test',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      manager.createNoteFromData(noteData);
+      
+      const note = manager.notes.get('no-anchor-test');
+      note.anchor = null;
+      note.selector = '.non-existent-selector';
+      
+      const showSpy = jest.spyOn(note, 'show');
+      
+      manager.highlightNote('no-anchor-test');
+      
+      // Should not call show since anchor not found
+      expect(showSpy).not.toHaveBeenCalled();
+      
+      note.destroy();
+    });
+  });
+
+  describe('handleElementSelect - selector verification', () => {
+    it('should warn when selector matches a different element', async () => {
+      document.body.innerHTML = `
+        <div id="first" class="duplicate">First</div>
+        <div id="second" class="duplicate">Second</div>
+      `;
+      
+      const localThis = createMockDependencies();
+      // Return selector that matches first element, even though we're selecting second
+      localThis.selectorEngine.generate.mockReturnValue('.duplicate');
+      localThis.sendMessage.mockResolvedValue({
+        success: true,
+        note: { id: 'warn-note', selector: '.duplicate' }
+      });
+      const manager = new NoteManager(localThis);
+      
+      const secondElement = document.getElementById('second');
+      
+      await manager.handleElementSelect(secondElement);
+      
+      // Note should still be created despite the warning
+      expect(localThis.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'saveNote' })
+      );
+    });
+    
+    it('should return early when selector generation fails', async () => {
+      const localThis = createMockDependencies();
+      localThis.selectorEngine.generate.mockReturnValue(null);
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      await manager.handleElementSelect(anchor);
+      
+      // Should not call sendMessage
+      expect(localThis.sendMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createNoteAtElement - error handling', () => {
+    it('should handle save failure', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({ success: false, error: 'Save error' });
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      await manager.createNoteAtElement(anchor, '#anchor-element');
+      
+      // Should not create note on failure
+      expect(manager.notes.size).toBe(0);
+    });
+    
+    it('should handle context invalidated error', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('Context invalidated'));
+      localThis.isContextInvalidatedError.mockReturnValue(true);
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      await manager.createNoteAtElement(anchor, '#anchor-element');
+      
+      expect(localThis.isContextInvalidatedError).toHaveBeenCalled();
+    });
+  });
+
+  describe('handleReanchor - error handling', () => {
+    it('should handle sendMessage failure gracefully', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('Network error'));
+      localThis.isContextInvalidatedError.mockReturnValue(false);
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      // Should not throw
+      await expect(manager.handleReanchor('note-1', anchor)).resolves.toBeUndefined();
+    });
+  });
 });

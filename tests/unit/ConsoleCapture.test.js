@@ -389,6 +389,46 @@ describe('ConsoleCapture', () => {
       
       expect(errorCount).toBe(2);
     });
+
+    it('should format console.warn as [Warn]', () => {
+      const handler = localThis.eventListeners['__stickyNotesError'][0];
+      handler({
+        detail: { type: 'console.warn', message: 'Warning message', timestamp: Date.now() }
+      });
+      
+      const formatted = localThis.consoleCapture.formatForDisplay();
+      expect(formatted).toContain('[Warn]');
+    });
+
+    it('should format exception as [Exception]', () => {
+      const handler = localThis.eventListeners['__stickyNotesError'][0];
+      handler({
+        detail: { type: 'exception', message: 'Uncaught error', timestamp: Date.now() }
+      });
+      
+      const formatted = localThis.consoleCapture.formatForDisplay();
+      expect(formatted).toContain('[Exception]');
+    });
+
+    it('should format unhandledrejection as [Promise]', () => {
+      const handler = localThis.eventListeners['__stickyNotesError'][0];
+      handler({
+        detail: { type: 'unhandledrejection', message: 'Promise rejection', timestamp: Date.now() }
+      });
+      
+      const formatted = localThis.consoleCapture.formatForDisplay();
+      expect(formatted).toContain('[Promise]');
+    });
+
+    it('should use raw type for unknown types', () => {
+      const handler = localThis.eventListeners['__stickyNotesError'][0];
+      handler({
+        detail: { type: 'custom-type', message: 'Custom message', timestamp: Date.now() }
+      });
+      
+      const formatted = localThis.consoleCapture.formatForDisplay();
+      expect(formatted).toContain('[custom-type]');
+    });
   });
   
   describe('getForBugReport', () => {
