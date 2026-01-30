@@ -102,6 +102,15 @@
 | 2 | Press `Alt+Shift+D` | Dashboard opens in new tab |
 | 3 | Verify dashboard URL | Shows `ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html` |
 
+### TEST-2.7: Keyboard Shortcut - Toggle All Notes
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Navigate to any webpage with notes | Page loads with visible notes |
+| 2 | Press `Ctrl+Shift+H` (or `MacCtrl+Shift+H` on Mac) | All notes become hidden |
+| 3 | Press `Ctrl+Shift+H` again | All notes become visible again |
+| 4 | Verify shortcut works on different pages | Shortcut toggles visibility consistently |
+
 ### TEST-2.6: Welcome Page on First Install
 
 | Step | Action | Expected Result |
@@ -1225,7 +1234,8 @@ The extension has partial accessibility support:
 | 1 | Click into note editor | Editor focused |
 | 2 | Use Ctrl+B / Cmd+B | Bold formatting applied |
 | 3 | Use Ctrl+I / Cmd+I | Italic formatting applied |
-| 4 | Press ESC when note focused | Focus released |
+| 4 | Use Ctrl+H / Cmd+H when note focused | Note hides, toast shows "Note hidden" |
+| 5 | Press ESC when note focused | Focus released |
 
 ### TEST-18.3: Dialog Keyboard Navigation
 

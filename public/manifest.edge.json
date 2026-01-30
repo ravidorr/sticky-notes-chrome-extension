@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
   "permissions": [
@@ -68,6 +68,13 @@
         "mac": "Alt+Shift+D"
       },
       "description": "__MSG_commandOpenDashboard__"
+    },
+    "toggle-all-notes": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+H",
+        "mac": "MacCtrl+Shift+H"
+      },
+      "description": "__MSG_commandToggleAllNotes__"
     }
   }
 }

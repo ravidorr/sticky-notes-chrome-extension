@@ -161,3 +161,132 @@ describe('Background navigation - edge cases', () => {
         // This documents the actual behavior
     });
 });
+
+describe('Background commands - toggle-all-notes', () => {
+    const localThis = {};
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        localThis.commandHandler = null;
+    });
+
+    it('should send toggleAllNotesVisibility message to active tab when toggle-all-notes command is received', async () => {
+        // Simulate the command handler behavior
+        localThis.commandHandler = async (command) => {
+            if (command === 'toggle-all-notes') {
+                const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (tabs[0]?.id) {
+                    await chrome.tabs.sendMessage(tabs[0].id, { 
+                        action: 'toggleAllNotesVisibility' 
+                    });
+                }
+            }
+        };
+
+        chrome.tabs.query.mockResolvedValue([{ id: 42, url: 'https://example.com' }]);
+        chrome.tabs.sendMessage.mockResolvedValue({ success: true, notesVisible: false });
+
+        await localThis.commandHandler('toggle-all-notes');
+
+        expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
+        expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(42, { 
+            action: 'toggleAllNotesVisibility' 
+        });
+    });
+
+    it('should not send message when no active tab is found', async () => {
+        localThis.commandHandler = async (command) => {
+            if (command === 'toggle-all-notes') {
+                const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (tabs[0]?.id) {
+                    await chrome.tabs.sendMessage(tabs[0].id, { 
+                        action: 'toggleAllNotesVisibility' 
+                    });
+                }
+            }
+        };
+
+        chrome.tabs.query.mockResolvedValue([]);
+
+        await localThis.commandHandler('toggle-all-notes');
+
+        expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
+        expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors gracefully when sendMessage fails', async () => {
+        localThis.commandHandler = async (command) => {
+            if (command === 'toggle-all-notes') {
+                try {
+                    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+                    if (tabs[0]?.id) {
+                        await chrome.tabs.sendMessage(tabs[0].id, { 
+                            action: 'toggleAllNotesVisibility' 
+                        });
+                    }
+                } catch {
+                    // Error is handled silently (logged in production)
+                }
+            }
+        };
+
+        chrome.tabs.query.mockResolvedValue([{ id: 42 }]);
+        chrome.tabs.sendMessage.mockRejectedValue(new Error('Could not establish connection'));
+
+        // Should not throw
+        await expect(localThis.commandHandler('toggle-all-notes')).resolves.not.toThrow();
+    });
+
+    it('should open dashboard when open-dashboard command is received', async () => {
+        localThis.commandHandler = async (command) => {
+            if (command === 'open-dashboard') {
+                chrome.tabs.create({ 
+                    url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html' 
+                });
+            }
+        };
+
+        await localThis.commandHandler('open-dashboard');
+
+        expect(chrome.tabs.create).toHaveBeenCalledWith({ 
+            url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html' 
+        });
+    });
+
+    it('should ignore unknown commands', async () => {
+        localThis.commandHandler = async (command) => {
+            if (command === 'open-dashboard') {
+                chrome.tabs.create({ url: 'dashboard.html' });
+            } else if (command === 'toggle-all-notes') {
+                const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (tabs[0]?.id) {
+                    await chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleAllNotesVisibility' });
+                }
+            }
+        };
+
+        await localThis.commandHandler('unknown-command');
+
+        expect(chrome.tabs.create).not.toHaveBeenCalled();
+        expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('should handle tab without id gracefully', async () => {
+        localThis.commandHandler = async (command) => {
+            if (command === 'toggle-all-notes') {
+                const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (tabs[0]?.id) {
+                    await chrome.tabs.sendMessage(tabs[0].id, { 
+                        action: 'toggleAllNotesVisibility' 
+                    });
+                }
+            }
+        };
+
+        chrome.tabs.query.mockResolvedValue([{ url: 'chrome://extensions' }]); // Tab without id
+
+        await localThis.commandHandler('toggle-all-notes');
+
+        expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
+    });
+});

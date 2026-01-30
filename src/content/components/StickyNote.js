@@ -1140,6 +1140,13 @@ export class StickyNote {
       this.element.blur();
       document.activeElement?.blur();
     }
+    
+    // Ctrl+H (or Cmd+H on Mac) to toggle this note's visibility
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'h' && !event.shiftKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.handleHideClick(event);
+    }
   }
   
   /**

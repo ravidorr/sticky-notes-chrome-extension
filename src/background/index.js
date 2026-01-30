@@ -171,11 +171,23 @@ export function bootstrap() {
   });
 
   // Listen for keyboard shortcuts
-  chrome.commands.onCommand.addListener((command) => {
+  chrome.commands.onCommand.addListener(async (command) => {
     if (command === 'open-dashboard') {
       chrome.tabs.create({ 
         url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html' 
       });
+    } else if (command === 'toggle-all-notes') {
+      // Send message to active tab's content script to toggle visibility
+      try {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tabs[0]?.id) {
+          await chrome.tabs.sendMessage(tabs[0].id, { 
+            action: 'toggleAllNotesVisibility' 
+          });
+        }
+      } catch (error) {
+        log.debug('Could not toggle notes visibility:', error.message);
+      }
     }
   });
 

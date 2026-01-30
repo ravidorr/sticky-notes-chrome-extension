@@ -46,7 +46,10 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 - **Settings Page**: Configure default theme, position, note width, and font size for new notes
 - **Internationalization**: Supports English, French, German, and Hebrew (auto-detects browser language)
 - **Dashboard**: View and manage all your notes in one place (access via popup, context menu, or `Alt+Shift+D`)
-- **Keyboard Shortcuts**: Press `Alt+Shift+D` to quickly open the dashboard
+- **Keyboard Shortcuts**:
+  - `Alt+Shift+D` - Open the dashboard
+  - `Ctrl+Shift+H` - Toggle all notes visibility (hide/show all notes on page)
+  - `Ctrl+H` / `Cmd+H` - Toggle focused note visibility (when a note has focus)
 
 ## Project Structure
 

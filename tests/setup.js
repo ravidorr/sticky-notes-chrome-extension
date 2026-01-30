@@ -53,7 +53,13 @@ global.chrome = {
   tabs: {
     query: jest.fn(() => Promise.resolve([{ id: 1, url: 'https://example.com' }])),
     sendMessage: jest.fn(() => Promise.resolve({ success: true })),
+    create: jest.fn(() => Promise.resolve({ id: 2 })),
     onUpdated: {
+      addListener: jest.fn()
+    }
+  },
+  commands: {
+    onCommand: {
       addListener: jest.fn()
     }
   },

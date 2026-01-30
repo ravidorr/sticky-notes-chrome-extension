@@ -908,6 +908,10 @@
     "message": "Ouvrir le tableau de bord des notes",
     "description": "Keyboard shortcut description for opening the dashboard"
   },
+  "commandToggleAllNotes": {
+    "message": "Afficher/masquer toutes les notes",
+    "description": "Keyboard shortcut description for toggling all notes visibility"
+  },
 
   "settings": {
     "message": "Parametres",

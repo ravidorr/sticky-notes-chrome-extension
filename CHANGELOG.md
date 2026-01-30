@@ -5,6 +5,16 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-01-31
+
+### Added
+
+- Keyboard shortcuts for visibility controls:
+  - `Ctrl+Shift+H` (or `MacCtrl+Shift+H` on Mac) - Toggle all notes visibility on the current page
+  - `Ctrl+H` / `Cmd+H` - Toggle focused note visibility (when a note has focus)
+- New manifest command `toggle-all-notes` registered as browser-level keyboard shortcut
+- i18n support for the new command description (`commandToggleAllNotes`) in all supported languages
+
 ## [1.12.0] - 2026-01-31
 
 ### Added

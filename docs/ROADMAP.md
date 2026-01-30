@@ -276,6 +276,9 @@ Unplanned feature ideas for future consideration:
 - [x] Add note through right-click context menu
 - [x] Page-level notes (notes without element anchor, attached to page itself)
 - [x] Per-note visibility controls (hide/show individual notes, persisted across refreshes)
+- [x] Keyboard shortcuts for visibility:
+  - Ctrl+Shift+H to toggle all notes visibility
+  - Ctrl+H / Cmd+H to toggle focused note visibility
 - [x] Dashboard discoverability improvements:
   - More prominent dashboard link in popup header (blue button style)
   - "Open Notes Dashboard" context menu item

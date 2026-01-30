@@ -1181,6 +1181,97 @@ describe('StickyNote', () => {
       note.element.dispatchEvent(event);
       // Should not throw
     });
+
+    it('should toggle visibility on Ctrl+H', () => {
+      const localThis = {};
+      localThis.handleHideClickSpy = jest.spyOn(note, 'handleHideClick');
+      
+      const event = new KeyboardEvent('keydown', { 
+        key: 'h', 
+        ctrlKey: true,
+        bubbles: true 
+      });
+      
+      // Spy on preventDefault and stopPropagation
+      localThis.preventDefaultSpy = jest.spyOn(event, 'preventDefault');
+      localThis.stopPropagationSpy = jest.spyOn(event, 'stopPropagation');
+      
+      note.handleKeyDown(event);
+      
+      expect(localThis.preventDefaultSpy).toHaveBeenCalled();
+      expect(localThis.stopPropagationSpy).toHaveBeenCalled();
+      expect(localThis.handleHideClickSpy).toHaveBeenCalledWith(event);
+      
+      localThis.handleHideClickSpy.mockRestore();
+    });
+
+    it('should toggle visibility on Cmd+H (Mac)', () => {
+      const localThis = {};
+      localThis.handleHideClickSpy = jest.spyOn(note, 'handleHideClick');
+      
+      const event = new KeyboardEvent('keydown', { 
+        key: 'h', 
+        metaKey: true, // Cmd key on Mac
+        bubbles: true 
+      });
+      
+      note.handleKeyDown(event);
+      
+      expect(localThis.handleHideClickSpy).toHaveBeenCalledWith(event);
+      
+      localThis.handleHideClickSpy.mockRestore();
+    });
+
+    it('should not toggle visibility on Ctrl+Shift+H (reserved for toggle all)', () => {
+      const localThis = {};
+      localThis.handleHideClickSpy = jest.spyOn(note, 'handleHideClick');
+      
+      const event = new KeyboardEvent('keydown', { 
+        key: 'h', 
+        ctrlKey: true,
+        shiftKey: true, // Shift key pressed - this is for toggle all notes
+        bubbles: true 
+      });
+      
+      note.handleKeyDown(event);
+      
+      expect(localThis.handleHideClickSpy).not.toHaveBeenCalled();
+      
+      localThis.handleHideClickSpy.mockRestore();
+    });
+
+    it('should not toggle visibility on H key without modifier', () => {
+      const localThis = {};
+      localThis.handleHideClickSpy = jest.spyOn(note, 'handleHideClick');
+      
+      const event = new KeyboardEvent('keydown', { 
+        key: 'h', 
+        bubbles: true 
+      });
+      
+      note.handleKeyDown(event);
+      
+      expect(localThis.handleHideClickSpy).not.toHaveBeenCalled();
+      
+      localThis.handleHideClickSpy.mockRestore();
+    });
+
+    it('should handle uppercase H key with Ctrl', () => {
+      const localThis = {};
+      localThis.handleHideClickSpy = jest.spyOn(note, 'handleHideClick');
+      
+      const event = new KeyboardEvent('keydown', { 
+        key: 'H', // Uppercase
+        ctrlKey: true,
+        bubbles: true 
+      });
+      
+      note.handleKeyDown(event);
+      
+      expect(localThis.handleHideClickSpy).toHaveBeenCalledWith(event);
+      
+      localThis.handleHideClickSpy.mockRestore();
+    });
   });
   
   describe('static methods', () => {
