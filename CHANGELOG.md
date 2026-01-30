@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New shared module `src/shared/preferences.js` for centralized preferences management
 - CSS custom properties for configurable note dimensions (`--sn-note-width`, `--sn-font-size`)
 
+### Fixed
+
+- "Notes visible by default" preference now actually controls initial visibility when visiting pages with existing notes. Previously, the setting was stored but never applied during page load.
+
 ### Improved
 
 - Comment error feedback - users now see toast notifications when comment operations fail

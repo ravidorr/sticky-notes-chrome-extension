@@ -1333,15 +1333,27 @@ The extension has partial accessibility support:
 | 3 | Click "Save Settings" | Success message shown |
 | 4 | Create a new note and type text | Text appears larger |
 
-### 20.6 Visibility Default Setting
+### 20.6 Visibility Default Setting (OFF)
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Open settings page | Toggle is ON (checked) |
+| 1 | Open settings page | Toggle is ON (checked) by default |
 | 2 | Turn toggle OFF | Toggle visual state changes |
 | 3 | Click "Save Settings" | Success message shown |
+| 4 | Navigate to a page that already has notes | Notes are NOT visible (hidden by default) |
+| 5 | Open popup and click Actions > Show all notes | Notes become visible |
+| 6 | Navigate to another page with notes | Notes are still hidden by default |
 
-### 20.7 Reset to Defaults
+### 20.7 Visibility Default Setting (ON)
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open settings page | |
+| 2 | Turn toggle ON (if not already) | Toggle shows ON state |
+| 3 | Click "Save Settings" | Success message shown |
+| 4 | Navigate to a page that has notes | Notes are visible by default |
+
+### 20.8 Reset to Defaults
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|

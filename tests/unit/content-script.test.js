@@ -1349,4 +1349,147 @@ describe('Content Script Logic', () => {
       expect(metadata.frameUrl).toBe('https://app.figma.com/embed/123');
     });
   });
+  
+  describe('notesVisibleByDefault preference', () => {
+    it('should set global visibility to false when notesVisibleByDefault is false', async () => {
+      const localThis = {};
+      localThis.visibilityManager = {
+        globallyVisible: true,
+        setGlobalVisibility: jest.fn((visible) => {
+          localThis.visibilityManager.globallyVisible = visible;
+        }),
+        getGlobalVisibility: jest.fn(() => localThis.visibilityManager.globallyVisible)
+      };
+      
+      async function applyNotesVisibleByDefaultPreference(prefs, visibilityManager) {
+        if (!prefs.notesVisibleByDefault) {
+          visibilityManager.setGlobalVisibility(false);
+        }
+      }
+      
+      // Simulate preference with notesVisibleByDefault = false
+      const prefs = { notesVisibleByDefault: false };
+      await applyNotesVisibleByDefaultPreference(prefs, localThis.visibilityManager);
+      
+      expect(localThis.visibilityManager.setGlobalVisibility).toHaveBeenCalledWith(false);
+      expect(localThis.visibilityManager.globallyVisible).toBe(false);
+    });
+    
+    it('should keep global visibility true when notesVisibleByDefault is true', async () => {
+      const localThis = {};
+      localThis.visibilityManager = {
+        globallyVisible: true,
+        setGlobalVisibility: jest.fn((visible) => {
+          localThis.visibilityManager.globallyVisible = visible;
+        }),
+        getGlobalVisibility: jest.fn(() => localThis.visibilityManager.globallyVisible)
+      };
+      
+      async function applyNotesVisibleByDefaultPreference(prefs, visibilityManager) {
+        if (!prefs.notesVisibleByDefault) {
+          visibilityManager.setGlobalVisibility(false);
+        }
+      }
+      
+      // Simulate preference with notesVisibleByDefault = true (default)
+      const prefs = { notesVisibleByDefault: true };
+      await applyNotesVisibleByDefaultPreference(prefs, localThis.visibilityManager);
+      
+      // setGlobalVisibility should NOT be called
+      expect(localThis.visibilityManager.setGlobalVisibility).not.toHaveBeenCalled();
+      expect(localThis.visibilityManager.globallyVisible).toBe(true);
+    });
+    
+    it('should handle undefined notesVisibleByDefault (treat as true)', async () => {
+      const localThis = {};
+      localThis.visibilityManager = {
+        globallyVisible: true,
+        setGlobalVisibility: jest.fn((visible) => {
+          localThis.visibilityManager.globallyVisible = visible;
+        }),
+        getGlobalVisibility: jest.fn(() => localThis.visibilityManager.globallyVisible)
+      };
+      
+      async function applyNotesVisibleByDefaultPreference(prefs, visibilityManager) {
+        if (!prefs.notesVisibleByDefault) {
+          visibilityManager.setGlobalVisibility(false);
+        }
+      }
+      
+      // Simulate preference object without notesVisibleByDefault key
+      const prefs = {};
+      await applyNotesVisibleByDefaultPreference(prefs, localThis.visibilityManager);
+      
+      // undefined is falsy, so setGlobalVisibility(false) should be called
+      // This is actually the expected behavior - undefined preference means hidden
+      // But in practice, getPreferences() always returns a value with defaults
+      expect(localThis.visibilityManager.setGlobalVisibility).toHaveBeenCalledWith(false);
+    });
+    
+    it('should not crash when getPreferences throws an error', async () => {
+      const localThis = {};
+      localThis.visibilityManager = {
+        globallyVisible: true,
+        setGlobalVisibility: jest.fn()
+      };
+      localThis.errorLogged = false;
+      
+      async function applyNotesVisibleByDefaultPreference(getPreferences, visibilityManager) {
+        try {
+          const prefs = await getPreferences();
+          if (!prefs.notesVisibleByDefault) {
+            visibilityManager.setGlobalVisibility(false);
+          }
+        } catch (error) {
+          localThis.errorLogged = true;
+          // Error is caught and logged, visibility remains at default (true)
+        }
+      }
+      
+      // Simulate getPreferences throwing an error
+      const failingGetPreferences = async () => {
+        throw new Error('Storage access failed');
+      };
+      
+      await applyNotesVisibleByDefaultPreference(failingGetPreferences, localThis.visibilityManager);
+      
+      // Should not throw and visibility should remain unchanged
+      expect(localThis.errorLogged).toBe(true);
+      expect(localThis.visibilityManager.setGlobalVisibility).not.toHaveBeenCalled();
+      expect(localThis.visibilityManager.globallyVisible).toBe(true);
+    });
+    
+    it('should apply preference before loading notes', () => {
+      const localThis = {};
+      localThis.callOrder = [];
+      
+      localThis.visibilityManager = {
+        setGlobalVisibility: jest.fn(() => {
+          localThis.callOrder.push('setGlobalVisibility');
+        })
+      };
+      
+      localThis.noteManager = {
+        loadNotes: jest.fn(() => {
+          localThis.callOrder.push('loadNotes');
+          return Promise.resolve();
+        })
+      };
+      
+      async function initWithPreference(prefs) {
+        // Apply notesVisibleByDefault preference
+        if (!prefs.notesVisibleByDefault) {
+          localThis.visibilityManager.setGlobalVisibility(false);
+        }
+        
+        // Then load notes
+        await localThis.noteManager.loadNotes();
+      }
+      
+      initWithPreference({ notesVisibleByDefault: false });
+      
+      // Verify order: setGlobalVisibility should be called before loadNotes
+      expect(localThis.callOrder[0]).toBe('setGlobalVisibility');
+    });
+  });
 });

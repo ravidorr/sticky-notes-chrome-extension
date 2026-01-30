@@ -8,6 +8,7 @@ import { VisibilityManager } from '../observers/VisibilityManager.js';
 import { getConsoleCapture } from '../observers/ConsoleCapture.js';
 import { contentLogger as log } from '../../shared/logger.js';
 import { createCompositeUrl } from '../../shared/utils.js';
+import { getPreferences } from '../../shared/preferences.js';
 import { RealtimeSync } from './RealtimeSync.js';
 import { MessageHandler } from './MessageHandler.js';
 import { NoteManager } from './NoteManager.js';
@@ -154,6 +155,18 @@ export class StickyNotesApp {
       log.debug(' Setting up mutation observer...');
       this.uiManager.setupMutationObserver(this.notes, this.visibilityManager, this.noteManager);
       log.debug(' Mutation observer ready');
+      
+      // Apply notesVisibleByDefault preference before loading notes
+      log.debug(' Applying notesVisibleByDefault preference...');
+      try {
+        const prefs = await getPreferences();
+        if (!prefs.notesVisibleByDefault) {
+          this.visibilityManager.setGlobalVisibility(false);
+          log.debug(' Notes visibility set to hidden by user preference');
+        }
+      } catch (error) {
+        log.warn(' Failed to load notesVisibleByDefault preference:', error);
+      }
       
       log.debug('Content script fully initialized and ready to receive messages');
       
