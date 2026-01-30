@@ -15,7 +15,8 @@ import {
     initDOMElements,
     switchTab,
     updateSharedNotesCount,
-    setupTabs
+    setupTabs,
+    displayVersion
 } from '../../src/popup/popup.js';
 
 // Import createPopupHandlers to use for renderNotesList tests
@@ -54,7 +55,7 @@ describe('src/popup/popup.js', () => {
             <!-- Footer -->
             <footer class="popup-footer">
                 <span id="totalNotesCount"></span>
-                <span>v1.6.0</span>
+                <span id="versionDisplay"></span>
             </footer>
             <!-- Dashboard link in header -->
             <a id="dashboardLink" 
@@ -354,6 +355,55 @@ describe('src/popup/popup.js', () => {
         it('should contain an icon (svg element)', () => {
             const icon = localThis.dashboardLink.querySelector('svg');
             expect(icon).not.toBeNull();
+        });
+    });
+
+    // ============================================
+    // Version Display Tests
+    // ============================================
+
+    describe('displayVersion', () => {
+        beforeEach(() => {
+            localThis.versionDisplay = document.getElementById('versionDisplay');
+        });
+
+        it('should have version display element in DOM', () => {
+            expect(localThis.versionDisplay).not.toBeNull();
+        });
+
+        it('should not throw when chrome.runtime is not available', () => {
+            // In test environment, chrome.runtime.getManifest is not available
+            expect(() => displayVersion()).not.toThrow();
+        });
+
+        it('should display version when chrome.runtime.getManifest is available', () => {
+            // Mock chrome.runtime.getManifest
+            const originalChrome = globalThis.chrome;
+            globalThis.chrome = {
+                ...originalChrome,
+                runtime: {
+                    ...originalChrome?.runtime,
+                    getManifest: () => ({ version: '1.2.3' })
+                }
+            };
+
+            displayVersion();
+
+            expect(localThis.versionDisplay.textContent).toBe('v1.2.3');
+
+            // Restore
+            globalThis.chrome = originalChrome;
+        });
+
+        it('should handle missing versionDisplay element gracefully', () => {
+            // Remove the element
+            localThis.versionDisplay.remove();
+            
+            // Re-init to clear the reference
+            initDOMElements();
+            
+            // Should not throw
+            expect(() => displayVersion()).not.toThrow();
         });
     });
 });

@@ -68,14 +68,25 @@ if (existsSync(distDir)) {
 }
 mkdirSync(distDir, { recursive: true });
 
+// Read version from package.json (single source of truth)
+function getVersionFromPackageJson() {
+  const packageJsonPath = resolve(rootDir, 'package.json');
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+  return packageJson.version;
+}
+
 // Copy static files
 function copyStaticFiles() {
   const publicDir = resolve(rootDir, 'public');
+  const version = getVersionFromPackageJson();
   
-  // Copy and transform manifest with correct OAuth client ID
+  // Copy and transform manifest with correct OAuth client ID and version
   const manifestFilename = getManifestFilename(targetBrowser);
   const manifestPath = resolve(publicDir, manifestFilename);
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+  
+  // Sync version from package.json to manifest
+  manifest.version = version;
   
   // Update OAuth client ID based on build environment and browser
   if (manifest.oauth2) {
@@ -87,6 +98,8 @@ function copyStaticFiles() {
     resolve(distDir, 'manifest.json'),
     JSON.stringify(manifest, null, 2)
   );
+  
+  console.log(`Version synced from package.json: ${version}`);
   
   // Copy icons
   const iconsDir = resolve(distDir, 'icons');

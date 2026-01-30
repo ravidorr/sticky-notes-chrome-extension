@@ -42,7 +42,7 @@ let authSection, userSection, loginBtn, logoutBtn, closeBtn;
 let userAvatar, userName, userEmail;
 let addNoteBtn, notesList, notesCount, actionHint;
 let actionsBtn, actionsMenu, exportPageBtn, exportAllBtn, deletePageNotesBtn, deleteAllNotesBtn;
-let totalNotesCount;
+let totalNotesCount, versionDisplay;
 // Tab elements
 let thisPageTab, sharedTab, thisPageContent, sharedContent;
 let thisPageCount, sharedCount, sharedNotesList;
@@ -84,6 +84,25 @@ function initDOMElements() {
   thisPageCount = document.getElementById('thisPageCount');
   sharedCount = document.getElementById('sharedCount');
   sharedNotesList = document.getElementById('sharedNotesList');
+  
+  // Version display
+  versionDisplay = document.getElementById('versionDisplay');
+}
+
+/**
+ * Display version from manifest
+ * Reads the version from chrome.runtime.getManifest() to ensure it's always in sync
+ */
+function displayVersion() {
+  if (!versionDisplay) return;
+  
+  try {
+    const manifest = chrome.runtime.getManifest();
+    versionDisplay.textContent = `v${manifest.version}`;
+  } catch {
+    // Fallback for testing environment where chrome API is not available
+    versionDisplay.textContent = '';
+  }
 }
 
 /**
@@ -379,6 +398,9 @@ async function init() {
   
   initDOMElements();
   
+  // Display version from manifest
+  displayVersion();
+  
   // Check auth state
   const user = await handlers.checkAuthState();
   if (user) {
@@ -516,6 +538,8 @@ export {
   loadAndRenderSharedNotes,
   handleSharedNoteClick,
   updateSharedNotesCount,
-  setupTabs
+  setupTabs,
+  // Version display
+  displayVersion
 };
 export { createPopupHandlers } from './handlers.js';
