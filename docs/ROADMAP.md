@@ -302,6 +302,12 @@ Unplanned feature ideas for future consideration:
 
 ---
 
+## Tech Debt
+
+- [] Remove CHANGELOG.md from markdownlint ignores and fix any linting issues
+
+---
+
 ## Known Bugs
 
 ### Major
