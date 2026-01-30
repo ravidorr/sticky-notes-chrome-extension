@@ -59,6 +59,9 @@ export class NoteManager {
     // Used to handle race conditions between direct creation and real-time sync.
     // Map<noteId, createdAtMs>
     this.sessionCreatedNoteIds = new Map();
+    
+    // Track global visibility state for all notes (toggle from popup)
+    this.notesVisible = true;
   }
   
   /**
@@ -1005,5 +1008,32 @@ export class NoteManager {
     // Also clear pending notes and session tracking
     this.clearPendingNotes();
     this.sessionCreatedNoteIds.clear();
+  }
+  
+  /**
+   * Toggle visibility of all notes on the page
+   * @returns {boolean} New visibility state (true = visible, false = hidden)
+   */
+  toggleAllVisibility() {
+    this.notesVisible = !this.notesVisible;
+    
+    this.notes.forEach(note => {
+      if (this.notesVisible) {
+        note.show();
+      } else {
+        note.hide();
+      }
+    });
+    
+    log.debug(`Toggled all notes visibility: ${this.notesVisible ? 'visible' : 'hidden'}`);
+    return this.notesVisible;
+  }
+  
+  /**
+   * Get current visibility state of all notes
+   * @returns {boolean} Current visibility state (true = visible, false = hidden)
+   */
+  getNotesVisibility() {
+    return this.notesVisible;
   }
 }

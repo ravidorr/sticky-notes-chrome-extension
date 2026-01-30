@@ -20,7 +20,8 @@ import {
   switchTab,
   setupTabs,
   updateSharedNotesCount,
-  createPopupHandlers
+  createPopupHandlers,
+  updateToggleVisibilityButton
 } from '../../src/popup/popup.js';
 
 describe('Popup Script Logic', () => {
@@ -49,6 +50,10 @@ describe('Popup Script Logic', () => {
       <div class="action-hint"></div>
       <button id="actionsBtn"></button>
       <div id="actionsMenu" class="hidden"></div>
+      <button id="toggleVisibilityBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"></svg>
+        <span data-i18n="hideAllNotes"></span>
+      </button>
       <button id="exportPageBtn"></button>
       <button id="exportAllBtn"></button>
       <button id="deletePageNotesBtn"></button>
@@ -877,6 +882,38 @@ describe('Popup Script Logic', () => {
       
       // Should not throw
       await localThis.handlers.handleExportCSV(notes, 'test.csv');
+    });
+  });
+
+  describe('updateToggleVisibilityButton', () => {
+    it('should update button text to "Hide all notes" when notes are visible', () => {
+      const toggleBtn = document.getElementById('toggleVisibilityBtn');
+      const span = toggleBtn.querySelector('span');
+      
+      updateToggleVisibilityButton(true);
+      
+      expect(span.getAttribute('data-i18n')).toBe('hideAllNotes');
+    });
+
+    it('should update button text to "Show all notes" when notes are hidden', () => {
+      const toggleBtn = document.getElementById('toggleVisibilityBtn');
+      const span = toggleBtn.querySelector('span');
+      
+      updateToggleVisibilityButton(false);
+      
+      expect(span.getAttribute('data-i18n')).toBe('showAllNotes');
+    });
+
+    it('should handle missing button gracefully', () => {
+      // Remove the button
+      const toggleBtn = document.getElementById('toggleVisibilityBtn');
+      toggleBtn.remove();
+      
+      // Re-init DOM elements to clear reference
+      initDOMElements();
+      
+      // Should not throw
+      expect(() => updateToggleVisibilityButton(true)).not.toThrow();
     });
   });
 });

@@ -848,5 +848,14 @@
   "onlyOwnerCanShare": {
     "message": "רק הבעלים יכול לשתף פתקית זו",
     "description": "Error when non-owner tries to share a note"
+  },
+
+  "showAllNotes": {
+    "message": "הצג את כל הפתקיות",
+    "description": "Button to show all hidden notes on the page"
+  },
+  "hideAllNotes": {
+    "message": "הסתר את כל הפתקיות",
+    "description": "Button to hide all notes on the page"
   }
 }

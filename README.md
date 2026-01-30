@@ -16,6 +16,7 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 - **Iframe Support**: Attach notes to elements inside iframes (including cross-origin iframes like Figma, embedded apps)
 - **Smart CSS Selector Generation**: Automatically generates robust selectors using semantic attributes
 - **Visibility Intelligence**: Notes only appear when their anchor element is in view (IntersectionObserver)
+- **Show/Hide All Notes**: Toggle visibility of all notes on a page from the popup menu
 - **Local Persistence**: Notes are saved to Chrome's local storage with auto-save
 - **Shadow DOM Isolation**: Notes render in isolation to avoid style conflicts
 
@@ -220,9 +221,11 @@ See `.cursor/rules/i18n.mdc` for detailed i18n guidelines.
 
 6. **Minimizing Notes**: Notes start minimized by default to reduce visual clutter. Click the up arrow to expand a note, or the down arrow to minimize it again.
 
-7. **Sharing**: Click the share button and enter a collaborator's email address.
+7. **Show/Hide All Notes**: Open the popup, click the actions menu (three dots), and select "Hide all notes" to temporarily hide all notes on the page. Click "Show all notes" to bring them back.
 
-8. **Deleting**: Click the trash icon to delete a note.
+8. **Sharing**: Click the share button and enter a collaborator's email address.
+
+9. **Deleting**: Click the trash icon to delete a note.
 
 ## Tech Stack
 

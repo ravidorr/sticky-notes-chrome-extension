@@ -848,5 +848,14 @@
   "onlyOwnerCanShare": {
     "message": "Nur der Besitzer kann diese Notiz teilen",
     "description": "Error when non-owner tries to share a note"
+  },
+
+  "showAllNotes": {
+    "message": "Alle Notizen anzeigen",
+    "description": "Button to show all hidden notes on the page"
+  },
+  "hideAllNotes": {
+    "message": "Alle Notizen ausblenden",
+    "description": "Button to hide all notes on the page"
   }
 }

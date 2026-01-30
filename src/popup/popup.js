@@ -41,7 +41,7 @@ const handlers = createPopupHandlers({
 let authSection, userSection, loginBtn, logoutBtn, closeBtn;
 let userAvatar, userName, userEmail;
 let addNoteBtn, notesList, notesCount, actionHint;
-let actionsBtn, actionsMenu, exportPageBtn, exportAllBtn, deletePageNotesBtn, deleteAllNotesBtn;
+let actionsBtn, actionsMenu, toggleVisibilityBtn, exportPageBtn, exportAllBtn, deletePageNotesBtn, deleteAllNotesBtn;
 let totalNotesCount, versionDisplay;
 // Tab elements
 let thisPageTab, sharedTab, thisPageContent, sharedContent;
@@ -70,6 +70,7 @@ function initDOMElements() {
   // New elements
   actionsBtn = document.getElementById('actionsBtn');
   actionsMenu = document.getElementById('actionsMenu');
+  toggleVisibilityBtn = document.getElementById('toggleVisibilityBtn');
   exportPageBtn = document.getElementById('exportPageBtn');
   exportAllBtn = document.getElementById('exportAllBtn');
   deletePageNotesBtn = document.getElementById('deletePageNotesBtn');
@@ -443,18 +444,74 @@ async function init() {
 }
 
 /**
+ * Update the toggle visibility button state based on current visibility
+ * @param {boolean} notesVisible - Whether notes are currently visible
+ */
+function updateToggleVisibilityButton(notesVisible) {
+  if (!toggleVisibilityBtn) return;
+  
+  const span = toggleVisibilityBtn.querySelector('span');
+  const svg = toggleVisibilityBtn.querySelector('svg');
+  
+  if (notesVisible) {
+    // Notes are visible, show "Hide all notes" with eye icon
+    span.setAttribute('data-i18n', 'hideAllNotes');
+    span.textContent = t('hideAllNotes');
+    svg.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  } else {
+    // Notes are hidden, show "Show all notes" with eye-off icon
+    span.setAttribute('data-i18n', 'showAllNotes');
+    span.textContent = t('showAllNotes');
+    svg.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  }
+}
+
+/**
  * Setup actions dropdown menu
  */
 function setupActionsDropdown() {
-  // Toggle dropdown
-  actionsBtn.addEventListener('click', (event) => {
+  // Toggle dropdown - also sync visibility state when opening
+  actionsBtn.addEventListener('click', async (event) => {
     event.stopPropagation();
+    const wasHidden = actionsMenu.classList.contains('hidden');
     actionsMenu.classList.toggle('hidden');
+    
+    // Sync visibility button state when opening dropdown
+    if (wasHidden) {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab?.id) {
+          const response = await chrome.tabs.sendMessage(tab.id, { action: 'getNotesVisibility' });
+          if (response?.success) {
+            updateToggleVisibilityButton(response.notesVisible);
+          }
+        }
+      } catch {
+        // Content script not available, default to visible
+        updateToggleVisibilityButton(true);
+      }
+    }
   });
   
   // Close dropdown when clicking outside
   document.addEventListener('click', () => {
     actionsMenu.classList.add('hidden');
+  });
+  
+  // Toggle visibility button
+  toggleVisibilityBtn.addEventListener('click', async () => {
+    actionsMenu.classList.add('hidden');
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        const response = await chrome.tabs.sendMessage(tab.id, { action: 'toggleAllNotesVisibility' });
+        if (response?.success) {
+          updateToggleVisibilityButton(response.notesVisible);
+        }
+      }
+    } catch {
+      showToast(t('couldNotEnableSelection'), 'error');
+    }
   });
   
   // Export notes from this page
@@ -540,6 +597,8 @@ export {
   updateSharedNotesCount,
   setupTabs,
   // Version display
-  displayVersion
+  displayVersion,
+  // Visibility toggle
+  updateToggleVisibilityButton
 };
 export { createPopupHandlers } from './handlers.js';

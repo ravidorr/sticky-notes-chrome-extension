@@ -5,6 +5,12 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-01-30
+
+### Added
+
+- Toggle visibility for all notes from popup menu - quickly show or hide all sticky notes on the current page via the actions dropdown
+
 ## [1.6.5] - 2026-01-30
 
 ### Added
@@ -243,6 +249,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated icons and popup styles for visual consistency
 
+[1.7.0]: https://github.com/ravidorr/sticky-notes-chrome-extension/compare/v1.6.5...v1.7.0
 [1.6.5]: https://github.com/ravidorr/sticky-notes-chrome-extension/compare/v1.6.4...v1.6.5
 [1.6.4]: https://github.com/ravidorr/sticky-notes-chrome-extension/compare/v1.6.0...v1.6.4
 [1.6.0]: https://github.com/ravidorr/sticky-notes-chrome-extension/compare/v1.5.0...v1.6.0

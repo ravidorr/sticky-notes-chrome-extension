@@ -22,6 +22,7 @@
 - [x] Note creation anchored to DOM elements
 - [x] Robust CSS selector generation with fuzzy matching
 - [x] Visibility management (show/hide based on anchor visibility)
+- [x] Toggle all notes visibility from popup menu
 - [x] Rich text editor (bold, italic, lists, links)
 - [x] Color themes
 - [x] Draggable notes with position memory

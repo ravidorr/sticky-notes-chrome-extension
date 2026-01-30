@@ -117,6 +117,19 @@ export class MessageHandler {
         return { success: true, created };
       }
       
+      case 'toggleAllNotesVisibility': {
+        log.debug(' Toggling all notes visibility');
+        const notesVisible = this.app.noteManager.toggleAllVisibility();
+        return { success: true, notesVisible };
+      }
+      
+      case 'getNotesVisibility':
+        log.debug(' Getting notes visibility state');
+        return { 
+          success: true, 
+          notesVisible: this.app.noteManager.getNotesVisibility() 
+        };
+      
       default:
         log.warn(' Unknown action:', message.action);
         return { success: false, error: 'Unknown action' };

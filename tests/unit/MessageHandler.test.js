@@ -18,7 +18,9 @@ describe('MessageHandler', () => {
       handleUserChange: jest.fn(),
       createNoteAtClick: jest.fn(),
       noteManager: {
-        getAllNotesWithOrphanStatus: jest.fn().mockReturnValue([])
+        getAllNotesWithOrphanStatus: jest.fn().mockReturnValue([]),
+        toggleAllVisibility: jest.fn().mockReturnValue(false),
+        getNotesVisibility: jest.fn().mockReturnValue(true)
       },
       realtimeSync: {
         handleNotesUpdate: jest.fn(),
@@ -142,6 +144,34 @@ describe('MessageHandler', () => {
       const result = await messageHandler.handleMessage({ action: 'createNoteAtClick' });
       expect(mockApp.createNoteAtClick).toHaveBeenCalled();
       expect(result).toEqual({ success: true, created: true });
+    });
+
+    it('should handle toggleAllNotesVisibility', async () => {
+      mockApp.noteManager.toggleAllVisibility.mockReturnValue(false);
+      const result = await messageHandler.handleMessage({ action: 'toggleAllNotesVisibility' });
+      expect(mockApp.noteManager.toggleAllVisibility).toHaveBeenCalled();
+      expect(result).toEqual({ success: true, notesVisible: false });
+    });
+
+    it('should handle toggleAllNotesVisibility returning true', async () => {
+      mockApp.noteManager.toggleAllVisibility.mockReturnValue(true);
+      const result = await messageHandler.handleMessage({ action: 'toggleAllNotesVisibility' });
+      expect(mockApp.noteManager.toggleAllVisibility).toHaveBeenCalled();
+      expect(result).toEqual({ success: true, notesVisible: true });
+    });
+
+    it('should handle getNotesVisibility when visible', async () => {
+      mockApp.noteManager.getNotesVisibility.mockReturnValue(true);
+      const result = await messageHandler.handleMessage({ action: 'getNotesVisibility' });
+      expect(mockApp.noteManager.getNotesVisibility).toHaveBeenCalled();
+      expect(result).toEqual({ success: true, notesVisible: true });
+    });
+
+    it('should handle getNotesVisibility when hidden', async () => {
+      mockApp.noteManager.getNotesVisibility.mockReturnValue(false);
+      const result = await messageHandler.handleMessage({ action: 'getNotesVisibility' });
+      expect(mockApp.noteManager.getNotesVisibility).toHaveBeenCalled();
+      expect(result).toEqual({ success: true, notesVisible: false });
     });
 
     it('should return error for unknown action', async () => {

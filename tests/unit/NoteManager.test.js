@@ -1868,4 +1868,94 @@ describe('NoteManager', () => {
       await expect(manager.handleReanchor('note-1', anchor)).resolves.toBeUndefined();
     });
   });
+  
+  describe('visibility toggle', () => {
+    it('should initialize notesVisible to true', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      expect(manager.notesVisible).toBe(true);
+    });
+    
+    it('should return current visibility state via getNotesVisibility', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      expect(manager.getNotesVisibility()).toBe(true);
+      
+      manager.notesVisible = false;
+      expect(manager.getNotesVisibility()).toBe(false);
+    });
+    
+    it('should toggle visibility from true to false', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      expect(manager.notesVisible).toBe(true);
+      
+      const result = manager.toggleAllVisibility();
+      
+      expect(result).toBe(false);
+      expect(manager.notesVisible).toBe(false);
+    });
+    
+    it('should toggle visibility from false to true', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      manager.notesVisible = false;
+      
+      const result = manager.toggleAllVisibility();
+      
+      expect(result).toBe(true);
+      expect(manager.notesVisible).toBe(true);
+    });
+    
+    it('should call hide() on all notes when toggling to hidden', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Create mock notes with show/hide methods
+      const mockNote1 = { show: jest.fn(), hide: jest.fn() };
+      const mockNote2 = { show: jest.fn(), hide: jest.fn() };
+      manager.notes.set('note-1', mockNote1);
+      manager.notes.set('note-2', mockNote2);
+      
+      // Toggle from visible to hidden
+      manager.toggleAllVisibility();
+      
+      expect(mockNote1.hide).toHaveBeenCalledTimes(1);
+      expect(mockNote2.hide).toHaveBeenCalledTimes(1);
+      expect(mockNote1.show).not.toHaveBeenCalled();
+      expect(mockNote2.show).not.toHaveBeenCalled();
+    });
+    
+    it('should call show() on all notes when toggling to visible', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      manager.notesVisible = false;
+      
+      // Create mock notes with show/hide methods
+      const mockNote1 = { show: jest.fn(), hide: jest.fn() };
+      const mockNote2 = { show: jest.fn(), hide: jest.fn() };
+      manager.notes.set('note-1', mockNote1);
+      manager.notes.set('note-2', mockNote2);
+      
+      // Toggle from hidden to visible
+      manager.toggleAllVisibility();
+      
+      expect(mockNote1.show).toHaveBeenCalledTimes(1);
+      expect(mockNote2.show).toHaveBeenCalledTimes(1);
+      expect(mockNote1.hide).not.toHaveBeenCalled();
+      expect(mockNote2.hide).not.toHaveBeenCalled();
+    });
+    
+    it('should handle empty notes map gracefully', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Should not throw with empty notes
+      expect(() => manager.toggleAllVisibility()).not.toThrow();
+      expect(manager.notesVisible).toBe(false);
+    });
+  });
 });
