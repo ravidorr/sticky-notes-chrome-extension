@@ -731,6 +731,27 @@
 | 2 | Scroll page slowly | Note maintains position relative to anchor |
 | 3 | No jittering or lag | Smooth position updates |
 
+### TEST-12.4: Toggle All Notes Visibility (Hide)
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create 2-3 notes on visible elements | Notes visible |
+| 2 | Click extension icon | Popup opens |
+| 3 | Click Actions dropdown | Menu expands |
+| 4 | Click "Hide all notes" | All notes become hidden |
+| 5 | Scroll page so anchors move in/out of view | Notes remain hidden (do not reappear) |
+| 6 | Button text updates | Shows "Show all notes" |
+
+### TEST-12.5: Toggle All Notes Visibility (Show)
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | After hiding all notes (TEST-12.4) | Notes hidden |
+| 2 | Click Actions dropdown | Menu expands |
+| 3 | Click "Show all notes" | Notes with visible anchors reappear |
+| 4 | Scroll to other anchors | Notes appear when anchors become visible |
+| 5 | Button text updates | Shows "Hide all notes" |
+
 ---
 
 ## 13. Element Re-anchoring & Fuzzy Matching

@@ -32,9 +32,17 @@ const createMockDependencies = () => {
     findBestMatch: jest.fn(() => null)
   };
   
+  // Track global visibility state for the mock
+  let mockGloballyVisible = true;
   localThis.visibilityManager = {
     observe: jest.fn(),
-    unobserve: jest.fn()
+    unobserve: jest.fn(),
+    setGlobalVisibility: jest.fn((visible) => {
+      mockGloballyVisible = visible;
+    }),
+    getGlobalVisibility: jest.fn(() => mockGloballyVisible),
+    // Expose setter for tests to manipulate internal state
+    _setMockVisibility: (visible) => { mockGloballyVisible = visible; }
   };
   
   return localThis;
@@ -1870,83 +1878,55 @@ describe('NoteManager', () => {
   });
   
   describe('visibility toggle', () => {
-    it('should initialize notesVisible to true', () => {
+    it('should delegate getNotesVisibility to visibilityManager', () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
       
-      expect(manager.notesVisible).toBe(true);
-    });
-    
-    it('should return current visibility state via getNotesVisibility', () => {
-      const localThis = createMockDependencies();
-      const manager = new NoteManager(localThis);
-      
+      // Initial state is visible (from mock)
       expect(manager.getNotesVisibility()).toBe(true);
+      expect(localThis.visibilityManager.getGlobalVisibility).toHaveBeenCalled();
       
-      manager.notesVisible = false;
+      // Set mock to hidden
+      localThis.visibilityManager._setMockVisibility(false);
       expect(manager.getNotesVisibility()).toBe(false);
     });
     
-    it('should toggle visibility from true to false', () => {
+    it('should toggle visibility from true to false via visibilityManager', () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
       
-      expect(manager.notesVisible).toBe(true);
+      // Initial state is visible
+      expect(manager.getNotesVisibility()).toBe(true);
       
       const result = manager.toggleAllVisibility();
       
       expect(result).toBe(false);
-      expect(manager.notesVisible).toBe(false);
+      expect(localThis.visibilityManager.setGlobalVisibility).toHaveBeenCalledWith(false);
     });
     
-    it('should toggle visibility from false to true', () => {
+    it('should toggle visibility from false to true via visibilityManager', () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
-      manager.notesVisible = false;
+      
+      // Set initial state to hidden
+      localThis.visibilityManager._setMockVisibility(false);
       
       const result = manager.toggleAllVisibility();
       
       expect(result).toBe(true);
-      expect(manager.notesVisible).toBe(true);
+      expect(localThis.visibilityManager.setGlobalVisibility).toHaveBeenCalledWith(true);
     });
     
-    it('should call hide() on all notes when toggling to hidden', () => {
+    it('should delegate note showing/hiding to visibilityManager', () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
-      
-      // Create mock notes with show/hide methods
-      const mockNote1 = { show: jest.fn(), hide: jest.fn() };
-      const mockNote2 = { show: jest.fn(), hide: jest.fn() };
-      manager.notes.set('note-1', mockNote1);
-      manager.notes.set('note-2', mockNote2);
       
       // Toggle from visible to hidden
       manager.toggleAllVisibility();
       
-      expect(mockNote1.hide).toHaveBeenCalledTimes(1);
-      expect(mockNote2.hide).toHaveBeenCalledTimes(1);
-      expect(mockNote1.show).not.toHaveBeenCalled();
-      expect(mockNote2.show).not.toHaveBeenCalled();
-    });
-    
-    it('should call show() on all notes when toggling to visible', () => {
-      const localThis = createMockDependencies();
-      const manager = new NoteManager(localThis);
-      manager.notesVisible = false;
-      
-      // Create mock notes with show/hide methods
-      const mockNote1 = { show: jest.fn(), hide: jest.fn() };
-      const mockNote2 = { show: jest.fn(), hide: jest.fn() };
-      manager.notes.set('note-1', mockNote1);
-      manager.notes.set('note-2', mockNote2);
-      
-      // Toggle from hidden to visible
-      manager.toggleAllVisibility();
-      
-      expect(mockNote1.show).toHaveBeenCalledTimes(1);
-      expect(mockNote2.show).toHaveBeenCalledTimes(1);
-      expect(mockNote1.hide).not.toHaveBeenCalled();
-      expect(mockNote2.hide).not.toHaveBeenCalled();
+      // Verify visibilityManager.setGlobalVisibility was called
+      // The actual show/hide logic is now in VisibilityManager
+      expect(localThis.visibilityManager.setGlobalVisibility).toHaveBeenCalledWith(false);
     });
     
     it('should handle empty notes map gracefully', () => {
@@ -1955,7 +1935,7 @@ describe('NoteManager', () => {
       
       // Should not throw with empty notes
       expect(() => manager.toggleAllVisibility()).not.toThrow();
-      expect(manager.notesVisible).toBe(false);
+      expect(localThis.visibilityManager.setGlobalVisibility).toHaveBeenCalledWith(false);
     });
   });
 });

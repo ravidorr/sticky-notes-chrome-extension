@@ -24,6 +24,9 @@ export class VisibilityManager {
     this.boundScrollHandler = null;
     this.boundResizeHandler = null;
     
+    // Global visibility state - when false, notes are hidden regardless of anchor visibility
+    this.globallyVisible = true;
+    
     // Create the IntersectionObserver
     this.observer = new IntersectionObserver(
       this.handleIntersection.bind(this),
@@ -84,8 +87,10 @@ export class VisibilityManager {
       if (!note) return;
       
       if (entry.isIntersecting) {
-        // Anchor is visible, show note
-        note.show();
+        // Only show note if global visibility is enabled
+        if (this.globallyVisible) {
+          note.show();
+        }
       } else {
         // Anchor is not visible, hide note
         note.hide();
@@ -147,12 +152,40 @@ export class VisibilityManager {
         rect.right > 0
       );
       
-      if (inViewport) {
+      // Only show note if globally visible AND anchor is in viewport
+      if (inViewport && this.globallyVisible) {
         note.show();
       } else {
         note.hide();
       }
     });
+  }
+  
+  /**
+   * Set global visibility state for all notes
+   * When false, notes will be hidden regardless of anchor visibility
+   * @param {boolean} visible - Whether notes should be globally visible
+   */
+  setGlobalVisibility(visible) {
+    this.globallyVisible = visible;
+    
+    if (visible) {
+      // Re-check visibility for all notes based on anchor positions
+      this.refresh();
+    } else {
+      // Hide all notes
+      this.anchorToNote.forEach((note) => {
+        note.hide();
+      });
+    }
+  }
+  
+  /**
+   * Get current global visibility state
+   * @returns {boolean} Whether notes are globally visible
+   */
+  getGlobalVisibility() {
+    return this.globallyVisible;
   }
   
   /**

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Toggle visibility for all notes from popup menu - quickly show or hide all sticky notes on the current page via the actions dropdown
 
+### Fixed
+
+- Hidden notes no longer reappear when scrolling - the VisibilityManager now respects the global visibility state set by the toggle feature
+
 ## [1.6.5] - 2026-01-30
 
 ### Added

@@ -306,4 +306,166 @@ describe('VisibilityManager', () => {
       expect(mockNote.updatePosition).not.toHaveBeenCalled();
     });
   });
+  
+  describe('global visibility', () => {
+    it('should initialize with globallyVisible set to true', () => {
+      expect(manager.getGlobalVisibility()).toBe(true);
+    });
+    
+    it('should return correct visibility state via getGlobalVisibility', () => {
+      expect(manager.getGlobalVisibility()).toBe(true);
+      
+      manager.setGlobalVisibility(false);
+      expect(manager.getGlobalVisibility()).toBe(false);
+      
+      manager.setGlobalVisibility(true);
+      expect(manager.getGlobalVisibility()).toBe(true);
+    });
+    
+    it('should hide all notes when setGlobalVisibility(false) is called', () => {
+      const localThis = {};
+      localThis.anchor2 = document.createElement('div');
+      document.body.appendChild(localThis.anchor2);
+      
+      localThis.mockNote2 = {
+        show: jest.fn(),
+        hide: jest.fn(),
+        isVisible: false,
+        updatePosition: jest.fn()
+      };
+      
+      manager.observe(anchor, mockNote);
+      manager.observe(localThis.anchor2, localThis.mockNote2);
+      
+      manager.setGlobalVisibility(false);
+      
+      expect(mockNote.hide).toHaveBeenCalled();
+      expect(localThis.mockNote2.hide).toHaveBeenCalled();
+    });
+    
+    it('should refresh notes when setGlobalVisibility(true) is called', () => {
+      // Mock getBoundingClientRect to return in-viewport position
+      anchor.getBoundingClientRect = jest.fn(() => ({
+        top: 100,
+        bottom: 200,
+        left: 100,
+        right: 200
+      }));
+      
+      manager.observe(anchor, mockNote);
+      manager.setGlobalVisibility(false);
+      
+      // Clear mock call counts
+      mockNote.show.mockClear();
+      mockNote.hide.mockClear();
+      
+      manager.setGlobalVisibility(true);
+      
+      // Should show notes that are in viewport
+      expect(mockNote.show).toHaveBeenCalled();
+    });
+    
+    it('should NOT show notes on intersection when globally hidden', () => {
+      manager.observe(anchor, mockNote);
+      manager.setGlobalVisibility(false);
+      
+      // Clear any previous calls
+      mockNote.show.mockClear();
+      
+      // Trigger intersection (anchor enters viewport)
+      const observer = MockIntersectionObserver.instances[0];
+      observer.triggerIntersection([{
+        target: anchor,
+        isIntersecting: true
+      }]);
+      
+      // Note should NOT be shown because global visibility is off
+      expect(mockNote.show).not.toHaveBeenCalled();
+    });
+    
+    it('should still hide notes on intersection when globally hidden', () => {
+      manager.observe(anchor, mockNote);
+      manager.setGlobalVisibility(false);
+      
+      // Clear any previous calls from setGlobalVisibility
+      mockNote.hide.mockClear();
+      
+      // Trigger intersection (anchor leaves viewport)
+      const observer = MockIntersectionObserver.instances[0];
+      observer.triggerIntersection([{
+        target: anchor,
+        isIntersecting: false
+      }]);
+      
+      // Note should still be hidden (redundant but correct behavior)
+      expect(mockNote.hide).toHaveBeenCalled();
+    });
+    
+    it('should show notes on intersection when globally visible', () => {
+      manager.observe(anchor, mockNote);
+      // Global visibility is true by default
+      
+      const observer = MockIntersectionObserver.instances[0];
+      observer.triggerIntersection([{
+        target: anchor,
+        isIntersecting: true
+      }]);
+      
+      expect(mockNote.show).toHaveBeenCalled();
+    });
+    
+    it('should NOT show notes on refresh when globally hidden', () => {
+      // Mock getBoundingClientRect to return in-viewport position
+      anchor.getBoundingClientRect = jest.fn(() => ({
+        top: 100,
+        bottom: 200,
+        left: 100,
+        right: 200
+      }));
+      
+      manager.observe(anchor, mockNote);
+      manager.setGlobalVisibility(false);
+      
+      // Clear any previous calls
+      mockNote.show.mockClear();
+      mockNote.hide.mockClear();
+      
+      manager.refresh();
+      
+      // Note should NOT be shown even though anchor is in viewport
+      expect(mockNote.show).not.toHaveBeenCalled();
+      // Note should be hidden
+      expect(mockNote.hide).toHaveBeenCalled();
+    });
+    
+    it('should NOT show notes added while globally hidden', () => {
+      // First set global visibility to false
+      manager.setGlobalVisibility(false);
+      
+      // Create a new note and anchor
+      const localThis = {};
+      localThis.newAnchor = document.createElement('div');
+      document.body.appendChild(localThis.newAnchor);
+      
+      localThis.newNote = {
+        show: jest.fn(),
+        hide: jest.fn(),
+        isVisible: false,
+        updatePosition: jest.fn()
+      };
+      
+      // Observe the new note while globally hidden
+      manager.observe(localThis.newAnchor, localThis.newNote);
+      
+      // Trigger intersection (anchor enters viewport)
+      const observer = MockIntersectionObserver.instances[0];
+      observer.triggerIntersection([{
+        target: localThis.newAnchor,
+        isIntersecting: true
+      }]);
+      
+      // Note should NOT be shown because global visibility is off
+      expect(localThis.newNote.show).not.toHaveBeenCalled();
+    });
+  });
 });
