@@ -5,9 +5,11 @@
  */
 
 import { onRequest } from 'firebase-functions/v2/https';
+import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import express from 'express';
 import cors from 'cors';
+import { writeShareNotificationEmail } from './lib/email.js';
 
 // Import routes
 import notesRouter from './routes/notes.js';
@@ -119,4 +121,47 @@ export const api = onRequest(
     maxInstances: 100
   },
   app
+);
+
+/**
+ * Firestore trigger that detects when notes are shared
+ * and sends email notifications to newly added recipients.
+ */
+export const onNoteShared = onDocumentUpdated(
+  {
+    document: 'notes/{noteId}',
+    region: 'us-central1'
+  },
+  async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    
+    // Get the sharedWith arrays (default to empty if not present)
+    const oldSharedWith = before.sharedWith || [];
+    const newSharedWith = after.sharedWith || [];
+    
+    // Find newly added email addresses
+    const newlyShared = newSharedWith.filter(email => !oldSharedWith.includes(email));
+    
+    // If no new shares, nothing to do
+    if (newlyShared.length === 0) {
+      return null;
+    }
+    
+    const noteId = event.params.noteId;
+    
+    // Send notification email for each newly shared user
+    const emailPromises = newlyShared.map(email => 
+      writeShareNotificationEmail(email, after, noteId)
+        .catch(error => {
+          console.error(`Failed to send share notification to ${email}:`, error);
+          // Don't throw - we don't want one failed email to block others
+        })
+    );
+    
+    await Promise.all(emailPromises);
+    
+    console.log(`Sent share notifications to ${newlyShared.length} user(s) for note ${noteId}`);
+    return null;
+  }
 );

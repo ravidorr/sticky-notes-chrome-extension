@@ -31,6 +31,7 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 ### Collaboration Features (Phase 3)
 
 - **Note Sharing**: Share notes with other users by email
+- **Email Notifications**: Recipients receive an email when a note is shared with them
 - **Real-time Updates**: See changes immediately when collaborators edit shared notes
 - **Unread Badge**: Extension icon shows count of new shared notes you haven't viewed yet
 - **Shared Notes View**: View all unread shared notes in the popup's "Shared" tab, click to open in new tab

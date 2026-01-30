@@ -165,11 +165,19 @@ service cloud.firestore {
         );
       }
     }
+    
+    // Mail collection - used by Firebase Trigger Email extension
+    // Only Cloud Functions (Admin SDK) can write to this collection
+    match /mail/{mailId} {
+      allow read, write: if false;
+    }
   }
 }
 ```
 
 > **Important:** The `sharedWith` array stores **email addresses** (not user IDs), so we use `request.auth.token.email` for the sharing check.
+>
+> **Note:** The `mail` collection is used by the Firebase Trigger Email extension for sending share notifications. It is only accessible by Cloud Functions using the Admin SDK.
 
 3. Click **"Publish"**
 
@@ -421,3 +429,71 @@ To add a comment:
 1. Click the comments toggle at the bottom of any note
 2. Type your comment and press Enter or click Send
 3. Click "Reply" to respond to an existing comment
+
+---
+
+## Email Notifications for Shared Notes (Optional)
+
+When you share a note with someone, you can automatically send them an email notification. This requires installing the Firebase Trigger Email extension.
+
+### Install Firebase Trigger Email Extension
+
+1. Go to [Firebase Console](https://console.firebase.google.com/) and select your project
+2. Navigate to **Extensions** in the left sidebar
+3. Click **"Explore Extensions"** or **"Install Extension"**
+4. Search for **"Trigger Email"** (by Firebase)
+5. Click **"Install"**
+
+### Configure the Extension
+
+During installation, you'll be prompted to configure:
+
+1. **SMTP Connection URI** or **SendGrid/Mailgun API Key**
+   - For SendGrid: `smtps://apikey:YOUR_SENDGRID_API_KEY@smtp.sendgrid.net:465`
+   - For Gmail SMTP: `smtps://your-email@gmail.com:your-app-password@smtp.gmail.com:465`
+   - For Mailgun: Use the Mailgun API key option
+
+2. **Email Documents Collection**: Set to `mail` (default)
+
+3. **Default From Address**: Set your sender email (e.g., `noreply@your-domain.com`)
+   - Must be a verified sender in your email service
+
+4. **Default Reply-To Address**: Optional, set if you want replies to go to a different address
+
+5. **Users Collection**: Leave empty (not needed for this use case)
+
+### Configuration Checklist for Email Notifications
+
+| Item | Location | Status |
+|------|----------|--------|
+| Trigger Email extension installed | Firebase Console > Extensions | [] |
+| SMTP/API credentials configured | Extension configuration | [] |
+| Sender email verified | Email service provider | [] |
+| `mail` collection rules deployed | `firestore.rules` | [] |
+
+### Testing Email Notifications
+
+1. Share a note with a valid email address
+2. Check the Firebase Console > Firestore > `mail` collection for queued emails
+3. The extension processes emails automatically and updates document status
+4. Check the recipient's inbox (and spam folder)
+
+### Troubleshooting Email Notifications
+
+**Emails not sending:**
+
+- Check the `mail` collection in Firestore for error status on documents
+- Verify SMTP credentials are correct
+- Ensure sender email is verified with your email provider
+
+**Emails going to spam:**
+
+- Use a custom domain instead of gmail.com for sending
+- Set up SPF, DKIM, and DMARC records for your domain
+- Avoid spam trigger words in email content
+
+**Extension not processing:**
+
+- Check Firebase Functions logs for errors
+- Ensure the extension has proper permissions
+- Verify the `mail` collection name matches your configuration

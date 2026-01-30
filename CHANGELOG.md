@@ -5,6 +5,21 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-01-30
+
+### Added
+
+- Email notifications when sharing notes - recipients receive an email with note preview, page link, and extension install link
+- Firestore trigger (`onNoteShared`) that detects when notes are shared and queues notification emails
+- Email module (`functions/lib/email.js`) with HTML and plain text email templates
+- Firebase Trigger Email extension integration for email delivery
+
+### Changed
+
+- Added `mail` collection rules to Firestore security rules
+- Added ESLint configuration for Firebase Functions directory
+- Updated Firebase setup documentation with email extension installation guide
+
 ## [1.8.0] - 2026-01-30
 
 ### Added

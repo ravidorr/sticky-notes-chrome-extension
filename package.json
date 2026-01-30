@@ -1,6 +1,6 @@
 {
   "name": "sticky-notes-chrome-extension",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Element-anchored sticky notes for annotating any website",
   "type": "module",
   "scripts": {
@@ -54,6 +54,7 @@
     "eslint": "^9.39.2",
     "eslint-plugin-no-em-dash": "^1.0.0",
     "eslint-plugin-no-emoji": "^2.0.2",
+    "firebase-admin": "^13.6.0",
     "globals": "^17.0.0",
     "htmlhint": "^1.8.0",
     "husky": "^9.1.7",

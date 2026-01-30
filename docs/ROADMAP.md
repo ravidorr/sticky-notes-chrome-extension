@@ -50,6 +50,7 @@
 - [x] Firebase Authentication (Google Sign-In)
 - [x] Cloud sync with Firestore
 - [x] Note sharing between users (by email)
+- [x] Email notifications when notes are shared (via Firebase Trigger Email extension)
 - [x] Offline persistence (Firestore cache)
 - [x] Automatic migration of local notes to cloud on first login
 

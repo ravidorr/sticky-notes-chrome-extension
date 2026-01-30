@@ -603,6 +603,8 @@ Content-Type: application/json
 }
 ```
 
+**Note:** When a note is shared, the recipient automatically receives an email notification with a preview of the note content and a link to the page where the note is attached.
+
 ### Unshare a Note
 
 Remove a user from a note's shared list.

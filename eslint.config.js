@@ -91,6 +91,15 @@ export default [
     }
   },
   {
+    // Firebase Cloud Functions
+    files: ['functions/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node
+      }
+    }
+  },
+  {
     // Ignore patterns
     ignores: [
       'dist/**',
