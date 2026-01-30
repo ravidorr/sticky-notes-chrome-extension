@@ -959,6 +959,22 @@
     "message": "Width of new notes in pixels",
     "description": "Note width setting description"
   },
+  "noteWidthCompact": {
+    "message": "240px (Compact)",
+    "description": "Compact note width option"
+  },
+  "noteWidthDefault": {
+    "message": "280px (Default)",
+    "description": "Default note width option"
+  },
+  "noteWidthWide": {
+    "message": "320px (Wide)",
+    "description": "Wide note width option"
+  },
+  "noteWidthExtraWide": {
+    "message": "360px (Extra Wide)",
+    "description": "Extra wide note width option"
+  },
 
   "settingsFontSize": {
     "message": "Font Size",

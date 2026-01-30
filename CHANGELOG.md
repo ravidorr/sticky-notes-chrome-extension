@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - "Notes visible by default" preference now actually controls initial visibility when visiting pages with existing notes. Previously, the setting was stored but never applied during page load.
+- Note width dropdown options in Settings page now properly use i18n for translations. Previously, labels like "Compact", "Default", "Wide", "Extra Wide" were hardcoded in English.
 
 ### Improved
 
