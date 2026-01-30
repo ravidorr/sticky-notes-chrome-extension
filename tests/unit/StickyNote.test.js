@@ -89,6 +89,8 @@ describe('StickyNote', () => {
       expect(note.boundHandleDragMove).toBeInstanceOf(Function);
       expect(note.boundHandleDragEnd).toBeInstanceOf(Function);
       expect(note.boundHandleWindowResize).toBeInstanceOf(Function);
+      expect(note.boundHandleNoteMouseEnter).toBeInstanceOf(Function);
+      expect(note.boundHandleNoteMouseLeave).toBeInstanceOf(Function);
     });
     
     it('should create rich editor', () => {
@@ -1076,6 +1078,84 @@ describe('StickyNote', () => {
       note.customPosition = { x: 100, y: 200 };
       note.handleWindowResize();
       expect(updateSpy).not.toHaveBeenCalled();
+    });
+  });
+  
+  describe('anchor highlight on hover', () => {
+    it('should add highlight class to anchor on mouse enter', () => {
+      note.element.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      
+      expect(anchor.classList.contains('sn-element-highlight')).toBe(true);
+    });
+    
+    it('should remove highlight class from anchor on mouse leave', () => {
+      // First trigger mouse enter to add the class
+      note.element.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      expect(anchor.classList.contains('sn-element-highlight')).toBe(true);
+      
+      // Then trigger mouse leave
+      note.element.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+      expect(anchor.classList.contains('sn-element-highlight')).toBe(false);
+    });
+    
+    it('should not throw when anchor is null on mouse enter', () => {
+      note.anchor = null;
+      expect(() => {
+        note.element.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      }).not.toThrow();
+    });
+    
+    it('should not throw when anchor is null on mouse leave', () => {
+      note.anchor = null;
+      expect(() => {
+        note.element.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+      }).not.toThrow();
+    });
+    
+    it('should not highlight anchor during selection mode', () => {
+      document.body.classList.add('sn-selection-mode');
+      
+      note.element.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      
+      expect(anchor.classList.contains('sn-element-highlight')).toBe(false);
+      
+      document.body.classList.remove('sn-selection-mode');
+    });
+    
+    it('should not highlight when anchor is removed from DOM', () => {
+      // Remove anchor from DOM
+      anchor.parentNode.removeChild(anchor);
+      
+      note.element.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      
+      expect(anchor.classList.contains('sn-element-highlight')).toBe(false);
+      
+      // Re-add anchor for other tests
+      document.body.appendChild(anchor);
+    });
+    
+    it('should clean up highlight class when note is destroyed', () => {
+      // First trigger mouse enter to add the class
+      note.element.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      expect(anchor.classList.contains('sn-element-highlight')).toBe(true);
+      
+      // Destroy the note
+      note.destroy();
+      note = null; // Prevent afterEach from calling destroy again
+      
+      // Highlight should be removed
+      expect(anchor.classList.contains('sn-element-highlight')).toBe(false);
+    });
+    
+    it('should call handleNoteMouseEnter directly', () => {
+      note.handleNoteMouseEnter();
+      expect(anchor.classList.contains('sn-element-highlight')).toBe(true);
+    });
+    
+    it('should call handleNoteMouseLeave directly', () => {
+      anchor.classList.add('sn-element-highlight');
+      note.handleNoteMouseLeave();
+      expect(anchor.classList.contains('sn-element-highlight')).toBe(false);
     });
   });
   

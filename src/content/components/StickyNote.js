@@ -92,6 +92,8 @@ export class StickyNote {
     this.boundHandleDragMove = this.handleDragMove.bind(this);
     this.boundHandleDragEnd = this.handleDragEnd.bind(this);
     this.boundHandleWindowResize = this.handleWindowResize.bind(this);
+    this.boundHandleNoteMouseEnter = this.handleNoteMouseEnter.bind(this);
+    this.boundHandleNoteMouseLeave = this.handleNoteMouseLeave.bind(this);
     
     this.render();
     this.setupEventListeners();
@@ -521,6 +523,10 @@ export class StickyNote {
     // Window resize and scroll
     window.addEventListener('resize', this.boundHandleWindowResize);
     window.addEventListener('scroll', this.boundHandleWindowResize, { passive: true });
+    
+    // Highlight anchor element on note hover
+    this.element.addEventListener('mouseenter', this.boundHandleNoteMouseEnter);
+    this.element.addEventListener('mouseleave', this.boundHandleNoteMouseLeave);
     
     // Keyboard shortcuts
     this.element.addEventListener('keydown', this.handleKeyDown.bind(this));
@@ -1739,6 +1745,30 @@ export class StickyNote {
   }
   
   /**
+   * Handle mouse entering the note - highlight the anchor element
+   */
+  handleNoteMouseEnter() {
+    // Don't highlight if no anchor or during selection mode
+    if (!this.anchor || document.body.classList.contains('sn-selection-mode')) {
+      return;
+    }
+    // Check anchor is still in DOM
+    if (!document.body.contains(this.anchor)) {
+      return;
+    }
+    this.anchor.classList.add('sn-element-highlight');
+  }
+  
+  /**
+   * Handle mouse leaving the note - remove anchor highlight
+   */
+  handleNoteMouseLeave() {
+    if (this.anchor) {
+      this.anchor.classList.remove('sn-element-highlight');
+    }
+  }
+  
+  /**
    * Show the note
    */
   show() {
@@ -1830,6 +1860,11 @@ export class StickyNote {
     document.removeEventListener('mouseup', this.boundHandleDragEnd);
     window.removeEventListener('resize', this.boundHandleWindowResize);
     window.removeEventListener('scroll', this.boundHandleWindowResize);
+    
+    // Remove anchor highlight if present
+    if (this.anchor) {
+      this.anchor.classList.remove('sn-element-highlight');
+    }
     
     // Destroy comment section
     if (this.commentSection) {
