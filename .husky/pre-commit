@@ -1,6 +1,9 @@
 # Exit immediately if any command fails
 set -e
 
+# Check if changelog update is required for major/minor version bumps
+node scripts/check-changelog.js
+
 # Run lint-staged for code quality
 npx lint-staged
 
