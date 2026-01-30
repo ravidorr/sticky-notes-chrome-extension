@@ -778,6 +778,60 @@
 | 4 | Comment from 3 days ago | Shows "3 days ago" |
 | 5 | Comment older than 7 days | Shows formatted date |
 
+### TEST-11.12: Login Prompt When Not Signed In
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Sign out (if signed in) | User logged out |
+| 2 | Navigate to page with shared note | Note visible |
+| 3 | Expand comments panel | Comments panel opens |
+| 4 | Observe comment input area | Shows "Sign in to comment" message instead of input field |
+| 5 | Sign in | User authenticated |
+| 6 | Observe comment input area | Input field appears, login prompt disappears |
+
+### TEST-11.13: Empty Comment Error Toast
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Sign in and expand comments on a note | Comments panel open |
+| 2 | Leave comment input empty or with only whitespace | Input empty |
+| 3 | Click submit button or press Enter | Toast notification appears |
+| 4 | Toast message | Shows "Comment cannot be empty" error |
+| 5 | Input remains focused | User can type and retry |
+
+### TEST-11.14: Comment Submission Error Toast
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Sign in and expand comments on a note | Comments panel open |
+| 2 | Disable network (DevTools > Network > Offline) | Network disabled |
+| 3 | Type a comment and submit | Submission attempted |
+| 4 | Toast notification appears | Shows "Failed to add comment" error |
+| 5 | Submit button re-enabled | User can retry when network restored |
+| 6 | Comment text preserved | User doesn't lose their typed content |
+
+### TEST-11.15: Comment Delete Error Toast
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Sign in and add a comment | Comment exists |
+| 2 | Disable network (DevTools > Network > Offline) | Network disabled |
+| 3 | Click delete on your comment | Confirmation dialog appears |
+| 4 | Confirm deletion | Deletion attempted |
+| 5 | Toast notification appears | Shows "Failed to delete comment" error |
+| 6 | Comment remains in list | User can retry when network restored |
+
+### TEST-11.16: Comment Edit Error Toast
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Sign in and add a comment | Comment exists |
+| 2 | Click edit on your comment | Edit mode activated |
+| 3 | Disable network (DevTools > Network > Offline) | Network disabled |
+| 4 | Modify text and submit | Edit attempted |
+| 5 | Toast notification appears | Shows "Failed to update comment" error |
+| 6 | Edit mode remains active | User can retry when network restored |
+
 ---
 
 ## 12. Visibility Intelligence (IntersectionObserver)

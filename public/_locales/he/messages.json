@@ -580,6 +580,10 @@
     "message": "עליכם להתחבר כדי להגיב",
     "description": "Error when trying to comment without login"
   },
+  "signInToComment": {
+    "message": "התחבר כדי להגיב",
+    "description": "Prompt shown in comment input area when user is not logged in"
+  },
   "commentsRequireFirebase": {
     "message": "תגובות דורשות הגדרת Firebase",
     "description": "Error when Firebase is not configured for comments"

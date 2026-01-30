@@ -4,7 +4,7 @@
  */
 
 import { t } from '../../shared/i18n.js';
-import { formatRelativeTime, escapeHtml } from '../../shared/utils.js';
+import { formatRelativeTime, escapeHtml, TIMEOUTS } from '../../shared/utils.js';
 import { contentLogger as log } from '../../shared/logger.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { StickyNote } from './StickyNote.js';
@@ -42,6 +42,8 @@ export class CommentSection {
     this.element = null;
     this.render();
     this.setupEventListeners();
+    // Update input container based on initial user state
+    this.updateInputContainer();
   }
   
   /**
@@ -86,30 +88,8 @@ export class CommentSection {
     const toggle = this.element.querySelector('.sn-comments-toggle');
     toggle.addEventListener('click', () => this.togglePanel());
     
-    // Comment input
-    const input = this.element.querySelector('.sn-comment-input');
-    const submitBtn = this.element.querySelector('.sn-comment-submit');
-    
-    input.addEventListener('input', () => {
-      submitBtn.disabled = !input.value.trim();
-    });
-    
-    input.addEventListener('keydown', (event) => {
-      event.stopPropagation(); // Prevent page shortcuts
-      if (event.key === 'Enter' && !event.shiftKey && input.value.trim()) {
-        event.preventDefault();
-        this.submitComment();
-      }
-      if (event.key === 'Escape') {
-        this.cancelReply();
-      }
-    });
-    
-    // Stop other keyboard events from propagating
-    input.addEventListener('keyup', (event) => event.stopPropagation());
-    input.addEventListener('keypress', (event) => event.stopPropagation());
-    
-    submitBtn.addEventListener('click', () => this.submitComment());
+    // Note: Input event listeners are set up by setupInputEventListeners()
+    // which is called by updateInputContainer() when user state changes
   }
   
   /**
@@ -473,9 +453,26 @@ export class CommentSection {
    */
   async submitComment() {
     const input = this.element.querySelector('.sn-comment-input');
+    
+    // If no input element (login prompt is shown), user needs to log in
+    if (!input) {
+      this.showToast(t('mustBeLoggedInToComment'), 'error');
+      return;
+    }
+    
     const content = input.value.trim();
     
-    if (!content || !this.user) return;
+    // Validate content
+    if (!content) {
+      this.showToast(t('commentEmpty'), 'error');
+      return;
+    }
+    
+    // Validate user is logged in (belt and suspenders)
+    if (!this.user) {
+      this.showToast(t('mustBeLoggedInToComment'), 'error');
+      return;
+    }
     
     const submitBtn = this.element.querySelector('.sn-comment-submit');
     submitBtn.disabled = true;
@@ -498,9 +495,12 @@ export class CommentSection {
       await this.loadComments();
     } catch (error) {
       log.error('Failed to submit comment:', error);
+      // Show appropriate error toast
+      const errorKey = this.editingComment ? 'failedToUpdateComment' : 'failedToAddComment';
+      this.showToast(t(errorKey), 'error');
       // Re-enable submit button so user can retry (input still has their text)
-      const input = this.element.querySelector('.sn-comment-input');
-      if (input && input.value.trim()) {
+      const currentInput = this.element.querySelector('.sn-comment-input');
+      if (currentInput && currentInput.value.trim()) {
         submitBtn.disabled = false;
       }
     }
@@ -524,6 +524,7 @@ export class CommentSection {
       await this.loadComments();
     } catch (error) {
       log.error('Failed to delete comment:', error);
+      this.showToast(t('failedToDeleteComment'), 'error');
     }
   }
   
@@ -613,16 +614,75 @@ export class CommentSection {
   setUser(user) {
     this.user = user;
     
-    // Show/hide input based on auth
-    const inputContainer = this.element.querySelector('.sn-comment-input-container');
-    if (inputContainer) {
-      inputContainer.style.display = user ? 'block' : 'none';
-    }
+    // Update input container based on auth
+    this.updateInputContainer();
     
     // Re-render if already loaded
     if (this.hasLoaded) {
       this.renderComments();
     }
+  }
+  
+  /**
+   * Update the input container to show input or login prompt based on user state
+   */
+  updateInputContainer() {
+    const inputContainer = this.element.querySelector('.sn-comment-input-container');
+    if (!inputContainer) return;
+    
+    if (this.user) {
+      // Show comment input
+      inputContainer.innerHTML = `
+        <div class="sn-comment-input-wrapper">
+          <input type="text" class="sn-comment-input" placeholder="${t('addComment')}" />
+          <button class="sn-comment-submit" title="${t('addComment')}" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      `;
+      // Re-attach event listeners for the new input elements
+      this.setupInputEventListeners();
+    } else {
+      // Show login prompt
+      inputContainer.innerHTML = `
+        <div class="sn-comment-login-prompt">${escapeHtml(t('signInToComment'))}</div>
+      `;
+    }
+  }
+  
+  /**
+   * Setup event listeners for comment input elements
+   * Called after input is recreated
+   */
+  setupInputEventListeners() {
+    const input = this.element.querySelector('.sn-comment-input');
+    const submitBtn = this.element.querySelector('.sn-comment-submit');
+    
+    if (!input || !submitBtn) return;
+    
+    input.addEventListener('input', () => {
+      submitBtn.disabled = !input.value.trim();
+    });
+    
+    input.addEventListener('keydown', (event) => {
+      event.stopPropagation(); // Prevent page shortcuts
+      if (event.key === 'Enter' && !event.shiftKey && input.value.trim()) {
+        event.preventDefault();
+        this.submitComment();
+      }
+      if (event.key === 'Escape') {
+        this.cancelReply();
+      }
+    });
+    
+    // Stop other keyboard events from propagating
+    input.addEventListener('keyup', (event) => event.stopPropagation());
+    input.addEventListener('keypress', (event) => event.stopPropagation());
+    
+    submitBtn.addEventListener('click', () => this.submitComment());
   }
   
   /**
@@ -953,7 +1013,51 @@ export class CommentSection {
         width: 14px;
         height: 14px;
       }
+      
+      /* Login Prompt */
+      .sn-comment-login-prompt {
+        text-align: center;
+        padding: 12px 8px;
+        color: #6b7280;
+        font-size: 13px;
+        font-style: italic;
+      }
     `;
+  }
+  
+  /**
+   * Show toast notification
+   * @param {string} message - Toast message
+   * @param {string} type - Toast type ('success' or 'error')
+   */
+  showToast(message, type = 'success') {
+    // Get the container (shadow root's host parent or element's parent)
+    const root = this.element.getRootNode();
+    const container = root.host ? root.host.parentNode : this.element.parentNode;
+    if (!container) return;
+    
+    // Remove existing toast
+    const existing = container.querySelector('.sn-toast');
+    if (existing) {
+      existing.remove();
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = `sn-toast sn-toast-${type}`;
+    toast.textContent = message;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'polite');
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.classList.add('sn-toast-hiding');
+      setTimeout(() => {
+        if (toast.parentNode === container) {
+          container.removeChild(toast);
+        }
+      }, 300);
+    }, TIMEOUTS.TOAST_DISPLAY);
   }
   
   /**

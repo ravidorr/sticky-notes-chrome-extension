@@ -5,6 +5,19 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Improved
+
+- Comment error feedback - users now see toast notifications when comment operations fail
+  - Toast shown when submitting empty comment
+  - Toast shown when submitting comment without being logged in
+  - Toast shown when comment submission fails (network error)
+  - Toast shown when comment edit fails
+  - Toast shown when comment deletion fails
+- Login prompt in comment section - "Sign in to comment" message shown instead of hiding the input field when user is not logged in
+- Added `signInToComment` i18n message to all supported languages (en, de, fr, he)
+
 ## [1.11.0] - 2026-01-30
 
 ### Added

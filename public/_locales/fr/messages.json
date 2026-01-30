@@ -580,6 +580,10 @@
     "message": "Vous devez etre connecte pour commenter",
     "description": "Error when trying to comment without login"
   },
+  "signInToComment": {
+    "message": "Connectez-vous pour commenter",
+    "description": "Prompt shown in comment input area when user is not logged in"
+  },
   "commentsRequireFirebase": {
     "message": "Les commentaires necessitent la configuration de Firebase",
     "description": "Error when Firebase is not configured for comments"

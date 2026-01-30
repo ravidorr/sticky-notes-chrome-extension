@@ -488,9 +488,11 @@ describe('CommentSection', () => {
         ...mockCallbacks
       });
       
+      // When user is null, login prompt is shown instead of input
       const input = guestSection.element.querySelector('.sn-comment-input');
-      input.value = 'Test comment';
+      expect(input).toBeNull();
       
+      // submitComment should not call onAddComment
       await guestSection.submitComment();
       
       expect(mockCallbacks.onAddComment).not.toHaveBeenCalled();
@@ -923,6 +925,12 @@ describe('CommentSection', () => {
       expect(styles).toContain('.sn-comments-toggle');
       expect(styles).toContain('.sn-comment');
     });
+    
+    it('includes login prompt styles', () => {
+      const styles = CommentSection.getStyles();
+      
+      expect(styles).toContain('.sn-comment-login-prompt');
+    });
   });
   
   describe('destroy', () => {
@@ -1038,6 +1046,294 @@ describe('CommentSection', () => {
       // Button should be disabled after successful submission (input cleared by cancelReply)
       expect(submitBtn.disabled).toBe(true);
       expect(input.value).toBe('');
+    });
+  });
+  
+  describe('toast notifications', () => {
+    const localThis = {};
+    
+    beforeEach(() => {
+      // Create a container to hold the comment section for toast testing
+      localThis.container = document.createElement('div');
+      document.body.appendChild(localThis.container);
+      localThis.container.appendChild(commentSection.element);
+    });
+    
+    afterEach(() => {
+      if (localThis.container && localThis.container.parentNode) {
+        localThis.container.parentNode.removeChild(localThis.container);
+      }
+    });
+    
+    it('shows toast when submitting empty comment', async () => {
+      await commentSection.togglePanel();
+      
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      input.value = '   '; // Empty/whitespace only
+      
+      await commentSection.submitComment();
+      
+      // Check that toast was created
+      const toast = localThis.container.querySelector('.sn-toast');
+      expect(toast).toBeTruthy();
+      expect(toast.classList.contains('sn-toast-error')).toBe(true);
+      expect(toast.textContent).toBe('commentEmpty');
+    });
+    
+    it('shows toast when submitting without user', async () => {
+      // Create a section without a user
+      const guestSection = new CommentSection({
+        noteId: 'note-456',
+        user: null,
+        ...mockCallbacks
+      });
+      
+      const guestContainer = document.createElement('div');
+      document.body.appendChild(guestContainer);
+      guestContainer.appendChild(guestSection.element);
+      
+      // When user is null, login prompt is shown instead of input
+      // Try to submit - should show toast about needing to log in
+      await guestSection.submitComment();
+      
+      // Check that toast was created
+      const toast = guestContainer.querySelector('.sn-toast');
+      expect(toast).toBeTruthy();
+      expect(toast.classList.contains('sn-toast-error')).toBe(true);
+      expect(toast.textContent).toBe('mustBeLoggedInToComment');
+      
+      guestSection.destroy();
+      guestContainer.remove();
+    });
+    
+    it('shows toast when submit fails with network error', async () => {
+      mockCallbacks.onAddComment.mockRejectedValue(new Error('Network error'));
+      
+      await commentSection.togglePanel();
+      
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      input.value = 'Test comment';
+      
+      await commentSection.submitComment();
+      
+      // Check that toast was created
+      const toast = localThis.container.querySelector('.sn-toast');
+      expect(toast).toBeTruthy();
+      expect(toast.classList.contains('sn-toast-error')).toBe(true);
+      expect(toast.textContent).toBe('failedToAddComment');
+    });
+    
+    it('shows toast when edit fails', async () => {
+      mockCallbacks.onLoadComments.mockResolvedValue([
+        { id: 'c1', authorId: 'user-1', authorName: 'Test User', content: 'Original', createdAt: new Date().toISOString() }
+      ]);
+      mockCallbacks.onEditComment.mockRejectedValue(new Error('Network error'));
+      
+      await commentSection.togglePanel();
+      
+      // Start editing
+      commentSection.startEdit('c1');
+      
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      input.value = 'Updated content';
+      
+      await commentSection.submitComment();
+      
+      // Check that toast was created with edit error message
+      const toast = localThis.container.querySelector('.sn-toast');
+      expect(toast).toBeTruthy();
+      expect(toast.classList.contains('sn-toast-error')).toBe(true);
+      expect(toast.textContent).toBe('failedToUpdateComment');
+    });
+    
+    it('shows toast when delete fails', async () => {
+      mockCallbacks.onLoadComments.mockResolvedValue([
+        { id: 'c1', authorId: 'user-1', authorName: 'Test User', content: 'To delete', createdAt: new Date().toISOString() }
+      ]);
+      mockCallbacks.onDeleteComment.mockRejectedValue(new Error('Network error'));
+      
+      // Create a host element with shadow root for the confirm dialog
+      const host = document.createElement('div');
+      document.body.appendChild(host);
+      const shadowRoot = host.attachShadow({ mode: 'open' });
+      shadowRoot.appendChild(commentSection.element);
+      
+      await commentSection.togglePanel();
+      
+      // Start delete operation
+      const deletePromise = commentSection.deleteComment('c1');
+      
+      // Click confirm button in dialog
+      await new Promise(resolve => setTimeout(resolve, 10));
+      const confirmBtn = shadowRoot.querySelector('.sn-confirm-ok');
+      expect(confirmBtn).not.toBeNull();
+      confirmBtn.click();
+      
+      await deletePromise;
+      
+      // Check that toast was created (in the shadow root's host parent)
+      const toast = host.parentNode.querySelector('.sn-toast');
+      expect(toast).toBeTruthy();
+      expect(toast.classList.contains('sn-toast-error')).toBe(true);
+      expect(toast.textContent).toBe('failedToDeleteComment');
+      
+      host.remove();
+    });
+  });
+  
+  describe('login prompt', () => {
+    it('shows login prompt when user is null', () => {
+      const guestSection = new CommentSection({
+        noteId: 'note-456',
+        user: null,
+        ...mockCallbacks
+      });
+      
+      const loginPrompt = guestSection.element.querySelector('.sn-comment-login-prompt');
+      expect(loginPrompt).toBeTruthy();
+      expect(loginPrompt.textContent).toBe('signInToComment');
+      
+      // Should not have the input
+      const input = guestSection.element.querySelector('.sn-comment-input');
+      expect(input).toBeNull();
+      
+      guestSection.destroy();
+    });
+    
+    it('shows input when user is logged in', () => {
+      // commentSection is created with a user
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      expect(input).toBeTruthy();
+      
+      // Should not have the login prompt
+      const loginPrompt = commentSection.element.querySelector('.sn-comment-login-prompt');
+      expect(loginPrompt).toBeNull();
+    });
+    
+    it('replaces login prompt with input when user logs in', () => {
+      const guestSection = new CommentSection({
+        noteId: 'note-456',
+        user: null,
+        ...mockCallbacks
+      });
+      
+      // Initially shows login prompt
+      let loginPrompt = guestSection.element.querySelector('.sn-comment-login-prompt');
+      expect(loginPrompt).toBeTruthy();
+      
+      // User logs in
+      guestSection.setUser({ uid: 'user-1', email: 'test@example.com', displayName: 'Test User' });
+      
+      // Now should show input
+      const input = guestSection.element.querySelector('.sn-comment-input');
+      expect(input).toBeTruthy();
+      
+      // Login prompt should be gone
+      loginPrompt = guestSection.element.querySelector('.sn-comment-login-prompt');
+      expect(loginPrompt).toBeNull();
+      
+      guestSection.destroy();
+    });
+    
+    it('replaces input with login prompt when user logs out', () => {
+      // Start with user logged in
+      let input = commentSection.element.querySelector('.sn-comment-input');
+      expect(input).toBeTruthy();
+      
+      // User logs out
+      commentSection.setUser(null);
+      
+      // Now should show login prompt
+      const loginPrompt = commentSection.element.querySelector('.sn-comment-login-prompt');
+      expect(loginPrompt).toBeTruthy();
+      
+      // Input should be gone
+      input = commentSection.element.querySelector('.sn-comment-input');
+      expect(input).toBeNull();
+    });
+    
+    it('keyboard shortcuts work after user logs in', async () => {
+      const guestSection = new CommentSection({
+        noteId: 'note-456',
+        user: null,
+        ...mockCallbacks
+      });
+      
+      // Initially no input
+      let input = guestSection.element.querySelector('.sn-comment-input');
+      expect(input).toBeNull();
+      
+      // User logs in
+      guestSection.setUser({ uid: 'user-1', email: 'test@example.com', displayName: 'Test User' });
+      
+      // Now should have input with working event listeners
+      input = guestSection.element.querySelector('.sn-comment-input');
+      const submitBtn = guestSection.element.querySelector('.sn-comment-submit');
+      
+      expect(input).toBeTruthy();
+      expect(submitBtn).toBeTruthy();
+      
+      // Test that input event listener works (button enables/disables)
+      input.value = 'Test comment';
+      input.dispatchEvent(new Event('input'));
+      expect(submitBtn.disabled).toBe(false);
+      
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+      expect(submitBtn.disabled).toBe(true);
+      
+      guestSection.destroy();
+    });
+  });
+  
+  describe('showToast', () => {
+    const localThis = {};
+    
+    beforeEach(() => {
+      localThis.container = document.createElement('div');
+      document.body.appendChild(localThis.container);
+      localThis.container.appendChild(commentSection.element);
+    });
+    
+    afterEach(() => {
+      if (localThis.container && localThis.container.parentNode) {
+        localThis.container.parentNode.removeChild(localThis.container);
+      }
+    });
+    
+    it('creates toast element with correct class for success', () => {
+      commentSection.showToast('Success message', 'success');
+      
+      const toast = localThis.container.querySelector('.sn-toast');
+      expect(toast).toBeTruthy();
+      expect(toast.classList.contains('sn-toast-success')).toBe(true);
+      expect(toast.textContent).toBe('Success message');
+    });
+    
+    it('creates toast element with correct class for error', () => {
+      commentSection.showToast('Error message', 'error');
+      
+      const toast = localThis.container.querySelector('.sn-toast');
+      expect(toast).toBeTruthy();
+      expect(toast.classList.contains('sn-toast-error')).toBe(true);
+      expect(toast.textContent).toBe('Error message');
+    });
+    
+    it('removes existing toast before showing new one', () => {
+      commentSection.showToast('First message', 'success');
+      commentSection.showToast('Second message', 'error');
+      
+      const toasts = localThis.container.querySelectorAll('.sn-toast');
+      expect(toasts.length).toBe(1);
+      expect(toasts[0].textContent).toBe('Second message');
+    });
+    
+    it('sets accessibility attributes on toast', () => {
+      commentSection.showToast('Accessible message', 'success');
+      
+      const toast = localThis.container.querySelector('.sn-toast');
+      expect(toast.getAttribute('role')).toBe('alert');
+      expect(toast.getAttribute('aria-live')).toBe('polite');
     });
   });
 });
