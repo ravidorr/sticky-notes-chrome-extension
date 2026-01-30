@@ -1,5 +1,6 @@
 {
   "customRules": ["markdownlint-rule-search-replace"],
+  "ignores": ["CHANGELOG.md"],
   "config": {
     "default": true,
     "MD013": false,
