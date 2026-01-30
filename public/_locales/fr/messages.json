@@ -907,5 +907,130 @@
   "commandOpenDashboard": {
     "message": "Ouvrir le tableau de bord des notes",
     "description": "Keyboard shortcut description for opening the dashboard"
+  },
+
+  "settings": {
+    "message": "Parametres",
+    "description": "Settings menu item"
+  },
+  "settingsTitle": {
+    "message": "Parametres",
+    "description": "Settings page title"
+  },
+  "settingsSubtitle": {
+    "message": "Configurer les preferences par defaut pour les nouvelles notes",
+    "description": "Settings page subtitle"
+  },
+  "settingsAppearance": {
+    "message": "Apparence",
+    "description": "Appearance settings section title"
+  },
+  "settingsDefaultTheme": {
+    "message": "Theme par defaut",
+    "description": "Default theme setting label"
+  },
+  "settingsDefaultThemeDesc": {
+    "message": "Theme de couleur pour les nouvelles notes",
+    "description": "Default theme setting description"
+  },
+  "themeYellow": {
+    "message": "Jaune",
+    "description": "Yellow theme option"
+  },
+  "themeBlue": {
+    "message": "Bleu",
+    "description": "Blue theme option"
+  },
+  "themeGreen": {
+    "message": "Vert",
+    "description": "Green theme option"
+  },
+  "themePink": {
+    "message": "Rose",
+    "description": "Pink theme option"
+  },
+  "settingsNoteWidth": {
+    "message": "Largeur des notes",
+    "description": "Note width setting label"
+  },
+  "settingsNoteWidthDesc": {
+    "message": "Largeur des nouvelles notes en pixels",
+    "description": "Note width setting description"
+  },
+  "settingsFontSize": {
+    "message": "Taille de police",
+    "description": "Font size setting label"
+  },
+  "settingsFontSizeDesc": {
+    "message": "Taille du texte dans les notes",
+    "description": "Font size setting description"
+  },
+  "fontSizeSmall": {
+    "message": "Petite (12px)",
+    "description": "Small font size option"
+  },
+  "fontSizeMedium": {
+    "message": "Moyenne (14px)",
+    "description": "Medium font size option"
+  },
+  "fontSizeLarge": {
+    "message": "Grande (16px)",
+    "description": "Large font size option"
+  },
+  "settingsPosition": {
+    "message": "Position",
+    "description": "Position settings section title"
+  },
+  "settingsDefaultPosition": {
+    "message": "Position par defaut",
+    "description": "Default position setting label"
+  },
+  "settingsDefaultPositionDesc": {
+    "message": "Ou les nouvelles notes apparaissent par rapport a l'element selectionne",
+    "description": "Default position setting description"
+  },
+  "settingsBehavior": {
+    "message": "Comportement",
+    "description": "Behavior settings section title"
+  },
+  "settingsVisibility": {
+    "message": "Notes visibles par defaut",
+    "description": "Visibility setting label"
+  },
+  "settingsVisibilityDesc": {
+    "message": "Afficher automatiquement les notes lors de la visite d'une page avec des notes",
+    "description": "Visibility setting description"
+  },
+  "settingsSave": {
+    "message": "Enregistrer les parametres",
+    "description": "Save settings button"
+  },
+  "settingsSaving": {
+    "message": "Enregistrement...",
+    "description": "Saving settings in progress"
+  },
+  "settingsSaved": {
+    "message": "Parametres enregistres avec succes",
+    "description": "Settings saved success message"
+  },
+  "settingsSaveError": {
+    "message": "Echec de l'enregistrement des parametres",
+    "description": "Settings save error message"
+  },
+  "settingsLoadError": {
+    "message": "Echec du chargement des parametres",
+    "description": "Settings load error message"
+  },
+  "settingsReset": {
+    "message": "Reinitialiser par defaut",
+    "description": "Reset settings button"
+  },
+  "settingsResetConfirm": {
+    "message": "Reinitialiser tous les parametres par defaut ?",
+    "description": "Reset settings confirmation message"
+  },
+  "settingsResetError": {
+    "message": "Echec de la reinitialisation des parametres",
+    "description": "Settings reset error message"
   }
 }

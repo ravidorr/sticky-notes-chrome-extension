@@ -293,6 +293,7 @@ Unplanned feature ideas for future consideration:
 - [] Note content length validation (e.g., 10,000-50,000 chars) for UX, performance, and cost control
 - [] Image support in notes (Pro feature - requires Firebase Storage, upload flow, cost considerations)
 - [] RichEditor enhancements: code/monospace, strikethrough, checkboxes, blockquotes
+- [] Slack Integration: Share notes directly to Slack channels/users (High effort - requires Slack app setup, OAuth, webhooks)
 - [x] Inline sharing via email detection in note content:
   - Implemented: Auto-share when email + space is typed
   - Visual feedback: green underline (success), red underline (failed)
@@ -307,6 +308,13 @@ Unplanned feature ideas for future consideration:
   - [x] Jump to note and maximize it
   - [] View and delete notes from other pages (cross-page note management)
   - [] Potential UI: list view with page grouping, search/filter capabilities
+- [x] Preferences/Settings page:
+  - [x] Default theme for new notes
+  - [x] Default position preference
+  - [x] Note width settings (240px, 280px, 320px, 360px)
+  - [x] Font size settings (small, medium, large)
+  - [x] Global visibility defaults
+  - [x] Settings sync across devices via chrome.storage.sync
 
 ---
 

@@ -8,6 +8,7 @@ import { getShadowStyles, injectMainDocumentStyles } from './styles.js';
 import { contentLogger as log } from '../../shared/logger.js';
 import { t } from '../../shared/i18n.js';
 import { escapeHtml } from '../../shared/utils.js';
+import { getPreferences, getFontSizeValue } from '../../shared/preferences.js';
 
 /**
  * Manages UI state and DOM operations
@@ -67,7 +68,38 @@ export class UIManager {
     // Append to document
     document.body.appendChild(host);
     
+    // Store host reference for applying CSS variables
+    this.host = host;
+    
+    // Apply user preferences as CSS variables
+    this.applyPreferencesStyles();
+    
     return { shadowRoot: this.shadowRoot, container: this.container };
+  }
+  
+  /**
+   * Apply user preferences as CSS custom properties
+   * Called during initialization and can be called to refresh after preference changes
+   */
+  async applyPreferencesStyles() {
+    try {
+      const prefs = await getPreferences();
+      
+      // Apply note width
+      if (prefs.noteWidth) {
+        this.shadowRoot.host.style.setProperty('--sn-note-width', `${prefs.noteWidth}px`);
+      }
+      
+      // Apply font size
+      if (prefs.fontSize) {
+        const fontSizeValue = getFontSizeValue(prefs.fontSize);
+        this.shadowRoot.host.style.setProperty('--sn-font-size', `${fontSizeValue}px`);
+      }
+      
+      log.debug('Applied preference styles:', { noteWidth: prefs.noteWidth, fontSize: prefs.fontSize });
+    } catch (error) {
+      log.warn('Failed to apply preference styles:', error);
+    }
   }
   
   /**

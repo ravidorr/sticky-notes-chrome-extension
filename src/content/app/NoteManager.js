@@ -8,6 +8,7 @@ import { contentLogger as log } from '../../shared/logger.js';
 import { t } from '../../shared/i18n.js';
 import { getBrowserInfo, detectEnvironment, PAGE_LEVEL_SELECTOR, isPageLevelNote } from '../../shared/utils.js';
 import { purgeExpiredSessionMarkers, calculateNoteDiff } from './SyncLogic.js';
+import { getPreferences } from '../../shared/preferences.js';
 
 /**
  * Manages note operations
@@ -720,6 +721,15 @@ export class NoteManager {
       return;
     }
     
+    // Load user preferences for defaults
+    let prefs;
+    try {
+      prefs = await getPreferences();
+    } catch (error) {
+      log.warn('Failed to load preferences, using defaults:', error);
+      prefs = { defaultTheme: 'yellow', defaultPosition: 'top-right' };
+    }
+    
     // Create new note with metadata
     const browserInfo = getBrowserInfo();
     const isTopFrame = this.isTopFrame();
@@ -731,8 +741,8 @@ export class NoteManager {
       url: this.getCurrentUrl(),
       selector: selector,
       content: '',
-      theme: 'yellow',
-      position: { anchor: 'top-right' },
+      theme: prefs.defaultTheme,
+      position: { anchor: prefs.defaultPosition },
       anchorText: element.textContent?.trim().substring(0, 100) || '',
       metadata: {
         url: frameUrl,
@@ -782,6 +792,15 @@ export class NoteManager {
       return;
     }
     
+    // Load user preferences for defaults
+    let prefs;
+    try {
+      prefs = await getPreferences();
+    } catch (error) {
+      log.warn('Failed to load preferences, using defaults:', error);
+      prefs = { defaultTheme: 'yellow', defaultPosition: 'top-right' };
+    }
+    
     // Create new note with metadata
     const browserInfo = getBrowserInfo();
     const isTopFrame = this.isTopFrame();
@@ -793,8 +812,8 @@ export class NoteManager {
       url: this.getCurrentUrl(),
       selector: selector,
       content: '',
-      theme: 'yellow',
-      position: { anchor: 'top-right' },
+      theme: prefs.defaultTheme,
+      position: { anchor: prefs.defaultPosition },
       anchorText: element.textContent?.trim().substring(0, 100) || '',
       metadata: {
         url: frameUrl,
@@ -844,6 +863,15 @@ export class NoteManager {
     const pageX = options.pageX ?? 10;
     const pageY = options.pageY ?? 10;
     
+    // Load user preferences for defaults
+    let prefs;
+    try {
+      prefs = await getPreferences();
+    } catch (error) {
+      log.warn('Failed to load preferences, using defaults:', error);
+      prefs = { defaultTheme: 'yellow' };
+    }
+    
     // Create new note with metadata
     const browserInfo = getBrowserInfo();
     const isTopFrame = this.isTopFrame();
@@ -856,7 +884,7 @@ export class NoteManager {
       url: this.getCurrentUrl(),
       selector: PAGE_LEVEL_SELECTOR,
       content: '',
-      theme: 'yellow',
+      theme: prefs.defaultTheme,
       position: { pageX, pageY },
       metadata: {
         url: frameUrl,

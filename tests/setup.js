@@ -20,6 +20,8 @@ global.chrome = {
       removeListener: jest.fn()
     },
     getURL: jest.fn((path) => `chrome-extension://mock-id/${path}`),
+    getManifest: jest.fn(() => ({ version: '1.0.0' })),
+    openOptionsPage: jest.fn(),
     id: 'mock-extension-id'
   },
   storage: {

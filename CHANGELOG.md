@@ -5,7 +5,21 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.12.0] - 2026-01-31
+
+### Added
+
+- Settings/Preferences page - configure default settings for new notes
+  - Access via popup menu > Settings (gear icon in actions dropdown)
+  - Default theme selection (yellow, blue, green, pink)
+  - Default position preference (top-left, top-right, bottom-left, bottom-right)
+  - Note width setting (240px, 280px, 320px, 360px)
+  - Font size setting (small 12px, medium 14px, large 16px)
+  - Notes visible by default toggle
+  - Reset to defaults option
+  - Settings sync across devices via chrome.storage.sync
+- New shared module `src/shared/preferences.js` for centralized preferences management
+- CSS custom properties for configurable note dimensions (`--sn-note-width`, `--sn-font-size`)
 
 ### Improved
 

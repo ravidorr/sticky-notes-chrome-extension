@@ -795,7 +795,7 @@ export class RichEditor {
       .sn-editor-content {
         min-height: 80px;
         padding: 8px;
-        font-size: 14px;
+        font-size: var(--sn-font-size, 14px);
         line-height: 1.5;
         color: #1f2937;
         outline: none;

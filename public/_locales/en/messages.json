@@ -907,5 +907,136 @@
   "commandOpenDashboard": {
     "message": "Open the notes dashboard",
     "description": "Keyboard shortcut description for opening the dashboard"
+  },
+
+  "settings": {
+    "message": "Settings",
+    "description": "Settings menu item"
+  },
+  "settingsTitle": {
+    "message": "Settings",
+    "description": "Settings page title"
+  },
+  "settingsSubtitle": {
+    "message": "Configure default preferences for new notes",
+    "description": "Settings page subtitle"
+  },
+
+  "settingsAppearance": {
+    "message": "Appearance",
+    "description": "Appearance settings section title"
+  },
+  "settingsDefaultTheme": {
+    "message": "Default Theme",
+    "description": "Default theme setting label"
+  },
+  "settingsDefaultThemeDesc": {
+    "message": "Color theme for new notes",
+    "description": "Default theme setting description"
+  },
+  "themeYellow": {
+    "message": "Yellow",
+    "description": "Yellow theme option"
+  },
+  "themeBlue": {
+    "message": "Blue",
+    "description": "Blue theme option"
+  },
+  "themeGreen": {
+    "message": "Green",
+    "description": "Green theme option"
+  },
+  "themePink": {
+    "message": "Pink",
+    "description": "Pink theme option"
+  },
+
+  "settingsNoteWidth": {
+    "message": "Note Width",
+    "description": "Note width setting label"
+  },
+  "settingsNoteWidthDesc": {
+    "message": "Width of new notes in pixels",
+    "description": "Note width setting description"
+  },
+
+  "settingsFontSize": {
+    "message": "Font Size",
+    "description": "Font size setting label"
+  },
+  "settingsFontSizeDesc": {
+    "message": "Text size in notes",
+    "description": "Font size setting description"
+  },
+  "fontSizeSmall": {
+    "message": "Small (12px)",
+    "description": "Small font size option"
+  },
+  "fontSizeMedium": {
+    "message": "Medium (14px)",
+    "description": "Medium font size option"
+  },
+  "fontSizeLarge": {
+    "message": "Large (16px)",
+    "description": "Large font size option"
+  },
+
+  "settingsPosition": {
+    "message": "Position",
+    "description": "Position settings section title"
+  },
+  "settingsDefaultPosition": {
+    "message": "Default Position",
+    "description": "Default position setting label"
+  },
+  "settingsDefaultPositionDesc": {
+    "message": "Where new notes appear relative to the selected element",
+    "description": "Default position setting description"
+  },
+
+  "settingsBehavior": {
+    "message": "Behavior",
+    "description": "Behavior settings section title"
+  },
+  "settingsVisibility": {
+    "message": "Notes Visible by Default",
+    "description": "Visibility setting label"
+  },
+  "settingsVisibilityDesc": {
+    "message": "Show notes automatically when visiting a page with notes",
+    "description": "Visibility setting description"
+  },
+
+  "settingsSave": {
+    "message": "Save Settings",
+    "description": "Save settings button"
+  },
+  "settingsSaving": {
+    "message": "Saving...",
+    "description": "Saving settings in progress"
+  },
+  "settingsSaved": {
+    "message": "Settings saved successfully",
+    "description": "Settings saved success message"
+  },
+  "settingsSaveError": {
+    "message": "Failed to save settings",
+    "description": "Settings save error message"
+  },
+  "settingsLoadError": {
+    "message": "Failed to load settings",
+    "description": "Settings load error message"
+  },
+  "settingsReset": {
+    "message": "Reset to Defaults",
+    "description": "Reset settings button"
+  },
+  "settingsResetConfirm": {
+    "message": "Reset all settings to defaults?",
+    "description": "Reset settings confirmation message"
+  },
+  "settingsResetError": {
+    "message": "Failed to reset settings",
+    "description": "Settings reset error message"
   }
 }

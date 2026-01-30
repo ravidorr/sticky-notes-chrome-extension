@@ -43,6 +43,7 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 - **Rich Text Editor**: Format notes with bold, italic, lists, and links
 - **Color Themes**: Choose from yellow, blue, green, or pink themes
 - **Position Controls**: Snap notes to top-left, top-right, bottom-left, or bottom-right
+- **Settings Page**: Configure default theme, position, note width, and font size for new notes
 - **Internationalization**: Supports English, French, German, and Hebrew (auto-detects browser language)
 - **Dashboard**: View and manage all your notes in one place (access via popup, context menu, or `Alt+Shift+D`)
 - **Keyboard Shortcuts**: Press `Alt+Shift+D` to quickly open the dashboard
@@ -53,6 +54,7 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 sticky-notes-chrome-extension/
 ├── src/
 │   ├── popup/              # Extension popup UI
+│   ├── options/            # Settings/preferences page
 │   ├── content/            # Content script (DOM injection)
 │   │   ├── app/            # Application modules
 │   │   │   ├── StickyNotesApp.js   # Main orchestration class

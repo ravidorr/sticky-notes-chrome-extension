@@ -281,6 +281,46 @@ async function buildPopup() {
   console.log('Popup built');
 }
 
+// Build options page (standard web bundle)
+async function buildOptions() {
+  console.log('Building options page...');
+  
+  // Create options directory
+  mkdirSync(resolve(distDir, 'src/options'), { recursive: true });
+  
+  await build({
+    ...commonOptions,
+    build: {
+      ...commonOptions.build,
+      outDir: distDir,
+      emptyOutDir: false,
+      rollupOptions: {
+        input: {
+          options: resolve(rootDir, 'src/options/options.html')
+        },
+        output: {
+          format: 'iife',
+          entryFileNames: 'src/options/[name].js',
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name?.endsWith('.css')) {
+              return 'src/options/[name][extname]';
+            }
+            return 'assets/[name][extname]';
+          }
+        }
+      }
+    }
+  });
+  
+  // Copy options.css (Vite doesn't process linked CSS in HTML correctly with this config)
+  copyFileSync(
+    resolve(rootDir, 'src/options/options.css'),
+    resolve(distDir, 'src/options/options.css')
+  );
+  
+  console.log('Options page built');
+}
+
 // Create zip file of the browser folder
 async function createZipFile() {
   console.log('Creating zip file...');
@@ -331,6 +371,7 @@ async function main() {
     await buildPageContext();
     await buildBackground();
     await buildPopup();
+    await buildOptions();
     
     // Only create zip for production builds
     if (!isDevelopment) {

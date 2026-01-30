@@ -41,7 +41,7 @@ const handlers = createPopupHandlers({
 let authSection, userSection, loginBtn, logoutBtn, closeBtn;
 let userAvatar, userName, userEmail;
 let addNoteBtn, addPageNoteBtn, notesList, notesCount, actionHint;
-let actionsBtn, actionsMenu, toggleVisibilityBtn, exportPageBtn, exportAllBtn, deletePageNotesBtn, deleteAllNotesBtn;
+let actionsBtn, actionsMenu, toggleVisibilityBtn, exportPageBtn, exportAllBtn, deletePageNotesBtn, deleteAllNotesBtn, settingsBtn;
 let totalNotesCount, versionDisplay;
 // Tab elements
 let thisPageTab, sharedTab, thisPageContent, sharedContent;
@@ -76,6 +76,7 @@ function initDOMElements() {
   exportAllBtn = document.getElementById('exportAllBtn');
   deletePageNotesBtn = document.getElementById('deletePageNotesBtn');
   deleteAllNotesBtn = document.getElementById('deleteAllNotesBtn');
+  settingsBtn = document.getElementById('settingsBtn');
   totalNotesCount = document.getElementById('totalNotesCount');
   
   // Tab elements
@@ -611,6 +612,12 @@ function setupActionsDropdown() {
       await handlers.handleDeleteAllNotes();
       await refreshNotes();
     }
+  });
+  
+  // Settings button - open options page
+  settingsBtn.addEventListener('click', () => {
+    actionsMenu.classList.add('hidden');
+    chrome.runtime.openOptionsPage();
   });
 }
 

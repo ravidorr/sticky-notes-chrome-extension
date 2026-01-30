@@ -21,8 +21,9 @@
 17. [Performance Benchmarks](#17-performance-benchmarks)
 18. [Basic Accessibility Testing](#18-basic-accessibility-testing)
 19. [Marketing Site Verification](#19-marketing-site-verification)
-20. [Bug Tracking Workflow](#20-bug-tracking-workflow)
-21. [Test Completion Checklist](#21-test-completion-checklist)
+20. [Settings/Preferences Page](#20-settingspreferences-page)
+21. [Bug Tracking Workflow](#21-bug-tracking-workflow)
+22. [Test Completion Checklist](#22-test-completion-checklist)
 
 ---
 
@@ -1286,7 +1287,81 @@ The extension has partial accessibility support:
 
 ---
 
-## 20. Bug Tracking Workflow
+## 20. Settings/Preferences Page
+
+### 20.1 Access Settings
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Click extension popup | Popup opens |
+| 2 | Click three-dot menu (actions) | Actions dropdown appears |
+| 3 | Click "Settings" | Settings page opens in new tab |
+
+### 20.2 Theme Setting
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open settings page | Current default theme (yellow) is selected |
+| 2 | Click a different theme (e.g., Blue) | Theme button becomes selected |
+| 3 | Click "Save Settings" | Success message shown |
+| 4 | Create a new note on any page | Note uses the new default theme |
+
+### 20.3 Position Setting
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open settings page | Current default position (top-right) is selected |
+| 2 | Click a different position (e.g., bottom-left) | Position button becomes selected |
+| 3 | Click "Save Settings" | Success message shown |
+| 4 | Create a new note on any page | Note appears at bottom-left of element |
+
+### 20.4 Note Width Setting
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open settings page | 280px (Default) is selected in dropdown |
+| 2 | Select a different width (e.g., 360px Extra Wide) | Selection changes |
+| 3 | Click "Save Settings" | Success message shown |
+| 4 | Create a new note | Note is wider (360px) |
+
+### 20.5 Font Size Setting
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open settings page | Medium (14px) is selected in dropdown |
+| 2 | Select a different size (e.g., Large 16px) | Selection changes |
+| 3 | Click "Save Settings" | Success message shown |
+| 4 | Create a new note and type text | Text appears larger |
+
+### 20.6 Visibility Default Setting
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open settings page | Toggle is ON (checked) |
+| 2 | Turn toggle OFF | Toggle visual state changes |
+| 3 | Click "Save Settings" | Success message shown |
+
+### 20.7 Reset to Defaults
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Change several settings from defaults | Multiple settings modified |
+| 2 | Click "Reset to Defaults" | Confirmation dialog appears |
+| 3 | Confirm reset | All settings return to default values |
+| 4 | Click "Save Settings" | Settings saved with defaults |
+
+### 20.8 Settings Persistence
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Change and save settings | Success message shown |
+| 2 | Close settings tab | Tab closes |
+| 3 | Reopen settings page | Previously saved settings are loaded |
+| 4 | Settings persist across browser restart | Same settings loaded after restart |
+
+---
+
+## 21. Bug Tracking Workflow
 
 ### Process
 
@@ -1330,7 +1405,7 @@ The extension has partial accessibility support:
 
 ---
 
-## 21. Test Completion Checklist
+## 22. Test Completion Checklist
 
 ### Pre-Testing
 
@@ -1360,6 +1435,7 @@ The extension has partial accessibility support:
 - [ ] 17. Performance Benchmarks
 - [ ] 18. Basic Accessibility Testing
 - [ ] 19. Marketing Site Verification
+- [ ] 20. Settings/Preferences Page
 
 ### Post-Testing
 

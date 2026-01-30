@@ -907,5 +907,130 @@
   "commandOpenDashboard": {
     "message": "Notizen-Dashboard offnen",
     "description": "Keyboard shortcut description for opening the dashboard"
+  },
+
+  "settings": {
+    "message": "Einstellungen",
+    "description": "Settings menu item"
+  },
+  "settingsTitle": {
+    "message": "Einstellungen",
+    "description": "Settings page title"
+  },
+  "settingsSubtitle": {
+    "message": "Standardeinstellungen fur neue Notizen konfigurieren",
+    "description": "Settings page subtitle"
+  },
+  "settingsAppearance": {
+    "message": "Darstellung",
+    "description": "Appearance settings section title"
+  },
+  "settingsDefaultTheme": {
+    "message": "Standard-Farbschema",
+    "description": "Default theme setting label"
+  },
+  "settingsDefaultThemeDesc": {
+    "message": "Farbschema fur neue Notizen",
+    "description": "Default theme setting description"
+  },
+  "themeYellow": {
+    "message": "Gelb",
+    "description": "Yellow theme option"
+  },
+  "themeBlue": {
+    "message": "Blau",
+    "description": "Blue theme option"
+  },
+  "themeGreen": {
+    "message": "Grun",
+    "description": "Green theme option"
+  },
+  "themePink": {
+    "message": "Rosa",
+    "description": "Pink theme option"
+  },
+  "settingsNoteWidth": {
+    "message": "Notizbreite",
+    "description": "Note width setting label"
+  },
+  "settingsNoteWidthDesc": {
+    "message": "Breite neuer Notizen in Pixeln",
+    "description": "Note width setting description"
+  },
+  "settingsFontSize": {
+    "message": "Schriftgrosse",
+    "description": "Font size setting label"
+  },
+  "settingsFontSizeDesc": {
+    "message": "Textgrosse in Notizen",
+    "description": "Font size setting description"
+  },
+  "fontSizeSmall": {
+    "message": "Klein (12px)",
+    "description": "Small font size option"
+  },
+  "fontSizeMedium": {
+    "message": "Mittel (14px)",
+    "description": "Medium font size option"
+  },
+  "fontSizeLarge": {
+    "message": "Gross (16px)",
+    "description": "Large font size option"
+  },
+  "settingsPosition": {
+    "message": "Position",
+    "description": "Position settings section title"
+  },
+  "settingsDefaultPosition": {
+    "message": "Standardposition",
+    "description": "Default position setting label"
+  },
+  "settingsDefaultPositionDesc": {
+    "message": "Wo neue Notizen relativ zum ausgewahlten Element erscheinen",
+    "description": "Default position setting description"
+  },
+  "settingsBehavior": {
+    "message": "Verhalten",
+    "description": "Behavior settings section title"
+  },
+  "settingsVisibility": {
+    "message": "Notizen standardmassig sichtbar",
+    "description": "Visibility setting label"
+  },
+  "settingsVisibilityDesc": {
+    "message": "Notizen automatisch anzeigen beim Besuch einer Seite mit Notizen",
+    "description": "Visibility setting description"
+  },
+  "settingsSave": {
+    "message": "Einstellungen speichern",
+    "description": "Save settings button"
+  },
+  "settingsSaving": {
+    "message": "Speichern...",
+    "description": "Saving settings in progress"
+  },
+  "settingsSaved": {
+    "message": "Einstellungen erfolgreich gespeichert",
+    "description": "Settings saved success message"
+  },
+  "settingsSaveError": {
+    "message": "Fehler beim Speichern der Einstellungen",
+    "description": "Settings save error message"
+  },
+  "settingsLoadError": {
+    "message": "Fehler beim Laden der Einstellungen",
+    "description": "Settings load error message"
+  },
+  "settingsReset": {
+    "message": "Auf Standard zurucksetzen",
+    "description": "Reset settings button"
+  },
+  "settingsResetConfirm": {
+    "message": "Alle Einstellungen auf Standard zurucksetzen?",
+    "description": "Reset settings confirmation message"
+  },
+  "settingsResetError": {
+    "message": "Fehler beim Zurucksetzen der Einstellungen",
+    "description": "Settings reset error message"
   }
 }

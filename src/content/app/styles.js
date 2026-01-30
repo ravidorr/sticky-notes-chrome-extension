@@ -45,6 +45,10 @@ export function getShadowStyles() {
       --sn-radius-xl: 12px;
       --sn-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
       --sn-z-max: 2147483647;
+      
+      /* Configurable dimensions - can be overridden via preferences */
+      --sn-note-width: 280px;
+      --sn-font-size: 14px;
     }
 
     /* ==========================================
@@ -441,8 +445,8 @@ export function getShadowStyles() {
     /* Note: z-index is set dynamically via inline style for bring-to-front functionality */
     .sn-note {
       position: absolute;
-      width: 280px;
-      max-width: 280px;
+      width: var(--sn-note-width, 280px);
+      max-width: var(--sn-note-width, 280px);
       min-height: 120px;
       background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%);
       border-radius: 4px;
@@ -450,8 +454,8 @@ export function getShadowStyles() {
         0 4px 6px -1px rgba(0, 0, 0, 0.1),
         0 2px 4px -1px rgba(0, 0, 0, 0.06),
         0 0 0 1px rgba(0, 0, 0, 0.05);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      font-size: 14px;
+      font-family: var(--sn-font-family);
+      font-size: var(--sn-font-size, 14px);
       transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, max-width 0.3s ease-in-out, width 0.3s ease-in-out;
       pointer-events: auto;
     }

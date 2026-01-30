@@ -58,6 +58,7 @@ describe('Popup Script Logic', () => {
       <button id="exportAllBtn"></button>
       <button id="deletePageNotesBtn"></button>
       <button id="deleteAllNotesBtn"></button>
+      <button id="settingsBtn"></button>
       <span id="totalNotesCount"></span>
       <button id="thisPageTab" class="active"></button>
       <button id="sharedTab"></button>

@@ -907,5 +907,130 @@
   "commandOpenDashboard": {
     "message": "פתח את לוח הבקרה של הפתקיות",
     "description": "Keyboard shortcut description for opening the dashboard"
+  },
+
+  "settings": {
+    "message": "הגדרות",
+    "description": "Settings menu item"
+  },
+  "settingsTitle": {
+    "message": "הגדרות",
+    "description": "Settings page title"
+  },
+  "settingsSubtitle": {
+    "message": "הגדר העדפות ברירת מחדל לפתקיות חדשות",
+    "description": "Settings page subtitle"
+  },
+  "settingsAppearance": {
+    "message": "מראה",
+    "description": "Appearance settings section title"
+  },
+  "settingsDefaultTheme": {
+    "message": "ערכת נושא ברירת מחדל",
+    "description": "Default theme setting label"
+  },
+  "settingsDefaultThemeDesc": {
+    "message": "ערכת צבעים לפתקיות חדשות",
+    "description": "Default theme setting description"
+  },
+  "themeYellow": {
+    "message": "צהוב",
+    "description": "Yellow theme option"
+  },
+  "themeBlue": {
+    "message": "כחול",
+    "description": "Blue theme option"
+  },
+  "themeGreen": {
+    "message": "ירוק",
+    "description": "Green theme option"
+  },
+  "themePink": {
+    "message": "ורוד",
+    "description": "Pink theme option"
+  },
+  "settingsNoteWidth": {
+    "message": "רוחב פתקית",
+    "description": "Note width setting label"
+  },
+  "settingsNoteWidthDesc": {
+    "message": "רוחב פתקיות חדשות בפיקסלים",
+    "description": "Note width setting description"
+  },
+  "settingsFontSize": {
+    "message": "גודל גופן",
+    "description": "Font size setting label"
+  },
+  "settingsFontSizeDesc": {
+    "message": "גודל טקסט בפתקיות",
+    "description": "Font size setting description"
+  },
+  "fontSizeSmall": {
+    "message": "קטן (12px)",
+    "description": "Small font size option"
+  },
+  "fontSizeMedium": {
+    "message": "בינוני (14px)",
+    "description": "Medium font size option"
+  },
+  "fontSizeLarge": {
+    "message": "גדול (16px)",
+    "description": "Large font size option"
+  },
+  "settingsPosition": {
+    "message": "מיקום",
+    "description": "Position settings section title"
+  },
+  "settingsDefaultPosition": {
+    "message": "מיקום ברירת מחדל",
+    "description": "Default position setting label"
+  },
+  "settingsDefaultPositionDesc": {
+    "message": "היכן פתקיות חדשות מופיעות ביחס לאלמנט שנבחר",
+    "description": "Default position setting description"
+  },
+  "settingsBehavior": {
+    "message": "התנהגות",
+    "description": "Behavior settings section title"
+  },
+  "settingsVisibility": {
+    "message": "פתקיות גלויות כברירת מחדל",
+    "description": "Visibility setting label"
+  },
+  "settingsVisibilityDesc": {
+    "message": "הצג פתקיות אוטומטית בעת ביקור בדף עם פתקיות",
+    "description": "Visibility setting description"
+  },
+  "settingsSave": {
+    "message": "שמור הגדרות",
+    "description": "Save settings button"
+  },
+  "settingsSaving": {
+    "message": "שומר...",
+    "description": "Saving settings in progress"
+  },
+  "settingsSaved": {
+    "message": "ההגדרות נשמרו בהצלחה",
+    "description": "Settings saved success message"
+  },
+  "settingsSaveError": {
+    "message": "שמירת ההגדרות נכשלה",
+    "description": "Settings save error message"
+  },
+  "settingsLoadError": {
+    "message": "טעינת ההגדרות נכשלה",
+    "description": "Settings load error message"
+  },
+  "settingsReset": {
+    "message": "אפס לברירת מחדל",
+    "description": "Reset settings button"
+  },
+  "settingsResetConfirm": {
+    "message": "לאפס את כל ההגדרות לברירת מחדל?",
+    "description": "Reset settings confirmation message"
+  },
+  "settingsResetError": {
+    "message": "איפוס ההגדרות נכשל",
+    "description": "Settings reset error message"
   }
 }
