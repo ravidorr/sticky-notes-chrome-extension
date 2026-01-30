@@ -521,6 +521,42 @@ describe('NoteManager', () => {
       const note = manager.notes.get(noteData.id);
       note.destroy();
     });
+    
+    it('should highlight anchor element when highlighting note from popup', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      const anchor = document.getElementById('anchor-element');
+      
+      const noteData = {
+        id: 'highlight-anchor-001',
+        selector: '#anchor-element',
+        content: 'Test content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      };
+      
+      manager.createNoteFromData(noteData);
+      
+      manager.highlightNote(noteData.id);
+      
+      // Anchor should not be highlighted immediately (waiting for scroll)
+      expect(anchor.classList.contains('sn-element-highlight')).toBe(false);
+      
+      // Advance past scroll animation delay
+      jest.advanceTimersByTime(400);
+      
+      // Now anchor should be highlighted
+      expect(anchor.classList.contains('sn-element-highlight')).toBe(true);
+      
+      // Advance past highlight removal delay (2000ms)
+      jest.advanceTimersByTime(2000);
+      
+      // Highlight should be removed
+      expect(anchor.classList.contains('sn-element-highlight')).toBe(false);
+      
+      const note = manager.notes.get(noteData.id);
+      note.destroy();
+    });
   });
   
   describe('highlightAndMaximizeNote', () => {

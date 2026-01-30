@@ -975,8 +975,18 @@ export class NoteManager {
       // Bring note to front (above other notes)
       note.bringToFront();
       
-      // Add highlight effect
+      // Add highlight effect to note
       note.highlight();
+      
+      // Also highlight the anchor element to show the association
+      if (note.anchor) {
+        note.anchor.classList.add('sn-element-highlight');
+        setTimeout(() => {
+          if (note.anchor) {
+            note.anchor.classList.remove('sn-element-highlight');
+          }
+        }, 2000);
+      }
       
       // Maximize note if requested
       if (maximize) {
