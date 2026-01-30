@@ -5,7 +5,7 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.10.0] - 2026-01-31
+## [1.11.0] - 2026-01-30
 
 ### Added
 
@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hidden notes persist their visibility state across page refreshes
 - Hidden notes remain hidden even when "Show All Notes" is triggered
 - Visual indicator in popup for hidden notes (dimmed appearance with strikethrough)
+- Dashboard discoverability improvements:
+  - More prominent dashboard link in popup header (blue button style)
+  - "Open Notes Dashboard" option in right-click context menu
+  - Keyboard shortcut Alt+Shift+D to open dashboard
+  - Welcome page shown on first install with feature highlights and dashboard link
 
 ### Changed
 

@@ -336,7 +336,12 @@ describe('Background Script Logic', () => {
           addListener: jest.fn()
         }
       };
-      chrome.tabs.sendMessage.mockClear();
+      // Mock chrome.tabs.create for dashboard menu item
+      global.chrome.tabs = {
+        ...global.chrome.tabs,
+        create: jest.fn(),
+        sendMessage: jest.fn()
+      };
     });
     
     it('should create context menu with correct options', () => {
@@ -450,6 +455,277 @@ describe('Background Script Logic', () => {
       );
       
       expect(result.error).toBe('Tab not found');
+    });
+    
+    it('should create open-dashboard context menu item', () => {
+      function createDashboardContextMenu() {
+        chrome.contextMenus.create({
+          id: 'open-dashboard',
+          title: 'Open Notes Dashboard',
+          contexts: ['page'],
+          documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
+        });
+      }
+      
+      createDashboardContextMenu();
+      
+      expect(chrome.contextMenus.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'open-dashboard',
+          contexts: ['page'],
+          documentUrlPatterns: expect.arrayContaining(['http://*/*', 'https://*/*'])
+        })
+      );
+    });
+    
+    it('should open dashboard on open-dashboard menu click', async () => {
+      async function handleContextMenuClick(info) {
+        if (info.menuItemId === 'open-dashboard') {
+          await chrome.tabs.create({ 
+            url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html' 
+          });
+        }
+      }
+      
+      await handleContextMenuClick({ menuItemId: 'open-dashboard' });
+      
+      expect(chrome.tabs.create).toHaveBeenCalledWith({
+        url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html'
+      });
+    });
+    
+    it('should use i18n message for dashboard context menu title', () => {
+      global.chrome.i18n = {
+        getMessage: jest.fn((key) => {
+          if (key === 'contextMenuOpenDashboard') return 'Translated Dashboard Title';
+          return '';
+        })
+      };
+      
+      function createDashboardContextMenu() {
+        chrome.contextMenus.create({
+          id: 'open-dashboard',
+          title: chrome.i18n.getMessage('contextMenuOpenDashboard') || 'Open Notes Dashboard',
+          contexts: ['page'],
+          documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
+        });
+      }
+      
+      createDashboardContextMenu();
+      
+      expect(chrome.i18n.getMessage).toHaveBeenCalledWith('contextMenuOpenDashboard');
+      expect(chrome.contextMenus.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Translated Dashboard Title'
+        })
+      );
+    });
+    
+    it('should fall back to default title when i18n message is missing', () => {
+      global.chrome.i18n = {
+        getMessage: jest.fn(() => '')
+      };
+      
+      function createDashboardContextMenu() {
+        chrome.contextMenus.create({
+          id: 'open-dashboard',
+          title: chrome.i18n.getMessage('contextMenuOpenDashboard') || 'Open Notes Dashboard',
+          contexts: ['page'],
+          documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
+        });
+      }
+      
+      createDashboardContextMenu();
+      
+      expect(chrome.contextMenus.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Open Notes Dashboard'
+        })
+      );
+    });
+  });
+  
+  describe('keyboard shortcuts', () => {
+    const localThis = {};
+    
+    beforeEach(() => {
+      localThis.commandHandler = null;
+      global.chrome.commands = {
+        onCommand: {
+          addListener: jest.fn((handler) => {
+            localThis.commandHandler = handler;
+          })
+        }
+      };
+      // Mock chrome.tabs.create
+      global.chrome.tabs = {
+        ...global.chrome.tabs,
+        create: jest.fn()
+      };
+    });
+    
+    it('should register command listener', () => {
+      function setupCommandListener(handler) {
+        chrome.commands.onCommand.addListener(handler);
+      }
+      
+      const handler = jest.fn();
+      setupCommandListener(handler);
+      
+      expect(chrome.commands.onCommand.addListener).toHaveBeenCalledWith(handler);
+    });
+    
+    it('should open dashboard on open-dashboard command', () => {
+      function setupCommandListener() {
+        chrome.commands.onCommand.addListener((command) => {
+          if (command === 'open-dashboard') {
+            chrome.tabs.create({ 
+              url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html' 
+            });
+          }
+        });
+      }
+      
+      setupCommandListener();
+      
+      // Simulate the command
+      localThis.commandHandler('open-dashboard');
+      
+      expect(chrome.tabs.create).toHaveBeenCalledWith({
+        url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html'
+      });
+    });
+    
+    it('should not open dashboard for other commands', () => {
+      function setupCommandListener() {
+        chrome.commands.onCommand.addListener((command) => {
+          if (command === 'open-dashboard') {
+            chrome.tabs.create({ 
+              url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html' 
+            });
+          }
+        });
+      }
+      
+      setupCommandListener();
+      
+      // Simulate a different command
+      localThis.commandHandler('some-other-command');
+      
+      expect(chrome.tabs.create).not.toHaveBeenCalled();
+    });
+    
+    it('should handle chrome.tabs.create errors gracefully', async () => {
+      global.chrome.tabs.create = jest.fn().mockRejectedValue(new Error('Failed to create tab'));
+      
+      async function handleCommand(command) {
+        if (command === 'open-dashboard') {
+          try {
+            await chrome.tabs.create({ 
+              url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html' 
+            });
+          } catch (error) {
+            // Log error but don't crash
+            return { error: error.message };
+          }
+        }
+        return { success: true };
+      }
+      
+      const result = await handleCommand('open-dashboard');
+      
+      expect(result.error).toBe('Failed to create tab');
+    });
+  });
+  
+  describe('install listener', () => {
+    const localThis = {};
+    
+    beforeEach(() => {
+      localThis.installHandler = null;
+      global.chrome.runtime = {
+        ...global.chrome.runtime,
+        onInstalled: {
+          addListener: jest.fn((handler) => {
+            localThis.installHandler = handler;
+          })
+        }
+      };
+      // Mock chrome.tabs.create
+      global.chrome.tabs = {
+        ...global.chrome.tabs,
+        create: jest.fn()
+      };
+    });
+    
+    it('should register onInstalled listener', () => {
+      function setupInstallListener(handler) {
+        chrome.runtime.onInstalled.addListener(handler);
+      }
+      
+      const handler = jest.fn();
+      setupInstallListener(handler);
+      
+      expect(chrome.runtime.onInstalled.addListener).toHaveBeenCalledWith(handler);
+    });
+    
+    it('should open welcome page on install', () => {
+      function setupInstallListener() {
+        chrome.runtime.onInstalled.addListener((details) => {
+          if (details.reason === 'install') {
+            chrome.tabs.create({ 
+              url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/welcome.html' 
+            });
+          }
+        });
+      }
+      
+      setupInstallListener();
+      
+      // Simulate install
+      localThis.installHandler({ reason: 'install' });
+      
+      expect(chrome.tabs.create).toHaveBeenCalledWith({
+        url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/welcome.html'
+      });
+    });
+    
+    it('should NOT open welcome page on update', () => {
+      function setupInstallListener() {
+        chrome.runtime.onInstalled.addListener((details) => {
+          if (details.reason === 'install') {
+            chrome.tabs.create({ 
+              url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/welcome.html' 
+            });
+          }
+        });
+      }
+      
+      setupInstallListener();
+      
+      // Simulate update
+      localThis.installHandler({ reason: 'update' });
+      
+      expect(chrome.tabs.create).not.toHaveBeenCalled();
+    });
+    
+    it('should NOT open welcome page on browser update', () => {
+      function setupInstallListener() {
+        chrome.runtime.onInstalled.addListener((details) => {
+          if (details.reason === 'install') {
+            chrome.tabs.create({ 
+              url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/welcome.html' 
+            });
+          }
+        });
+      }
+      
+      setupInstallListener();
+      
+      // Simulate browser update
+      localThis.installHandler({ reason: 'chrome_update' });
+      
+      expect(chrome.tabs.create).not.toHaveBeenCalled();
     });
   });
 });

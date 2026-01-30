@@ -894,5 +894,14 @@
   "noteShown": {
     "message": "הפתקית מוצגת",
     "description": "Toast message when note is shown"
+  },
+
+  "contextMenuOpenDashboard": {
+    "message": "פתח לוח בקרה",
+    "description": "Context menu item to open the notes dashboard"
+  },
+  "commandOpenDashboard": {
+    "message": "פתח את לוח הבקרה של הפתקיות",
+    "description": "Keyboard shortcut description for opening the dashboard"
   }
 }

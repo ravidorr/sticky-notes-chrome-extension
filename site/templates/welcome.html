@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+{{HEAD}}
+
+    <meta name="description" content="Welcome to Sticky Notes! Learn how to use the extension to pin notes to UI elements and collaborate with your team.">
+    <meta name="robots" content="noindex, nofollow">
+    
+    <title>Welcome to Sticky Notes</title>
+    <style>
+        .welcome-hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
+        }
+        
+        .welcome-container {
+            max-width: 800px;
+            text-align: center;
+        }
+        
+        .welcome-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 2rem;
+            background: linear-gradient(135deg, #facc15 0%, #eab308 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 32px rgba(234, 179, 8, 0.3);
+        }
+        
+        .welcome-icon svg {
+            width: 48px;
+            height: 48px;
+        }
+        
+        .welcome-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+        
+        .welcome-subtitle {
+            font-size: 1.25rem;
+            color: #6b7280;
+            margin-bottom: 3rem;
+            line-height: 1.6;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+            text-align: left;
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+        }
+        
+        .feature-card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+        
+        .feature-card-icon.yellow { background: #fef3c7; color: #d97706; }
+        .feature-card-icon.blue { background: #dbeafe; color: #2563eb; }
+        .feature-card-icon.green { background: #d1fae5; color: #059669; }
+        
+        .feature-card h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature-card p {
+            font-size: 0.9375rem;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+        
+        .welcome-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .btn-dashboard {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            font-size: 1.125rem;
+            font-weight: 600;
+            border-radius: 12px;
+            text-decoration: none;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+            transition: all 0.2s ease;
+        }
+        
+        .btn-dashboard:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+        }
+        
+        .welcome-links {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        
+        .welcome-link {
+            color: #6b7280;
+            text-decoration: none;
+            font-size: 0.9375rem;
+            transition: color 0.15s ease;
+        }
+        
+        .welcome-link:hover {
+            color: #3b82f6;
+        }
+        
+        .shortcut-hint {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f3f4f6;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .shortcut-hint kbd {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+            font-size: 0.8125rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        
+        @media (max-width: 640px) {
+            .welcome-title {
+                font-size: 1.875rem;
+            }
+            .welcome-subtitle {
+                font-size: 1.0625rem;
+            }
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<main class="welcome-hero">
+    <div class="welcome-container">
+        <div class="welcome-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3" y="3" width="18" height="18" rx="2" fill="#713f12"/>
+                <path d="M7 8h10M7 12h10M7 16h6" stroke="#facc15" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+        </div>
+        
+        <h1 class="welcome-title">Welcome to Sticky Notes!</h1>
+        <p class="welcome-subtitle">
+            You're all set to annotate the web. Pin notes to any UI element, 
+            collaborate with your team, and track everything in your dashboard.
+        </p>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-card-icon yellow">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M12 8v8M8 12h8"/>
+                    </svg>
+                </div>
+                <h3>Pin to Elements</h3>
+                <p>Click "Add Note" and select any element. Your note stays attached even when the page changes.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-card-icon blue">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </div>
+                <h3>Share with Team</h3>
+                <p>Type an email in your note to share instantly. Collaborators see your notes in real-time.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-card-icon green">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="3" y="3" width="8" height="11" rx="1.5"/>
+                        <rect x="3" y="16" width="8" height="5" rx="1.5"/>
+                        <rect x="13" y="3" width="8" height="5" rx="1.5"/>
+                        <rect x="13" y="10" width="8" height="11" rx="1.5"/>
+                    </svg>
+                </div>
+                <h3>Your Dashboard</h3>
+                <p>View all your notes in one place. Search, filter, and manage your annotations easily.</p>
+            </div>
+        </div>
+        
+        <div class="welcome-actions">
+            <a href="dashboard.html" class="btn-dashboard">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="3" y="3" width="8" height="11" rx="1.5"/>
+                    <rect x="3" y="16" width="8" height="5" rx="1.5"/>
+                    <rect x="13" y="3" width="8" height="5" rx="1.5"/>
+                    <rect x="13" y="10" width="8" height="11" rx="1.5"/>
+                </svg>
+                Open Dashboard
+            </a>
+            
+            <div class="welcome-links">
+                <a href="index.html" class="welcome-link">Learn More</a>
+                <a href="index.html#pricing" class="welcome-link">Pricing</a>
+                <a href="contact.html" class="welcome-link">Contact Us</a>
+            </div>
+        </div>
+        
+        <div class="shortcut-hint">
+            <strong>Pro tip:</strong> Press <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd> anytime to open your dashboard
+        </div>
+    </div>
+</main>
+
+</body>
+</html>

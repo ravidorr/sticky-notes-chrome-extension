@@ -276,6 +276,11 @@ Unplanned feature ideas for future consideration:
 - [x] Add note through right-click context menu
 - [x] Page-level notes (notes without element anchor, attached to page itself)
 - [x] Per-note visibility controls (hide/show individual notes, persisted across refreshes)
+- [x] Dashboard discoverability improvements:
+  - More prominent dashboard link in popup header (blue button style)
+  - "Open Notes Dashboard" context menu item
+  - Keyboard shortcut Alt+Shift+D to open dashboard
+  - Welcome page on first install with feature highlights
 - [] Read-only user permissions (viewers who can see notes but not edit/comment) - pricing implications?
 - [] Freemium model with ads - all features free forever but with ads in notes (research: can Google Ads be injected into extension UI?)
 - [] Edge browser support (Chromium-based, should be straightforward)

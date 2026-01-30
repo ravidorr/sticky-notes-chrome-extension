@@ -113,6 +113,18 @@ export function bootstrap() {
       log.debug('Page note context menu creation:', chrome.runtime.lastError.message);
     }
   });
+  
+  // Create context menu for opening the dashboard
+  chrome.contextMenus.create({
+    id: 'open-dashboard',
+    title: chrome.i18n.getMessage('contextMenuOpenDashboard') || 'Open Notes Dashboard',
+    contexts: ['page'],
+    documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
+  }, () => {
+    if (chrome.runtime.lastError) {
+      log.debug('Dashboard context menu creation:', chrome.runtime.lastError.message);
+    }
+  });
 
   // Handle context menu click
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -150,6 +162,20 @@ export function bootstrap() {
       } catch (error) {
         log.warn('Failed to send createPageLevelNote message:', error);
       }
+    } else if (info.menuItemId === 'open-dashboard') {
+      // Open the dashboard in a new tab
+      chrome.tabs.create({ 
+        url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html' 
+      });
+    }
+  });
+
+  // Listen for keyboard shortcuts
+  chrome.commands.onCommand.addListener((command) => {
+    if (command === 'open-dashboard') {
+      chrome.tabs.create({ 
+        url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html' 
+      });
     }
   });
 
@@ -209,6 +235,16 @@ export function bootstrap() {
         commentSubscriptions.delete(key);
         log.debug('Cleaned up comment subscription', key);
       }
+    }
+  });
+
+  // Open welcome page on first install
+  chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason === 'install') {
+      chrome.tabs.create({ 
+        url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/welcome.html' 
+      });
+      log.info('Opened welcome page for new installation');
     }
   });
 

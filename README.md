@@ -43,7 +43,9 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 - **Rich Text Editor**: Format notes with bold, italic, lists, and links
 - **Color Themes**: Choose from yellow, blue, green, or pink themes
 - **Position Controls**: Snap notes to top-left, top-right, bottom-left, or bottom-right
-- **Internationalization**: Supports English, French, and German (auto-detects browser language)
+- **Internationalization**: Supports English, French, German, and Hebrew (auto-detects browser language)
+- **Dashboard**: View and manage all your notes in one place (access via popup, context menu, or `Alt+Shift+D`)
+- **Keyboard Shortcuts**: Press `Alt+Shift+D` to quickly open the dashboard
 
 ## Project Structure
 

@@ -894,5 +894,14 @@
   "noteShown": {
     "message": "Note shown",
     "description": "Toast message when note is shown"
+  },
+
+  "contextMenuOpenDashboard": {
+    "message": "Open Notes Dashboard",
+    "description": "Context menu item to open the notes dashboard"
+  },
+  "commandOpenDashboard": {
+    "message": "Open the notes dashboard",
+    "description": "Keyboard shortcut description for opening the dashboard"
   }
 }

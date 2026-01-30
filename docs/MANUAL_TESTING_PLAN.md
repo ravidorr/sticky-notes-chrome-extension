@@ -83,6 +83,34 @@
 | 2 | Right-click on any element | Context menu appears |
 | 3 | Look for "Create Sticky Note Here" | Menu item is visible |
 
+### TEST-2.4: Dashboard Context Menu Item
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Navigate to any webpage | Page loads |
+| 2 | Right-click on the page | Context menu appears |
+| 3 | Look for "Open Notes Dashboard" | Menu item is visible |
+| 4 | Click "Open Notes Dashboard" | Dashboard opens in new tab |
+| 5 | Verify dashboard URL | Shows `ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html` |
+
+### TEST-2.5: Keyboard Shortcut - Open Dashboard
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Navigate to any webpage | Page loads |
+| 2 | Press `Alt+Shift+D` | Dashboard opens in new tab |
+| 3 | Verify dashboard URL | Shows `ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html` |
+
+### TEST-2.6: Welcome Page on First Install
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Remove extension from Chrome | Extension uninstalled |
+| 2 | Reinstall extension (Load unpacked) | Extension installed |
+| 3 | Check for new tab | Welcome page opens automatically |
+| 4 | Verify welcome page content | Shows welcome message, feature highlights, and "Open Dashboard" button |
+| 5 | Click "Open Dashboard" button | Dashboard opens in new tab |
+
 ---
 
 ## 3. Popup UI Testing
@@ -96,6 +124,16 @@
 | 3 | Check auth section | "Sign in with Google" button visible |
 | 4 | Check "Notes on this page" section | Section visible (may be empty) |
 | 5 | Check footer | Shows version number (e.g., "v1.0.0") |
+
+### TEST-3.1.1: Dashboard Link in Popup Header
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Click extension icon | Popup opens |
+| 2 | Look for "Dashboard" link in header | Blue button-style link visible next to title |
+| 3 | Hover over Dashboard link | Link shows hover state (darker blue background) |
+| 4 | Click Dashboard link | Dashboard opens in new tab |
+| 5 | Verify dashboard URL | Shows `ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html` |
 
 ### TEST-3.2: Add Note Button (Restricted Page)
 
