@@ -250,6 +250,13 @@ export function createPopupHandlers(deps = {}) {
                 }
                 windowClose();
                 return { success: true };
+              } else {
+                // Content script responded with failure - no point in retrying
+                log.error('Content script returned failure after injection:', response?.error);
+                if (showErrorToast) {
+                  showErrorToast(t('failedToCreatePageNote'));
+                }
+                return { success: false, error: response?.error || 'Unknown error' };
               }
             } catch (retryError) {
               lastError = retryError;

@@ -291,6 +291,23 @@ describe('Popup Handlers', () => {
       expect(result.success).toBe(true);
     });
 
+    it('should fail immediately when retry gets success:false response (not infinite loop)', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      localThis.mockChromeTabs.sendMessage
+        .mockRejectedValueOnce(new Error('Receiving end does not exist'))
+        .mockResolvedValueOnce({ success: false, error: 'Content script failure' });
+      localThis.mockChromeScripting.executeScript.mockResolvedValue([{ result: true }]);
+      
+      const result = await localThis.handlers.handleAddPageNote();
+      
+      expect(localThis.mockChromeScripting.executeScript).toHaveBeenCalled();
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Content script failure');
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+      // Should only call sendMessage twice (initial + one retry), not loop forever
+      expect(localThis.mockChromeTabs.sendMessage).toHaveBeenCalledTimes(2);
+    });
+
     it('should handle injection failure', async () => {
       localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
       localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('Receiving end does not exist'));
