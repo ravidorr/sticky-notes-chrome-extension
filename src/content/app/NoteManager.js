@@ -369,8 +369,11 @@ export class NoteManager {
     // Initial positioning
     note.updatePosition();
     
-    // Page-level notes are always visible (no visibility manager)
-    note.show();
+    // Page-level notes are not managed by visibility manager (no anchor),
+    // but they should respect the global visibility state
+    if (this.visibilityManager.getGlobalVisibility()) {
+      note.show();
+    }
     
     // Mark shared notes as read when viewed
     if (noteData.isShared) {
@@ -1032,6 +1035,11 @@ export class NoteManager {
     // Position centered on screen (fixed position)
     this.positionNoteCentered(note);
     
+    // If global visibility is disabled, enable it since user explicitly wants to view a note
+    if (!this.visibilityManager.getGlobalVisibility()) {
+      this.visibilityManager.setGlobalVisibility(true);
+    }
+    
     // Show and highlight
     note.show();
     note.bringToFront();
@@ -1147,11 +1155,25 @@ export class NoteManager {
    * Toggle visibility of all notes on the page
    * Coordinates with VisibilityManager to prevent anchor-based visibility
    * from overriding the global hidden state.
+   * Also handles orphaned notes and page-level notes that are not managed
+   * by the visibility manager (they have no anchor element).
    * @returns {boolean} New visibility state (true = visible, false = hidden)
    */
   toggleAllVisibility() {
     const newVisibility = !this.visibilityManager.getGlobalVisibility();
     this.visibilityManager.setGlobalVisibility(newVisibility);
+    
+    // Handle notes without anchors (orphaned notes, page-level notes)
+    // These are not tracked by the visibility manager
+    this.notes.forEach((note) => {
+      if (!note.anchor) {
+        if (newVisibility) {
+          note.show();
+        } else {
+          note.hide();
+        }
+      }
+    });
     
     log.debug(`Toggled all notes visibility: ${newVisibility ? 'visible' : 'hidden'}`);
     return newVisibility;

@@ -791,6 +791,26 @@
 | 4 | Scroll to other anchors | Notes appear when anchors become visible |
 | 5 | Button text updates | Shows "Hide all notes" |
 
+### TEST-12.6: Toggle Visibility with Page-Level Notes
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create a page-level note (via popup or context menu) | Page-level note visible |
+| 2 | Create an element-anchored note | Both notes visible |
+| 3 | Click Actions dropdown, then "Hide all notes" | Both notes become hidden |
+| 4 | Scroll page | Both notes remain hidden |
+| 5 | Click "Show all notes" | Both notes reappear |
+
+### TEST-12.7: Toggle Visibility with Orphaned Notes
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create a note anchored to a dynamic element | Note visible |
+| 2 | Navigate or refresh so anchor element is removed | Note becomes orphaned (badge shows count) |
+| 3 | Click orphaned note in popup to view it | Orphaned note appears centered on screen |
+| 4 | Click "Hide all notes" | Orphaned note becomes hidden |
+| 5 | Click "Show all notes" | Orphaned note reappears |
+
 ---
 
 ## 13. Element Re-anchoring & Fuzzy Matching

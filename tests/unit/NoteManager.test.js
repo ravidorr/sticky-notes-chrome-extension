@@ -1395,6 +1395,55 @@ describe('NoteManager', () => {
       
       manager.notes.get('orphan-show-1').destroy();
     });
+    
+    it('should enable global visibility when showing orphaned note if currently hidden', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Set global visibility to hidden
+      localThis.visibilityManager._setMockVisibility(false);
+      expect(localThis.visibilityManager.getGlobalVisibility()).toBe(false);
+      
+      const noteData = {
+        id: 'orphan-show-visibility',
+        selector: '.missing',
+        content: 'Orphaned content',
+        theme: 'blue',
+        position: { anchor: 'top-right' }
+      };
+      manager.orphanedNotes.set('orphan-show-visibility', { noteData, addedAt: Date.now() });
+      
+      manager.showOrphanedNote('orphan-show-visibility');
+      
+      // Should have called setGlobalVisibility(true) to enable visibility
+      expect(localThis.visibilityManager.setGlobalVisibility).toHaveBeenCalledWith(true);
+      
+      manager.notes.get('orphan-show-visibility').destroy();
+    });
+    
+    it('should not call setGlobalVisibility when already visible', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Global visibility is already true by default
+      expect(localThis.visibilityManager.getGlobalVisibility()).toBe(true);
+      
+      const noteData = {
+        id: 'orphan-show-already-visible',
+        selector: '.missing',
+        content: 'Orphaned content',
+        theme: 'blue',
+        position: { anchor: 'top-right' }
+      };
+      manager.orphanedNotes.set('orphan-show-already-visible', { noteData, addedAt: Date.now() });
+      
+      manager.showOrphanedNote('orphan-show-already-visible');
+      
+      // setGlobalVisibility should NOT have been called since visibility is already true
+      expect(localThis.visibilityManager.setGlobalVisibility).not.toHaveBeenCalled();
+      
+      manager.notes.get('orphan-show-already-visible').destroy();
+    });
   });
 
   describe('positionNoteCentered', () => {
@@ -2027,9 +2076,12 @@ describe('NoteManager', () => {
         note.destroy();
       });
       
-      it('should show page-level notes immediately (always visible)', () => {
+      it('should show page-level notes when global visibility is true', () => {
         const localThis = createMockDependencies();
         const manager = new NoteManager(localThis);
+        
+        // Global visibility is true by default
+        expect(localThis.visibilityManager.getGlobalVisibility()).toBe(true);
         
         const noteData = {
           id: 'visible-page-note',
@@ -2041,6 +2093,31 @@ describe('NoteManager', () => {
         
         const note = manager.notes.get('visible-page-note');
         expect(note.isVisible).toBe(true);
+        // Page-level notes don't use visibility manager
+        expect(localThis.visibilityManager.observe).not.toHaveBeenCalled();
+        
+        note.destroy();
+      });
+      
+      it('should not show page-level notes when global visibility is false', () => {
+        const localThis = createMockDependencies();
+        const manager = new NoteManager(localThis);
+        
+        // Set global visibility to hidden
+        localThis.visibilityManager._setMockVisibility(false);
+        expect(localThis.visibilityManager.getGlobalVisibility()).toBe(false);
+        
+        const noteData = {
+          id: 'hidden-page-note',
+          selector: '__PAGE__',
+          content: 'Test'
+        };
+        
+        manager.createPageLevelNoteUI(noteData);
+        
+        const note = manager.notes.get('hidden-page-note');
+        // Note should NOT be visible since global visibility is false
+        expect(note.isVisible).toBe(false);
         // Page-level notes don't use visibility manager
         expect(localThis.visibilityManager.observe).not.toHaveBeenCalled();
         
@@ -2217,6 +2294,97 @@ describe('NoteManager', () => {
       // Should not throw with empty notes
       expect(() => manager.toggleAllVisibility()).not.toThrow();
       expect(localThis.visibilityManager.setGlobalVisibility).toHaveBeenCalledWith(false);
+    });
+    
+    it('should hide notes without anchors when toggling to hidden', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Create an orphaned note (no anchor) via showOrphanedNote
+      const noteData = {
+        id: 'orphan-toggle-1',
+        selector: '.missing',
+        content: 'Orphaned content',
+        theme: 'blue',
+        position: { anchor: 'top-right' }
+      };
+      manager.orphanedNotes.set('orphan-toggle-1', { noteData, addedAt: Date.now() });
+      manager.showOrphanedNote('orphan-toggle-1');
+      
+      const orphanNote = manager.notes.get('orphan-toggle-1');
+      expect(orphanNote).toBeDefined();
+      expect(orphanNote.anchor).toBeNull();
+      
+      const hideSpy = jest.spyOn(orphanNote, 'hide');
+      
+      // Toggle from visible to hidden
+      manager.toggleAllVisibility();
+      
+      expect(hideSpy).toHaveBeenCalled();
+      
+      orphanNote.destroy();
+    });
+    
+    it('should show notes without anchors when toggling to visible', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Set initial state to hidden
+      localThis.visibilityManager._setMockVisibility(false);
+      
+      // Create an orphaned note (no anchor) via showOrphanedNote
+      // Note: showOrphanedNote will enable visibility, so we need to manually
+      // set it back to false for this test
+      const noteData = {
+        id: 'orphan-toggle-2',
+        selector: '.missing',
+        content: 'Orphaned content',
+        theme: 'blue',
+        position: { anchor: 'top-right' }
+      };
+      manager.orphanedNotes.set('orphan-toggle-2', { noteData, addedAt: Date.now() });
+      manager.showOrphanedNote('orphan-toggle-2');
+      localThis.visibilityManager._setMockVisibility(false);
+      
+      const orphanNote = manager.notes.get('orphan-toggle-2');
+      const showSpy = jest.spyOn(orphanNote, 'show');
+      
+      // Toggle from hidden to visible
+      manager.toggleAllVisibility();
+      
+      expect(showSpy).toHaveBeenCalled();
+      
+      orphanNote.destroy();
+    });
+    
+    it('should not call show/hide on notes with anchors (delegated to visibilityManager)', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Create a note with an anchor
+      manager.createNoteFromData({
+        id: 'anchored-toggle',
+        selector: '#anchor-element',
+        content: 'Anchored content',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      });
+      
+      const anchoredNote = manager.notes.get('anchored-toggle');
+      expect(anchoredNote.anchor).not.toBeNull();
+      
+      const showSpy = jest.spyOn(anchoredNote, 'show');
+      const hideSpy = jest.spyOn(anchoredNote, 'hide');
+      
+      // Toggle visibility
+      manager.toggleAllVisibility();
+      
+      // Anchored notes should NOT have show/hide called directly by toggleAllVisibility
+      // That responsibility is delegated to visibilityManager.setGlobalVisibility
+      expect(showSpy).not.toHaveBeenCalled();
+      expect(hideSpy).not.toHaveBeenCalled();
+      
+      anchoredNote.destroy();
     });
   });
 });
