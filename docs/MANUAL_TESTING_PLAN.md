@@ -182,6 +182,45 @@
 | 4 | Wait 10-15 seconds | Note stays visible (does not disappear) |
 | 5 | Reload the page | Note persists and re-anchors correctly inside the iframe |
 
+### TEST-4.7: Page-Level Note via Popup Button
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Navigate to `http://localhost:3000` | Test page loads |
+| 2 | Click extension icon | Popup opens |
+| 3 | Click "Page Note" button | Note created immediately (no selection mode) |
+| 4 | Note appears at top-left of page | Default position (10, 10) from top-left |
+| 5 | Note has no anchor element highlight | Metadata shows "Page-level (no anchor)" instead of CSS selector |
+| 6 | Scroll page | Note scrolls with page content |
+
+### TEST-4.8: Page-Level Note via Context Menu
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Navigate to test page | Page loads |
+| 2 | Right-click on empty area of page (not on a specific element) | Context menu appears |
+| 3 | Click "Create Page Note" | Note created at right-click position |
+| 4 | Note appears at click location | Not at default position |
+| 5 | Scroll page | Note scrolls with page content |
+
+### TEST-4.9: Page-Level Note Dragging
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create a page-level note | Note exists |
+| 2 | Drag note header to new position | Note moves with mouse |
+| 3 | Release mouse | Note stays at new position |
+| 4 | Scroll page | Note maintains relative position to page |
+| 5 | Refresh page | Note reappears at saved position |
+
+### TEST-4.10: Page-Level Note Always Visible
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create a page-level note at bottom of long page | Note created |
+| 2 | Scroll to top of page | Note is still visible (follows scroll) |
+| 3 | Scroll to any position | Note always visible regardless of scroll |
+
 ---
 
 ## 5. Note Editing & Rich Text Editor

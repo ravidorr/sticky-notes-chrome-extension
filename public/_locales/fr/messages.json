@@ -50,6 +50,10 @@
     "message": "Ajouter une note",
     "description": "Add note button text"
   },
+  "addPageNote": {
+    "message": "Note de page",
+    "description": "Add page-level note button text (note not anchored to any element)"
+  },
   "addNoteHint": {
     "message": "Cliquez, puis selectionnez un element sur la page",
     "description": "Hint text below add note button"
@@ -238,6 +242,10 @@
   "metadataElement": {
     "message": "Element",
     "description": "Metadata label for element selector"
+  },
+  "pageLevel": {
+    "message": "Page (sans ancrage)",
+    "description": "Shown in metadata when note is not anchored to any element"
   },
   "metadataOwner": {
     "message": "Proprietaire",
@@ -589,9 +597,21 @@
     "message": "Creer une note ici",
     "description": "Context menu item to create a note on the right-clicked element"
   },
+  "contextMenuCreatePageNote": {
+    "message": "Creer une note de page",
+    "description": "Context menu item to create a page-level note (not anchored to any element)"
+  },
   "noteCreated": {
     "message": "Note creee",
     "description": "Toast message after creating a note from context menu"
+  },
+  "pageNoteCreated": {
+    "message": "Note de page creee",
+    "description": "Toast message after creating a page-level note"
+  },
+  "failedToCreatePageNote": {
+    "message": "Echec de la creation de la note de page",
+    "description": "Error message when page-level note creation fails"
   },
   "copyMetadata": {
     "message": "Copier dans le presse-papiers",

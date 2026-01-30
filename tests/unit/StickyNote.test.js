@@ -2041,4 +2041,185 @@ describe('StickyNote', () => {
       expect(localThis.minimizeBtn.innerHTML).toContain('6 15 12 9 18 15'); // up arrow
     });
   });
+
+  describe('page-level notes', () => {
+    let pageNote;
+    
+    beforeEach(() => {
+      pageNote = new StickyNote({
+        id: 'page-note-1',
+        anchor: null,
+        selector: '__PAGE__',
+        content: 'Page-level note content',
+        theme: 'blue',
+        position: { pageX: 100, pageY: 200 },
+        onSave: onSave,
+        onThemeChange: onThemeChange,
+        onDelete: onDelete
+      });
+      container.appendChild(pageNote.element);
+    });
+    
+    afterEach(() => {
+      if (pageNote) {
+        pageNote.destroy();
+      }
+    });
+    
+    describe('constructor', () => {
+      it('should identify as page-level note', () => {
+        expect(pageNote.isPageLevel).toBe(true);
+      });
+      
+      it('should have null anchor', () => {
+        expect(pageNote.anchor).toBeNull();
+      });
+      
+      it('should have __PAGE__ selector', () => {
+        expect(pageNote.selector).toBe('__PAGE__');
+      });
+    });
+    
+    describe('render', () => {
+      it('should display page-level label instead of selector in metadata', () => {
+        const localThis = {};
+        localThis.selectorElement = pageNote.element.querySelector('.sn-metadata-selector');
+        expect(localThis.selectorElement.textContent).toBe('pageLevel');
+      });
+      
+      it('should not have copy button for page-level selector', () => {
+        const localThis = {};
+        // Page-level notes have fewer copy buttons (no selector copy button)
+        localThis.copyButtons = pageNote.element.querySelectorAll('.sn-metadata-copy-btn');
+        // Should have 6 instead of 7 (no selector copy button)
+        expect(localThis.copyButtons.length).toBe(6);
+      });
+    });
+    
+    describe('updatePosition', () => {
+      it('should position based on pageX/pageY coordinates', () => {
+        pageNote.updatePosition();
+        // With scrollX=0, scrollY=0: viewport coords = page coords
+        expect(pageNote.element.style.left).toBe('100px');
+        expect(pageNote.element.style.top).toBe('200px');
+      });
+      
+      it('should convert page coordinates to viewport coordinates when scrolled', () => {
+        const localThis = {};
+        localThis.originalScrollX = window.scrollX;
+        localThis.originalScrollY = window.scrollY;
+        Object.defineProperty(window, 'scrollX', { value: 50, writable: true });
+        Object.defineProperty(window, 'scrollY', { value: 100, writable: true });
+        
+        pageNote.updatePosition();
+        
+        // viewport = page - scroll: (100-50, 200-100) = (50, 100)
+        expect(pageNote.element.style.left).toBe('50px');
+        expect(pageNote.element.style.top).toBe('100px');
+        
+        Object.defineProperty(window, 'scrollX', { value: localThis.originalScrollX, writable: true });
+        Object.defineProperty(window, 'scrollY', { value: localThis.originalScrollY, writable: true });
+      });
+      
+      it('should use default position (10, 10) when pageX/pageY not set', () => {
+        const localThis = {};
+        localThis.defaultPageNote = new StickyNote({
+          id: 'default-page-note',
+          anchor: null,
+          selector: '__PAGE__',
+          content: '',
+          position: {}
+        });
+        container.appendChild(localThis.defaultPageNote.element);
+        
+        localThis.defaultPageNote.updatePosition();
+        expect(localThis.defaultPageNote.element.style.left).toBe('10px');
+        expect(localThis.defaultPageNote.element.style.top).toBe('10px');
+        
+        localThis.defaultPageNote.destroy();
+      });
+    });
+    
+    describe('dragging', () => {
+      it('should store page coordinates during drag', () => {
+        pageNote.isDragging = true;
+        pageNote.dragOffset = { x: 10, y: 10 };
+        
+        pageNote.handleDragMove({ clientX: 150, clientY: 250 });
+        
+        // Position should be stored as page coordinates
+        // With no scroll: page = viewport, so pageX = 140, pageY = 240
+        expect(pageNote.position.pageX).toBe(140);
+        expect(pageNote.position.pageY).toBe(240);
+      });
+      
+      it('should store page coordinates accounting for scroll during drag', () => {
+        const localThis = {};
+        localThis.originalScrollX = window.scrollX;
+        localThis.originalScrollY = window.scrollY;
+        Object.defineProperty(window, 'scrollX', { value: 50, writable: true });
+        Object.defineProperty(window, 'scrollY', { value: 100, writable: true });
+        
+        pageNote.isDragging = true;
+        pageNote.dragOffset = { x: 10, y: 10 };
+        
+        pageNote.handleDragMove({ clientX: 150, clientY: 250 });
+        
+        // viewport = 140, 240; page = viewport + scroll = (190, 340)
+        expect(pageNote.position.pageX).toBe(190);
+        expect(pageNote.position.pageY).toBe(340);
+        
+        Object.defineProperty(window, 'scrollX', { value: localThis.originalScrollX, writable: true });
+        Object.defineProperty(window, 'scrollY', { value: localThis.originalScrollY, writable: true });
+      });
+      
+      it('should call onPositionChange when drag ends', () => {
+        const localThis = {};
+        localThis.onPositionChange = jest.fn();
+        
+        localThis.dragNote = new StickyNote({
+          id: 'drag-page-note',
+          anchor: null,
+          selector: '__PAGE__',
+          content: '',
+          position: { pageX: 100, pageY: 200 },
+          onPositionChange: localThis.onPositionChange
+        });
+        container.appendChild(localThis.dragNote.element);
+        
+        localThis.dragNote.isDragging = true;
+        localThis.dragNote.position = { pageX: 150, pageY: 250 };
+        localThis.dragNote.handleDragEnd();
+        
+        expect(localThis.onPositionChange).toHaveBeenCalledWith({ pageX: 150, pageY: 250 });
+        
+        localThis.dragNote.destroy();
+      });
+    });
+    
+    describe('handleWindowResize', () => {
+      it('should always update position for page-level notes', () => {
+        const localThis = {};
+        localThis.updateSpy = jest.spyOn(pageNote, 'updatePosition');
+        
+        pageNote.handleWindowResize();
+        
+        expect(localThis.updateSpy).toHaveBeenCalled();
+      });
+    });
+    
+    describe('anchor highlight', () => {
+      it('should not throw when hovering (no anchor to highlight)', () => {
+        expect(() => {
+          pageNote.element.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+        }).not.toThrow();
+      });
+      
+      it('should not throw when leaving (no anchor to unhighlight)', () => {
+        expect(() => {
+          pageNote.element.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+        }).not.toThrow();
+      });
+    });
+  });
 });

@@ -117,6 +117,12 @@ export class MessageHandler {
         return { success: true, created };
       }
       
+      case 'createPageLevelNote': {
+        log.debug(' Creating page-level note', message.position);
+        const created = await this.app.createPageLevelNote(message.position);
+        return { success: true, created };
+      }
+      
       case 'toggleAllNotesVisibility': {
         log.debug(' Toggling all notes visibility');
         const notesVisible = this.app.noteManager.toggleAllVisibility();

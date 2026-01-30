@@ -5,6 +5,19 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-01-30
+
+### Added
+
+- Page-level notes - create notes attached to the page itself (not a specific element) via "Page Note" button in popup or "Create Page Note" context menu option
+- Page-level notes use absolute page positioning and scroll with page content
+- Page-level notes are always visible (not tied to anchor element visibility)
+- Page-level notes start minimized by default when loaded
+
+### Changed
+
+- Updated documentation (README, API docs, Manual Testing Plan, Roadmap) for page-level notes feature
+
 ## [1.7.0] - 2026-01-30
 
 ### Added

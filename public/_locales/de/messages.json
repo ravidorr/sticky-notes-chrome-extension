@@ -50,6 +50,10 @@
     "message": "Notiz hinzufugen",
     "description": "Add note button text"
   },
+  "addPageNote": {
+    "message": "Seitennotiz",
+    "description": "Add page-level note button text (note not anchored to any element)"
+  },
   "addNoteHint": {
     "message": "Klicken Sie und wahlen Sie dann ein Element auf der Seite aus",
     "description": "Hint text below add note button"
@@ -238,6 +242,10 @@
   "metadataElement": {
     "message": "Element",
     "description": "Metadata label for element selector"
+  },
+  "pageLevel": {
+    "message": "Seitenebene (kein Anker)",
+    "description": "Shown in metadata when note is not anchored to any element"
   },
   "metadataOwner": {
     "message": "Besitzer",
@@ -589,9 +597,21 @@
     "message": "Haftnotiz hier erstellen",
     "description": "Context menu item to create a note on the right-clicked element"
   },
+  "contextMenuCreatePageNote": {
+    "message": "Seitennotiz erstellen",
+    "description": "Context menu item to create a page-level note (not anchored to any element)"
+  },
   "noteCreated": {
     "message": "Haftnotiz erstellt",
     "description": "Toast message after creating a note from context menu"
+  },
+  "pageNoteCreated": {
+    "message": "Seitennotiz erstellt",
+    "description": "Toast message after creating a page-level note"
+  },
+  "failedToCreatePageNote": {
+    "message": "Seitennotiz konnte nicht erstellt werden",
+    "description": "Error message when page-level note creation fails"
   },
   "copyMetadata": {
     "message": "In Zwischenablage kopieren",

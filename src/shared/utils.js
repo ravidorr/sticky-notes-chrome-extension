@@ -213,6 +213,11 @@ export function validateSelectorPattern(selector) {
     return { valid: false, error: 'Selector cannot be empty' };
   }
   
+  // Allow page-level selector (notes not anchored to any element)
+  if (trimmed === PAGE_LEVEL_SELECTOR) {
+    return { valid: true };
+  }
+  
   if (trimmed.length > MAX_SELECTOR_LENGTH) {
     return { valid: false, error: `Selector exceeds maximum length of ${MAX_SELECTOR_LENGTH} characters` };
   }
@@ -246,6 +251,20 @@ export const THEME_COLORS = {
 
 // Valid themes
 export const VALID_THEMES = ['yellow', 'blue', 'green', 'pink'];
+
+/**
+ * Special selector value for page-level notes (not anchored to any element)
+ */
+export const PAGE_LEVEL_SELECTOR = '__PAGE__';
+
+/**
+ * Check if a note is a page-level note (not anchored to any element)
+ * @param {Object} noteData - Note data object
+ * @returns {boolean} True if this is a page-level note
+ */
+export function isPageLevelNote(noteData) {
+  return noteData?.selector === PAGE_LEVEL_SELECTOR;
+}
 
 /**
  * Get browser information

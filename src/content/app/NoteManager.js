@@ -6,7 +6,7 @@
 import { StickyNote } from '../components/StickyNote.js';
 import { contentLogger as log } from '../../shared/logger.js';
 import { t } from '../../shared/i18n.js';
-import { getBrowserInfo, detectEnvironment } from '../../shared/utils.js';
+import { getBrowserInfo, detectEnvironment, PAGE_LEVEL_SELECTOR, isPageLevelNote } from '../../shared/utils.js';
 import { purgeExpiredSessionMarkers, calculateNoteDiff } from './SyncLogic.js';
 
 /**
@@ -225,6 +225,12 @@ export class NoteManager {
       return;
     }
     
+    // Handle page-level notes (no anchor element)
+    if (isPageLevelNote(noteData)) {
+      this.createPageLevelNoteUI(noteData, options);
+      return;
+    }
+    
     // Find the anchor element
     let anchorElement = null;
     let selectorMatches = [];
@@ -319,6 +325,59 @@ export class NoteManager {
     if (noteData.isShared) {
       this.markSharedNoteAsRead(noteData.id);
     }
+  }
+  
+  /**
+   * Create UI for a page-level note (no anchor element)
+   * Page-level notes are always visible and don't use the visibility manager
+   * @param {Object} noteData - Note data from storage
+   * @param {Object} options - Additional options
+   */
+  createPageLevelNoteUI(noteData, options = {}) {
+    const user = this.getCurrentUser();
+    
+    // Create note instance without anchor
+    const note = new StickyNote({
+      id: noteData.id,
+      anchor: null, // Page-level notes have no anchor
+      selector: noteData.selector,
+      content: noteData.content,
+      theme: noteData.theme || 'yellow',
+      position: noteData.position || { pageX: 10, pageY: 10 },
+      metadata: noteData.metadata,
+      createdAt: noteData.createdAt,
+      ownerEmail: noteData.ownerEmail,
+      ownerId: noteData.ownerId,
+      isMinimized: !options.isNewNote,
+      onSave: (content) => this.handleNoteSave(noteData.id, content),
+      onThemeChange: (theme) => this.handleThemeChange(noteData.id, theme),
+      onPositionChange: (position) => this.handlePositionChange(noteData.id, position),
+      onDelete: () => this.handleNoteDelete(noteData.id),
+      user: user,
+      onAddComment: (noteId, commentData) => this.handleAddComment(noteId, commentData),
+      onEditComment: (noteId, commentId, updates) => this.handleEditComment(noteId, commentId, updates),
+      onDeleteComment: (noteId, commentId) => this.handleDeleteComment(noteId, commentId),
+      onLoadComments: (noteId) => this.handleLoadComments(noteId),
+      onCommentsOpened: (noteId) => this.subscribeToComments(noteId),
+      onCommentsClosed: (noteId) => this.unsubscribeFromComments(noteId)
+    });
+    
+    // Add to container and map
+    this.container.appendChild(note.element);
+    this.notes.set(noteData.id, note);
+    
+    // Initial positioning
+    note.updatePosition();
+    
+    // Page-level notes are always visible (no visibility manager)
+    note.show();
+    
+    // Mark shared notes as read when viewed
+    if (noteData.isShared) {
+      this.markSharedNoteAsRead(noteData.id);
+    }
+    
+    log.debug('Created page-level note:', noteData.id);
   }
   
   /**
@@ -705,6 +764,71 @@ export class NoteManager {
   }
   
   /**
+   * Create a page-level note (not anchored to any element)
+   * @param {Object} options - Options for page-level note
+   * @param {number} options.pageX - X position in page coordinates (default: 10)
+   * @param {number} options.pageY - Y position in page coordinates (default: 10)
+   */
+  async createPageLevelNote(options = {}) {
+    const pageX = options.pageX ?? 10;
+    const pageY = options.pageY ?? 10;
+    
+    // Create new note with metadata
+    const browserInfo = getBrowserInfo();
+    const isTopFrame = this.isTopFrame();
+    const tabUrl = this.getTabUrl();
+    const frameUrl = this.getFrameUrl();
+    const currentUrl = frameUrl || window.location.href;
+    const consoleErrors = this.getConsoleErrors();
+    
+    const noteData = {
+      url: this.getCurrentUrl(),
+      selector: PAGE_LEVEL_SELECTOR,
+      content: '',
+      theme: 'yellow',
+      position: { pageX, pageY },
+      metadata: {
+        url: frameUrl,
+        tabUrl: tabUrl,
+        title: document.title,
+        browser: `${browserInfo.browser}${browserInfo.version ? ' ' + browserInfo.version : ''}`,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+        timestamp: new Date().toISOString(),
+        isTopFrame: isTopFrame,
+        frameUrl: isTopFrame ? null : frameUrl,
+        environment: detectEnvironment(currentUrl),
+        consoleErrors: consoleErrors.length > 0 ? consoleErrors : undefined
+      }
+    };
+    
+    try {
+      // Save to storage
+      const response = await this.sendMessage({
+        action: 'saveNote',
+        note: noteData
+      });
+      
+      if (response.success) {
+        // Track this note as created in current session
+        this.sessionCreatedNoteIds.set(response.note.id, Date.now());
+        
+        // Create the note UI - new notes start maximized
+        this.createNoteFromData(response.note, { isNewNote: true });
+        log.debug('Created page-level note');
+        return true;
+      } else {
+        log.error('Failed to save page-level note:', response.error);
+        return false;
+      }
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Failed to create page-level note:', error);
+      }
+      return false;
+    }
+  }
+  
+  /**
    * Update notes from real-time sync
    * @param {Array} updatedNotes - Updated notes array
    */
@@ -790,6 +914,18 @@ export class NoteManager {
     const note = this.notes.get(noteId);
     
     if (!note) {
+      return;
+    }
+    
+    // Page-level notes don't have an anchor to scroll to
+    if (note.isPageLevel) {
+      // Show, highlight, and optionally maximize immediately
+      note.show();
+      note.bringToFront();
+      note.highlight();
+      if (maximize) {
+        note.maximize();
+      }
       return;
     }
     

@@ -187,6 +187,91 @@ export function createPopupHandlers(deps = {}) {
   }
 
   /**
+   * Handle add page note button click
+   * Creates a page-level note (not anchored to any element)
+   * @returns {Promise<Object>} Result with success flag
+   */
+  async function handleAddPageNote() {
+    log.debug(' Add Page Note button clicked');
+    
+    try {
+      // Get current active tab
+      const [tab] = await chromeTabs.query({ active: true, currentWindow: true });
+      
+      if (!tab) {
+        log.error('No active tab found');
+        return { success: false, error: 'No active tab found' };
+      }
+      
+      // Check if it's a restricted page
+      if (isRestrictedUrl(tab.url)) {
+        log.debug(' URL is restricted, cannot create note');
+        return { success: false, error: 'Restricted URL' };
+      }
+      
+      // Send createPageLevelNote message to content script
+      log.debug(' Sending createPageLevelNote message to tab', tab.id);
+      try {
+        const response = await chromeTabs.sendMessage(tab.id, { action: 'createPageLevelNote' });
+        
+        if (response?.success) {
+          if (showSuccessToast) {
+            showSuccessToast(t('pageNoteCreated'));
+          }
+          windowClose();
+          return { success: true };
+        } else {
+          log.error('Failed to create page note:', response?.error);
+          if (showErrorToast) {
+            showErrorToast(t('failedToCreatePageNote'));
+          }
+          return { success: false, error: response?.error || 'Unknown error' };
+        }
+      } catch (error) {
+        log.error(' Message failed:', error.message);
+        
+        // Content script not loaded - inject it first
+        if (error.message.includes('Receiving end does not exist') || 
+            error.message.includes('Could not establish connection')) {
+          log.error(' Content script not found, injecting...');
+          await injectContentScript(tab.id);
+          
+          // Wait for the script to initialize with retry
+          let retries = 5;
+          let lastError = null;
+          
+          while (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+            try {
+              const response = await chromeTabs.sendMessage(tab.id, { action: 'createPageLevelNote' });
+              if (response?.success) {
+                if (showSuccessToast) {
+                  showSuccessToast(t('pageNoteCreated'));
+                }
+                windowClose();
+                return { success: true };
+              }
+            } catch (retryError) {
+              lastError = retryError;
+              retries--;
+            }
+          }
+          
+          throw lastError || new Error('Content script failed to respond after injection');
+        } else {
+          throw error;
+        }
+      }
+    } catch (error) {
+      log.error('Error creating page note:', error);
+      if (showErrorToast) {
+        showErrorToast(t('failedToCreatePageNote'));
+      }
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Load notes for the current tab
    * @returns {Promise<Object>} Result with notes array
    */
@@ -977,6 +1062,7 @@ export function createPopupHandlers(deps = {}) {
     handleLogin,
     handleLogout,
     handleAddNote,
+    handleAddPageNote,
     loadNotesForCurrentTab,
     handleNoteClick,
     injectContentScript,

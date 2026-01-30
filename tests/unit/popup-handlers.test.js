@@ -232,6 +232,87 @@ describe('Popup Handlers', () => {
     });
   });
 
+  describe('handleAddPageNote', () => {
+    it('should return error when no active tab', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([]);
+      
+      const result = await localThis.handlers.handleAddPageNote();
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('No active tab found');
+    });
+
+    it('should return error for restricted URLs', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'chrome://extensions' }]);
+      
+      const result = await localThis.handlers.handleAddPageNote();
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Restricted URL');
+      // Note: Toast not shown for restricted URL - button is disabled in UI before user can click
+      expect(localThis.mockShowErrorToast).not.toHaveBeenCalled();
+    });
+
+    it('should send createPageLevelNote message to content script', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      localThis.mockChromeTabs.sendMessage.mockResolvedValue({ success: true });
+      
+      const result = await localThis.handlers.handleAddPageNote();
+      
+      expect(result.success).toBe(true);
+      expect(localThis.mockChromeTabs.sendMessage).toHaveBeenCalledWith(
+        1, 
+        { action: 'createPageLevelNote' }
+      );
+      expect(localThis.mockShowSuccessToast).toHaveBeenCalled();
+      expect(localThis.mockWindowClose).toHaveBeenCalled();
+    });
+
+    it('should show error toast on content script failure', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      localThis.mockChromeTabs.sendMessage.mockResolvedValue({ success: false, error: 'Failed' });
+      
+      const result = await localThis.handlers.handleAddPageNote();
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+    });
+
+    it('should inject content script and retry when content script not loaded', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      localThis.mockChromeTabs.sendMessage
+        .mockRejectedValueOnce(new Error('Receiving end does not exist'))
+        .mockResolvedValueOnce({ success: true });
+      localThis.mockChromeScripting.executeScript.mockResolvedValue([{ result: true }]);
+      
+      const result = await localThis.handlers.handleAddPageNote();
+      
+      expect(localThis.mockChromeScripting.executeScript).toHaveBeenCalled();
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle injection failure', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('Receiving end does not exist'));
+      localThis.mockChromeScripting.executeScript.mockRejectedValue(new Error('Cannot inject'));
+      
+      const result = await localThis.handlers.handleAddPageNote();
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+    });
+
+    it('should handle non-injection errors', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('Unknown error'));
+      
+      const result = await localThis.handlers.handleAddPageNote();
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+    });
+  });
+
   describe('loadNotesForCurrentTab', () => {
     it('should return notes for current tab', async () => {
       const mockNotes = [{ id: '1', content: 'Test' }];

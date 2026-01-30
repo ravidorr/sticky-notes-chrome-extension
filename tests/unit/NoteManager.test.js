@@ -1877,6 +1877,287 @@ describe('NoteManager', () => {
     });
   });
   
+  describe('page-level notes', () => {
+    describe('createPageLevelNote', () => {
+      it('should create note with __PAGE__ selector', async () => {
+        const localThis = createMockDependencies();
+        localThis.getConsoleErrors = jest.fn(() => []);
+        localThis.sendMessage.mockResolvedValueOnce({
+          success: true,
+          note: { id: 'page-note-1', selector: '__PAGE__', content: '' }
+        });
+        const manager = new NoteManager(localThis);
+        
+        const result = await manager.createPageLevelNote({ pageX: 100, pageY: 200 });
+        
+        expect(result).toBe(true);
+        expect(localThis.sendMessage).toHaveBeenCalledWith(
+          expect.objectContaining({
+            action: 'saveNote',
+            note: expect.objectContaining({
+              selector: '__PAGE__',
+              position: { pageX: 100, pageY: 200 }
+            })
+          })
+        );
+      });
+      
+      it('should use default position (10, 10) when not provided', async () => {
+        const localThis = createMockDependencies();
+        localThis.getConsoleErrors = jest.fn(() => []);
+        localThis.sendMessage.mockResolvedValueOnce({
+          success: true,
+          note: { id: 'page-note-2', selector: '__PAGE__' }
+        });
+        const manager = new NoteManager(localThis);
+        
+        await manager.createPageLevelNote();
+        
+        expect(localThis.sendMessage).toHaveBeenCalledWith(
+          expect.objectContaining({
+            note: expect.objectContaining({
+              position: { pageX: 10, pageY: 10 }
+            })
+          })
+        );
+      });
+      
+      it('should track note ID in sessionCreatedNoteIds', async () => {
+        const localThis = createMockDependencies();
+        localThis.getConsoleErrors = jest.fn(() => []);
+        localThis.sendMessage.mockResolvedValueOnce({
+          success: true,
+          note: { id: 'tracked-page-note', selector: '__PAGE__' }
+        });
+        const manager = new NoteManager(localThis);
+        
+        await manager.createPageLevelNote();
+        
+        expect(manager.sessionCreatedNoteIds.has('tracked-page-note')).toBe(true);
+      });
+      
+      it('should return false on save failure', async () => {
+        const localThis = createMockDependencies();
+        localThis.getConsoleErrors = jest.fn(() => []);
+        localThis.sendMessage.mockResolvedValueOnce({ success: false, error: 'Failed' });
+        const manager = new NoteManager(localThis);
+        
+        const result = await manager.createPageLevelNote();
+        
+        expect(result).toBe(false);
+      });
+      
+      it('should return false on exception', async () => {
+        const localThis = createMockDependencies();
+        localThis.getConsoleErrors = jest.fn(() => []);
+        localThis.sendMessage.mockRejectedValueOnce(new Error('Network error'));
+        localThis.isContextInvalidatedError.mockReturnValue(false);
+        const manager = new NoteManager(localThis);
+        
+        const result = await manager.createPageLevelNote();
+        
+        expect(result).toBe(false);
+      });
+    });
+    
+    describe('createNoteFromData with page-level notes', () => {
+      it('should route page-level notes to createPageLevelNoteUI', () => {
+        const localThis = createMockDependencies();
+        const manager = new NoteManager(localThis);
+        const createPageLevelSpy = jest.spyOn(manager, 'createPageLevelNoteUI');
+        
+        const noteData = {
+          id: 'page-note-routing',
+          selector: '__PAGE__',
+          content: 'Page note',
+          position: { pageX: 50, pageY: 50 }
+        };
+        
+        manager.createNoteFromData(noteData);
+        
+        expect(createPageLevelSpy).toHaveBeenCalledWith(noteData, expect.any(Object));
+        
+        createPageLevelSpy.mockRestore();
+        const note = manager.notes.get('page-note-routing');
+        if (note) note.destroy();
+      });
+      
+      it('should not route regular notes to createPageLevelNoteUI', () => {
+        const localThis = createMockDependencies();
+        const manager = new NoteManager(localThis);
+        const createPageLevelSpy = jest.spyOn(manager, 'createPageLevelNoteUI');
+        
+        const noteData = {
+          id: 'regular-note',
+          selector: '#anchor-element',
+          content: 'Regular note',
+          theme: 'yellow',
+          position: { anchor: 'top-right' }
+        };
+        
+        manager.createNoteFromData(noteData);
+        
+        expect(createPageLevelSpy).not.toHaveBeenCalled();
+        
+        createPageLevelSpy.mockRestore();
+        const note = manager.notes.get('regular-note');
+        if (note) note.destroy();
+      });
+    });
+    
+    describe('createPageLevelNoteUI', () => {
+      it('should create note with null anchor', () => {
+        const localThis = createMockDependencies();
+        const manager = new NoteManager(localThis);
+        
+        const noteData = {
+          id: 'page-ui-note',
+          selector: '__PAGE__',
+          content: 'Test',
+          position: { pageX: 100, pageY: 200 }
+        };
+        
+        manager.createPageLevelNoteUI(noteData);
+        
+        const note = manager.notes.get('page-ui-note');
+        expect(note).toBeDefined();
+        expect(note.anchor).toBeNull();
+        expect(note.isPageLevel).toBe(true);
+        
+        note.destroy();
+      });
+      
+      it('should show page-level notes immediately (always visible)', () => {
+        const localThis = createMockDependencies();
+        const manager = new NoteManager(localThis);
+        
+        const noteData = {
+          id: 'visible-page-note',
+          selector: '__PAGE__',
+          content: 'Test'
+        };
+        
+        manager.createPageLevelNoteUI(noteData);
+        
+        const note = manager.notes.get('visible-page-note');
+        expect(note.isVisible).toBe(true);
+        // Page-level notes don't use visibility manager
+        expect(localThis.visibilityManager.observe).not.toHaveBeenCalled();
+        
+        note.destroy();
+      });
+      
+      it('should create note minimized when isNewNote is false (default)', () => {
+        const localThis = createMockDependencies();
+        const manager = new NoteManager(localThis);
+        
+        const noteData = {
+          id: 'minimized-page-note',
+          selector: '__PAGE__',
+          content: 'Test'
+        };
+        
+        manager.createPageLevelNoteUI(noteData, { isNewNote: false });
+        
+        const note = manager.notes.get('minimized-page-note');
+        expect(note.isMinimized).toBe(true);
+        
+        note.destroy();
+      });
+      
+      it('should create note maximized when isNewNote is true', () => {
+        const localThis = createMockDependencies();
+        const manager = new NoteManager(localThis);
+        
+        const noteData = {
+          id: 'maximized-page-note',
+          selector: '__PAGE__',
+          content: 'Test'
+        };
+        
+        manager.createPageLevelNoteUI(noteData, { isNewNote: true });
+        
+        const note = manager.notes.get('maximized-page-note');
+        expect(note.isMinimized).toBe(false);
+        
+        note.destroy();
+      });
+      
+      it('should mark shared page-level notes as read', () => {
+        const localThis = createMockDependencies();
+        const manager = new NoteManager(localThis);
+        
+        const noteData = {
+          id: 'shared-page-note',
+          selector: '__PAGE__',
+          content: 'Shared',
+          isShared: true
+        };
+        
+        manager.createPageLevelNoteUI(noteData);
+        
+        expect(localThis.sendMessage).toHaveBeenCalledWith({
+          action: 'markSharedNoteRead',
+          noteId: 'shared-page-note'
+        });
+        
+        const note = manager.notes.get('shared-page-note');
+        note.destroy();
+      });
+    });
+    
+    describe('highlightNote for page-level notes', () => {
+      it('should highlight page-level note without scrolling anchor', () => {
+        const localThis = createMockDependencies();
+        const manager = new NoteManager(localThis);
+        
+        const noteData = {
+          id: 'highlight-page-note',
+          selector: '__PAGE__',
+          content: 'Test',
+          position: { pageX: 100, pageY: 100 }
+        };
+        
+        manager.createPageLevelNoteUI(noteData);
+        const note = manager.notes.get('highlight-page-note');
+        const highlightSpy = jest.spyOn(note, 'highlight');
+        const showSpy = jest.spyOn(note, 'show');
+        const bringToFrontSpy = jest.spyOn(note, 'bringToFront');
+        
+        manager.highlightNote('highlight-page-note');
+        
+        // Page-level notes are highlighted immediately (no setTimeout)
+        expect(showSpy).toHaveBeenCalled();
+        expect(bringToFrontSpy).toHaveBeenCalled();
+        expect(highlightSpy).toHaveBeenCalled();
+        
+        note.destroy();
+      });
+      
+      it('should maximize page-level note when maximize is true', () => {
+        const localThis = createMockDependencies();
+        const manager = new NoteManager(localThis);
+        
+        const noteData = {
+          id: 'maximize-page-note',
+          selector: '__PAGE__',
+          content: 'Test',
+          position: { pageX: 100, pageY: 100 }
+        };
+        
+        manager.createPageLevelNoteUI(noteData);
+        const note = manager.notes.get('maximize-page-note');
+        const maximizeSpy = jest.spyOn(note, 'maximize');
+        
+        manager.highlightNote('maximize-page-note', true);
+        
+        expect(maximizeSpy).toHaveBeenCalled();
+        
+        note.destroy();
+      });
+    });
+  });
+
   describe('visibility toggle', () => {
     it('should delegate getNotesVisibility to visibilityManager', () => {
       const localThis = createMockDependencies();

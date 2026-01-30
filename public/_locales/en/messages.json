@@ -50,6 +50,10 @@
     "message": "Add Note",
     "description": "Add note button text"
   },
+  "addPageNote": {
+    "message": "Page Note",
+    "description": "Add page-level note button text (note not anchored to any element)"
+  },
   "addNoteHint": {
     "message": "Click, then select an element on the page",
     "description": "Hint text below add note button"
@@ -238,6 +242,10 @@
   "metadataElement": {
     "message": "Element",
     "description": "Metadata label for element selector"
+  },
+  "pageLevel": {
+    "message": "Page-level (no anchor)",
+    "description": "Shown in metadata when note is not anchored to any element"
   },
   "metadataOwner": {
     "message": "Owner",
@@ -589,9 +597,21 @@
     "message": "Create Sticky Note Here",
     "description": "Context menu item to create a note on the right-clicked element"
   },
+  "contextMenuCreatePageNote": {
+    "message": "Create Page Note",
+    "description": "Context menu item to create a page-level note (not anchored to any element)"
+  },
   "noteCreated": {
     "message": "Sticky note created",
     "description": "Toast message after creating a note from context menu"
+  },
+  "pageNoteCreated": {
+    "message": "Page note created",
+    "description": "Toast message after creating a page-level note"
+  },
+  "failedToCreatePageNote": {
+    "message": "Failed to create page note",
+    "description": "Error message when page-level note creation fails"
   },
   "copyMetadata": {
     "message": "Copy to clipboard",

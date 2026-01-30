@@ -267,11 +267,26 @@ Content-Type: application/json
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `url` | string | Yes | The page URL where the note should appear |
-| `selector` | string | Yes | CSS selector for the target element |
+| `selector` | string | Yes | CSS selector for the target element, or `__PAGE__` for page-level notes |
 | `content` | string | No | HTML content of the note |
 | `theme` | string | No | Color theme: `yellow`, `blue`, `green`, `pink` |
-| `position` | object | No | Position relative to element |
+| `position` | object | No | Position relative to element (`{ anchor: "top-right" }`), or absolute page position for page-level notes (`{ pageX: 100, pageY: 200 }`) |
 | `metadata` | object | No | Custom metadata (see [Metadata Object](#metadata-object) below) |
+
+**Page-Level Notes:**
+
+To create a page-level note (not anchored to any specific element), use the special selector value `__PAGE__` and provide absolute page coordinates:
+
+```json
+{
+  "url": "https://example.com/page",
+  "selector": "__PAGE__",
+  "content": "<p>This is a page-level note</p>",
+  "position": { "pageX": 100, "pageY": 200 }
+}
+```
+
+Page-level notes are always visible and scroll with the page content.
 
 **Response (201 Created):**
 
@@ -327,8 +342,8 @@ Content-Type: application/json
 |-------|------|-------------|
 | `content` | string | New note content |
 | `theme` | string | New color theme |
-| `position` | object | New position |
-| `selector` | string | New CSS selector |
+| `position` | object | New position (use `{ pageX, pageY }` for page-level notes) |
+| `selector` | string | New CSS selector (use `__PAGE__` for page-level notes) |
 
 **Response (200 OK):** Returns the updated note object.
 

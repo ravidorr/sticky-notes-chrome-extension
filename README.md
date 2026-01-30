@@ -12,10 +12,11 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 ### Core Features (Phase 1 - MVP)
 
 - **Element Selection Mode**: Click the "Add Note" button, then click any element on the page to anchor a note
-- **Right-Click Context Menu**: Right-click any element and select "Create Sticky Note Here" for quick note creation
+- **Page-Level Notes**: Create notes attached to the page itself (not a specific element) via "Page Note" button or context menu
+- **Right-Click Context Menu**: Right-click any element and select "Create Sticky Note Here" for quick note creation, or "Create Page Note" for page-level notes
 - **Iframe Support**: Attach notes to elements inside iframes (including cross-origin iframes like Figma, embedded apps)
 - **Smart CSS Selector Generation**: Automatically generates robust selectors using semantic attributes
-- **Visibility Intelligence**: Notes only appear when their anchor element is in view (IntersectionObserver)
+- **Visibility Intelligence**: Notes only appear when their anchor element is in view (IntersectionObserver); page-level notes are always visible
 - **Show/Hide All Notes**: Toggle visibility of all notes on a page from the popup menu
 - **Local Persistence**: Notes are saved to Chrome's local storage with auto-save
 - **Shadow DOM Isolation**: Notes render in isolation to avoid style conflicts
@@ -209,7 +210,7 @@ See `.cursor/rules/i18n.mdc` for detailed i18n guidelines.
 
 ## Usage
 
-1. **Adding a Note**: Click the extension icon, then click "Add Note". Your cursor will change to a crosshair. Click on any element to attach a note.
+1. **Adding a Note**: Click the extension icon, then click "Add Note". Your cursor will change to a crosshair. Click on any element to attach a note. Alternatively, click "Page Note" to create a note attached to the page itself (not a specific element).
 
 2. **Editing Notes**: Click on a note to edit. The note auto-saves after you stop typing.
 

@@ -101,10 +101,24 @@ export function bootstrap() {
       log.debug('Context menu creation:', chrome.runtime.lastError.message);
     }
   });
+  
+  // Create context menu for creating page-level notes (not anchored to any element)
+  chrome.contextMenus.create({
+    id: 'create-page-note',
+    title: chrome.i18n.getMessage('contextMenuCreatePageNote') || 'Create Page Note',
+    contexts: ['page'],
+    documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
+  }, () => {
+    if (chrome.runtime.lastError) {
+      log.debug('Page note context menu creation:', chrome.runtime.lastError.message);
+    }
+  });
 
   // Handle context menu click
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-    if (info.menuItemId === 'create-sticky-note' && tab?.id) {
+    if (!tab?.id) return;
+    
+    if (info.menuItemId === 'create-sticky-note') {
       log.debug('Context menu clicked, frameId:', info.frameId, 'frameUrl:', info.frameUrl, 'pageUrl:', info.pageUrl);
       
       // Send to all frames - each frame will check if it has the right-clicked element
@@ -125,6 +139,16 @@ export function bootstrap() {
         await chrome.tabs.sendMessage(tab.id, { action: 'createNoteAtClick' });
       } catch (error) {
         log.warn('Failed to send createNoteAtClick message:', error);
+      }
+    } else if (info.menuItemId === 'create-page-note') {
+      log.debug('Page note context menu clicked, frameId:', info.frameId);
+      
+      // Send to top frame only for page-level notes
+      // The content script will use the right-click position from the contextmenu event
+      try {
+        await chrome.tabs.sendMessage(tab.id, { action: 'createPageLevelNote' });
+      } catch (error) {
+        log.warn('Failed to send createPageLevelNote message:', error);
       }
     }
   });

@@ -40,7 +40,7 @@ const handlers = createPopupHandlers({
 // DOM Elements (will be populated after DOMContentLoaded)
 let authSection, userSection, loginBtn, logoutBtn, closeBtn;
 let userAvatar, userName, userEmail;
-let addNoteBtn, notesList, notesCount, actionHint;
+let addNoteBtn, addPageNoteBtn, notesList, notesCount, actionHint;
 let actionsBtn, actionsMenu, toggleVisibilityBtn, exportPageBtn, exportAllBtn, deletePageNotesBtn, deleteAllNotesBtn;
 let totalNotesCount, versionDisplay;
 // Tab elements
@@ -63,6 +63,7 @@ function initDOMElements() {
   userName = document.getElementById('userName');
   userEmail = document.getElementById('userEmail');
   addNoteBtn = document.getElementById('addNoteBtn');
+  addPageNoteBtn = document.getElementById('addPageNoteBtn');
   notesList = document.getElementById('notesList');
   notesCount = document.getElementById('notesCount');
   actionHint = document.querySelector('.action-hint');
@@ -107,12 +108,15 @@ function displayVersion() {
 }
 
 /**
- * Disable add note button for restricted pages
+ * Disable add note buttons for restricted pages
  * @param {string} url - Current tab URL
  */
 function updateAddNoteButtonState(url) {
   if (isRestrictedUrl(url)) {
     addNoteBtn.disabled = true;
+    if (addPageNoteBtn) {
+      addPageNoteBtn.disabled = true;
+    }
     actionHint.textContent = t('restrictedPageHint');
     actionHint.classList.add('restricted');
   }
@@ -434,6 +438,7 @@ async function init() {
   loginBtn.addEventListener('click', onLogin);
   logoutBtn.addEventListener('click', onLogout);
   addNoteBtn.addEventListener('click', () => handlers.handleAddNote());
+  addPageNoteBtn.addEventListener('click', () => handlers.handleAddPageNote());
   closeBtn.addEventListener('click', () => window.close());
   
   // Setup tabs

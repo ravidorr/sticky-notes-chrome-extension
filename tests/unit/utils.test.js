@@ -961,3 +961,69 @@ describe('ENVIRONMENT_COLORS constant', () => {
     expect(utils.ENVIRONMENT_COLORS.production).toBeDefined();
   });
 });
+
+describe('PAGE_LEVEL_SELECTOR constant', () => {
+  it('should be defined as __PAGE__', () => {
+    expect(utils.PAGE_LEVEL_SELECTOR).toBe('__PAGE__');
+  });
+});
+
+describe('isPageLevelNote', () => {
+  it('should return true when selector is __PAGE__', () => {
+    expect(utils.isPageLevelNote({ selector: '__PAGE__' })).toBe(true);
+  });
+  
+  it('should return false for regular selectors', () => {
+    expect(utils.isPageLevelNote({ selector: '#my-element' })).toBe(false);
+    expect(utils.isPageLevelNote({ selector: '.class-name' })).toBe(false);
+    expect(utils.isPageLevelNote({ selector: 'div > p' })).toBe(false);
+  });
+  
+  it('should return false for null/undefined noteData', () => {
+    expect(utils.isPageLevelNote(null)).toBe(false);
+    expect(utils.isPageLevelNote(undefined)).toBe(false);
+  });
+  
+  it('should return false when selector is missing', () => {
+    expect(utils.isPageLevelNote({})).toBe(false);
+    expect(utils.isPageLevelNote({ content: 'test' })).toBe(false);
+  });
+  
+  it('should return false for empty selector', () => {
+    expect(utils.isPageLevelNote({ selector: '' })).toBe(false);
+  });
+});
+
+describe('validateSelectorPattern', () => {
+  it('should accept __PAGE__ as valid selector', () => {
+    const result = utils.validateSelectorPattern('__PAGE__');
+    expect(result.valid).toBe(true);
+  });
+  
+  it('should accept __PAGE__ with whitespace', () => {
+    const result = utils.validateSelectorPattern('  __PAGE__  ');
+    expect(result.valid).toBe(true);
+  });
+  
+  it('should accept regular CSS selectors', () => {
+    expect(utils.validateSelectorPattern('#id').valid).toBe(true);
+    expect(utils.validateSelectorPattern('.class').valid).toBe(true);
+    expect(utils.validateSelectorPattern('div').valid).toBe(true);
+    expect(utils.validateSelectorPattern('div > p.text').valid).toBe(true);
+  });
+  
+  it('should reject invalid selectors', () => {
+    expect(utils.validateSelectorPattern('<script>').valid).toBe(false);
+    expect(utils.validateSelectorPattern('javascript:').valid).toBe(false);
+  });
+  
+  it('should reject empty or whitespace-only selectors', () => {
+    expect(utils.validateSelectorPattern('').valid).toBe(false);
+    expect(utils.validateSelectorPattern('   ').valid).toBe(false);
+  });
+  
+  it('should reject null/undefined', () => {
+    expect(utils.validateSelectorPattern(null).valid).toBe(false);
+    expect(utils.validateSelectorPattern(undefined).valid).toBe(false);
+  });
+});

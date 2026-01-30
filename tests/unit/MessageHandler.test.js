@@ -146,6 +146,35 @@ describe('MessageHandler', () => {
       expect(result).toEqual({ success: true, created: true });
     });
 
+    it('should handle createPageLevelNote', async () => {
+      mockApp.createPageLevelNote = jest.fn().mockResolvedValue(true);
+      
+      const result = await messageHandler.handleMessage({ 
+        action: 'createPageLevelNote', 
+        position: { pageX: 100, pageY: 200 } 
+      });
+      
+      expect(mockApp.createPageLevelNote).toHaveBeenCalledWith({ pageX: 100, pageY: 200 });
+      expect(result).toEqual({ success: true, created: true });
+    });
+
+    it('should handle createPageLevelNote without position', async () => {
+      mockApp.createPageLevelNote = jest.fn().mockResolvedValue(true);
+      
+      const result = await messageHandler.handleMessage({ action: 'createPageLevelNote' });
+      
+      expect(mockApp.createPageLevelNote).toHaveBeenCalledWith(undefined);
+      expect(result).toEqual({ success: true, created: true });
+    });
+
+    it('should handle createPageLevelNote returning false', async () => {
+      mockApp.createPageLevelNote = jest.fn().mockResolvedValue(false);
+      
+      const result = await messageHandler.handleMessage({ action: 'createPageLevelNote' });
+      
+      expect(result).toEqual({ success: true, created: false });
+    });
+
     it('should handle toggleAllNotesVisibility', async () => {
       mockApp.noteManager.toggleAllVisibility.mockReturnValue(false);
       const result = await messageHandler.handleMessage({ action: 'toggleAllNotesVisibility' });

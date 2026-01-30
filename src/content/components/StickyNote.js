@@ -16,7 +16,8 @@ import {
   generateBugReportMarkdown,
   formatRelativeTime,
   detectEnvironment,
-  ENVIRONMENTS
+  ENVIRONMENTS,
+  PAGE_LEVEL_SELECTOR
 } from '../../shared/utils.js';
 import { contentLogger as log } from '../../shared/logger.js';
 import { t } from '../../shared/i18n.js';
@@ -81,6 +82,8 @@ export class StickyNote {
     this.isVisible = false;
     this.isDragging = false;
     this.dragOffset = { x: 0, y: 0 };
+    // Track if this is a page-level note (not anchored to any element)
+    this.isPageLevel = this.selector === PAGE_LEVEL_SELECTOR;
     // Restore custom position if it was saved
     this.customPosition = this.position.custom || null;
     this.saveTimeout = null;
@@ -254,6 +257,12 @@ export class StickyNote {
               </svg>
             </button>
           </div>
+          ${this.isPageLevel ? `
+          <div class="sn-metadata-row">
+            <span class="sn-metadata-label">${t('metadataElement')}</span>
+            <span class="sn-metadata-value sn-metadata-selector">${t('pageLevel')}</span>
+          </div>
+          ` : `
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataElement')}</span>
             <span class="sn-metadata-value sn-metadata-selector" title="${escapeHtml(this.selector)}">${escapeHtml(this.truncateSelector(this.selector))}</span>
@@ -264,6 +273,7 @@ export class StickyNote {
               </svg>
             </button>
           </div>
+          `}
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataOwner')}</span>
             <span class="sn-metadata-value sn-metadata-owner" title="${escapeHtml(this.ownerEmail || '')}">${escapeHtml(this.ownerEmail || t('anonymous'))}</span>
@@ -1244,12 +1254,20 @@ export class StickyNote {
   }
   
   /**
-   * Update note position relative to anchor element
+   * Update note position relative to anchor element (or page for page-level notes)
    * Note: The note element is inside a position:fixed container,
    * so all coordinates are viewport-relative (no scroll adjustment needed)
    */
   updatePosition() {
-    if (!this.anchor || !this.element) return;
+    if (!this.element) return;
+    
+    // Page-level notes don't have an anchor element
+    if (this.isPageLevel) {
+      this.updatePageLevelPosition();
+      return;
+    }
+    
+    if (!this.anchor) return;
 
     // Use untransformed layout dimensions where possible.
     // getBoundingClientRect() includes CSS transforms (e.g. sn-hidden scale), which can cause
@@ -1332,6 +1350,28 @@ export class StickyNote {
   }
   
   /**
+   * Update position for page-level notes (not anchored to any element)
+   * Page-level notes use absolute page coordinates that scroll with the page
+   */
+  updatePageLevelPosition() {
+    const measuredWidth = this.element.offsetWidth || this.element.getBoundingClientRect().width;
+    const measuredHeight = this.element.offsetHeight || this.element.getBoundingClientRect().height;
+    if (!measuredWidth || !measuredHeight) return;
+    
+    // Get page coordinates from position (default to 10, 10 if not set)
+    const pageX = this.position.pageX ?? 10;
+    const pageY = this.position.pageY ?? 10;
+    
+    // Convert page coordinates to viewport coordinates
+    const viewportX = pageX - window.scrollX;
+    const viewportY = pageY - window.scrollY;
+    
+    // Apply position (no clamping for page-level notes - they scroll with the page)
+    this.element.style.left = `${viewportX}px`;
+    this.element.style.top = `${viewportY}px`;
+  }
+  
+  /**
    * Clamp position to keep note fully within viewport
    * @param {number} x - X position
    * @param {number} y - Y position
@@ -1396,6 +1436,7 @@ export class StickyNote {
    * @param {MouseEvent} event - Mouse event
    * Note: Position is stored relative to anchor element to survive page scrolls
    * The note container is position:fixed, so all coordinates are viewport-relative
+   * For page-level notes, position is stored as absolute page coordinates
    */
   handleDragMove(event) {
     if (!this.isDragging) return;
@@ -1411,6 +1452,16 @@ export class StickyNote {
     // Apply clamped position for smooth dragging (viewport coordinates)
     this.element.style.left = `${clamped.x}px`;
     this.element.style.top = `${clamped.y}px`;
+    
+    // For page-level notes, store absolute page coordinates
+    if (this.isPageLevel) {
+      // Convert viewport coordinates to page coordinates
+      this.position = {
+        pageX: clamped.x + window.scrollX,
+        pageY: clamped.y + window.scrollY
+      };
+      return;
+    }
     
     // Store position relative to anchor for persistence
     if (this.anchor) {
@@ -1433,6 +1484,12 @@ export class StickyNote {
     
     this.isDragging = false;
     this.element.style.cursor = '';
+    
+    // For page-level notes, position is already updated in handleDragMove
+    if (this.isPageLevel) {
+      this.onPositionChange(this.position);
+      return;
+    }
     
     // Save custom position if dragged
     if (this.customPosition) {
@@ -1734,8 +1791,15 @@ export class StickyNote {
   /**
    * Handle window resize or scroll
    * Custom positions stored relative to anchor need recalculation
+   * Page-level notes always need recalculation (convert page to viewport coords)
    */
   handleWindowResize() {
+    // Page-level notes always need position update (page coords to viewport coords)
+    if (this.isPageLevel) {
+      this.updatePosition();
+      return;
+    }
+    
     // Always update position - anchor-based and anchor-relative custom positions both need recalculation
     // Only skip for legacy absolute custom positions
     if (this.customPosition && this.customPosition.x !== undefined) {

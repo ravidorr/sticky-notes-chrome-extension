@@ -50,6 +50,10 @@
     "message": "הוסף פתקית",
     "description": "Add note button text"
   },
+  "addPageNote": {
+    "message": "פתקית דף",
+    "description": "Add page-level note button text (note not anchored to any element)"
+  },
   "addNoteHint": {
     "message": "לחצו ואז בחרו אלמנט בדף",
     "description": "Hint text below add note button"
@@ -238,6 +242,10 @@
   "metadataElement": {
     "message": "אלמנט",
     "description": "Metadata label for element selector"
+  },
+  "pageLevel": {
+    "message": "ברמת הדף (ללא עיגון)",
+    "description": "Shown in metadata when note is not anchored to any element"
   },
   "metadataOwner": {
     "message": "בעלים",
@@ -589,9 +597,21 @@
     "message": "צור פתק כאן",
     "description": "Context menu item to create a note on the right-clicked element"
   },
+  "contextMenuCreatePageNote": {
+    "message": "צור פתקית דף",
+    "description": "Context menu item to create a page-level note (not anchored to any element)"
+  },
   "noteCreated": {
     "message": "הפתק נוצר",
     "description": "Toast message after creating a note from context menu"
+  },
+  "pageNoteCreated": {
+    "message": "פתקית דף נוצרה",
+    "description": "Toast message after creating a page-level note"
+  },
+  "failedToCreatePageNote": {
+    "message": "יצירת פתקית דף נכשלה",
+    "description": "Error message when page-level note creation fails"
   },
   "copyMetadata": {
     "message": "העתק ללוח",

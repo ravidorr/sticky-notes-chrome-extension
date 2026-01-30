@@ -27,6 +27,20 @@ export const MAX_SELECTOR_LENGTH = 1000;
 export const VALID_THEMES = ['yellow', 'blue', 'green', 'pink'];
 
 /**
+ * Special selector value for page-level notes (not anchored to any element)
+ */
+export const PAGE_LEVEL_SELECTOR = '__PAGE__';
+
+/**
+ * Check if a note is a page-level note (not anchored to any element)
+ * @param {Object} noteData - Note data object
+ * @returns {boolean} True if this is a page-level note
+ */
+export function isPageLevelNote(noteData) {
+  return noteData?.selector === PAGE_LEVEL_SELECTOR;
+}
+
+/**
  * Validate a CSS selector string for safety (without DOM check)
  * @param {string} selector - CSS selector to validate
  * @returns {Object} { valid: boolean, error?: string }
@@ -39,6 +53,11 @@ export function validateSelectorPattern(selector) {
   const trimmed = selector.trim();
   if (trimmed.length === 0) {
     return { valid: false, error: 'Selector cannot be empty' };
+  }
+  
+  // Allow page-level selector (notes not anchored to any element)
+  if (trimmed === PAGE_LEVEL_SELECTOR) {
+    return { valid: true };
   }
   
   if (trimmed.length > MAX_SELECTOR_LENGTH) {

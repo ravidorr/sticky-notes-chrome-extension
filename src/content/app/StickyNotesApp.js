@@ -29,6 +29,7 @@ export class StickyNotesApp {
     this.contextInvalidated = false;
     this.currentUser = null;
     this.lastRightClickedElement = null;
+    this.lastRightClickPosition = null; // Track position for page-level notes from context menu
     
     // Frame and URL state for iframe support
     this.isTopFrame = window.self === window.top;
@@ -54,11 +55,16 @@ export class StickyNotesApp {
   }
   
   /**
-   * Track the element that was right-clicked for context menu
+   * Track the element and position that was right-clicked for context menu
    */
   setupContextMenuTracking() {
     document.addEventListener('contextmenu', (event) => {
       this.lastRightClickedElement = event.target;
+      // Store position in page coordinates for page-level notes
+      this.lastRightClickPosition = {
+        pageX: event.pageX,
+        pageY: event.pageY
+      };
       log.debug('Context menu event captured, target:', event.target?.tagName, 'id:', event.target?.id);
     }, true);
   }
@@ -378,6 +384,41 @@ export class StickyNotesApp {
       return true;
     } catch (error) {
       log.error('Failed to create note at click:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Create a page-level note (not anchored to any element)
+   * @param {Object} position - Optional position { pageX, pageY }
+   *   If not provided and called from context menu, uses last right-click position
+   *   Otherwise defaults to (10, 10)
+   * @returns {boolean} True if note was created
+   */
+  async createPageLevelNote(position = null) {
+    log.debug('createPageLevelNote called, position:', position);
+    
+    try {
+      // Determine position: use provided, or last right-click position, or default
+      let notePosition = position;
+      
+      if (!notePosition && this.lastRightClickPosition) {
+        // Use the position where user right-clicked (for context menu creation)
+        notePosition = this.lastRightClickPosition;
+        // Clear after use
+        this.lastRightClickPosition = null;
+      }
+      
+      // Create note via NoteManager
+      const created = await this.noteManager.createPageLevelNote(notePosition || {});
+      
+      if (created) {
+        log.debug('Created page-level note');
+      }
+      
+      return created;
+    } catch (error) {
+      log.error('Failed to create page-level note:', error);
       return false;
     }
   }
