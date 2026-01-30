@@ -7,9 +7,6 @@
 import { escapeHtml, isValidEmail, extractEmails } from '../../shared/utils.js';
 import { t } from '../../shared/i18n.js';
 
-// Email detection regex - matches email followed by space, newline, or end
-const EMAIL_PATTERN = /([a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)(?=\s|$|<)/g;
-
 export class RichEditor {
   /**
    * Create rich editor
@@ -415,7 +412,7 @@ export class RichEditor {
     // Get plain text to find emails
     const plainText = this.getPlainText();
     const currentEmails = extractEmails(plainText);
-    const currentEmailSet = new Set(currentEmails.map(e => e.toLowerCase()));
+    const currentEmailSet = new Set(currentEmails.map(email => email.toLowerCase()));
     
     // FIRST: Clean up any spans that have accumulated extra text
     this.cleanupEmailSpans();

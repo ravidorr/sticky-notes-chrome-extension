@@ -60,7 +60,7 @@ function getManifestFilename(browser) {
 
 // Output to dist/<browser> for browser-specific builds
 const distBaseDir = resolve(rootDir, 'dist');
-let distDir = resolve(distBaseDir, targetBrowser);
+const distDir = resolve(distBaseDir, targetBrowser);
 
 // Clean target browser folder only (preserve other browser builds)
 if (existsSync(distDir)) {

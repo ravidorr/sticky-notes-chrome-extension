@@ -439,7 +439,7 @@
 |------|--------|-----------------|
 | 1 | Remove Firebase config from `.env` | Firebase unconfigured |
 | 2 | Rebuild extension (`npm run build`) | Build completes |
-| 3 | Click "Sign in with Google" | Mock user created ("Dev User", test@example.com) |
+| 3 | Click "Sign in with Google" | Mock user created ("Dev User", <test@example.com>) |
 
 ---
 
@@ -554,7 +554,7 @@
 | 2 | Type `colleague@example.com` followed by a space | Email detected |
 | 3 | Observe email in note | Email underlined with gray (pending) color |
 | 4 | Wait for share to complete | Email underline changes to green (success) |
-| 5 | Hover over email | Tooltip shows "Shared with colleague@example.com" |
+| 5 | Hover over email | Tooltip shows "Shared with <colleague@example.com>" |
 
 ### TEST-10.9: Auto-Share - Failed Share
 
@@ -578,8 +578,8 @@
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Create note and type `user1@example.com ` | First email shared |
-| 2 | Type `user2@example.com ` | Second email shared |
+| 1 | Create note and type `user1@example.com` | First email shared |
+| 2 | Type `user2@example.com` | Second email shared |
 | 3 | Both emails have green underlines | Both shares successful |
 | 4 | Delete one email | Only that share revoked |
 
@@ -588,7 +588,7 @@
 | Step | Action | Expected Result |
 |------|--------|-----------------|
 | 1 | Create a new note | Note exists |
-| 2 | Paste text containing `test@example.com ` | Email detected in pasted content |
+| 2 | Paste text containing `test@example.com` | Email detected in pasted content |
 | 3 | Email is auto-shared | Green underline appears |
 
 ### TEST-10.13: Unread Shared Notes Badge
@@ -1030,6 +1030,7 @@
 ### Current Implementation
 
 The extension has partial accessibility support:
+
 - `aria-modal`, `aria-labelledby` on confirmation dialogs
 - `aria-label` on interactive buttons
 - Focus trapping in modal dialogs

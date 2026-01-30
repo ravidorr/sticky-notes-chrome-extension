@@ -2,7 +2,7 @@
  * UIManager Unit Tests
  */
 
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { UIManager } from '../../src/content/app/UIManager.js';
 
 describe('UIManager', () => {

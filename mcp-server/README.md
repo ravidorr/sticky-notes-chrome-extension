@@ -7,6 +7,7 @@ An MCP (Model Context Protocol) server that allows AI assistants like Cursor to 
 ### 1. Get an API Key
 
 Generate an API key from the Sticky Notes extension:
+
 1. Open the extension popup
 2. Sign in with your Google account
 3. Go to Settings > API Keys
@@ -84,13 +85,15 @@ Restart Cursor to load the MCP server. You should see "sticky-notes" in the MCP 
 List notes with flexible filtering.
 
 **Parameters:**
+
 - `filter` (optional): `"owned"`, `"shared"`, or `"all"` (default)
 - `url` (optional): Filter by exact URL
 - `domain` (optional): Filter by domain (e.g., `"github.com"`)
 - `limit` (optional): Max results (default: 50)
 
 **Examples:**
-```
+
+```text
 "Show me my notes" -> filter: "owned"
 "What notes are shared with me?" -> filter: "shared"
 "Show notes for github.com" -> domain: "github.com"
@@ -101,19 +104,22 @@ List notes with flexible filtering.
 Create a new sticky note on a webpage.
 
 **Parameters:**
+
 - `url` (required): The webpage URL
 - `selector` (required): CSS selector for the target element
 - `content` (optional): Note text (can include HTML)
 - `theme` (optional): `"yellow"`, `"blue"`, `"green"`, or `"pink"`
 
 **Example:**
-```
+
+```text
 "Create a yellow note on https://example.com attached to the h1 element saying 'Review this'"
 ```
 
 ### get_note_stats
 
 Get statistics about your notes. Returns:
+
 - User info (email, uid)
 - Total notes count (owned + shared)
 - Breakdown by theme
@@ -125,6 +131,7 @@ Get statistics about your notes. Returns:
 Search notes by content, URL, or selector.
 
 **Parameters:**
+
 - `query` (required): Search text
 - `limit` (optional): Max results
 
@@ -160,7 +167,7 @@ Quick-access read-only data:
 
 ### Basic Usage
 
-```
+```text
 User: "How many notes do I have?"
 Assistant: [calls get_note_stats] You have 42 notes total - 35 owned and 7 shared with you.
 
@@ -173,7 +180,7 @@ Assistant: What URL and element should I attach it to? What content?
 
 ### Advanced Workflows
 
-```
+```text
 User: "Help me organize my notes"
 Assistant: [uses organize_notes prompt, calls get_note_stats then list_notes]
          Your notes are spread across 12 domains. Here's the breakdown:
@@ -191,9 +198,10 @@ Assistant: [calls list_commented_notes] You've commented on 5 notes...
 
 A visual dashboard is available for browsing notes at:
 
-**https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html**
+**<https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html>**
 
 Features:
+
 - Statistics dashboard
 - Filter tabs (All/My Notes/Shared/Commented)
 - Theme breakdown visualization
@@ -228,14 +236,17 @@ Opens at `http://localhost:3002`.
 ## Troubleshooting
 
 ### "API key required" error
+
 Make sure `STICKY_NOTES_API_KEY` is set in your MCP configuration.
 
 ### Tools not appearing in Cursor
+
 1. Check Cursor's MCP server logs for errors
 2. Verify the path to `index.js` is correct
 3. Restart Cursor after config changes
 
 ### "Permission denied" errors
+
 Your API key may not have the required scopes. Generate a new key with both `notes:read` and `notes:write`.
 
 ---

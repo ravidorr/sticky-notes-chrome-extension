@@ -4,7 +4,7 @@ The Sticky Notes API allows you to programmatically create, read, update, and de
 
 ## Base URL
 
-```
+```text
 https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/api
 ```
 
@@ -18,7 +18,7 @@ The API uses two authentication methods:
 
 API keys are used for all notes-related operations. Include the key in the `Authorization` header:
 
-```
+```text
 Authorization: Bearer sk_live_abc123...
 ```
 
@@ -26,7 +26,7 @@ Authorization: Bearer sk_live_abc123...
 
 To generate or manage API keys, use a Firebase ID token:
 
-```
+```text
 Authorization: Bearer eyJhbGciOiJSUzI1NiIs...
 ```
 
@@ -387,7 +387,7 @@ The API enforces rate limits per API key:
 
 Rate limit headers are included in every response:
 
-```
+```text
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 95
 X-RateLimit-Reset: 1704110400
@@ -975,31 +975,37 @@ The response includes a `Content-Disposition` header for downloading.
 To deploy the API to your Firebase project:
 
 1. Install Firebase CLI:
+
    ```bash
    npm install -g firebase-tools
    ```
 
 2. Login to Firebase:
+
    ```bash
    firebase login
    ```
 
 3. Initialize your project (if not already done):
+
    ```bash
    firebase init functions
    ```
 
 4. Install dependencies:
+
    ```bash
    cd functions && npm install
    ```
 
 5. Deploy:
+
    ```bash
    firebase deploy --only functions
    ```
 
 The API URL will be displayed after deployment:
-```
+
+```text
 Function URL (api): https://us-central1-YOUR_PROJECT.cloudfunctions.net/api
 ```

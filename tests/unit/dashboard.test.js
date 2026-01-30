@@ -1350,8 +1350,7 @@ describe('site/js/dashboard.js', () => {
 
         it('should clear existing interval', () => {
             localThis.appState.refreshInterval = setInterval(() => {}, 1000);
-            const intervalId = localThis.appState.refreshInterval;
-            
+
             clearRefreshInterval(localThis.appState);
             
             expect(localThis.appState.refreshInterval).toBeNull();

@@ -562,7 +562,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         
         markdown += `\n**Domains:** ${result.domainCount} unique domain${result.domainCount !== 1 ? 's' : ''}\n`;
         if (result.domains && result.domains.length > 0) {
-          markdown += result.domains.slice(0, 10).map(d => `- ${d}`).join('\n') + '\n';
+          markdown += result.domains.slice(0, 10).map(domain => `- ${domain}`).join('\n') + '\n';
           if (result.domains.length > 10) {
             markdown += `- ... and ${result.domains.length - 10} more\n`;
           }

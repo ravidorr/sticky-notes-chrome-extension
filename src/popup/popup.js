@@ -49,8 +49,6 @@ let thisPageCount, sharedCount, sharedNotesList;
 
 // Current page notes (for actions)
 let currentPageNotes = [];
-// Current active tab
-let activeTab = 'this-page';
 
 /**
  * Initialize DOM elements
@@ -243,7 +241,6 @@ async function updateTotalNotesCount() {
  * @param {string} tabName - 'this-page' or 'shared'
  */
 async function switchTab(tabName) {
-  activeTab = tabName;
   
   // Update tab button states
   thisPageTab.classList.toggle('active', tabName === 'this-page');
@@ -297,7 +294,7 @@ async function handleSharedNoteClick(item) {
     
     // Close popup
     window.close();
-  } catch (error) {
+  } catch  {
     showToast(t('failedToOpenNote') || 'Failed to open note', 'error');
   }
 }

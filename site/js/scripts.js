@@ -586,8 +586,8 @@ function getBrowserType() {
     // Check User-Agent Client Hints API first (more reliable, modern browsers)
     if (typeof navigator !== 'undefined' && navigator.userAgentData?.brands) {
         const brands = navigator.userAgentData.brands;
-        if (brands.some(b => b.brand === 'Microsoft Edge')) return 'edge';
-        if (brands.some(b => b.brand === 'Google Chrome')) return 'chrome';
+        if (brands.some(brand => brand.brand === 'Microsoft Edge')) return 'edge';
+        if (brands.some(brand => brand.brand === 'Google Chrome')) return 'chrome';
     }
     
     // Fallback to user agent string parsing

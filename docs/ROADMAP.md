@@ -5,12 +5,14 @@
 **Primary:** Dev teams and QA testers
 
 ### Pain Points We Solve
+
 - Bug reports lack context ("The button is broken" with no URL, screenshot, or element reference)
 - Screenshot + Jira ping-pong (back and forth asking "which button? which page?")
 - Staging environments change - hard to reproduce issues
 - Designer ↔ Dev handoff friction ("This margin looks off" - where exactly?)
 
 ### Value Proposition
+>
 > "Sticky notes for your staging environment. Click, annotate, share. Bug reports that actually make sense."
 
 ---
@@ -31,6 +33,7 @@
 - [x] Iframe support with composite URL keys (notes in iframes are associated with main page)
 
 ### Code Quality - DONE
+
 - [x] ESLint configuration with pre-commit hooks
 - [x] Unit test coverage (739 tests, ~65% coverage)
 - [x] Shared utility functions for testability
@@ -50,6 +53,7 @@
 - [x] Automatic migration of local notes to cloud on first login
 
 ### Notes Data Model
+
 ```javascript
 // Firestore: notes/{noteId}
 {
@@ -86,12 +90,14 @@
 Add comment threads to notes for Q&A and discussions.
 
 ### Real-time Features
+
 - [x] Real-time collaborative updates (live sync for notes)
 - [x] Real-time sync for comments
 - [x] Unread shared notes badge (extension icon shows count of new shared notes)
 - [x] View unread shared notes in popup (tabbed interface with "This Page" and "Shared" tabs)
 
 ### Data Model
+
 ```javascript
 // Firestore: notes/{noteId}/comments/{commentId}
 {
@@ -108,6 +114,7 @@ Add comment threads to notes for Q&A and discussions.
 ```
 
 ### Features
+
 - [x] Comment list in note (collapsible)
 - [x] Reply button per comment (1-level nesting)
 - [x] User avatars/names display
@@ -115,6 +122,7 @@ Add comment threads to notes for Q&A and discussions.
 - [x] Real-time sync for comments
 
 ### Implementation Notes
+
 - Depth limit: 1 level (direct replies only)
 - Permissions: Anyone with note access can comment
 - Comment authors can edit/delete their own comments
@@ -128,6 +136,7 @@ Add comment threads to notes for Q&A and discussions.
 Features that differentiate for developer and QA workflows:
 
 ### Metadata Capture (High Priority)
+
 - [x] Auto-capture URL, viewport size, browser, timestamp
 - [x] Capture element selector in bug report format
 - [x] Display metadata in collapsible panel on note
@@ -136,6 +145,7 @@ Features that differentiate for developer and QA workflows:
 - [x] Console errors capture
 
 ### Screenshot & Export
+
 - [] Screenshot on note creation
 - [x] "Copy as Markdown" - generates bug report template
 - [x] "Copy screenshot" - one-click annotated screenshot
@@ -144,12 +154,14 @@ Features that differentiate for developer and QA workflows:
 - [x] Export all notes as CSV (from popup)
 
 ### Issue Tracking Integration
+
 - [] Jira integration (one-click ticket creation)
 - [] Linear integration
 - [] GitHub Issues integration
 - [] Status tracking (open/resolved/reopened)
 
 ### Advanced
+
 - [] Session replay link support (LogRocket/FullStory)
 - [] Batch export notes as report
 
@@ -180,6 +192,7 @@ Features that differentiate for developer and QA workflows:
 Internal tools for managing users, subscriptions, and analytics.
 
 ### User Management
+
 - [] User list with search/filter
 - [] View user details (notes count, usage, tier)
 - [] Manually upgrade/downgrade user tier
@@ -187,6 +200,7 @@ Internal tools for managing users, subscriptions, and analytics.
 - [] Delete user and associated data (GDPR)
 
 ### Subscription Management
+
 - [] View all subscriptions
 - [] Stripe integration for billing
 - [] Trial management (start, extend, end)
@@ -194,6 +208,7 @@ Internal tools for managing users, subscriptions, and analytics.
 - [] Refund processing
 
 ### Analytics Dashboard
+
 - [] Active users (DAU/MAU)
 - [] Notes created per day/week/month
 - [] Conversion rates (free -> basic -> pro)
@@ -202,12 +217,14 @@ Internal tools for managing users, subscriptions, and analytics.
 - [] Usage by feature
 
 ### Support Tools
+
 - [] View user's notes (with permission/audit log)
 - [] Impersonate user for debugging
 - [] Audit log for admin actions
 - [] Support ticket integration
 
 ### System Health
+
 - [] Firebase usage metrics
 - [] Error tracking dashboard
 - [] API latency monitoring
@@ -218,6 +235,7 @@ Internal tools for managing users, subscriptions, and analytics.
 ## Competitive Landscape
 
 ### Existing Products
+
 | Product | Focus | Notes |
 |---------|-------|-------|
 | Hypothesis | Academic annotation | Niche, not dev-focused |
@@ -227,6 +245,7 @@ Internal tools for managing users, subscriptions, and analytics.
 | Userback | User feedback | Enterprise-focused |
 
 ### Our Positioning
+
 - **Simpler** than Marker.io/BugHerd
 - **More affordable** for small teams
 - **Developer-first** with selector capture

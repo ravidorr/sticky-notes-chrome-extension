@@ -22,7 +22,7 @@ describe('ConsoleCapture', () => {
     
     window.removeEventListener = jest.fn((type, handler) => {
       if (localThis.eventListeners[type]) {
-        localThis.eventListeners[type] = localThis.eventListeners[type].filter(h => h !== handler);
+        localThis.eventListeners[type] = localThis.eventListeners[type].filter(listener => listener !== handler);
       }
     });
     

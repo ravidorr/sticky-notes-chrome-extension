@@ -82,7 +82,6 @@ test.describe('Iframe Support', () => {
       // 5. Verify note appears inside iframe
       // The note should be injected into the iframe's shadow DOM or similar
       // Our extension injects a shadow host into the document (or frame document)
-      const noteHost = iframe.locator('sticky-note-host'); // Or whatever the host tag/id is
       // Actually it's #sticky-notes-extension-root in the shadow DOM of the container
       
       // Wait for note to appear

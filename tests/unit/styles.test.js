@@ -3,7 +3,7 @@
  * Tests for CSS styles used in shadow DOM
  */
 
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { getShadowStyles, getMainDocumentStyles, injectMainDocumentStyles } from '../../src/content/app/styles.js';
 
 describe('src/content/app/styles.js', () => {

@@ -329,12 +329,12 @@ describe('StickyNote', () => {
       localThis.copyButton = note.element.querySelector('.sn-metadata-copy-btn[data-copy-value="test-note-1"]');
       localThis.stopPropagationCalled = false;
 
-      localThis.copyButton.addEventListener('click', (e) => {
+      localThis.copyButton.addEventListener('click', (event) => {
         // Check if stopPropagation was called by checking if event bubbles
-        localThis.originalStopPropagation = e.stopPropagation;
-        e.stopPropagation = () => {
+        localThis.originalStopPropagation = event.stopPropagation;
+        event.stopPropagation = () => {
           localThis.stopPropagationCalled = true;
-          localThis.originalStopPropagation.call(e);
+          localThis.originalStopPropagation.call(event);
         };
       }, { capture: true });
 

@@ -11,6 +11,7 @@ npm run build:site
 ```
 
 This script:
+
 1. **Bundles CSS**: Resolves all `@import` statements in `styles.css` into a single `styles.bundled.css` file, eliminating render-blocking CSS waterfalls
 2. **Minifies JavaScript**: Creates `scripts.min.js` from `scripts.js` (typically 50-60% size reduction)
 3. **Generates HTML**: Combines partials (head, header, footer) with page templates
@@ -34,7 +35,7 @@ cd site
 php -S localhost:8080
 ```
 
-Then open http://localhost:8080 in your browser.
+Then open <http://localhost:8080> in your browser.
 
 ## Deploy to GitHub Pages
 
@@ -87,15 +88,17 @@ jobs:
 ### Option 3: Custom Domain
 
 1. Add a `CNAME` file in the `/site` folder with your domain:
-   ```
+
+   ```text
    www.stickynotes.dev
    ```
+
 2. Configure DNS with your domain registrar:
    - Add a CNAME record pointing to `<username>.github.io`
 
 ## File Structure
 
-```
+```text
 site/
 ├── templates/          # Source HTML templates
 │   ├── index.html
@@ -145,6 +148,7 @@ After making changes, run `npm run build:site` to regenerate the bundled CSS.
 ### Content
 
 Update these sections in `index.html`:
+
 - **Hero**: Main headline and value proposition
 - **Pain Points**: Target audience problems ("Sound familiar?")
 - **Interactive Demo**: Try the element anchoring feature

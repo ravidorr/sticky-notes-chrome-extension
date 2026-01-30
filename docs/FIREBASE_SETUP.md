@@ -64,12 +64,14 @@ const firebaseConfig = {
 The extension uses environment variables for sensitive config (recommended for public repos).
 
 1. Copy `.env.example` to `.env`:
+
    ```bash
    cp .env.example .env
    ```
 
 2. Update `.env` with your Firebase config values:
-   ```
+
+   ```env
    VITE_FIREBASE_API_KEY=AIzaSy...
    VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
    VITE_FIREBASE_PROJECT_ID=your-project
@@ -182,9 +184,11 @@ The extension uses compound queries that **require composite indexes**. Without 
 1. Complete the setup and try to use the extension
 2. Open the service worker console: `chrome://extensions/` → click "service worker"
 3. Look for errors like:
-   ```
+
+   ```text
    FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/...
    ```
+
 4. **Click the link** in the error message
 5. Click **"Create"** in Firebase Console
 6. Wait 1-2 minutes for status to change from "Building..." to "Enabled"
@@ -215,7 +219,7 @@ The extension uses compound queries that **require composite indexes**. Without 
 | `notes/{noteId}/comments` | `parentId` | Ascending |
 | `notes/{noteId}/comments` | `createdAt` | Ascending |
 
-> ⚠️ **Field order matters!** The fields must be in the exact order shown above.
+> **Warning: Field order matters!** The fields must be in the exact order shown above.
 
 ---
 
@@ -287,7 +291,7 @@ Open `public/manifest.json` and update the `oauth2` section:
 
 Add the OAuth client ID to your `.env` file:
 
-```
+```env
 VITE_OAUTH_CLIENT_ID=123456789-abc123.apps.googleusercontent.com
 ```
 
@@ -307,6 +311,7 @@ VITE_OAUTH_CLIENT_ID=123456789-abc123.apps.googleusercontent.com
 ## Step 11: Rebuild and Test
 
 1. Rebuild the extension:
+
    ```bash
    npm run build
    ```
@@ -331,21 +336,26 @@ VITE_OAUTH_CLIENT_ID=123456789-abc123.apps.googleusercontent.com
 ## Troubleshooting
 
 ### "OAuth error: OAuth2 not granted or revoked"
+
 - Ensure the extension ID in Google Cloud matches your actual extension ID
 - Make sure you've added yourself as a test user in OAuth consent screen
 
 ### "Firebase is not configured" warning
+
 - Check that all values in `src/firebase/config.js` are replaced
 - Ensure `apiKey` is not the placeholder `"YOUR_API_KEY"`
 
 ### "Permission denied" or "Missing or insufficient permissions" in Firestore
+
 - Verify Firestore security rules are published (Step 6)
 - Check that the user is properly authenticated
 - Verify the `ownerId` field matches `request.auth.uid`
 - For shared notes: ensure rules use `request.auth.token.email` (not `request.auth.uid`) since `sharedWith` stores emails
 
 ### Notes not appearing in popup (but visible on page)
+
 This usually means **Firestore indexes are missing**:
+
 1. Notes save to Firestore successfully
 2. But the query to load them fails, falling back to local storage
 3. Open service worker console: `chrome://extensions/` → "service worker"
@@ -354,11 +364,13 @@ This usually means **Firestore indexes are missing**:
 6. Wait for index status to show "Enabled" (1-2 minutes)
 
 ### Notes not appearing after page refresh
+
 - Check browser console for Firestore errors
 - Verify indexes are created (check "Indexes" tab in Firestore)
 - Click the error link in console to auto-create missing indexes
 
 ### "chrome.identity is not defined"
+
 - You're testing in a non-extension context
 - Make sure you're running the built extension, not the dev server
 
@@ -399,11 +411,13 @@ After completing this setup:
 6. [x] Real-time sync keeps notes and comments updated
 
 To share a note:
+
 1. Click the share button on any note you own
 2. Enter the recipient's email address
 3. The note will appear for them when they sign in with that email
 
 To add a comment:
+
 1. Click the comments toggle at the bottom of any note
 2. Type your comment and press Enter or click Send
 3. Click "Reply" to respond to an existing comment

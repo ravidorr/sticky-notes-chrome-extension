@@ -22,8 +22,7 @@ const TEMPLATES_DIR = path.join(SITE_DIR, 'templates');
 const CSS_DIR = path.join(SITE_DIR, 'css');
 const JS_DIR = path.join(SITE_DIR, 'js');
 
-// Cache for minified CSS content (used for inlining)
-let minifiedCssCache = null;
+// Cache for minified critical CSS content (used for inlining)
 let minifiedCriticalCssCache = null;
 
 /**
@@ -112,7 +111,7 @@ function bundleCss() {
     const outputPath = path.join(CSS_DIR, 'styles.bundled.css');
     
     const mainCss = readFile(mainCssPath);
-    let bundledCss = bundleCssImports(mainCss, CSS_DIR);
+    const bundledCss = bundleCssImports(mainCss, CSS_DIR);
     
     // Fix font paths: The bundled CSS is served from /css/ directory, but fonts are in /fonts/
     // Change url('../fonts/...) to url('../fonts/...) - this is already correct for css/ location
@@ -235,22 +234,6 @@ function loadPartials() {
 function getTemplateFiles() {
     const files = fs.readdirSync(TEMPLATES_DIR);
     return files.filter(file => file.endsWith('.html'));
-}
-
-/**
- * Get the minified CSS content (cached)
- */
-function getMinifiedCss() {
-    if (minifiedCssCache === null) {
-        const cssPath = path.join(CSS_DIR, 'styles.bundled.min.css');
-        if (fs.existsSync(cssPath)) {
-            minifiedCssCache = readFile(cssPath);
-        } else {
-            console.warn('  Warning: styles.bundled.min.css not found for inlining');
-            minifiedCssCache = '';
-        }
-    }
-    return minifiedCssCache;
 }
 
 /**

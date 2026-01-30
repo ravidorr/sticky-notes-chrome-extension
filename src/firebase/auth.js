@@ -21,7 +21,7 @@ export function isEdgeBrowser() {
   
   // Use Client Hints API if available (more reliable)
   if (navigator.userAgentData?.brands) {
-    return navigator.userAgentData.brands.some(b => b.brand === 'Microsoft Edge');
+    return navigator.userAgentData.brands.some(brand => brand.brand === 'Microsoft Edge');
   }
   
   // Fallback to user agent string

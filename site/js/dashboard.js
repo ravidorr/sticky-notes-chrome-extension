@@ -861,7 +861,7 @@ function setupEventListeners(elements, appState, handlers = {}) {
             }
         }, 300);
         
-        searchInput.addEventListener('input', (e) => handleSearch(e.target.value));
+        searchInput.addEventListener('input', (event) => handleSearch(event.target.value));
     }
     
     // Console errors toggle (event delegation for dynamically loaded notes)

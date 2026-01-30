@@ -282,7 +282,7 @@ async function handleCopyKey() {
         }
         
         return true;
-    } catch (error) {
+    } catch {
         showError('Failed to copy to clipboard');
         return false;
     }

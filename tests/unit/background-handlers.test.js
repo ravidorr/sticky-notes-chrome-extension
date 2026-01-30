@@ -2198,7 +2198,7 @@ describe('Background Handlers', () => {
       
       expect(result.success).toBe(true);
       expect(result.notes).toHaveLength(2);
-      expect(result.notes.map(n => n.id)).toEqual(['note-2', 'note-3']);
+      expect(result.notes.map(note => note.id)).toEqual(['note-2', 'note-3']);
     });
 
     it('should return empty array when user not logged in', async () => {

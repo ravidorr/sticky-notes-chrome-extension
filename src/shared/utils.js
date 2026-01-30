@@ -264,13 +264,13 @@ export function getBrowserInfo() {
     const brands = navigator.userAgentData.brands;
     
     // Check for Edge first (Edge includes both "Microsoft Edge" and "Chromium" brands)
-    const edge = brands.find(b => b.brand === 'Microsoft Edge');
+    const edge = brands.find(brand => brand.brand === 'Microsoft Edge');
     if (edge) {
       return { browser: 'Edge', version: edge.version, userAgent: ua };
     }
     
     // Check for Chrome
-    const chrome = brands.find(b => b.brand === 'Google Chrome');
+    const chrome = brands.find(brand => brand.brand === 'Google Chrome');
     if (chrome) {
       return { browser: 'Chrome', version: chrome.version, userAgent: ua };
     }

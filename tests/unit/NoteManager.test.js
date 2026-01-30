@@ -269,7 +269,6 @@ describe('NoteManager', () => {
     it('should create note minimized when isNewNote is false (default)', () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
-      const anchor = document.getElementById('anchor-element');
       
       const noteData = {
         id: 'loaded-note-001',
@@ -292,7 +291,6 @@ describe('NoteManager', () => {
     it('should create note maximized when isNewNote is true', () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
-      const anchor = document.getElementById('anchor-element');
       
       const noteData = {
         id: 'new-note-002',
@@ -361,7 +359,6 @@ describe('NoteManager', () => {
     it('should clear notes map', () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
-      const anchor = document.getElementById('anchor-element');
       
       // Create a note
       const noteData = {
@@ -577,7 +574,6 @@ describe('NoteManager', () => {
     it('should handle real-time update winning the race - note still created maximized', async () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
-      const anchor = document.getElementById('anchor-element');
       
       const noteId = 'race-note-001';
       const noteData = {
@@ -605,7 +601,6 @@ describe('NoteManager', () => {
     it('should skip duplicate creation when note already exists', () => {
       const localThis = createMockDependencies();
       const manager = new NoteManager(localThis);
-      const anchor = document.getElementById('anchor-element');
       
       const noteId = 'dup-note-001';
       const noteData = {

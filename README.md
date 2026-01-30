@@ -10,6 +10,7 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 ## Features
 
 ### Core Features (Phase 1 - MVP)
+
 - **Element Selection Mode**: Click the "Add Note" button, then click any element on the page to anchor a note
 - **Right-Click Context Menu**: Right-click any element and select "Create Sticky Note Here" for quick note creation
 - **Iframe Support**: Attach notes to elements inside iframes (including cross-origin iframes like Figma, embedded apps)
@@ -19,18 +20,21 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 - **Shadow DOM Isolation**: Notes render in isolation to avoid style conflicts
 
 ### Cloud Features (Phase 2)
+
 - **Firebase Integration**: Sync notes to the cloud
 - **Google Authentication**: Sign in with Google to access your notes anywhere
 - **Offline Support**: Works offline with Firestore persistence
 - **Automatic Migration**: Notes created before login are automatically migrated to your account
 
 ### Collaboration Features (Phase 3)
+
 - **Note Sharing**: Share notes with other users by email
 - **Real-time Updates**: See changes immediately when collaborators edit shared notes
 - **Unread Badge**: Extension icon shows count of new shared notes you haven't viewed yet
 - **Shared Notes View**: View all unread shared notes in the popup's "Shared" tab, click to open in new tab
 
 ### Advanced Features (Phase 4)
+
 - **Fuzzy Matching**: Finds elements even when selectors change
 - **Re-anchoring UI**: Easily re-attach notes when elements move
 - **Rich Text Editor**: Format notes with bold, italic, lists, and links
@@ -40,7 +44,7 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 
 ## Project Structure
 
-```
+```text
 sticky-notes-chrome-extension/
 ├── src/
 │   ├── popup/              # Extension popup UI
@@ -74,6 +78,7 @@ sticky-notes-chrome-extension/
 ## Development Setup
 
 ### Prerequisites
+
 - Node.js 18+
 - npm or yarn
 
@@ -127,6 +132,7 @@ This project uses Husky and lint-staged to ensure code quality before commits:
 - **Tests**: All unit tests must pass
 
 To skip hooks (not recommended):
+
 ```bash
 git commit --no-verify -m "your message"
 ```
@@ -136,7 +142,8 @@ git commit --no-verify -m "your message"
 To enable cloud sync and sharing features, see [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md) for detailed instructions.
 
 Quick overview:
-1. Create a Firebase project at https://console.firebase.google.com/
+
+1. Create a Firebase project at <https://console.firebase.google.com/>
 2. Enable Authentication > Google Sign-In provider
 3. Enable Cloud Firestore
 4. Copy your Firebase config to `.env` file (see `.env.example`)
@@ -234,6 +241,7 @@ See `.cursor/rules/i18n.mdc` for detailed i18n guidelines.
 ## Roadmap
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the development roadmap including:
+
 - Threaded discussions
 - Dev/QA power features (metadata capture, Jira integration)
 - Team & billing features
