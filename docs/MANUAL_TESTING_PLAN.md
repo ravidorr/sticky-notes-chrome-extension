@@ -1234,8 +1234,10 @@ The extension has partial accessibility support:
 | 1 | Click into note editor | Editor focused |
 | 2 | Use Ctrl+B / Cmd+B | Bold formatting applied |
 | 3 | Use Ctrl+I / Cmd+I | Italic formatting applied |
-| 4 | Use Ctrl+H / Cmd+H when note focused | Note hides, toast shows "Note hidden" |
-| 5 | Press ESC when note focused | Focus released |
+| 4 | Type some text in editor, then use Ctrl+H / Cmd+H while still in editor | Note hides, toast shows "Note hidden" |
+| 5 | Show note again, click note header (not editor) | Header focused |
+| 6 | Use Ctrl+H / Cmd+H from header | Note hides (shortcut works from any part of note) |
+| 7 | Press ESC when note focused | Focus released |
 
 ### TEST-18.3: Dialog Keyboard Navigation
 

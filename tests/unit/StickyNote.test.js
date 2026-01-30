@@ -1272,6 +1272,62 @@ describe('StickyNote', () => {
       
       localThis.handleHideClickSpy.mockRestore();
     });
+
+    it('should toggle visibility when Ctrl+H is dispatched from RichEditor (event bubbling)', () => {
+      const localThis = {};
+      // Mock queryCommandState which RichEditor uses for toolbar state
+      localThis.originalQueryCommandState = document.queryCommandState;
+      document.queryCommandState = jest.fn().mockReturnValue(false);
+      
+      localThis.handleHideClickSpy = jest.spyOn(note, 'handleHideClick');
+      
+      // Get the RichEditor's contenteditable element (where user types)
+      const editorContent = note.richEditor.editor;
+      expect(editorContent).toBeTruthy();
+      expect(editorContent.contentEditable).toBe('true');
+      
+      // Dispatch Ctrl+H on the editor content - should bubble up to note
+      const event = new KeyboardEvent('keydown', { 
+        key: 'h', 
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true
+      });
+      
+      editorContent.dispatchEvent(event);
+      
+      // Event should have bubbled up and triggered handleHideClick
+      expect(localThis.handleHideClickSpy).toHaveBeenCalled();
+      
+      localThis.handleHideClickSpy.mockRestore();
+      document.queryCommandState = localThis.originalQueryCommandState;
+    });
+
+    it('should toggle visibility when Cmd+H is dispatched from RichEditor on Mac (event bubbling)', () => {
+      const localThis = {};
+      // Mock queryCommandState which RichEditor uses for toolbar state
+      localThis.originalQueryCommandState = document.queryCommandState;
+      document.queryCommandState = jest.fn().mockReturnValue(false);
+      
+      localThis.handleHideClickSpy = jest.spyOn(note, 'handleHideClick');
+      
+      const editorContent = note.richEditor.editor;
+      
+      // Dispatch Cmd+H on the editor content - should bubble up to note
+      const event = new KeyboardEvent('keydown', { 
+        key: 'h', 
+        metaKey: true,
+        bubbles: true,
+        cancelable: true
+      });
+      
+      editorContent.dispatchEvent(event);
+      
+      expect(localThis.handleHideClickSpy).toHaveBeenCalled();
+      
+      localThis.handleHideClickSpy.mockRestore();
+      document.queryCommandState = localThis.originalQueryCommandState;
+    });
   });
   
   describe('static methods', () => {

@@ -887,6 +887,55 @@ describe('RichEditor', () => {
       
       expect(stopPropagationSpy).toHaveBeenCalled();
     });
+    
+    it('should stop keydown propagation for regular keys', () => {
+      const event = new KeyboardEvent('keydown', { key: 'a', bubbles: true });
+      const stopPropagationSpy = jest.spyOn(event, 'stopPropagation');
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(stopPropagationSpy).toHaveBeenCalled();
+    });
+    
+    it('should NOT stop keydown propagation for Ctrl+H (note visibility toggle)', () => {
+      const event = new KeyboardEvent('keydown', { 
+        key: 'h', 
+        ctrlKey: true, 
+        bubbles: true 
+      });
+      const stopPropagationSpy = jest.spyOn(event, 'stopPropagation');
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(stopPropagationSpy).not.toHaveBeenCalled();
+    });
+    
+    it('should NOT stop keydown propagation for Cmd+H (note visibility toggle on Mac)', () => {
+      const event = new KeyboardEvent('keydown', { 
+        key: 'h', 
+        metaKey: true, 
+        bubbles: true 
+      });
+      const stopPropagationSpy = jest.spyOn(event, 'stopPropagation');
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(stopPropagationSpy).not.toHaveBeenCalled();
+    });
+    
+    it('should still stop keydown propagation for Ctrl+Shift+H', () => {
+      const event = new KeyboardEvent('keydown', { 
+        key: 'h', 
+        ctrlKey: true, 
+        shiftKey: true,
+        bubbles: true 
+      });
+      const stopPropagationSpy = jest.spyOn(event, 'stopPropagation');
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(stopPropagationSpy).toHaveBeenCalled();
+    });
   });
 
   describe('focus and blur events', () => {

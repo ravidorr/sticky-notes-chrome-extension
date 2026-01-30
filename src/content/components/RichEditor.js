@@ -137,8 +137,15 @@ export class RichEditor {
     
     // Keyboard shortcuts - stop propagation to prevent page shortcuts from interfering
     this.editor.addEventListener('keydown', (event) => {
-      // Stop all keyboard events from reaching the page
-      event.stopPropagation();
+      // Allow Ctrl+H/Cmd+H to bubble up for note visibility toggle
+      const isVisibilityToggle = (event.ctrlKey || event.metaKey) && 
+                                  event.key.toLowerCase() === 'h' && 
+                                  !event.shiftKey;
+      
+      if (!isVisibilityToggle) {
+        // Stop all other keyboard events from reaching the page
+        event.stopPropagation();
+      }
       
       if (event.ctrlKey || event.metaKey) {
         switch (event.key.toLowerCase()) {

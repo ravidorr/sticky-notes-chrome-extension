@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New manifest command `toggle-all-notes` registered as browser-level keyboard shortcut
 - i18n support for the new command description (`commandToggleAllNotes`) in all supported languages
 
+### Fixed
+
+- `Ctrl+H`/`Cmd+H` keyboard shortcut now works when the note editor has focus. Previously, the RichEditor component blocked all keyboard events from bubbling up, which prevented the visibility toggle shortcut from reaching the StickyNote handler when users were typing in the editor.
+
 ## [1.12.0] - 2026-01-31
 
 ### Added
