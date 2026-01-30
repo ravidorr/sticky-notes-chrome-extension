@@ -572,6 +572,39 @@ describe('Popup Handlers', () => {
     });
   });
 
+  describe('handleLeaveNote', () => {
+    it('should leave shared note and show success toast', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true });
+      
+      const result = await localThis.handlers.handleLeaveNote('note-123');
+      
+      expect(result.success).toBe(true);
+      expect(localThis.mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
+        action: 'leaveSharedNote',
+        noteId: 'note-123'
+      });
+      expect(localThis.mockShowSuccessToast).toHaveBeenCalled();
+    });
+
+    it('should show error toast on failure', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: false, error: 'Not in shared list' });
+      
+      const result = await localThis.handlers.handleLeaveNote('note-123');
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+    });
+
+    it('should handle exceptions', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockRejectedValue(new Error('Network error'));
+      
+      const result = await localThis.handlers.handleLeaveNote('note-123');
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+    });
+  });
+
   describe('handleExportCSV', () => {
     let mockLink;
     let originalCreateElement;
@@ -685,6 +718,48 @@ describe('Popup Handlers', () => {
       const html = localThis.handlers.renderNoteItemExpanded(note);
       
       expect(html).toContain('note-item-shared-badge');
+    });
+
+    it('should show leave button instead of delete for shared notes', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test', 
+        theme: 'yellow', 
+        selector: '#main',
+        isShared: true
+      };
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      
+      expect(html).toContain('data-action="leave"');
+      expect(html).not.toContain('data-action="delete"');
+    });
+
+    it('should hide share button for shared notes (non-owners cannot share)', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test', 
+        theme: 'yellow', 
+        selector: '#main',
+        isShared: true
+      };
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      
+      expect(html).not.toContain('data-action="share"');
+    });
+
+    it('should show delete and share buttons for owned notes', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test', 
+        theme: 'yellow', 
+        selector: '#main',
+        isShared: false
+      };
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      
+      expect(html).toContain('data-action="delete"');
+      expect(html).toContain('data-action="share"');
+      expect(html).not.toContain('data-action="leave"');
     });
 
     it('should show orphaned indicator', () => {

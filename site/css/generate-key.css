@@ -427,3 +427,29 @@ button {
     gap: 8px;
     margin-top: 16px;
 }
+
+/* Next Steps Section */
+.next-steps {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border);
+    text-align: center;
+}
+
+.next-steps h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1.125rem;
+}
+
+.next-steps p {
+    color: var(--color-text-muted);
+    margin-bottom: 16px;
+    font-size: 0.9375rem;
+}
+
+.btn-large {
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    width: 100%;
+}

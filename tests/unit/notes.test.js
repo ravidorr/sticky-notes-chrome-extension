@@ -43,6 +43,7 @@ const {
   deleteNote,
   shareNote,
   unshareNote,
+  leaveSharedNote,
   subscribeToNotesForUrl,
   getSharedNotesForUser,
   subscribeToSharedNotes
@@ -533,6 +534,83 @@ describe('Firebase Notes', () => {
       
       await expect(unshareNote('note-123', 'friend@example.com', 'user-123', localThis.deps))
         .rejects.toThrow('Only the owner can modify sharing');
+    });
+  });
+
+  describe('leaveSharedNote', () => {
+    it('should leave shared note successfully', async () => {
+      localThis.deps.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({ ownerId: 'other-user', sharedWith: ['user@example.com', 'other@example.com'] })
+      });
+      localThis.deps.updateDoc.mockResolvedValue();
+      
+      await expect(leaveSharedNote('note-123', 'user@example.com', localThis.deps))
+        .resolves.toBeUndefined();
+      
+      const updateCall = localThis.deps.updateDoc.mock.calls[0][1];
+      expect(updateCall.sharedWith).not.toContain('user@example.com');
+      expect(updateCall.sharedWith).toContain('other@example.com');
+    });
+
+    it('should lowercase email before leaving', async () => {
+      localThis.deps.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({ ownerId: 'other-user', sharedWith: ['user@example.com'] })
+      });
+      localThis.deps.updateDoc.mockResolvedValue();
+      
+      await leaveSharedNote('note-123', 'USER@EXAMPLE.COM', localThis.deps);
+      
+      const updateCall = localThis.deps.updateDoc.mock.calls[0][1];
+      expect(updateCall.sharedWith).toEqual([]);
+    });
+
+    it('should throw error when Firebase is not configured', async () => {
+      localThis.deps.isFirebaseConfigured = jest.fn(() => false);
+      
+      await expect(leaveSharedNote('note-123', 'user@example.com', localThis.deps))
+        .rejects.toThrow('Firebase is not configured');
+    });
+
+    it('should throw error for invalid note ID', async () => {
+      await expect(leaveSharedNote('', 'user@example.com', localThis.deps))
+        .rejects.toThrow('Invalid note ID');
+      
+      await expect(leaveSharedNote(null, 'user@example.com', localThis.deps))
+        .rejects.toThrow('Invalid note ID');
+    });
+
+    it('should throw error for invalid email address', async () => {
+      await expect(leaveSharedNote('note-123', '', localThis.deps))
+        .rejects.toThrow('Invalid email address');
+      
+      await expect(leaveSharedNote('note-123', null, localThis.deps))
+        .rejects.toThrow('Invalid email address');
+    });
+
+    it('should throw error for empty email after trim', async () => {
+      await expect(leaveSharedNote('note-123', '   ', localThis.deps))
+        .rejects.toThrow('Email address cannot be empty');
+    });
+
+    it('should throw error when note not found', async () => {
+      localThis.deps.getDoc.mockResolvedValue({
+        exists: () => false
+      });
+      
+      await expect(leaveSharedNote('note-123', 'user@example.com', localThis.deps))
+        .rejects.toThrow('Note not found');
+    });
+
+    it('should throw error when user not in shared list', async () => {
+      localThis.deps.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({ ownerId: 'other-user', sharedWith: ['someone-else@example.com'] })
+      });
+      
+      await expect(leaveSharedNote('note-123', 'user@example.com', localThis.deps))
+        .rejects.toThrow('You are not in the shared list for this note');
     });
   });
 

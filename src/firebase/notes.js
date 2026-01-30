@@ -391,6 +391,65 @@ export async function unshareNote(noteId, emailToRemove, ownerId, deps = {}) {
 }
 
 /**
+ * Leave a shared note (remove yourself from the shared list)
+ * This allows a non-owner to remove themselves from a note's shared list
+ * 
+ * @param {string} noteId - Note ID
+ * @param {string} userEmail - Email of the user leaving
+ * @param {Object} deps - Optional dependencies for testing
+ * @returns {Promise<void>}
+ */
+export async function leaveSharedNote(noteId, userEmail, deps = {}) {
+  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const dbInstance = deps.db !== undefined ? deps.db : db;
+  const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
+  
+  if (!isConfigured || !dbInstance) {
+    throw new Error('Firebase is not configured');
+  }
+  
+  // Validate inputs
+  if (!noteId || typeof noteId !== 'string') {
+    throw new Error('Invalid note ID');
+  }
+  
+  if (!userEmail || typeof userEmail !== 'string') {
+    throw new Error('Invalid email address');
+  }
+  
+  // Sanitize the email (trim and lowercase for comparison)
+  const sanitizedEmail = userEmail.trim().toLowerCase();
+  
+  // Prevent empty values after sanitization
+  if (sanitizedEmail.length === 0) {
+    throw new Error('Email address cannot be empty');
+  }
+  
+  const docRef = firebaseDeps.doc(dbInstance, NOTES_COLLECTION, noteId);
+  const docSnap = await firebaseDeps.getDoc(docRef);
+  
+  if (!docSnap.exists()) {
+    throw new Error('Note not found');
+  }
+  
+  const noteData = docSnap.data();
+  
+  // Check that user is actually in the shared list (not the owner)
+  const sharedWith = noteData.sharedWith || [];
+  if (!sharedWith.includes(sanitizedEmail)) {
+    throw new Error('You are not in the shared list for this note');
+  }
+  
+  // Remove user's email from sharedWith array
+  const updatedSharedWith = sharedWith.filter(email => email !== sanitizedEmail);
+  
+  await firebaseDeps.updateDoc(docRef, { 
+    sharedWith: updatedSharedWith,
+    updatedAt: firebaseDeps.serverTimestamp()
+  });
+}
+
+/**
  * Subscribe to real-time updates for notes on a URL
  * @param {string} url - Page URL
  * @param {string} userId - Current user ID

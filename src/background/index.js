@@ -16,6 +16,7 @@ import {
   deleteNote as deleteNoteFromFirestore,
   shareNote as shareNoteInFirestore,
   unshareNote as unshareNoteInFirestore,
+  leaveSharedNote as leaveSharedNoteInFirestore,
   subscribeToNotesForUrl,
   subscribeToSharedNotes,
   getSharedNotesForUser
@@ -51,6 +52,7 @@ const handlers = createHandlers({
   deleteNoteFromFirestore,
   shareNoteInFirestore,
   unshareNoteInFirestore,
+  leaveSharedNoteInFirestore,
   isFirebaseConfigured,
   // Comment service functions
   createCommentInFirestore,

@@ -181,6 +181,22 @@ function renderNotesList(notes) {
         }
       });
     }
+    
+    // Leave button (for shared notes)
+    const leaveBtn = item.querySelector('[data-action="leave"]');
+    if (leaveBtn) {
+      leaveBtn.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        const confirmed = await handlers.showConfirmDialog(t('leaveNoteConfirm'));
+        if (confirmed) {
+          const result = await handlers.handleLeaveNote(noteId);
+          if (result.success) {
+            // Refresh the notes list
+            await refreshNotes();
+          }
+        }
+      });
+    }
   });
 }
 

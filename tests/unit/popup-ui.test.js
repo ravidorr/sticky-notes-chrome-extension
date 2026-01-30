@@ -51,6 +51,21 @@ describe('src/popup/popup.js', () => {
             <section id="thisPageContent" class="tab-content notes-section"></section>
             <section id="sharedContent" class="tab-content notes-section hidden"></section>
             <div id="sharedNotesList" class="notes-list"></div>
+            <!-- Footer -->
+            <footer class="popup-footer">
+                <span id="totalNotesCount"></span>
+                <span>v1.6.0</span>
+            </footer>
+            <!-- Dashboard link in header -->
+            <a id="dashboardLink" 
+               href="https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               class="header-dashboard-link"
+               title="Open Dashboard">
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"></svg>
+               <span>Dashboard</span>
+            </a>
         `;
 
         // Initialize DOM elements by calling the function
@@ -295,6 +310,50 @@ describe('src/popup/popup.js', () => {
             // This will make a chrome.runtime.sendMessage call that will fail in test,
             // but it should handle the error gracefully
             await expect(updateSharedNotesCount()).resolves.not.toThrow();
+        });
+    });
+
+    // ============================================
+    // Dashboard Link Tests
+    // ============================================
+
+    describe('Dashboard Link', () => {
+        beforeEach(() => {
+            localThis.dashboardLink = document.getElementById('dashboardLink');
+        });
+
+        it('should have dashboard link element in DOM', () => {
+            expect(localThis.dashboardLink).not.toBeNull();
+        });
+
+        it('should have correct href pointing to dashboard', () => {
+            expect(localThis.dashboardLink.href).toBe(
+                'https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html'
+            );
+        });
+
+        it('should open in new tab (target="_blank")', () => {
+            expect(localThis.dashboardLink.target).toBe('_blank');
+        });
+
+        it('should have security attributes for external link', () => {
+            expect(localThis.dashboardLink.rel).toContain('noopener');
+            expect(localThis.dashboardLink.rel).toContain('noreferrer');
+        });
+
+        it('should have header-dashboard-link class for styling', () => {
+            expect(localThis.dashboardLink.classList.contains('header-dashboard-link')).toBe(true);
+        });
+
+        it('should contain Dashboard text label', () => {
+            const textSpan = localThis.dashboardLink.querySelector('span');
+            expect(textSpan).not.toBeNull();
+            expect(textSpan.textContent).toBe('Dashboard');
+        });
+
+        it('should contain an icon (svg element)', () => {
+            const icon = localThis.dashboardLink.querySelector('svg');
+            expect(icon).not.toBeNull();
         });
     });
 });

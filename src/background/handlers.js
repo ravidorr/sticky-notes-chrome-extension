@@ -26,6 +26,7 @@ export function createHandlers(deps = {}) {
     deleteNoteFromFirestore,
     shareNoteInFirestore,
     unshareNoteInFirestore,
+    leaveSharedNoteInFirestore,
     isFirebaseConfigured,
     // Comment service functions
     createCommentInFirestore,
@@ -81,6 +82,9 @@ export function createHandlers(deps = {}) {
       
       case 'unshareNote':
         return unshareNote(message.noteId, message.email);
+      
+      case 'leaveSharedNote':
+        return leaveSharedNote(message.noteId);
       
       case 'getUser':
         return getUser();
@@ -516,6 +520,14 @@ export function createHandlers(deps = {}) {
           await deleteNoteFromFirestore(noteId, user.uid);
           return { success: true };
         } catch (error) {
+          // Check for permission errors - don't fall back to local storage for these
+          const errorMessage = error.message || '';
+          if (errorMessage.includes('Only the owner can delete') || 
+              errorMessage.includes('Permission denied')) {
+            // Return the translated version of the permission error
+            return { success: false, error: t('onlyOwnerCanDelete') };
+          }
+          // For other errors (network issues, etc.), fall back to local storage
           log.error('Firestore delete failed, falling back to local storage:', error);
         }
       }
@@ -615,6 +627,44 @@ export function createHandlers(deps = {}) {
       return { success: true };
     } catch (error) {
       log.error('Unshare note error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Leave a shared note (remove yourself from the shared list)
+   * @param {string} noteId - Note ID
+   */
+  async function leaveSharedNote(noteId) {
+    try {
+      const user = await getCurrentUser();
+      
+      if (!user) {
+        return { success: false, error: t('mustBeLoggedInToShare') };
+      }
+      
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('sharingRequiresFirebase') };
+      }
+      
+      // Validate noteId format
+      if (!noteId || typeof noteId !== 'string' || noteId.length === 0) {
+        return { success: false, error: t('invalidNoteId') };
+      }
+      
+      if (!user.email) {
+        return { success: false, error: 'User email not available' };
+      }
+      
+      if (!leaveSharedNoteInFirestore) {
+        return { success: false, error: 'Leave service not available' };
+      }
+      
+      await leaveSharedNoteInFirestore(noteId, user.email.toLowerCase());
+      
+      return { success: true };
+    } catch (error) {
+      log.error('Leave shared note error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -1289,6 +1339,7 @@ export function createHandlers(deps = {}) {
     deleteNote,
     shareNote,
     unshareNote,
+    leaveSharedNote,
     captureScreenshot,
     // Comment handlers
     addComment,

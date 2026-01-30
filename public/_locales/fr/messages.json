@@ -814,5 +814,39 @@
   "failedToOpenNote": {
     "message": "Echec de l'ouverture de la note",
     "description": "Error message when opening shared note fails"
+  },
+
+  "dashboard": {
+    "message": "Tableau de bord",
+    "description": "Link to open the notes dashboard in a new tab"
+  },
+  "openDashboard": {
+    "message": "Ouvrir le tableau de bord",
+    "description": "Tooltip for dashboard link"
+  },
+
+  "leaveNote": {
+    "message": "Quitter",
+    "description": "Button to leave a shared note (remove yourself from shared list)"
+  },
+  "leaveNoteConfirm": {
+    "message": "Quitter cette note partagee? Vous n'y aurez plus acces.",
+    "description": "Confirmation dialog for leaving a shared note"
+  },
+  "leftNote": {
+    "message": "Note partagee quittee",
+    "description": "Toast message after leaving a shared note"
+  },
+  "failedToLeave": {
+    "message": "Echec pour quitter la note",
+    "description": "Error message when leaving a shared note fails"
+  },
+  "onlyOwnerCanDelete": {
+    "message": "Seul le proprietaire peut supprimer cette note",
+    "description": "Error when non-owner tries to delete a note"
+  },
+  "onlyOwnerCanShare": {
+    "message": "Seul le proprietaire peut partager cette note",
+    "description": "Error when non-owner tries to share a note"
   }
 }

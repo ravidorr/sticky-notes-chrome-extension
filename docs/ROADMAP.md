@@ -263,6 +263,66 @@ Low-effort features to test market fit:
 
 ---
 
+## User Feedback (January 2026)
+
+Feedback collected from early users: Mark Whitley, Courtney Kyle, Miri Shapiro.
+
+### Positive Feedback
+
+- **Strong initial impression**: The concept feels immediately correct and has strong potential for adoption
+- **Ease of use**: Adding notes feels intuitive and straightforward - great for first-time user experience
+
+### Feature Requests
+
+| Request | Description | Priority |
+|---------|-------------|----------|
+| Element association | When interacting with a note, visually highlight the UI element it's tied to | High |
+| Page-level notes | Add general, page-level comments not anchored to a specific element | Medium |
+| Show/hide controls | Toggle visibility of all notes; reset to a clean view quickly | Medium |
+| Dashboard access | Add link to dashboard from extension popup (currently only accessible via direct URL) | High |
+| Notes preferences | Layout preferences (dock position, note size, display style) from plugin menu | Low |
+| Dashboard entry point | More flexible entry point for notes (e.g., launching from a dashboard view) | Low |
+
+### Issues Reported
+
+| Issue | Reporter | Status |
+|-------|----------|--------|
+| Shared notes not received | Courtney Kyle | Needs investigation - user did not see note shared by another user |
+| Commenting bug | Mark Whitley | Needs reproduction - could not submit comments on a note |
+| Figma Make iframe issues | Miri Shapiro | Figma Make prototypes (delivered inside iframe) have bugs; works better on other URLs |
+| Dashboard discoverability | Miri Shapiro | Could not remember how to access the dashboard |
+
+### Investigation Notes
+
+**Sharing issue:**
+
+- Emails confirmed: `mark.whitley@pendo.io` shared with `courtney.kyle@pendo.io`
+- Both are valid @pendo.io domain emails, no mismatch
+- Possible causes:
+  - Real-time subscription not active (user must be logged in)
+  - User looking at wrong tab ("This Page" vs "Shared" tab in popup)
+  - Firestore query issue with `array-contains` on `sharedWith` field
+  - Badge update not triggering properly
+
+**Commenting bug:**
+
+- No reproduction steps available
+- Need to add better error logging to surface submission failures
+- May be related to permissions or network errors not shown to user
+
+**Figma Make issue:**
+
+- Affects all URLs matching pattern: `www.figma.com/make/*`
+- Example URL: `https://www.figma.com/make/jNGP9BHeqFZ9bSBZRuhyZN/Pendo-Act---2026-Hackathon--Tom-`
+- Figma Make generates standalone web apps delivered inside iframes
+- Likely causes:
+  - Content Security Policy (CSP) blocking extension injection
+  - Sandbox attributes on iframe preventing script execution
+  - Cross-origin restrictions on Figma's embedded content
+  - Dynamic iframe URLs that change between sessions
+
+---
+
 ## Ideas Bucket
 
 Unplanned feature ideas for future consideration:
@@ -297,6 +357,11 @@ Unplanned feature ideas for future consideration:
   - [x] Jump to note and maximize it
   - [] View and delete notes from other pages (cross-page note management)
   - [] Potential UI: list view with page grouping, search/filter capabilities
+- [] Element highlighting: visually highlight the anchored DOM element when hovering/focusing a note
+- [] Page-level notes: allow notes without element anchor (general page comments)
+- [] Show/hide all notes toggle: quick visibility control from popup or keyboard shortcut
+- [] Dashboard link in popup: add direct link to web dashboard from extension popup footer
+- [] User preferences/settings page: default theme, default position, notification preferences, auto-hide behavior
 
 ---
 
@@ -311,6 +376,12 @@ Unplanned feature ideas for future consideration:
 ### Minor
 
 - [] The yellow color of the "Add to Chrome" button doesn't work well with the colors in the Chrome SVG logo
+
+### Needs Investigation
+
+- [] Shared notes not received by recipient (reported by Courtney Kyle) - `mark.whitley@pendo.io` shared with `courtney.kyle@pendo.io` but note was not visible
+- [] Comment submission failing (reported by Mark Whitley) - no reproduction steps, need better error logging
+- [] Figma Make prototype issues (reported by Miri Shapiro) - all `www.figma.com/make/*` URLs affected, likely CSP or iframe sandbox restrictions
 
 ---
 

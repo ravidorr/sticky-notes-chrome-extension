@@ -43,6 +43,34 @@ body {
   gap: 10px;
 }
 
+/* Header dashboard link */
+.header-dashboard-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  margin-left: 8px;
+  border-radius: 6px;
+  color: #9ca3af;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.header-dashboard-link:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.header-dashboard-link svg {
+  flex-shrink: 0;
+}
+
+.header-dashboard-link span {
+  white-space: nowrap;
+}
+
 .header-logo h1 {
   font-size: 18px;
   font-weight: 700;
@@ -391,6 +419,7 @@ body {
   color: #eab308;
 }
 
+
 /* Toast notification - unified style */
 .popup-toast {
   position: fixed;
@@ -597,6 +626,11 @@ body {
 .note-item-btn-share:hover {
   background: #eff6ff;
   color: #3b82f6;
+}
+
+.note-item-btn-warning:hover {
+  background: #fffbeb;
+  color: #d97706;
 }
 
 /* Expandable metadata */

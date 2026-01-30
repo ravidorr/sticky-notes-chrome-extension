@@ -814,5 +814,39 @@
   "failedToOpenNote": {
     "message": "פתיחת הפתקית נכשלה",
     "description": "Error message when opening shared note fails"
+  },
+
+  "dashboard": {
+    "message": "לוח בקרה",
+    "description": "Link to open the notes dashboard in a new tab"
+  },
+  "openDashboard": {
+    "message": "פתח לוח בקרה",
+    "description": "Tooltip for dashboard link"
+  },
+
+  "leaveNote": {
+    "message": "עזוב",
+    "description": "Button to leave a shared note (remove yourself from shared list)"
+  },
+  "leaveNoteConfirm": {
+    "message": "לעזוב פתקית משותפת זו? לא תהיה לך יותר גישה אליה.",
+    "description": "Confirmation dialog for leaving a shared note"
+  },
+  "leftNote": {
+    "message": "עזבת פתקית משותפת",
+    "description": "Toast message after leaving a shared note"
+  },
+  "failedToLeave": {
+    "message": "עזיבת הפתקית נכשלה",
+    "description": "Error message when leaving a shared note fails"
+  },
+  "onlyOwnerCanDelete": {
+    "message": "רק הבעלים יכול למחוק פתקית זו",
+    "description": "Error when non-owner tries to delete a note"
+  },
+  "onlyOwnerCanShare": {
+    "message": "רק הבעלים יכול לשתף פתקית זו",
+    "description": "Error when non-owner tries to share a note"
   }
 }

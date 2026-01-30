@@ -479,6 +479,39 @@ export function createPopupHandlers(deps = {}) {
   }
 
   /**
+   * Leave a shared note (remove yourself from the shared list)
+   * @param {string} noteId - Note ID to leave
+   * @returns {Promise<Object>} Result with success flag
+   */
+  async function handleLeaveNote(noteId) {
+    try {
+      const response = await chromeRuntime.sendMessage({
+        action: 'leaveSharedNote',
+        noteId
+      });
+      
+      if (response.success) {
+        if (showSuccessToast) {
+          showSuccessToast(t('leftNote'));
+        }
+        return { success: true };
+      } else {
+        log.error('Leave note failed:', response.error);
+        if (showErrorToast) {
+          showErrorToast(response.error || t('failedToLeave'));
+        }
+        return { success: false, error: response.error };
+      }
+    } catch (error) {
+      log.error('Leave note error:', error);
+      if (showErrorToast) {
+        showErrorToast(t('failedToLeave'));
+      }
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Export notes to CSV format
    * @param {Array} notes - Array of notes to export
    * @param {string} filename - Filename for the CSV
@@ -620,19 +653,25 @@ export function createPopupHandlers(deps = {}) {
                 <polyline points="6 9 12 15 18 9"/>
               </svg>
             </button>
-            <button class="note-item-btn note-item-btn-share" data-action="share" title="${t('share')}">
+            ${!note.isShared ? `<button class="note-item-btn note-item-btn-share" data-action="share" title="${t('share')}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="18" cy="5" r="3"/>
                 <circle cx="6" cy="12" r="3"/>
                 <circle cx="18" cy="19" r="3"/>
                 <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/>
               </svg>
-            </button>
-            <button class="note-item-btn note-item-btn-danger" data-action="delete" title="${t('delete')}">
+            </button>` : ''}
+            ${note.isShared ? `<button class="note-item-btn note-item-btn-warning" data-action="leave" title="${t('leaveNote')}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>` : `<button class="note-item-btn note-item-btn-danger" data-action="delete" title="${t('delete')}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
               </svg>
-            </button>
+            </button>`}
           </div>
         </div>
         <div class="note-item-details">
@@ -951,6 +990,7 @@ export function createPopupHandlers(deps = {}) {
     handleDeleteAllFromPage,
     handleDeleteAllNotes,
     handleShareNote,
+    handleLeaveNote,
     handleExportCSV,
     getAllNotes,
     showShareModal,

@@ -814,5 +814,39 @@
   "failedToOpenNote": {
     "message": "Notiz konnte nicht geoffnet werden",
     "description": "Error message when opening shared note fails"
+  },
+
+  "dashboard": {
+    "message": "Dashboard",
+    "description": "Link to open the notes dashboard in a new tab"
+  },
+  "openDashboard": {
+    "message": "Dashboard offnen",
+    "description": "Tooltip for dashboard link"
+  },
+
+  "leaveNote": {
+    "message": "Verlassen",
+    "description": "Button to leave a shared note (remove yourself from shared list)"
+  },
+  "leaveNoteConfirm": {
+    "message": "Diese geteilte Notiz verlassen? Sie haben dann keinen Zugriff mehr darauf.",
+    "description": "Confirmation dialog for leaving a shared note"
+  },
+  "leftNote": {
+    "message": "Geteilte Notiz verlassen",
+    "description": "Toast message after leaving a shared note"
+  },
+  "failedToLeave": {
+    "message": "Notiz konnte nicht verlassen werden",
+    "description": "Error message when leaving a shared note fails"
+  },
+  "onlyOwnerCanDelete": {
+    "message": "Nur der Besitzer kann diese Notiz loschen",
+    "description": "Error when non-owner tries to delete a note"
+  },
+  "onlyOwnerCanShare": {
+    "message": "Nur der Besitzer kann diese Notiz teilen",
+    "description": "Error when non-owner tries to share a note"
   }
 }

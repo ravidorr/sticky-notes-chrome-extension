@@ -40,6 +40,7 @@ describe('Background Handlers', () => {
       deleteNoteFromFirestore: jest.fn(),
       shareNoteInFirestore: jest.fn(),
       unshareNoteInFirestore: jest.fn(),
+      leaveSharedNoteInFirestore: jest.fn(),
       isFirebaseConfigured: jest.fn(),
       generateId: jest.fn(() => 'note_123_abc'),
       isValidEmail: jest.fn((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)),
@@ -525,16 +526,30 @@ describe('Background Handlers', () => {
       expect(localThis.deps.deleteNoteFromFirestore).toHaveBeenCalledWith('note-1', 'user-123');
     });
 
-    it('should fall back to local storage when Firebase fails', async () => {
+    it('should fall back to local storage when Firebase fails with non-permission error', async () => {
       localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
       localThis.deps.isFirebaseConfigured.mockReturnValue(true);
-      localThis.deps.deleteNoteFromFirestore.mockRejectedValue(new Error('Firebase error'));
+      localThis.deps.deleteNoteFromFirestore.mockRejectedValue(new Error('Network error'));
       localThis.mockChromeStorage.local.get.mockResolvedValue({ notes: [{ id: 'note-1' }] });
       localThis.mockChromeStorage.local.set.mockResolvedValue();
       
       const result = await localThis.handlers.deleteNote('note-1');
       
       expect(result.success).toBe(true);
+    });
+
+    it('should return permission error when non-owner tries to delete', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.deleteNoteFromFirestore.mockRejectedValue(new Error('Only the owner can delete this note'));
+      
+      const result = await localThis.handlers.deleteNote('note-1');
+      
+      expect(result.success).toBe(false);
+      // Should NOT fall back to local storage for permission errors
+      expect(localThis.mockChromeStorage.local.get).not.toHaveBeenCalled();
+      // Should return a user-friendly permission error
+      expect(result.error).toMatch(/^(Only the owner can delete this note|onlyOwnerCanDelete)$/);
     });
 
     it('should delete from local storage', async () => {
@@ -774,6 +789,97 @@ describe('Background Handlers', () => {
       
       expect(result.success).toBe(false);
       expect(result.error).toBe('Unshare service not available');
+    });
+  });
+
+  describe('leaveSharedNote', () => {
+    it('should leave shared note successfully', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.leaveSharedNoteInFirestore.mockResolvedValue();
+      
+      const result = await localThis.handlers.leaveSharedNote('note-1');
+      
+      expect(result.success).toBe(true);
+      expect(localThis.deps.leaveSharedNoteInFirestore).toHaveBeenCalledWith('note-1', 'test@example.com');
+    });
+
+    it('should require login', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(null);
+      
+      const result = await localThis.handlers.leaveSharedNote('note-1');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/^(You must be logged in to share notes|mustBeLoggedInToShare)$/);
+    });
+
+    it('should require Firebase configuration', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+      
+      const result = await localThis.handlers.leaveSharedNote('note-1');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/^(Sharing requires Firebase to be configured|sharingRequiresFirebase)$/);
+    });
+
+    it('should validate note ID', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      
+      const result1 = await localThis.handlers.leaveSharedNote('');
+      expect(result1.success).toBe(false);
+      expect(result1.error).toMatch(/^(Invalid note ID|invalidNoteId)$/);
+      
+      const result2 = await localThis.handlers.leaveSharedNote(null);
+      expect(result2.success).toBe(false);
+      expect(result2.error).toMatch(/^(Invalid note ID|invalidNoteId)$/);
+    });
+
+    it('should require user email', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue({ uid: 'user-123', email: null });
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      
+      const result = await localThis.handlers.leaveSharedNote('note-1');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('User email not available');
+    });
+
+    it('should lowercase email when leaving', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue({ uid: 'user-123', email: 'TEST@EXAMPLE.COM' });
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.leaveSharedNoteInFirestore.mockResolvedValue();
+      
+      await localThis.handlers.leaveSharedNote('note-1');
+      
+      expect(localThis.deps.leaveSharedNoteInFirestore).toHaveBeenCalledWith('note-1', 'test@example.com');
+    });
+
+    it('should return error on failure', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.leaveSharedNoteInFirestore.mockRejectedValue(new Error('Leave failed'));
+      
+      const result = await localThis.handlers.leaveSharedNote('note-1');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Leave failed');
+      expect(localThis.mockLog.error).toHaveBeenCalled();
+    });
+
+    it('should return error when leaveSharedNoteInFirestore is not available', async () => {
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.deps.leaveSharedNoteInFirestore = null;
+      
+      // Recreate handlers with updated deps
+      localThis.handlers = createHandlers(localThis.deps);
+      
+      const result = await localThis.handlers.leaveSharedNote('note-1');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Leave service not available');
     });
   });
 
