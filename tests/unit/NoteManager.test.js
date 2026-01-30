@@ -2184,15 +2184,24 @@ describe('NoteManager', () => {
     });
     
     describe('highlightNote for page-level notes', () => {
-      it('should highlight page-level note without scrolling anchor', () => {
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
+      
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+      
+      it('should scroll to page-level note position and highlight after scroll', () => {
         const localThis = createMockDependencies();
         const manager = new NoteManager(localThis);
+        const scrollToSpy = jest.spyOn(window, 'scrollTo').mockImplementation(() => {});
         
         const noteData = {
           id: 'highlight-page-note',
           selector: '__PAGE__',
           content: 'Test',
-          position: { pageX: 100, pageY: 100 }
+          position: { pageX: 100, pageY: 200 }
         };
         
         manager.createPageLevelNoteUI(noteData);
@@ -2203,17 +2212,34 @@ describe('NoteManager', () => {
         
         manager.highlightNote('highlight-page-note');
         
-        // Page-level notes are highlighted immediately (no setTimeout)
+        // Should scroll to center the note in viewport
+        expect(scrollToSpy).toHaveBeenCalledWith({
+          left: Math.max(0, 100 - window.innerWidth / 2),
+          top: Math.max(0, 200 - window.innerHeight / 2),
+          behavior: 'smooth'
+        });
+        
+        // Methods should not be called immediately (waiting for scroll)
+        expect(showSpy).not.toHaveBeenCalled();
+        expect(bringToFrontSpy).not.toHaveBeenCalled();
+        expect(highlightSpy).not.toHaveBeenCalled();
+        
+        // Fast-forward past the scroll animation delay
+        jest.advanceTimersByTime(400);
+        
+        // Now methods should be called
         expect(showSpy).toHaveBeenCalled();
         expect(bringToFrontSpy).toHaveBeenCalled();
         expect(highlightSpy).toHaveBeenCalled();
         
+        scrollToSpy.mockRestore();
         note.destroy();
       });
       
       it('should maximize page-level note when maximize is true', () => {
         const localThis = createMockDependencies();
         const manager = new NoteManager(localThis);
+        const scrollToSpy = jest.spyOn(window, 'scrollTo').mockImplementation(() => {});
         
         const noteData = {
           id: 'maximize-page-note',
@@ -2228,9 +2254,43 @@ describe('NoteManager', () => {
         
         manager.highlightNote('maximize-page-note', true);
         
+        // maximize should not be called immediately
+        expect(maximizeSpy).not.toHaveBeenCalled();
+        
+        // Fast-forward past the scroll animation delay
+        jest.advanceTimersByTime(400);
+        
         expect(maximizeSpy).toHaveBeenCalled();
         
+        scrollToSpy.mockRestore();
         note.destroy();
+      });
+      
+      it('should use default position when note has no position set', () => {
+        const localThis = createMockDependencies();
+        const manager = new NoteManager(localThis);
+        const scrollToSpy = jest.spyOn(window, 'scrollTo').mockImplementation(() => {});
+        
+        const noteData = {
+          id: 'no-position-page-note',
+          selector: '__PAGE__',
+          content: 'Test'
+          // No position property
+        };
+        
+        manager.createPageLevelNoteUI(noteData);
+        
+        manager.highlightNote('no-position-page-note');
+        
+        // Should use default position (10, 10)
+        expect(scrollToSpy).toHaveBeenCalledWith({
+          left: Math.max(0, 10 - window.innerWidth / 2),
+          top: Math.max(0, 10 - window.innerHeight / 2),
+          behavior: 'smooth'
+        });
+        
+        scrollToSpy.mockRestore();
+        manager.notes.get('no-position-page-note').destroy();
       });
     });
   });

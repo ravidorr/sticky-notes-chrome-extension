@@ -920,15 +920,28 @@ export class NoteManager {
       return;
     }
     
-    // Page-level notes don't have an anchor to scroll to
+    // Page-level notes: scroll to their position on the page
     if (note.isPageLevel) {
-      // Show, highlight, and optionally maximize immediately
-      note.show();
-      note.bringToFront();
-      note.highlight();
-      if (maximize) {
-        note.maximize();
-      }
+      // Get the note's page coordinates
+      const pageX = note.position?.pageX ?? 10;
+      const pageY = note.position?.pageY ?? 10;
+      
+      // Scroll page to center the note in the viewport
+      window.scrollTo({
+        left: Math.max(0, pageX - window.innerWidth / 2),
+        top: Math.max(0, pageY - window.innerHeight / 2),
+        behavior: 'smooth'
+      });
+      
+      // Wait for scroll animation to complete before showing/highlighting
+      setTimeout(() => {
+        note.show();
+        note.bringToFront();
+        note.highlight();
+        if (maximize) {
+          note.maximize();
+        }
+      }, 400); // 400ms matches typical smooth scroll duration
       return;
     }
     
