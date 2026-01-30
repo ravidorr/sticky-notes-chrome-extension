@@ -887,6 +887,75 @@ describe('Popup Handlers', () => {
       expect(html).toContain('user1@test.com');
       expect(html).toContain('user2@test.com');
     });
+
+    it('should show visibility toggle button', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test', 
+        theme: 'yellow', 
+        selector: '#main'
+      };
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      
+      expect(html).toContain('data-action="visibility"');
+      expect(html).toContain('note-item-btn-visibility');
+    });
+
+    it('should show hidden indicator for hidden notes', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test', 
+        theme: 'yellow', 
+        selector: '#main',
+        isHidden: true
+      };
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      
+      expect(html).toContain('note-item-hidden');
+      expect(html).toContain('data-hidden="true"');
+    });
+
+    it('should not show hidden class for visible notes', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test', 
+        theme: 'yellow', 
+        selector: '#main',
+        isHidden: false
+      };
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      
+      expect(html).not.toContain('note-item-hidden');
+      expect(html).not.toContain('data-hidden="true"');
+    });
+
+    it('should show eye icon for hidden note (click to show)', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test', 
+        theme: 'yellow', 
+        selector: '#main',
+        isHidden: true
+      };
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      
+      // Eye icon (show) should be present for hidden notes
+      expect(html).toContain('M1 12s4-8 11-8 11 8 11 8');
+    });
+
+    it('should show eye-off icon for visible note (click to hide)', () => {
+      const note = { 
+        id: 'note-1', 
+        content: 'Test', 
+        theme: 'yellow', 
+        selector: '#main',
+        isHidden: false
+      };
+      const html = localThis.handlers.renderNoteItemExpanded(note);
+      
+      // Eye-off icon (hide) should be present for visible notes
+      expect(html).toContain('M17.94 17.94');
+    });
   });
 
   describe('formatTimestamp', () => {

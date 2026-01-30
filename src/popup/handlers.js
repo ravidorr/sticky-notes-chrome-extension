@@ -703,7 +703,9 @@ export function createPopupHandlers(deps = {}) {
    */
   function renderNoteItemExpanded(note) {
     const orphanedClass = note.isOrphaned ? ' note-item-orphaned' : '';
+    const hiddenClass = note.isHidden ? ' note-item-hidden' : '';
     const orphanedAttr = note.isOrphaned ? ' data-orphaned="true"' : '';
+    const hiddenAttr = note.isHidden ? ' data-hidden="true"' : '';
     const sharedBadge = note.isShared ? `
       <span class="note-item-shared-badge">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -728,8 +730,14 @@ export function createPopupHandlers(deps = {}) {
       ? note.sharedWith.join(', ') 
       : t('notShared');
     
+    // Visibility toggle button - eye icon for visible, eye-off for hidden
+    const visibilityIcon = note.isHidden
+      ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+      : '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+    const visibilityTitle = note.isHidden ? t('showNote') : t('hideNote');
+    
     return `
-      <div class="note-item${orphanedClass}" data-id="${note.id}"${orphanedAttr}>
+      <div class="note-item${orphanedClass}${hiddenClass}" data-id="${note.id}"${orphanedAttr}${hiddenAttr}>
         <div class="note-item-header">
           <div class="note-item-color" style="background: ${getThemeColor(note.theme)}"></div>
           <div class="note-item-content">
@@ -740,6 +748,11 @@ export function createPopupHandlers(deps = {}) {
             </div>${orphanedHint}
           </div>
           <div class="note-item-actions">
+            <button class="note-item-btn note-item-btn-visibility" data-action="visibility" title="${visibilityTitle}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                ${visibilityIcon}
+              </svg>
+            </button>
             <button class="note-item-btn note-item-btn-expand" data-action="expand" title="${t('viewMetadata')}">
               <svg class="note-item-expand-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6 9 12 15 18 9"/>

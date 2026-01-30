@@ -468,4 +468,130 @@ describe('VisibilityManager', () => {
       expect(localThis.newNote.show).not.toHaveBeenCalled();
     });
   });
+  
+  describe('per-note isHidden property', () => {
+    it('should NOT show note with isHidden: true on intersection', () => {
+      // Create a note that is individually hidden
+      const hiddenNote = {
+        show: jest.fn(),
+        hide: jest.fn(),
+        isVisible: false,
+        isHidden: true,
+        updatePosition: jest.fn()
+      };
+      
+      manager.observe(anchor, hiddenNote);
+      
+      // Trigger intersection (anchor enters viewport)
+      const observer = MockIntersectionObserver.instances[0];
+      observer.triggerIntersection([{
+        target: anchor,
+        isIntersecting: true
+      }]);
+      
+      // Note should NOT be shown because it is individually hidden
+      expect(hiddenNote.show).not.toHaveBeenCalled();
+    });
+    
+    it('should show note with isHidden: false on intersection', () => {
+      // Create a note that is not individually hidden
+      const visibleNote = {
+        show: jest.fn(),
+        hide: jest.fn(),
+        isVisible: false,
+        isHidden: false,
+        updatePosition: jest.fn()
+      };
+      
+      manager.observe(anchor, visibleNote);
+      
+      // Trigger intersection (anchor enters viewport)
+      const observer = MockIntersectionObserver.instances[0];
+      observer.triggerIntersection([{
+        target: anchor,
+        isIntersecting: true
+      }]);
+      
+      // Note should be shown
+      expect(visibleNote.show).toHaveBeenCalled();
+    });
+    
+    it('should NOT show note with isHidden: true on refresh', () => {
+      // Mock getBoundingClientRect to return in-viewport position
+      anchor.getBoundingClientRect = jest.fn(() => ({
+        top: 100,
+        bottom: 200,
+        left: 100,
+        right: 200
+      }));
+      
+      const hiddenNote = {
+        show: jest.fn(),
+        hide: jest.fn(),
+        isVisible: false,
+        isHidden: true,
+        updatePosition: jest.fn()
+      };
+      
+      manager.observe(anchor, hiddenNote);
+      manager.refresh();
+      
+      // Note should NOT be shown even though anchor is in viewport
+      expect(hiddenNote.show).not.toHaveBeenCalled();
+      // Note should be hidden
+      expect(hiddenNote.hide).toHaveBeenCalled();
+    });
+    
+    it('should NOT show note with isHidden: true when setGlobalVisibility(true) is called', () => {
+      // Mock getBoundingClientRect to return in-viewport position
+      anchor.getBoundingClientRect = jest.fn(() => ({
+        top: 100,
+        bottom: 200,
+        left: 100,
+        right: 200
+      }));
+      
+      const hiddenNote = {
+        show: jest.fn(),
+        hide: jest.fn(),
+        isVisible: false,
+        isHidden: true,
+        updatePosition: jest.fn()
+      };
+      
+      manager.observe(anchor, hiddenNote);
+      manager.setGlobalVisibility(false);
+      
+      // Clear mock call counts
+      hiddenNote.show.mockClear();
+      hiddenNote.hide.mockClear();
+      
+      manager.setGlobalVisibility(true);
+      
+      // Note should NOT be shown because it is individually hidden
+      expect(hiddenNote.show).not.toHaveBeenCalled();
+    });
+    
+    it('should show note without isHidden property on intersection (default behavior)', () => {
+      // Create a note without isHidden property (undefined = not hidden)
+      const noteWithoutIsHidden = {
+        show: jest.fn(),
+        hide: jest.fn(),
+        isVisible: false,
+        updatePosition: jest.fn()
+      };
+      
+      manager.observe(anchor, noteWithoutIsHidden);
+      
+      // Trigger intersection (anchor enters viewport)
+      const observer = MockIntersectionObserver.instances[0];
+      observer.triggerIntersection([{
+        target: anchor,
+        isIntersecting: true
+      }]);
+      
+      // Note should be shown (undefined isHidden should be treated as not hidden)
+      expect(noteWithoutIsHidden.show).toHaveBeenCalled();
+    });
+  });
 });

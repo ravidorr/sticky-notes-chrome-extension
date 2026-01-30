@@ -296,10 +296,12 @@ export class NoteManager {
       ownerEmail: noteData.ownerEmail,
       ownerId: noteData.ownerId,
       isMinimized: !options.isNewNote, // New notes are maximized, existing notes are minimized
+      isHidden: noteData.isHidden || false,
       onSave: (content) => this.handleNoteSave(noteData.id, content),
       onThemeChange: (theme) => this.handleThemeChange(noteData.id, theme),
       onPositionChange: (position) => this.handlePositionChange(noteData.id, position),
       onDelete: () => this.handleNoteDelete(noteData.id),
+      onVisibilityChange: (isHidden) => this.handleVisibilityChange(noteData.id, isHidden),
       // Comment-related options
       user: user,
       onAddComment: (noteId, commentData) => this.handleAddComment(noteId, commentData),
@@ -349,10 +351,12 @@ export class NoteManager {
       ownerEmail: noteData.ownerEmail,
       ownerId: noteData.ownerId,
       isMinimized: !options.isNewNote,
+      isHidden: noteData.isHidden || false,
       onSave: (content) => this.handleNoteSave(noteData.id, content),
       onThemeChange: (theme) => this.handleThemeChange(noteData.id, theme),
       onPositionChange: (position) => this.handlePositionChange(noteData.id, position),
       onDelete: () => this.handleNoteDelete(noteData.id),
+      onVisibilityChange: (isHidden) => this.handleVisibilityChange(noteData.id, isHidden),
       user: user,
       onAddComment: (noteId, commentData) => this.handleAddComment(noteId, commentData),
       onEditComment: (noteId, commentId, updates) => this.handleEditComment(noteId, commentId, updates),
@@ -370,8 +374,8 @@ export class NoteManager {
     note.updatePosition();
     
     // Page-level notes are not managed by visibility manager (no anchor),
-    // but they should respect the global visibility state
-    if (this.visibilityManager.getGlobalVisibility()) {
+    // but they should respect the global visibility state and per-note hidden preference
+    if (this.visibilityManager.getGlobalVisibility() && !note.isHidden) {
       note.show();
     }
     
@@ -452,6 +456,70 @@ export class NoteManager {
         log.error('Error saving position:', error);
       }
     }
+  }
+  
+  /**
+   * Handle visibility change (per-note hide/show)
+   * @param {string} noteId - Note ID
+   * @param {boolean} isHidden - Whether the note is hidden
+   */
+  async handleVisibilityChange(noteId, isHidden) {
+    try {
+      await this.sendMessage({
+        action: 'updateNote',
+        note: { id: noteId, isHidden }
+      });
+      log.debug(`Note ${noteId} visibility changed: ${isHidden ? 'hidden' : 'visible'}`);
+    } catch (error) {
+      if (!this.isContextInvalidatedError(error)) {
+        log.error('Error saving visibility:', error);
+      }
+    }
+  }
+  
+  /**
+   * Toggle visibility of a specific note (from popup or external call)
+   * @param {string} noteId - Note ID
+   * @returns {Object} Result with success flag and new hidden state
+   */
+  async toggleNoteVisibility(noteId) {
+    const note = this.notes.get(noteId);
+    
+    if (!note) {
+      // Check orphaned notes
+      const orphanedEntry = this.orphanedNotes.get(noteId);
+      if (orphanedEntry) {
+        // Toggle visibility for orphaned note data
+        orphanedEntry.noteData.isHidden = !orphanedEntry.noteData.isHidden;
+        const newHiddenState = orphanedEntry.noteData.isHidden;
+        
+        // Persist the change
+        await this.handleVisibilityChange(noteId, newHiddenState);
+        
+        return { success: true, isHidden: newHiddenState };
+      }
+      
+      return { success: false, error: 'Note not found' };
+    }
+    
+    // Toggle the hidden state
+    note.isHidden = !note.isHidden;
+    note.updateHiddenState();
+    
+    // Handle visibility based on new state
+    if (note.isHidden) {
+      note.hide();
+    } else {
+      // Only show if global visibility is enabled
+      if (this.visibilityManager.getGlobalVisibility()) {
+        note.show();
+      }
+    }
+    
+    // Persist the change
+    await this.handleVisibilityChange(noteId, note.isHidden);
+    
+    return { success: true, isHidden: note.isHidden };
   }
   
   /**
@@ -1036,10 +1104,12 @@ export class NoteManager {
         createdAt: noteData.createdAt,
         ownerEmail: noteData.ownerEmail,
         ownerId: noteData.ownerId,
+        isHidden: noteData.isHidden || false,
         onSave: (content) => this.handleNoteSave(noteData.id, content),
         onThemeChange: (theme) => this.handleThemeChange(noteData.id, theme),
         onPositionChange: (position) => this.handlePositionChange(noteData.id, position),
         onDelete: () => this.handleOrphanedNoteDelete(noteData.id),
+        onVisibilityChange: (isHidden) => this.handleVisibilityChange(noteData.id, isHidden),
         // Comment-related options
         user: user,
         onAddComment: (id, commentData) => this.handleAddComment(id, commentData),
@@ -1180,6 +1250,8 @@ export class NoteManager {
    * from overriding the global hidden state.
    * Also handles orphaned notes and page-level notes that are not managed
    * by the visibility manager (they have no anchor element).
+   * When showing notes, respects per-note isHidden preference (notes marked
+   * as individually hidden will remain hidden).
    * @returns {boolean} New visibility state (true = visible, false = hidden)
    */
   toggleAllVisibility() {
@@ -1191,7 +1263,10 @@ export class NoteManager {
     this.notes.forEach((note) => {
       if (!note.anchor) {
         if (newVisibility) {
-          note.show();
+          // Respect per-note hidden preference
+          if (!note.isHidden) {
+            note.show();
+          }
         } else {
           note.hide();
         }

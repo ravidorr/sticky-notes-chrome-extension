@@ -877,5 +877,22 @@
   "hideAllNotes": {
     "message": "הסתר את כל הפתקיות",
     "description": "Button to hide all notes on the page"
+  },
+
+  "hideNote": {
+    "message": "הסתר פתקית",
+    "description": "Button to hide an individual note"
+  },
+  "showNote": {
+    "message": "הצג פתקית",
+    "description": "Button to show a hidden note"
+  },
+  "noteHidden": {
+    "message": "הפתקית הוסתרה",
+    "description": "Toast message when note is hidden"
+  },
+  "noteShown": {
+    "message": "הפתקית מוצגת",
+    "description": "Toast message when note is shown"
   }
 }

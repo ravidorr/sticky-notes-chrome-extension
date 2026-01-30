@@ -88,6 +88,7 @@ export async function createNote(noteData, userId, userEmail, deps = {}) {
     theme: theme,
     position: noteData.position || { anchor: 'top-right' },
     metadata: noteData.metadata || null,
+    isHidden: noteData.isHidden || false,
     ownerId: userId,
     ownerEmail: userEmail || null,
     sharedWith: [],
@@ -211,7 +212,7 @@ export async function updateNote(noteId, updates, userId, deps = {}) {
   }
   
   // Only allow certain fields to be updated
-  const allowedFields = ['content', 'theme', 'position', 'selector'];
+  const allowedFields = ['content', 'theme', 'position', 'selector', 'isHidden'];
   const filteredUpdates = {};
   
   for (const key of allowedFields) {

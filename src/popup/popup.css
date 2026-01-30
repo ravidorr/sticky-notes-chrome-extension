@@ -405,6 +405,25 @@ body {
   opacity: 0.6;
 }
 
+/* Hidden note styling */
+.note-item-hidden {
+  opacity: 0.6;
+}
+
+.note-item-hidden .note-item-text {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.note-item-hidden .note-item-color {
+  opacity: 0.4;
+}
+
+.note-item-btn-visibility:hover {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
 .note-item-orphan-hint {
   display: flex;
   align-items: center;

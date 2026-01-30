@@ -87,8 +87,8 @@ export class VisibilityManager {
       if (!note) return;
       
       if (entry.isIntersecting) {
-        // Only show note if global visibility is enabled
-        if (this.globallyVisible) {
+        // Only show note if global visibility is enabled AND note is not individually hidden
+        if (this.globallyVisible && !note.isHidden) {
           note.show();
         }
       } else {
@@ -152,8 +152,8 @@ export class VisibilityManager {
         rect.right > 0
       );
       
-      // Only show note if globally visible AND anchor is in viewport
-      if (inViewport && this.globallyVisible) {
+      // Only show note if globally visible AND anchor is in viewport AND note is not individually hidden
+      if (inViewport && this.globallyVisible && !note.isHidden) {
         note.show();
       } else {
         note.hide();
@@ -164,6 +164,7 @@ export class VisibilityManager {
   /**
    * Set global visibility state for all notes
    * When false, notes will be hidden regardless of anchor visibility
+   * When true, notes with isHidden=true will remain hidden (respects per-note preference)
    * @param {boolean} visible - Whether notes should be globally visible
    */
   setGlobalVisibility(visible) {
@@ -171,6 +172,7 @@ export class VisibilityManager {
     
     if (visible) {
       // Re-check visibility for all notes based on anchor positions
+      // Notes with isHidden=true will remain hidden (handled in refresh())
       this.refresh();
     } else {
       // Hide all notes

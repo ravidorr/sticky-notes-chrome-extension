@@ -65,6 +65,7 @@
   content: "<p>Note content here</p>",       // Rich text HTML content
   theme: "yellow",                           // yellow | blue | green | pink
   position: { anchor: "top-right" },         // Note position relative to anchor (or { pageX, pageY } for page-level notes)
+  isHidden: false,                           // Per-note visibility (hidden notes stay hidden even with global "show all")
   metadata: {
     url: "https://example.com/page",
     tabUrl: "https://example.com/page",      // Top-level page URL
@@ -274,6 +275,7 @@ Unplanned feature ideas for future consideration:
 - [] Delete old notes from popup UI (filter by age, cleanup stale notes)
 - [x] Add note through right-click context menu
 - [x] Page-level notes (notes without element anchor, attached to page itself)
+- [x] Per-note visibility controls (hide/show individual notes, persisted across refreshes)
 - [] Read-only user permissions (viewers who can see notes but not edit/comment) - pricing implications?
 - [] Freemium model with ads - all features free forever but with ads in notes (research: can Google Ads be injected into extension UI?)
 - [] Edge browser support (Chromium-based, should be straightforward)

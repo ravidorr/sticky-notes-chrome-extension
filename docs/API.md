@@ -271,6 +271,7 @@ Content-Type: application/json
 | `content` | string | No | HTML content of the note |
 | `theme` | string | No | Color theme: `yellow`, `blue`, `green`, `pink` |
 | `position` | object | No | Position relative to element (`{ anchor: "top-right" }`), or absolute page position for page-level notes (`{ pageX: 100, pageY: 200 }`) |
+| `isHidden` | boolean | No | Per-note visibility. If `true`, the note is hidden and won't appear even with global "show all". Defaults to `false`. |
 | `metadata` | object | No | Custom metadata (see [Metadata Object](#metadata-object) below) |
 
 **Page-Level Notes:**
@@ -298,6 +299,7 @@ Page-level notes are always visible and scroll with the page content.
   "content": "<p>This is my note</p>",
   "theme": "yellow",
   "position": { "anchor": "top-right" },
+  "isHidden": false,
   "metadata": { "source": "api" },
   "sharedWith": [],
   "createdAt": "2025-01-13T10:00:00.000Z",
@@ -344,6 +346,7 @@ Content-Type: application/json
 | `theme` | string | New color theme |
 | `position` | object | New position (use `{ pageX, pageY }` for page-level notes) |
 | `selector` | string | New CSS selector (use `__PAGE__` for page-level notes) |
+| `isHidden` | boolean | Per-note visibility. If `true`, the note is hidden and won't appear even with global "show all". |
 
 **Response (200 OK):** Returns the updated note object.
 

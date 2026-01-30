@@ -877,5 +877,22 @@
   "hideAllNotes": {
     "message": "Masquer toutes les notes",
     "description": "Button to hide all notes on the page"
+  },
+
+  "hideNote": {
+    "message": "Masquer la note",
+    "description": "Button to hide an individual note"
+  },
+  "showNote": {
+    "message": "Afficher la note",
+    "description": "Button to show a hidden note"
+  },
+  "noteHidden": {
+    "message": "Note masquee",
+    "description": "Toast message when note is hidden"
+  },
+  "noteShown": {
+    "message": "Note affichee",
+    "description": "Toast message when note is shown"
   }
 }

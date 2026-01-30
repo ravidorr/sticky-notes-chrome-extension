@@ -136,6 +136,12 @@ export class MessageHandler {
           notesVisible: this.app.noteManager.getNotesVisibility() 
         };
       
+      case 'toggleNoteVisibility': {
+        log.debug(' Toggling note visibility:', message.noteId);
+        const result = await this.app.noteManager.toggleNoteVisibility(message.noteId);
+        return result;
+      }
+      
       default:
         log.warn(' Unknown action:', message.action);
         return { success: false, error: 'Unknown action' };

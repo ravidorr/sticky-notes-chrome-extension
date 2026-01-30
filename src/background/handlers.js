@@ -450,6 +450,7 @@ export function createHandlers(deps = {}) {
         id: generateId('note'),
         ownerId: user?.uid || 'local',
         ownerEmail: user?.email || null,
+        isHidden: note.isHidden || false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

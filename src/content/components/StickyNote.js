@@ -70,6 +70,10 @@ export class StickyNote {
     this.onCommentsOpened = options.onCommentsOpened || (() => {});
     this.onCommentsClosed = options.onCommentsClosed || (() => {});
     
+    // Per-note visibility
+    this.isHidden = options.isHidden || false;
+    this.onVisibilityChange = options.onVisibilityChange || (() => {});
+    
     // Capture metadata at creation time, or use provided metadata
     this.metadata = options.metadata || getPageMetadata();
     this.createdAt = options.createdAt || new Date().toISOString();
@@ -122,6 +126,13 @@ export class StickyNote {
         </button>
         <span class="sn-note-header-title"></span>
         <div class="sn-note-header-actions">
+          <button class="sn-note-btn sn-hide-btn" title="${this.isHidden ? t('showNote') : t('hideNote')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              ${this.isHidden 
+                ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+                : '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'}
+            </svg>
+          </button>
           <button class="sn-note-btn sn-copy-md-btn" title="${t('copyAsMarkdown')}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M8 4l2 2M16 4l-2 2"/>
@@ -482,6 +493,10 @@ export class StickyNote {
     const positionBtn = this.element.querySelector('.sn-position-btn');
     positionBtn.addEventListener('click', this.handlePositionClick.bind(this));
     
+    // Hide button
+    const hideBtn = this.element.querySelector('.sn-hide-btn');
+    hideBtn.addEventListener('click', this.handleHideClick.bind(this));
+    
     // Copy as Markdown button
     const copyMdBtn = this.element.querySelector('.sn-copy-md-btn');
     copyMdBtn.addEventListener('click', this.handleCopyMarkdown.bind(this));
@@ -586,6 +601,54 @@ export class StickyNote {
   handlePositionClick(event) {
     event.stopPropagation();
     this.showPositionPicker();
+  }
+  
+  /**
+   * Handle hide button click - toggle note visibility
+   */
+  handleHideClick(event) {
+    event.stopPropagation();
+    this.isHidden = !this.isHidden;
+    this.updateHiddenState();
+    this.onVisibilityChange(this.isHidden);
+    
+    // Show toast feedback
+    this.showToast(this.isHidden ? t('noteHidden') : t('noteShown'));
+    
+    // If note is now hidden, hide it after a brief delay for feedback
+    if (this.isHidden) {
+      setTimeout(() => {
+        this.hide();
+      }, 500);
+    }
+  }
+  
+  /**
+   * Update the hide button UI based on current hidden state
+   */
+  updateHiddenState() {
+    const hideBtn = this.element.querySelector('.sn-hide-btn');
+    if (!hideBtn) return;
+    
+    if (this.isHidden) {
+      // Note is hidden, show eye icon (click to show)
+      hideBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      `;
+      hideBtn.title = t('showNote');
+    } else {
+      // Note is visible, show eye-off icon (click to hide)
+      hideBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        </svg>
+      `;
+      hideBtn.title = t('hideNote');
+    }
   }
   
   /**

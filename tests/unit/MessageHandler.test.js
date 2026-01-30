@@ -20,7 +20,8 @@ describe('MessageHandler', () => {
       noteManager: {
         getAllNotesWithOrphanStatus: jest.fn().mockReturnValue([]),
         toggleAllVisibility: jest.fn().mockReturnValue(false),
-        getNotesVisibility: jest.fn().mockReturnValue(true)
+        getNotesVisibility: jest.fn().mockReturnValue(true),
+        toggleNoteVisibility: jest.fn().mockResolvedValue({ success: true, isHidden: true })
       },
       realtimeSync: {
         handleNotesUpdate: jest.fn(),
@@ -201,6 +202,26 @@ describe('MessageHandler', () => {
       const result = await messageHandler.handleMessage({ action: 'getNotesVisibility' });
       expect(mockApp.noteManager.getNotesVisibility).toHaveBeenCalled();
       expect(result).toEqual({ success: true, notesVisible: false });
+    });
+
+    it('should handle toggleNoteVisibility', async () => {
+      mockApp.noteManager.toggleNoteVisibility.mockResolvedValue({ success: true, isHidden: true });
+      const result = await messageHandler.handleMessage({ action: 'toggleNoteVisibility', noteId: 'note-123' });
+      expect(mockApp.noteManager.toggleNoteVisibility).toHaveBeenCalledWith('note-123');
+      expect(result).toEqual({ success: true, isHidden: true });
+    });
+
+    it('should handle toggleNoteVisibility returning isHidden false', async () => {
+      mockApp.noteManager.toggleNoteVisibility.mockResolvedValue({ success: true, isHidden: false });
+      const result = await messageHandler.handleMessage({ action: 'toggleNoteVisibility', noteId: 'note-456' });
+      expect(mockApp.noteManager.toggleNoteVisibility).toHaveBeenCalledWith('note-456');
+      expect(result).toEqual({ success: true, isHidden: false });
+    });
+
+    it('should handle toggleNoteVisibility error', async () => {
+      mockApp.noteManager.toggleNoteVisibility.mockResolvedValue({ success: false, error: 'Note not found' });
+      const result = await messageHandler.handleMessage({ action: 'toggleNoteVisibility', noteId: 'nonexistent' });
+      expect(result).toEqual({ success: false, error: 'Note not found' });
     });
 
     it('should return error for unknown action', async () => {

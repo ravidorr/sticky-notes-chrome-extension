@@ -2482,5 +2482,251 @@ describe('NoteManager', () => {
       
       anchoredNote.destroy();
     });
+    
+    it('should respect per-note isHidden when showing notes without anchors', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      // Set initial state to hidden
+      localThis.visibilityManager._setMockVisibility(false);
+      
+      // Create an orphaned note with isHidden: true
+      const noteData = {
+        id: 'orphan-hidden-1',
+        selector: '.missing',
+        content: 'Hidden orphan',
+        theme: 'blue',
+        position: { anchor: 'top-right' },
+        isHidden: true
+      };
+      manager.orphanedNotes.set('orphan-hidden-1', { noteData, addedAt: Date.now() });
+      manager.showOrphanedNote('orphan-hidden-1');
+      localThis.visibilityManager._setMockVisibility(false);
+      
+      const orphanNote = manager.notes.get('orphan-hidden-1');
+      orphanNote.isHidden = true; // Ensure the note is marked as hidden
+      const showSpy = jest.spyOn(orphanNote, 'show');
+      
+      // Toggle from hidden to visible
+      manager.toggleAllVisibility();
+      
+      // Note should NOT be shown because isHidden is true
+      expect(showSpy).not.toHaveBeenCalled();
+      
+      orphanNote.destroy();
+    });
+  });
+  
+  describe('toggleNoteVisibility', () => {
+    it('should toggle note isHidden from false to true', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      manager.createNoteFromData({
+        id: 'toggle-vis-1',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        isHidden: false
+      });
+      
+      const note = manager.notes.get('toggle-vis-1');
+      expect(note.isHidden).toBe(false);
+      
+      const result = await manager.toggleNoteVisibility('toggle-vis-1');
+      
+      expect(result.success).toBe(true);
+      expect(result.isHidden).toBe(true);
+      expect(note.isHidden).toBe(true);
+      
+      note.destroy();
+    });
+    
+    it('should toggle note isHidden from true to false', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      manager.createNoteFromData({
+        id: 'toggle-vis-2',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        isHidden: true
+      });
+      
+      const note = manager.notes.get('toggle-vis-2');
+      note.isHidden = true; // Ensure it starts hidden
+      
+      const result = await manager.toggleNoteVisibility('toggle-vis-2');
+      
+      expect(result.success).toBe(true);
+      expect(result.isHidden).toBe(false);
+      expect(note.isHidden).toBe(false);
+      
+      note.destroy();
+    });
+    
+    it('should hide note when toggling to hidden', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      manager.createNoteFromData({
+        id: 'toggle-vis-3',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        isHidden: false
+      });
+      
+      const note = manager.notes.get('toggle-vis-3');
+      const hideSpy = jest.spyOn(note, 'hide');
+      
+      await manager.toggleNoteVisibility('toggle-vis-3');
+      
+      expect(hideSpy).toHaveBeenCalled();
+      
+      note.destroy();
+    });
+    
+    it('should show note when toggling to visible if global visibility is on', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      manager.createNoteFromData({
+        id: 'toggle-vis-4',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        isHidden: true
+      });
+      
+      const note = manager.notes.get('toggle-vis-4');
+      note.isHidden = true;
+      const showSpy = jest.spyOn(note, 'show');
+      
+      await manager.toggleNoteVisibility('toggle-vis-4');
+      
+      expect(showSpy).toHaveBeenCalled();
+      
+      note.destroy();
+    });
+    
+    it('should NOT show note when toggling to visible if global visibility is off', async () => {
+      const localThis = createMockDependencies();
+      localThis.visibilityManager._setMockVisibility(false);
+      const manager = new NoteManager(localThis);
+      
+      manager.createNoteFromData({
+        id: 'toggle-vis-5',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        isHidden: true
+      });
+      
+      const note = manager.notes.get('toggle-vis-5');
+      note.isHidden = true;
+      const showSpy = jest.spyOn(note, 'show');
+      
+      await manager.toggleNoteVisibility('toggle-vis-5');
+      
+      expect(showSpy).not.toHaveBeenCalled();
+      
+      note.destroy();
+    });
+    
+    it('should persist visibility change via sendMessage', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      manager.createNoteFromData({
+        id: 'toggle-vis-6',
+        selector: '#anchor-element',
+        content: 'Test',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        isHidden: false
+      });
+      
+      await manager.toggleNoteVisibility('toggle-vis-6');
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'updateNote',
+        note: { id: 'toggle-vis-6', isHidden: true }
+      });
+      
+      const note = manager.notes.get('toggle-vis-6');
+      note.destroy();
+    });
+    
+    it('should return error for non-existent note', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const result = await manager.toggleNoteVisibility('non-existent');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Note not found');
+    });
+    
+    it('should toggle visibility for orphaned notes', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      const noteData = {
+        id: 'orphan-toggle-vis',
+        selector: '.missing',
+        content: 'Orphan',
+        theme: 'yellow',
+        position: { anchor: 'top-right' },
+        isHidden: false
+      };
+      manager.orphanedNotes.set('orphan-toggle-vis', { noteData, addedAt: Date.now() });
+      
+      const result = await manager.toggleNoteVisibility('orphan-toggle-vis');
+      
+      expect(result.success).toBe(true);
+      expect(result.isHidden).toBe(true);
+      expect(noteData.isHidden).toBe(true);
+    });
+  });
+  
+  describe('handleVisibilityChange', () => {
+    it('should send update message with isHidden property', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      await manager.handleVisibilityChange('note-123', true);
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'updateNote',
+        note: { id: 'note-123', isHidden: true }
+      });
+    });
+    
+    it('should send update message with isHidden false', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      
+      await manager.handleVisibilityChange('note-456', false);
+      
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'updateNote',
+        note: { id: 'note-456', isHidden: false }
+      });
+    });
+    
+    it('should not throw on error', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage = jest.fn().mockRejectedValue(new Error('Network error'));
+      const manager = new NoteManager(localThis);
+      
+      await expect(manager.handleVisibilityChange('note-789', true)).resolves.not.toThrow();
+    });
   });
 });

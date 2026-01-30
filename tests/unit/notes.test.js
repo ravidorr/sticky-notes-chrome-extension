@@ -158,6 +158,29 @@ describe('Firebase Notes', () => {
       
       expect(result.theme).toBe('green');
     });
+
+    it('should default isHidden to false when not provided', async () => {
+      localThis.deps.addDoc.mockResolvedValue({ id: 'note-123' });
+      
+      const result = await createNote({
+        url: 'https://example.com',
+        selector: '#main'
+      }, 'user-123', 'user@example.com', localThis.deps);
+      
+      expect(result.isHidden).toBe(false);
+    });
+
+    it('should preserve isHidden when provided', async () => {
+      localThis.deps.addDoc.mockResolvedValue({ id: 'note-123' });
+      
+      const result = await createNote({
+        url: 'https://example.com',
+        selector: '#main',
+        isHidden: true
+      }, 'user-123', 'user@example.com', localThis.deps);
+      
+      expect(result.isHidden).toBe(true);
+    });
   });
 
   describe('getNotesForUrl', () => {
@@ -279,6 +302,22 @@ describe('Firebase Notes', () => {
       expect(updateCall.content).toBe('Updated');
       expect(updateCall.theme).toBe('blue');
       expect(updateCall.ownerId).toBeUndefined();
+      expect(updateCall.updatedAt).toBeDefined();
+    });
+
+    it('should allow updating isHidden field', async () => {
+      localThis.deps.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({ ownerId: 'user-123' })
+      });
+      localThis.deps.updateDoc.mockResolvedValue();
+      
+      await updateNote('note-123', { 
+        isHidden: true
+      }, 'user-123', localThis.deps);
+      
+      const updateCall = localThis.deps.updateDoc.mock.calls[0][1];
+      expect(updateCall.isHidden).toBe(true);
       expect(updateCall.updatedAt).toBeDefined();
     });
 
