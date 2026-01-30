@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added ESLint configuration for Firebase Functions directory
 - Updated Firebase setup documentation with email extension installation guide
 
+### Fixed
+
+- Comments API now correctly allows users with shared access to read and create comments (previously only note owners could comment via API)
+
 ## [1.8.0] - 2026-01-30
 
 ### Added

@@ -13,9 +13,9 @@ const COMMENTS_SUBCOLLECTION = 'comments';
 const MAX_COMMENT_LENGTH = 2000;
 
 /**
- * Check if user has access to a note
+ * Check if user has access to a note (owner or shared with)
  */
-async function checkNoteAccess(db, noteId, userId) {
+async function checkNoteAccess(db, noteId, userId, userEmail) {
   const noteRef = db.collection(NOTES_COLLECTION).doc(noteId);
   const noteSnap = await noteRef.get();
   
@@ -24,8 +24,11 @@ async function checkNoteAccess(db, noteId, userId) {
   }
   
   const noteData = noteSnap.data();
+  const normalizedEmail = userEmail?.toLowerCase();
+  const isOwner = noteData.ownerId === userId;
+  const isSharedWithUser = normalizedEmail && (noteData.sharedWith || []).includes(normalizedEmail);
   
-  if (noteData.ownerId !== userId) {
+  if (!isOwner && !isSharedWithUser) {
     return { hasAccess: false, error: 'Permission denied', status: 403 };
   }
   
@@ -38,13 +41,13 @@ async function checkNoteAccess(db, noteId, userId) {
  */
 router.get('/:noteId/comments', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
-    const { userId } = req.apiKey;
+    const { userId, userEmail } = req.apiKey;
     const { noteId } = req.params;
     
     const db = getFirestore();
     
     // Check note access
-    const access = await checkNoteAccess(db, noteId, userId);
+    const access = await checkNoteAccess(db, noteId, userId, userEmail);
     if (!access.hasAccess) {
       return res.status(access.status).json({
         error: access.status === 404 ? 'Not Found' : 'Forbidden',
@@ -87,7 +90,7 @@ router.get('/:noteId/comments', apiKeyAuth({ requiredScope: 'notes:read' }), asy
  */
 router.post('/:noteId/comments', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
-    const { userId } = req.apiKey;
+    const { userId, userEmail } = req.apiKey;
     const { noteId } = req.params;
     const { content, parentId } = req.body;
     
@@ -117,7 +120,7 @@ router.post('/:noteId/comments', apiKeyAuth({ requiredScope: 'notes:write' }), a
     const db = getFirestore();
     
     // Check note access
-    const access = await checkNoteAccess(db, noteId, userId);
+    const access = await checkNoteAccess(db, noteId, userId, userEmail);
     if (!access.hasAccess) {
       return res.status(access.status).json({
         error: access.status === 404 ? 'Not Found' : 'Forbidden',
