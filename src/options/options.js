@@ -73,6 +73,7 @@ async function loadPreferences() {
     
     // Set visibility
     notesVisibleCheckbox.checked = prefs.notesVisibleByDefault;
+    notesVisibleCheckbox.setAttribute('aria-checked', prefs.notesVisibleByDefault ? 'true' : 'false');
   } catch (error) {
     console.error('Failed to load preferences:', error);
     showStatus(t('settingsLoadError') || 'Failed to load settings', 'error');
