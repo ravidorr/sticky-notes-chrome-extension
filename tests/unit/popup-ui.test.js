@@ -16,7 +16,11 @@ import {
     switchTab,
     updateSharedNotesCount,
     setupTabs,
-    displayVersion
+    displayVersion,
+    openDeleteOldNotesModal,
+    closeDeleteOldNotesModalFn,
+    renderOldNotePreviewItem,
+    setupDeleteOldNotesModal
 } from '../../src/popup/popup.js';
 
 // Import createPopupHandlers to use for renderNotesList tests
@@ -67,6 +71,41 @@ describe('src/popup/popup.js', () => {
                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"></svg>
                <span>Dashboard</span>
             </a>
+            <!-- Delete Old Notes Modal -->
+            <div id="deleteOldNotesModal" class="modal hidden">
+                <div class="modal-backdrop"></div>
+                <div class="modal-content delete-old-notes-modal">
+                    <div class="modal-header">
+                        <h3>Delete Old Notes</h3>
+                        <button id="closeDeleteOldNotesModal" class="icon-btn icon-btn-small"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="modal-description">Select notes older than:</p>
+                        <div class="age-presets">
+                            <button class="age-preset-btn" data-days="7">7 days</button>
+                            <button class="age-preset-btn" data-days="30">30 days</button>
+                            <button class="age-preset-btn" data-days="90">90 days</button>
+                            <button class="age-preset-btn" data-days="365">1 year</button>
+                        </div>
+                        <div class="custom-days-row">
+                            <span class="custom-days-label">Custom</span>
+                            <input type="number" id="customDaysInput" class="custom-days-input" min="1" max="9999" placeholder="30">
+                            <span class="custom-days-suffix">days</span>
+                            <button id="applyCustomDaysBtn" class="btn btn-small btn-secondary">OK</button>
+                        </div>
+                        <div id="oldNotesPreview" class="old-notes-preview hidden">
+                            <div class="preview-header">
+                                <span id="oldNotesCount" class="old-notes-count"></span>
+                            </div>
+                            <div id="oldNotesList" class="old-notes-list"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="cancelDeleteOldNotes" class="btn btn-secondary">Cancel</button>
+                        <button id="confirmDeleteOldNotes" class="btn btn-danger" disabled>Delete</button>
+                    </div>
+                </div>
+            </div>
         `;
 
         // Initialize DOM elements by calling the function
@@ -404,6 +443,173 @@ describe('src/popup/popup.js', () => {
             
             // Should not throw
             expect(() => displayVersion()).not.toThrow();
+        });
+    });
+
+    // ============================================
+    // Delete Old Notes Modal Tests
+    // ============================================
+
+    describe('Delete Old Notes Modal', () => {
+        beforeEach(() => {
+            localThis.modal = document.getElementById('deleteOldNotesModal');
+            localThis.closeBtn = document.getElementById('closeDeleteOldNotesModal');
+            localThis.customDaysInput = document.getElementById('customDaysInput');
+            localThis.agePresetBtns = document.querySelectorAll('.age-preset-btn');
+            localThis.oldNotesPreview = document.getElementById('oldNotesPreview');
+            localThis.oldNotesCount = document.getElementById('oldNotesCount');
+            localThis.oldNotesList = document.getElementById('oldNotesList');
+            localThis.confirmBtn = document.getElementById('confirmDeleteOldNotes');
+            localThis.cancelBtn = document.getElementById('cancelDeleteOldNotes');
+        });
+
+        describe('openDeleteOldNotesModal', () => {
+            it('should show the modal', () => {
+                localThis.modal.classList.add('hidden');
+                
+                openDeleteOldNotesModal();
+                
+                expect(localThis.modal.classList.contains('hidden')).toBe(false);
+            });
+
+            it('should reset UI state when opened', () => {
+                // Set some state
+                localThis.customDaysInput.value = '45';
+                localThis.agePresetBtns[0].classList.add('active');
+                localThis.oldNotesPreview.classList.remove('hidden');
+                localThis.confirmBtn.disabled = false;
+                
+                openDeleteOldNotesModal();
+                
+                expect(localThis.customDaysInput.value).toBe('');
+                expect(localThis.agePresetBtns[0].classList.contains('active')).toBe(false);
+                expect(localThis.oldNotesPreview.classList.contains('hidden')).toBe(true);
+                expect(localThis.confirmBtn.disabled).toBe(true);
+            });
+
+            it('should clear the old notes list', () => {
+                localThis.oldNotesList.innerHTML = '<div>Old content</div>';
+                
+                openDeleteOldNotesModal();
+                
+                expect(localThis.oldNotesList.innerHTML).toBe('');
+            });
+        });
+
+        describe('closeDeleteOldNotesModalFn', () => {
+            it('should hide the modal', () => {
+                localThis.modal.classList.remove('hidden');
+                
+                closeDeleteOldNotesModalFn();
+                
+                expect(localThis.modal.classList.contains('hidden')).toBe(true);
+            });
+        });
+
+        describe('renderOldNotePreviewItem', () => {
+            it('should render a note preview item', () => {
+                const note = {
+                    id: 'note-1',
+                    content: 'Test note content',
+                    url: 'https://example.com/page',
+                    theme: 'yellow'
+                };
+                
+                const html = renderOldNotePreviewItem(note);
+                
+                expect(html).toContain('old-note-item');
+                expect(html).toContain('Test note content');
+                expect(html).toContain('example.com');
+            });
+
+            it('should handle empty content', () => {
+                const note = {
+                    id: 'note-1',
+                    content: '',
+                    url: 'https://example.com',
+                    theme: 'blue'
+                };
+                
+                const html = renderOldNotePreviewItem(note);
+                
+                expect(html).toContain('old-note-item');
+            });
+
+            it('should truncate long content', () => {
+                const note = {
+                    id: 'note-1',
+                    content: 'This is a very long note content that should be truncated when displayed in the preview list',
+                    url: 'https://example.com',
+                    theme: 'green'
+                };
+                
+                const html = renderOldNotePreviewItem(note);
+                
+                // Content should be truncated to 50 chars
+                expect(html.length).toBeLessThan(note.content.length + 500);
+            });
+
+            it('should strip HTML from content', () => {
+                const note = {
+                    id: 'note-1',
+                    content: '<b>Bold</b> and <i>italic</i> text',
+                    url: 'https://example.com',
+                    theme: 'pink'
+                };
+                
+                const html = renderOldNotePreviewItem(note);
+                
+                expect(html).not.toContain('<b>');
+                expect(html).not.toContain('<i>');
+                expect(html).toContain('Bold');
+            });
+
+            it('should handle invalid URL gracefully', () => {
+                const note = {
+                    id: 'note-1',
+                    content: 'Test',
+                    url: 'not-a-valid-url',
+                    theme: 'yellow'
+                };
+                
+                const html = renderOldNotePreviewItem(note);
+                
+                expect(html).toContain('old-note-item');
+                expect(html).toContain('not-a-valid-url');
+            });
+
+            it('should use correct theme color', () => {
+                const note = {
+                    id: 'note-1',
+                    content: 'Test',
+                    url: 'https://example.com',
+                    theme: 'blue'
+                };
+                
+                const html = renderOldNotePreviewItem(note);
+                
+                expect(html).toContain('#3b82f6'); // Blue theme color
+            });
+        });
+
+        describe('setupDeleteOldNotesModal', () => {
+            it('should set up event listeners without throwing', () => {
+                expect(() => setupDeleteOldNotesModal()).not.toThrow();
+            });
+        });
+
+        describe('createPopupHandlers delete old notes methods', () => {
+            it('should have filterNotesByAge method', () => {
+                const handlers = createPopupHandlers({});
+                expect(handlers).toHaveProperty('filterNotesByAge');
+                expect(typeof handlers.filterNotesByAge).toBe('function');
+            });
+
+            it('should have handleDeleteOldNotes method', () => {
+                const handlers = createPopupHandlers({});
+                expect(handlers).toHaveProperty('handleDeleteOldNotes');
+                expect(typeof handlers.handleDeleteOldNotes).toBe('function');
+            });
         });
     });
 });

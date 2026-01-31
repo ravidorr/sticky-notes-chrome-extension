@@ -41,7 +41,10 @@ const handlers = createPopupHandlers({
 let authSection, userSection, loginBtn, logoutBtn, closeBtn;
 let userAvatar, userName, userEmail;
 let addNoteBtn, addPageNoteBtn, notesList, notesCount, actionHint;
-let actionsBtn, actionsMenu, toggleVisibilityBtn, exportPageBtn, exportAllBtn, deletePageNotesBtn, deleteAllNotesBtn, settingsBtn;
+let actionsBtn, actionsMenu, toggleVisibilityBtn, exportPageBtn, exportAllBtn, deletePageNotesBtn, deleteAllNotesBtn, deleteOldNotesBtn, settingsBtn;
+// Delete old notes modal elements
+let deleteOldNotesModal, closeDeleteOldNotesModal, agePresetBtns, customDaysInput, applyCustomDaysBtn;
+let oldNotesPreview, oldNotesCount, oldNotesList, cancelDeleteOldNotes, confirmDeleteOldNotes;
 let totalNotesCount, versionDisplay;
 // Tab elements
 let thisPageTab, sharedTab, thisPageContent, sharedContent;
@@ -76,8 +79,21 @@ function initDOMElements() {
   exportAllBtn = document.getElementById('exportAllBtn');
   deletePageNotesBtn = document.getElementById('deletePageNotesBtn');
   deleteAllNotesBtn = document.getElementById('deleteAllNotesBtn');
+  deleteOldNotesBtn = document.getElementById('deleteOldNotesBtn');
   settingsBtn = document.getElementById('settingsBtn');
   totalNotesCount = document.getElementById('totalNotesCount');
+  
+  // Delete old notes modal elements
+  deleteOldNotesModal = document.getElementById('deleteOldNotesModal');
+  closeDeleteOldNotesModal = document.getElementById('closeDeleteOldNotesModal');
+  agePresetBtns = document.querySelectorAll('.age-preset-btn');
+  customDaysInput = document.getElementById('customDaysInput');
+  applyCustomDaysBtn = document.getElementById('applyCustomDaysBtn');
+  oldNotesPreview = document.getElementById('oldNotesPreview');
+  oldNotesCount = document.getElementById('oldNotesCount');
+  oldNotesList = document.getElementById('oldNotesList');
+  cancelDeleteOldNotes = document.getElementById('cancelDeleteOldNotes');
+  confirmDeleteOldNotes = document.getElementById('confirmDeleteOldNotes');
   
   // Tab elements
   thisPageTab = document.getElementById('thisPageTab');
@@ -614,11 +630,208 @@ function setupActionsDropdown() {
     }
   });
   
+  // Delete old notes button - open modal
+  deleteOldNotesBtn.addEventListener('click', () => {
+    actionsMenu.classList.add('hidden');
+    openDeleteOldNotesModal();
+  });
+  
   // Settings button - open options page
   settingsBtn.addEventListener('click', () => {
     actionsMenu.classList.add('hidden');
     chrome.runtime.openOptionsPage();
   });
+  
+  // Setup delete old notes modal
+  setupDeleteOldNotesModal();
+}
+
+// State for delete old notes modal
+let selectedDays = null;
+let filteredOldNotes = [];
+
+/**
+ * Open the delete old notes modal
+ */
+function openDeleteOldNotesModal() {
+  // Reset state
+  selectedDays = null;
+  filteredOldNotes = [];
+  
+  // Reset UI
+  agePresetBtns.forEach(btn => btn.classList.remove('active'));
+  customDaysInput.value = '';
+  oldNotesPreview.classList.add('hidden');
+  oldNotesList.innerHTML = '';
+  oldNotesCount.textContent = '';
+  confirmDeleteOldNotes.disabled = true;
+  
+  // Show modal
+  deleteOldNotesModal.classList.remove('hidden');
+}
+
+/**
+ * Close the delete old notes modal
+ */
+function closeDeleteOldNotesModalFn() {
+  deleteOldNotesModal.classList.add('hidden');
+  selectedDays = null;
+  filteredOldNotes = [];
+}
+
+/**
+ * Preview old notes based on selected days
+ * @param {number} days - Number of days
+ */
+async function previewOldNotes(days) {
+  selectedDays = days;
+  
+  // Fetch all notes
+  const result = await handlers.getAllNotes();
+  if (!result.success) {
+    showToast(t('failedToDelete'), 'error');
+    return;
+  }
+  
+  // Filter by age
+  filteredOldNotes = handlers.filterNotesByAge(result.notes, days);
+  
+  // Update preview
+  oldNotesPreview.classList.remove('hidden');
+  
+  if (filteredOldNotes.length === 0) {
+    oldNotesCount.textContent = t('noOldNotesFound', [days]);
+    oldNotesCount.classList.add('empty');
+    oldNotesList.innerHTML = '';
+    confirmDeleteOldNotes.disabled = true;
+  } else {
+    oldNotesCount.textContent = t('notesFoundOlderThan', [filteredOldNotes.length, days]);
+    oldNotesCount.classList.remove('empty');
+    confirmDeleteOldNotes.disabled = false;
+    
+    // Render preview (max 5 notes)
+    const previewNotes = filteredOldNotes.slice(0, 5);
+    const remainingCount = filteredOldNotes.length - previewNotes.length;
+    
+    oldNotesList.innerHTML = previewNotes.map(note => renderOldNotePreviewItem(note)).join('');
+    
+    if (remainingCount > 0) {
+      oldNotesList.innerHTML += `<div class="old-notes-more">${t('andMoreNotes', [remainingCount])}</div>`;
+    }
+  }
+}
+
+/**
+ * Render a single note preview item for the delete old notes modal
+ * @param {Object} note - Note object
+ * @returns {string} HTML string
+ */
+function renderOldNotePreviewItem(note) {
+  const themeColor = handlers.getThemeColor(note.theme);
+  const content = note.content ? note.content.replace(/<[^>]*>/g, '').substring(0, 50) : t('emptyNote');
+  
+  // Extract hostname from URL
+  let displayUrl = '';
+  try {
+    const url = new URL(note.url);
+    displayUrl = url.hostname;
+  } catch {
+    displayUrl = note.url || '';
+  }
+  
+  return `
+    <div class="old-note-item">
+      <div class="old-note-color" style="background: ${themeColor}"></div>
+      <div class="old-note-content">
+        <div class="old-note-text">${content}</div>
+        <div class="old-note-url">${displayUrl}</div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Setup delete old notes modal event listeners
+ */
+function setupDeleteOldNotesModal() {
+  // Close modal button
+  closeDeleteOldNotesModal.addEventListener('click', closeDeleteOldNotesModalFn);
+  
+  // Cancel button
+  cancelDeleteOldNotes.addEventListener('click', closeDeleteOldNotesModalFn);
+  
+  // Click on backdrop to close
+  deleteOldNotesModal.querySelector('.modal-backdrop').addEventListener('click', closeDeleteOldNotesModalFn);
+  
+  // Age preset buttons
+  agePresetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const days = parseInt(btn.dataset.days, 10);
+      
+      // Update active state
+      agePresetBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      customDaysInput.value = '';
+      
+      // Preview notes
+      previewOldNotes(days);
+    });
+  });
+  
+  // Custom days input - on Enter key
+  customDaysInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      applyCustomDays();
+    }
+  });
+  
+  // Apply custom days button
+  applyCustomDaysBtn.addEventListener('click', applyCustomDays);
+  
+  // Confirm delete button
+  confirmDeleteOldNotes.addEventListener('click', async () => {
+    if (filteredOldNotes.length === 0) return;
+    
+    // Show confirmation
+    const confirmed = await handlers.showConfirmDialog(
+      t('deleteOldNotesConfirm', [filteredOldNotes.length])
+    );
+    
+    if (confirmed) {
+      // Delete the notes
+      const result = await handlers.handleDeleteOldNotes(filteredOldNotes);
+      
+      if (result.success) {
+        closeDeleteOldNotesModalFn();
+        await refreshNotes();
+      }
+    }
+  });
+  
+  // Close on Escape key
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !deleteOldNotesModal.classList.contains('hidden')) {
+      closeDeleteOldNotesModalFn();
+    }
+  });
+}
+
+/**
+ * Apply custom days from input
+ */
+function applyCustomDays() {
+  const days = parseInt(customDaysInput.value, 10);
+  
+  if (!days || days <= 0 || days > 9999) {
+    showToast(t('invalidEmail'), 'error'); // Generic invalid input message
+    return;
+  }
+  
+  // Clear preset selection
+  agePresetBtns.forEach(b => b.classList.remove('active'));
+  
+  // Preview notes
+  previewOldNotes(days);
 }
 
 // Initialize popup when DOM is ready
@@ -647,6 +860,13 @@ export {
   // Version display
   displayVersion,
   // Visibility toggle
-  updateToggleVisibilityButton
+  updateToggleVisibilityButton,
+  // Delete old notes modal
+  openDeleteOldNotesModal,
+  closeDeleteOldNotesModalFn,
+  previewOldNotes,
+  renderOldNotePreviewItem,
+  setupDeleteOldNotesModal,
+  applyCustomDays
 };
 export { createPopupHandlers } from './handlers.js';

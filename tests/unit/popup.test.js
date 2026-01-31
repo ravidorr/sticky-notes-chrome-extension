@@ -67,6 +67,7 @@ describe('Popup Script Logic', () => {
       <button id="exportAllBtn"></button>
       <button id="deletePageNotesBtn"></button>
       <button id="deleteAllNotesBtn"></button>
+      <button id="deleteOldNotesBtn"></button>
       <button id="settingsBtn"></button>
       <span id="totalNotesCount"></span>
       <button id="thisPageTab" class="active"></button>
@@ -77,6 +78,27 @@ describe('Popup Script Logic', () => {
       <span id="sharedCount" class="hidden">0</span>
       <div id="sharedNotesList"></div>
       <span id="versionDisplay"></span>
+      <!-- Delete Old Notes Modal -->
+      <div id="deleteOldNotesModal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+          <button id="closeDeleteOldNotesModal"></button>
+          <div class="age-presets">
+            <button class="age-preset-btn" data-days="7">7 days</button>
+            <button class="age-preset-btn" data-days="30">30 days</button>
+            <button class="age-preset-btn" data-days="90">90 days</button>
+            <button class="age-preset-btn" data-days="365">1 year</button>
+          </div>
+          <input type="number" id="customDaysInput" />
+          <button id="applyCustomDaysBtn"></button>
+          <div id="oldNotesPreview" class="hidden">
+            <span id="oldNotesCount"></span>
+            <div id="oldNotesList"></div>
+          </div>
+          <button id="cancelDeleteOldNotes"></button>
+          <button id="confirmDeleteOldNotes" disabled></button>
+        </div>
+      </div>
     `;
     
     // Mock window.close

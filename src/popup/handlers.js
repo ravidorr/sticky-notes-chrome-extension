@@ -1077,6 +1077,98 @@ export function createPopupHandlers(deps = {}) {
     `;
   }
 
+  /**
+   * Filter notes by age (older than specified days)
+   * @param {Array} notes - Array of notes to filter
+   * @param {number} daysOld - Number of days (notes older than this will be returned)
+   * @returns {Array} Filtered notes array
+   */
+  function filterNotesByAge(notes, daysOld) {
+    if (!Array.isArray(notes) || notes.length === 0) {
+      return [];
+    }
+    
+    if (typeof daysOld !== 'number' || daysOld <= 0 || !isFinite(daysOld)) {
+      return [];
+    }
+    
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+    cutoffDate.setHours(0, 0, 0, 0); // Start of day for consistent comparison
+    
+    return notes.filter(note => {
+      if (!note.createdAt) {
+        return false;
+      }
+      
+      let noteDate;
+      if (typeof note.createdAt === 'object' && note.createdAt.seconds) {
+        // Firestore timestamp
+        noteDate = new Date(note.createdAt.seconds * 1000);
+      } else {
+        noteDate = new Date(note.createdAt);
+      }
+      
+      // Check for valid date
+      if (isNaN(noteDate.getTime())) {
+        return false;
+      }
+      
+      return noteDate < cutoffDate;
+    });
+  }
+
+  /**
+   * Delete multiple old notes
+   * @param {Array} notes - Array of notes to delete
+   * @returns {Promise<Object>} Result with success flag and count
+   */
+  async function handleDeleteOldNotes(notes) {
+    try {
+      if (!Array.isArray(notes) || notes.length === 0) {
+        return { success: true, count: 0 };
+      }
+      
+      let deletedCount = 0;
+      const errors = [];
+      
+      for (const note of notes) {
+        try {
+          const response = await chromeRuntime.sendMessage({
+            action: 'deleteNote',
+            noteId: note.id
+          });
+          
+          if (response.success) {
+            deletedCount++;
+          } else {
+            errors.push({ noteId: note.id, error: response.error });
+          }
+        } catch (error) {
+          errors.push({ noteId: note.id, error: error.message });
+        }
+      }
+      
+      if (deletedCount > 0) {
+        if (showSuccessToast) {
+          showSuccessToast(t('oldNotesDeleted', [deletedCount]));
+        }
+      }
+      
+      if (errors.length > 0) {
+        log.error('Some notes failed to delete:', errors);
+      }
+      
+      return { success: true, count: deletedCount, errors };
+    } catch (error) {
+      log.error('Delete old notes error:', error);
+      if (showErrorToast) {
+        showErrorToast(t('failedToDelete'));
+      }
+      return { success: false, error: error.message };
+    }
+  }
+
   return {
     checkAuthState,
     handleLogin,
@@ -1107,7 +1199,10 @@ export function createPopupHandlers(deps = {}) {
     getUnreadSharedCount,
     markSharedNoteAsRead,
     renderSharedNoteItem,
-    renderEmptySharedNotes
+    renderEmptySharedNotes,
+    // Delete old notes handlers
+    filterNotesByAge,
+    handleDeleteOldNotes
   };
 }
 

@@ -1352,4 +1352,223 @@ describe('Popup Handlers', () => {
       expect(html).toContain('svg');
     });
   });
+
+  describe('filterNotesByAge', () => {
+    it('should filter notes older than specified days', () => {
+      const now = new Date();
+      const oldDate = new Date();
+      oldDate.setDate(oldDate.getDate() - 40); // 40 days ago
+      const recentDate = new Date();
+      recentDate.setDate(recentDate.getDate() - 10); // 10 days ago
+      
+      const notes = [
+        { id: '1', content: 'Old note', createdAt: oldDate.toISOString() },
+        { id: '2', content: 'Recent note', createdAt: recentDate.toISOString() },
+        { id: '3', content: 'New note', createdAt: now.toISOString() }
+      ];
+      
+      const result = localThis.handlers.filterNotesByAge(notes, 30);
+      
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('1');
+    });
+
+    it('should return empty array for empty notes array', () => {
+      const result = localThis.handlers.filterNotesByAge([], 30);
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array for null notes', () => {
+      const result = localThis.handlers.filterNotesByAge(null, 30);
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array for invalid days (zero)', () => {
+      const notes = [{ id: '1', createdAt: new Date().toISOString() }];
+      const result = localThis.handlers.filterNotesByAge(notes, 0);
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array for invalid days (negative)', () => {
+      const notes = [{ id: '1', createdAt: new Date().toISOString() }];
+      const result = localThis.handlers.filterNotesByAge(notes, -10);
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array for invalid days (NaN)', () => {
+      const notes = [{ id: '1', createdAt: new Date().toISOString() }];
+      const result = localThis.handlers.filterNotesByAge(notes, NaN);
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array for invalid days (Infinity)', () => {
+      const notes = [{ id: '1', createdAt: new Date().toISOString() }];
+      const result = localThis.handlers.filterNotesByAge(notes, Infinity);
+      expect(result).toEqual([]);
+    });
+
+    it('should handle Firestore timestamp format', () => {
+      const oldDate = new Date();
+      oldDate.setDate(oldDate.getDate() - 40);
+      
+      const notes = [
+        { id: '1', content: 'Old note', createdAt: { seconds: Math.floor(oldDate.getTime() / 1000), nanoseconds: 0 } }
+      ];
+      
+      const result = localThis.handlers.filterNotesByAge(notes, 30);
+      
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('1');
+    });
+
+    it('should skip notes without createdAt', () => {
+      const notes = [
+        { id: '1', content: 'No date' },
+        { id: '2', content: 'Has date', createdAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString() }
+      ];
+      
+      const result = localThis.handlers.filterNotesByAge(notes, 30);
+      
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('2');
+    });
+
+    it('should skip notes with invalid date', () => {
+      const oldDate = new Date();
+      oldDate.setDate(oldDate.getDate() - 40);
+      
+      const notes = [
+        { id: '1', content: 'Invalid date', createdAt: 'not-a-date' },
+        { id: '2', content: 'Valid date', createdAt: oldDate.toISOString() }
+      ];
+      
+      const result = localThis.handlers.filterNotesByAge(notes, 30);
+      
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('2');
+    });
+
+    it('should include notes exactly at the boundary (older)', () => {
+      // Note created exactly 31 days ago at start of day should be included for 30 days filter
+      const boundaryDate = new Date();
+      boundaryDate.setDate(boundaryDate.getDate() - 31);
+      boundaryDate.setHours(0, 0, 0, 0);
+      
+      const notes = [
+        { id: '1', content: 'Boundary note', createdAt: boundaryDate.toISOString() }
+      ];
+      
+      const result = localThis.handlers.filterNotesByAge(notes, 30);
+      
+      expect(result.length).toBe(1);
+    });
+
+    it('should return all notes when all are older than threshold', () => {
+      const oldDate1 = new Date();
+      oldDate1.setDate(oldDate1.getDate() - 100);
+      const oldDate2 = new Date();
+      oldDate2.setDate(oldDate2.getDate() - 50);
+      
+      const notes = [
+        { id: '1', createdAt: oldDate1.toISOString() },
+        { id: '2', createdAt: oldDate2.toISOString() }
+      ];
+      
+      const result = localThis.handlers.filterNotesByAge(notes, 30);
+      
+      expect(result.length).toBe(2);
+    });
+
+    it('should return empty array when no notes are older than threshold', () => {
+      const recentDate = new Date();
+      recentDate.setDate(recentDate.getDate() - 5);
+      
+      const notes = [
+        { id: '1', createdAt: recentDate.toISOString() },
+        { id: '2', createdAt: new Date().toISOString() }
+      ];
+      
+      const result = localThis.handlers.filterNotesByAge(notes, 30);
+      
+      expect(result.length).toBe(0);
+    });
+  });
+
+  describe('handleDeleteOldNotes', () => {
+    it('should delete notes and return count', async () => {
+      const notes = [{ id: '1' }, { id: '2' }, { id: '3' }];
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true });
+      
+      const result = await localThis.handlers.handleDeleteOldNotes(notes);
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(3);
+      expect(localThis.mockChromeRuntime.sendMessage).toHaveBeenCalledTimes(3);
+      expect(localThis.mockShowSuccessToast).toHaveBeenCalled();
+    });
+
+    it('should return success with count 0 for empty array', async () => {
+      const result = await localThis.handlers.handleDeleteOldNotes([]);
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(0);
+      expect(localThis.mockChromeRuntime.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('should return success with count 0 for null input', async () => {
+      const result = await localThis.handlers.handleDeleteOldNotes(null);
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(0);
+    });
+
+    it('should handle partial failures', async () => {
+      const notes = [{ id: '1' }, { id: '2' }, { id: '3' }];
+      localThis.mockChromeRuntime.sendMessage
+        .mockResolvedValueOnce({ success: true })
+        .mockResolvedValueOnce({ success: false, error: 'Permission denied' })
+        .mockResolvedValueOnce({ success: true });
+      
+      const result = await localThis.handlers.handleDeleteOldNotes(notes);
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(2);
+      expect(result.errors.length).toBe(1);
+      expect(result.errors[0].noteId).toBe('2');
+    });
+
+    it('should handle individual note exceptions', async () => {
+      const notes = [{ id: '1' }, { id: '2' }];
+      localThis.mockChromeRuntime.sendMessage
+        .mockResolvedValueOnce({ success: true })
+        .mockRejectedValueOnce(new Error('Network error'));
+      
+      const result = await localThis.handlers.handleDeleteOldNotes(notes);
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(1);
+      expect(result.errors.length).toBe(1);
+      expect(result.errors[0].error).toBe('Network error');
+    });
+
+    it('should not show toast if no notes were deleted', async () => {
+      const notes = [{ id: '1' }];
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: false, error: 'Failed' });
+      
+      const result = await localThis.handlers.handleDeleteOldNotes(notes);
+      
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(0);
+      expect(localThis.mockShowSuccessToast).not.toHaveBeenCalled();
+    });
+
+    it('should log errors for failed deletions', async () => {
+      const notes = [{ id: '1' }];
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: false, error: 'Not found' });
+      
+      await localThis.handlers.handleDeleteOldNotes(notes);
+      
+      expect(localThis.mockLog.error).toHaveBeenCalledWith('Some notes failed to delete:', expect.any(Array));
+    });
+  });
 });

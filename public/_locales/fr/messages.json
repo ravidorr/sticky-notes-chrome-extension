@@ -722,6 +722,96 @@
       }
     }
   },
+  "deleteOldNotes": {
+    "message": "Supprimer les anciennes notes",
+    "description": "Menu item to delete notes older than a certain age"
+  },
+  "deleteOldNotesTitle": {
+    "message": "Supprimer les anciennes notes",
+    "description": "Title for the delete old notes modal"
+  },
+  "selectAgeThreshold": {
+    "message": "Selectionner les notes plus anciennes que :",
+    "description": "Label for age threshold selection"
+  },
+  "days7": {
+    "message": "7 jours",
+    "description": "7 days preset option"
+  },
+  "days30": {
+    "message": "30 jours",
+    "description": "30 days preset option"
+  },
+  "days90": {
+    "message": "90 jours",
+    "description": "90 days preset option"
+  },
+  "oneYear": {
+    "message": "1 an",
+    "description": "1 year preset option"
+  },
+  "customDays": {
+    "message": "Personnalise",
+    "description": "Custom days option label"
+  },
+  "enterDays": {
+    "message": "jours",
+    "description": "Label after custom days input"
+  },
+  "notesFoundOlderThan": {
+    "message": "$COUNT$ notes plus anciennes que $DAYS$ jours",
+    "description": "Message showing count of old notes found",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      },
+      "days": {
+        "content": "$2",
+        "example": "30"
+      }
+    }
+  },
+  "noOldNotesFound": {
+    "message": "Aucune note plus ancienne que $DAYS$ jours",
+    "description": "Message when no old notes are found",
+    "placeholders": {
+      "days": {
+        "content": "$1",
+        "example": "30"
+      }
+    }
+  },
+  "deleteOldNotesConfirm": {
+    "message": "Supprimer ces $COUNT$ notes ? Cette action est irreversible.",
+    "description": "Confirmation for deleting old notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "oldNotesDeleted": {
+    "message": "$COUNT$ anciennes notes supprimees",
+    "description": "Toast message after deleting old notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "andMoreNotes": {
+    "message": "et $COUNT$ de plus...",
+    "description": "Text showing additional notes not displayed in preview",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "10"
+      }
+    }
+  },
   "notesDeleted": {
     "message": "$COUNT$ notes supprimees",
     "description": "Toast message after deleting multiple notes",

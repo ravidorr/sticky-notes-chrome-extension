@@ -173,6 +173,81 @@
 | 5 | Each note shows truncated selector | Selector text truncated if long |
 | 6 | Click on a note in the list | Note highlights on page, page scrolls to it |
 
+### TEST-3.5: Delete Old Notes Modal - Access
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Click extension icon | Popup opens |
+| 2 | Click Actions dropdown (three dots) | Menu expands |
+| 3 | Click "Delete old notes" | Delete Old Notes modal opens |
+| 4 | Modal shows age threshold options | Preset buttons: 7 days, 30 days, 90 days, 1 year |
+| 5 | Modal shows custom days input | Number input with "OK" button |
+
+### TEST-3.6: Delete Old Notes - Preset Selection
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open Delete Old Notes modal | Modal visible |
+| 2 | Click "30 days" preset button | Button becomes active (highlighted) |
+| 3 | Preview section appears | Shows count of notes older than 30 days |
+| 4 | Notes list shows preview | Up to 5 notes displayed with content and URL |
+| 5 | If more than 5 notes | "and X more..." text shown |
+
+### TEST-3.7: Delete Old Notes - Custom Days Input
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open Delete Old Notes modal | Modal visible |
+| 2 | Enter "45" in custom days input | Number entered |
+| 3 | Click "OK" button or press Enter | Preview updates for 45-day threshold |
+| 4 | Preview shows matching notes | Notes older than 45 days listed |
+
+### TEST-3.8: Delete Old Notes - No Notes Found
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open Delete Old Notes modal | Modal visible |
+| 2 | Select a preset (e.g., 1 year) | Preset selected |
+| 3 | If no notes older than threshold | Message shows "No notes found older than X days" |
+| 4 | Delete button | Remains disabled |
+
+### TEST-3.9: Delete Old Notes - Confirmation and Deletion
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open Delete Old Notes modal | Modal visible |
+| 2 | Select preset that matches some notes | Preview shows notes to delete |
+| 3 | Delete button becomes enabled | Button clickable |
+| 4 | Click "Delete" button | Confirmation dialog appears |
+| 5 | Confirmation shows count | "Delete these X notes? This cannot be undone." |
+| 6 | Click "Cancel" | Returns to modal, notes not deleted |
+| 7 | Click "Delete" again, then confirm | Notes deleted |
+| 8 | Success toast appears | "X old notes deleted" |
+| 9 | Modal closes | Returns to popup |
+| 10 | Notes list refreshes | Deleted notes no longer shown |
+
+### TEST-3.10: Delete Old Notes - Cancel Modal
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open Delete Old Notes modal | Modal visible |
+| 2 | Click "Cancel" button | Modal closes |
+| 3 | Notes unchanged | No notes deleted |
+| 4 | Alternative: Click backdrop | Modal closes |
+| 5 | Alternative: Press ESC | Modal closes |
+| 6 | Alternative: Click X button | Modal closes |
+
+### TEST-3.11: Delete Old Notes - Invalid Custom Input
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open Delete Old Notes modal | Modal visible |
+| 2 | Enter "0" in custom days input | Zero entered |
+| 3 | Click "OK" | No preview shown or error handling |
+| 4 | Enter "-5" in custom days input | Negative number entered |
+| 5 | Click "OK" | No preview shown or error handling |
+| 6 | Enter "abc" in custom days input | Invalid input (input type=number should prevent) |
+
 ---
 
 ## 4. Element Selection & Note Creation

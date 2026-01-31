@@ -5,10 +5,16 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.13.0] - 2026-01-31
+## [1.14.0] - 2026-01-31
 
 ### Added
 
+- Delete Old Notes feature - bulk delete notes older than a specified age threshold
+  - Access via popup menu > Actions dropdown > "Delete old notes"
+  - Preset age options: 7 days, 30 days, 90 days, 1 year
+  - Custom days input for flexible filtering
+  - Preview list showing affected notes before deletion
+  - Confirmation dialog to prevent accidental deletion
 - Keyboard shortcuts for visibility controls:
   - `Ctrl+Shift+H` (or `MacCtrl+Shift+H` on Mac) - Toggle all notes visibility on the current page
   - `Ctrl+H` / `Cmd+H` - Toggle focused note visibility (when a note has focus)

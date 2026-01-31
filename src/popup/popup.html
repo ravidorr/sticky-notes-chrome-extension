@@ -170,6 +170,14 @@
                   </svg>
                   <span data-i18n="deleteAllNotes">Delete all notes</span>
                 </button>
+                <button id="deleteOldNotesBtn" class="dropdown-item dropdown-item-danger">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                    <line x1="4" y1="4" x2="20" y2="20"/>
+                  </svg>
+                  <span data-i18n="deleteOldNotes">Delete old notes</span>
+                </button>
                 <div class="dropdown-divider"></div>
                 <button id="settingsBtn" class="dropdown-item">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -217,6 +225,47 @@
       <span id="totalNotesCount" class="total-notes-count"></span>
       <span id="versionDisplay"></span>
     </footer>
+  </div>
+
+  <!-- Delete Old Notes Modal -->
+  <div id="deleteOldNotesModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content delete-old-notes-modal">
+      <div class="modal-header">
+        <h3 data-i18n="deleteOldNotesTitle">Delete Old Notes</h3>
+        <button id="closeDeleteOldNotesModal" class="icon-btn icon-btn-small">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-description" data-i18n="selectAgeThreshold">Select notes older than:</p>
+        <div class="age-presets">
+          <button class="age-preset-btn" data-days="7" data-i18n="days7">7 days</button>
+          <button class="age-preset-btn" data-days="30" data-i18n="days30">30 days</button>
+          <button class="age-preset-btn" data-days="90" data-i18n="days90">90 days</button>
+          <button class="age-preset-btn" data-days="365" data-i18n="oneYear">1 year</button>
+        </div>
+        <div class="custom-days-row">
+          <span class="custom-days-label" data-i18n="customDays">Custom</span>
+          <input type="number" id="customDaysInput" class="custom-days-input" min="1" max="9999" placeholder="30">
+          <span class="custom-days-suffix" data-i18n="enterDays">days</span>
+          <button id="applyCustomDaysBtn" class="btn btn-small btn-secondary">OK</button>
+        </div>
+        <div id="oldNotesPreview" class="old-notes-preview hidden">
+          <div class="preview-header">
+            <span id="oldNotesCount" class="old-notes-count"></span>
+          </div>
+          <div id="oldNotesList" class="old-notes-list"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelDeleteOldNotes" class="btn btn-secondary" data-i18n="cancel">Cancel</button>
+        <button id="confirmDeleteOldNotes" class="btn btn-danger" disabled data-i18n="delete">Delete</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="popup.js"></script>

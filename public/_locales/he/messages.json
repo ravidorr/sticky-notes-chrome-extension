@@ -722,6 +722,96 @@
       }
     }
   },
+  "deleteOldNotes": {
+    "message": "מחק פתקיות ישנות",
+    "description": "Menu item to delete notes older than a certain age"
+  },
+  "deleteOldNotesTitle": {
+    "message": "מחיקת פתקיות ישנות",
+    "description": "Title for the delete old notes modal"
+  },
+  "selectAgeThreshold": {
+    "message": "בחר פתקיות ישנות מ:",
+    "description": "Label for age threshold selection"
+  },
+  "days7": {
+    "message": "7 ימים",
+    "description": "7 days preset option"
+  },
+  "days30": {
+    "message": "30 ימים",
+    "description": "30 days preset option"
+  },
+  "days90": {
+    "message": "90 ימים",
+    "description": "90 days preset option"
+  },
+  "oneYear": {
+    "message": "שנה",
+    "description": "1 year preset option"
+  },
+  "customDays": {
+    "message": "מותאם אישית",
+    "description": "Custom days option label"
+  },
+  "enterDays": {
+    "message": "ימים",
+    "description": "Label after custom days input"
+  },
+  "notesFoundOlderThan": {
+    "message": "$COUNT$ פתקיות ישנות מ-$DAYS$ ימים",
+    "description": "Message showing count of old notes found",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      },
+      "days": {
+        "content": "$2",
+        "example": "30"
+      }
+    }
+  },
+  "noOldNotesFound": {
+    "message": "לא נמצאו פתקיות ישנות מ-$DAYS$ ימים",
+    "description": "Message when no old notes are found",
+    "placeholders": {
+      "days": {
+        "content": "$1",
+        "example": "30"
+      }
+    }
+  },
+  "deleteOldNotesConfirm": {
+    "message": "למחוק $COUNT$ פתקיות אלו? פעולה זו אינה ניתנת לביטול.",
+    "description": "Confirmation for deleting old notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "oldNotesDeleted": {
+    "message": "$COUNT$ פתקיות ישנות נמחקו",
+    "description": "Toast message after deleting old notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "andMoreNotes": {
+    "message": "ועוד $COUNT$...",
+    "description": "Text showing additional notes not displayed in preview",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "10"
+      }
+    }
+  },
   "notesDeleted": {
     "message": "$COUNT$ פתקיות נמחקו",
     "description": "Toast message after deleting multiple notes",

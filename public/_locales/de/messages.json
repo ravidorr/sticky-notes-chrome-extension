@@ -722,6 +722,96 @@
       }
     }
   },
+  "deleteOldNotes": {
+    "message": "Alte Notizen loschen",
+    "description": "Menu item to delete notes older than a certain age"
+  },
+  "deleteOldNotesTitle": {
+    "message": "Alte Notizen loschen",
+    "description": "Title for the delete old notes modal"
+  },
+  "selectAgeThreshold": {
+    "message": "Notizen alter als:",
+    "description": "Label for age threshold selection"
+  },
+  "days7": {
+    "message": "7 Tage",
+    "description": "7 days preset option"
+  },
+  "days30": {
+    "message": "30 Tage",
+    "description": "30 days preset option"
+  },
+  "days90": {
+    "message": "90 Tage",
+    "description": "90 days preset option"
+  },
+  "oneYear": {
+    "message": "1 Jahr",
+    "description": "1 year preset option"
+  },
+  "customDays": {
+    "message": "Benutzerdefiniert",
+    "description": "Custom days option label"
+  },
+  "enterDays": {
+    "message": "Tage",
+    "description": "Label after custom days input"
+  },
+  "notesFoundOlderThan": {
+    "message": "$COUNT$ Notizen alter als $DAYS$ Tage",
+    "description": "Message showing count of old notes found",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      },
+      "days": {
+        "content": "$2",
+        "example": "30"
+      }
+    }
+  },
+  "noOldNotesFound": {
+    "message": "Keine Notizen alter als $DAYS$ Tage gefunden",
+    "description": "Message when no old notes are found",
+    "placeholders": {
+      "days": {
+        "content": "$1",
+        "example": "30"
+      }
+    }
+  },
+  "deleteOldNotesConfirm": {
+    "message": "Diese $COUNT$ Notizen loschen? Dies kann nicht ruckgangig gemacht werden.",
+    "description": "Confirmation for deleting old notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "oldNotesDeleted": {
+    "message": "$COUNT$ alte Notizen geloscht",
+    "description": "Toast message after deleting old notes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "andMoreNotes": {
+    "message": "und $COUNT$ weitere...",
+    "description": "Text showing additional notes not displayed in preview",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "10"
+      }
+    }
+  },
   "notesDeleted": {
     "message": "$COUNT$ Notizen geloscht",
     "description": "Toast message after deleting multiple notes",
