@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.19.2] - 2026-01-31
 
+### Added
+
+- **Comment Character Counter**: Client-side validation matching backend's 2,000 character limit
+  - Real-time character counter showing current/max (e.g., "150 / 2,000")
+  - Visual warning at 90%-100% of limit (amber counter)
+  - Visual error state over limit (red counter)
+  - Submit blocked when over limit with toast notification
+  - Full i18n support for all locales
+
 ### Fixed
 
 - Auto-email-sharing now works correctly when typing at the character limit (emails are detected and shared even when content is truncated)

@@ -574,6 +574,20 @@
     "message": "Le commentaire ne peut pas etre vide",
     "description": "Error for empty comment"
   },
+  "commentCharacterCount": {
+    "message": "$CURRENT$ / $MAX$",
+    "description": "Character counter showing current and max characters for comments",
+    "placeholders": {
+      "current": {
+        "content": "$1",
+        "example": "150"
+      },
+      "max": {
+        "content": "$2",
+        "example": "2,000"
+      }
+    }
+  },
   "showReplies": {
     "message": "Afficher $COUNT$ reponses",
     "description": "Button to expand replies",

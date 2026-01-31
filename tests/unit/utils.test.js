@@ -968,6 +968,30 @@ describe('PAGE_LEVEL_SELECTOR constant', () => {
   });
 });
 
+describe('MAX_NOTE_LENGTH constant', () => {
+  it('should be defined as 50000', () => {
+    expect(utils.MAX_NOTE_LENGTH).toBe(50000);
+  });
+});
+
+describe('NOTE_LENGTH_WARNING_THRESHOLD constant', () => {
+  it('should be defined as 0.9 (90%)', () => {
+    expect(utils.NOTE_LENGTH_WARNING_THRESHOLD).toBe(0.9);
+  });
+});
+
+describe('MAX_COMMENT_LENGTH constant', () => {
+  it('should be defined as 2000', () => {
+    expect(utils.MAX_COMMENT_LENGTH).toBe(2000);
+  });
+});
+
+describe('COMMENT_LENGTH_WARNING_THRESHOLD constant', () => {
+  it('should be defined as 0.9 (90%)', () => {
+    expect(utils.COMMENT_LENGTH_WARNING_THRESHOLD).toBe(0.9);
+  });
+});
+
 describe('isPageLevelNote', () => {
   it('should return true when selector is __PAGE__', () => {
     expect(utils.isPageLevelNote({ selector: '__PAGE__' })).toBe(true);

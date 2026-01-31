@@ -4,7 +4,7 @@
  */
 
 import { t } from '../../shared/i18n.js';
-import { formatRelativeTime, escapeHtml, TIMEOUTS } from '../../shared/utils.js';
+import { formatRelativeTime, escapeHtml, TIMEOUTS, MAX_COMMENT_LENGTH, COMMENT_LENGTH_WARNING_THRESHOLD } from '../../shared/utils.js';
 import { contentLogger as log } from '../../shared/logger.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { StickyNote } from './StickyNote.js';
@@ -75,6 +75,7 @@ export class CommentSection {
               </svg>
             </button>
           </div>
+          <div class="sn-comment-char-counter" aria-live="polite" aria-atomic="true"></div>
         </div>
       </div>
     `;
@@ -396,6 +397,7 @@ export class CommentSection {
     input.placeholder = t('addComment');
     input.value = '';
     this.element.querySelector('.sn-comment-submit').disabled = true;
+    this.updateCharacterCounter();
   }
   
   /**
@@ -432,7 +434,9 @@ export class CommentSection {
     
     input.value = comment.content;
     input.focus();
-    this.element.querySelector('.sn-comment-submit').disabled = false;
+    const isOverLimit = input.value.length > MAX_COMMENT_LENGTH;
+    this.element.querySelector('.sn-comment-submit').disabled = isOverLimit;
+    this.updateCharacterCounter();
   }
   
   /**
@@ -450,6 +454,7 @@ export class CommentSection {
     
     input.value = '';
     this.element.querySelector('.sn-comment-submit').disabled = true;
+    this.updateCharacterCounter();
   }
   
   /**
@@ -469,6 +474,12 @@ export class CommentSection {
     // Validate content
     if (!content) {
       this.showToast(t('commentEmpty'), 'error');
+      return;
+    }
+    
+    // Validate content length
+    if (input.value.length > MAX_COMMENT_LENGTH) {
+      this.showToast(t('commentTooLong', [MAX_COMMENT_LENGTH.toLocaleString()]), 'error');
       return;
     }
     
@@ -646,9 +657,12 @@ export class CommentSection {
             </svg>
           </button>
         </div>
+        <div class="sn-comment-char-counter" aria-live="polite" aria-atomic="true"></div>
       `;
       // Re-attach event listeners for the new input elements
       this.setupInputEventListeners();
+      // Initialize character counter
+      this.updateCharacterCounter();
     } else {
       // Show login prompt
       inputContainer.innerHTML = `
@@ -668,12 +682,17 @@ export class CommentSection {
     if (!input || !submitBtn) return;
     
     input.addEventListener('input', () => {
-      submitBtn.disabled = !input.value.trim();
+      const content = input.value.trim();
+      const isOverLimit = input.value.length > MAX_COMMENT_LENGTH;
+      submitBtn.disabled = !content || isOverLimit;
+      this.updateCharacterCounter();
     });
     
     input.addEventListener('keydown', (event) => {
       event.stopPropagation(); // Prevent page shortcuts
-      if (event.key === 'Enter' && !event.shiftKey && input.value.trim()) {
+      const content = input.value.trim();
+      const isOverLimit = input.value.length > MAX_COMMENT_LENGTH;
+      if (event.key === 'Enter' && !event.shiftKey && content && !isOverLimit) {
         event.preventDefault();
         this.submitComment();
       }
@@ -687,6 +706,31 @@ export class CommentSection {
     input.addEventListener('keypress', (event) => event.stopPropagation());
     
     submitBtn.addEventListener('click', () => this.submitComment());
+  }
+  
+  /**
+   * Update the character counter display
+   */
+  updateCharacterCounter() {
+    const input = this.element.querySelector('.sn-comment-input');
+    const counter = this.element.querySelector('.sn-comment-char-counter');
+    
+    if (!input || !counter) return;
+    
+    const currentLength = input.value.length;
+    const warningLimit = Math.floor(MAX_COMMENT_LENGTH * COMMENT_LENGTH_WARNING_THRESHOLD);
+    
+    // Update counter text
+    counter.textContent = t('commentCharacterCount', [currentLength.toLocaleString(), MAX_COMMENT_LENGTH.toLocaleString()]);
+    
+    // Update counter state classes
+    counter.classList.remove('sn-char-counter-warning', 'sn-char-counter-error');
+    
+    if (currentLength > MAX_COMMENT_LENGTH) {
+      counter.classList.add('sn-char-counter-error');
+    } else if (currentLength >= warningLimit) {
+      counter.classList.add('sn-char-counter-warning');
+    }
   }
   
   /**
@@ -1056,6 +1100,24 @@ export class CommentSection {
       .sn-comment-submit svg {
         width: 14px;
         height: 14px;
+      }
+      
+      /* Character Counter */
+      .sn-comment-char-counter {
+        font-size: 11px;
+        color: #6b7280;
+        text-align: right;
+        padding: 4px 8px 0;
+      }
+      
+      .sn-comment-char-counter.sn-char-counter-warning {
+        color: #b45309;
+        font-weight: 500;
+      }
+      
+      .sn-comment-char-counter.sn-char-counter-error {
+        color: #dc2626;
+        font-weight: 600;
       }
       
       /* Login Prompt */

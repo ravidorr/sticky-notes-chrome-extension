@@ -578,6 +578,20 @@
     "message": "Comment cannot be empty",
     "description": "Error for empty comment"
   },
+  "commentCharacterCount": {
+    "message": "$CURRENT$ / $MAX$",
+    "description": "Character counter showing current and max characters for comments",
+    "placeholders": {
+      "current": {
+        "content": "$1",
+        "example": "150"
+      },
+      "max": {
+        "content": "$2",
+        "example": "2,000"
+      }
+    }
+  },
   "showReplies": {
     "message": "Show $COUNT$ replies",
     "description": "Button to expand replies",

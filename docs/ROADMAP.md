@@ -294,6 +294,7 @@ Unplanned feature ideas for future consideration:
 - [x] Additional note positions: Center Left, Center Right, Top Center, Bottom Center
 - [x] Auto position: smart positioning based on available viewport space
 - [x] Note content length validation (50,000 character limit) with real-time counter, warning at 90%, and hard block
+- [x] Comment content length validation (2,000 character limit) with real-time counter, warning at 90%, and submit prevention
 - [ ] Image support in notes (Pro feature - requires Firebase Storage, upload flow, cost considerations)
 - [x] RichEditor enhancements: code/monospace, strikethrough, checkboxes, blockquotes
 - [ ] Slack Integration: Share notes directly to Slack channels/users (High effort - requires Slack app setup, OAuth, webhooks)

@@ -265,6 +265,18 @@ export const MAX_NOTE_LENGTH = 50000;
 export const NOTE_LENGTH_WARNING_THRESHOLD = 0.9;
 
 /**
+ * Maximum allowed length for comment content (in characters)
+ * Matches backend validation in functions/routes/comments.js
+ */
+export const MAX_COMMENT_LENGTH = 2000;
+
+/**
+ * Threshold for showing comment length warning (as a fraction of MAX_COMMENT_LENGTH)
+ * 0.9 = 90% = warning shown when content reaches 1,800 characters
+ */
+export const COMMENT_LENGTH_WARNING_THRESHOLD = 0.9;
+
+/**
  * Special selector value for page-level notes (not anchored to any element)
  */
 export const PAGE_LEVEL_SELECTOR = '__PAGE__';

@@ -674,7 +674,10 @@ Content-Type: application/json
 }
 ```
 
-Set `parentId` to another comment's ID to create a reply (max 1 level of nesting).
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `content` | string | Yes | Comment text (max 2,000 characters) |
+| `parentId` | string | No | Parent comment ID for replies (max 1 level of nesting) |
 
 **Response (201 Created):**
 
@@ -707,6 +710,10 @@ Content-Type: application/json
   "content": "Updated comment text"
 }
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `content` | string | Yes | Updated comment text (max 2,000 characters) |
 
 ### Delete a Comment
 

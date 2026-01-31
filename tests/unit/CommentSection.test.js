@@ -1336,4 +1336,287 @@ describe('CommentSection', () => {
       expect(toast.getAttribute('aria-live')).toBe('polite');
     });
   });
+  
+  describe('character counter', () => {
+    const localThis = {};
+    
+    beforeEach(() => {
+      localThis.container = document.createElement('div');
+      document.body.appendChild(localThis.container);
+      localThis.container.appendChild(commentSection.element);
+    });
+    
+    afterEach(() => {
+      if (localThis.container && localThis.container.parentNode) {
+        localThis.container.parentNode.removeChild(localThis.container);
+      }
+    });
+    
+    it('displays character counter element', () => {
+      const counter = commentSection.element.querySelector('.sn-comment-char-counter');
+      expect(counter).toBeTruthy();
+      expect(counter.getAttribute('aria-live')).toBe('polite');
+      expect(counter.getAttribute('aria-atomic')).toBe('true');
+    });
+    
+    it('updates counter on input', () => {
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const counter = commentSection.element.querySelector('.sn-comment-char-counter');
+      
+      input.value = 'Hello';
+      input.dispatchEvent(new Event('input'));
+      
+      // Counter should show current count (i18n mock returns key)
+      expect(counter.textContent).toBe('commentCharacterCount');
+    });
+    
+    it('shows normal state at 89% (just below warning threshold)', () => {
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const counter = commentSection.element.querySelector('.sn-comment-char-counter');
+      
+      // 1799 chars = 89.95%, just below 90% threshold
+      input.value = 'a'.repeat(1799);
+      input.dispatchEvent(new Event('input'));
+      
+      expect(counter.classList.contains('sn-char-counter-warning')).toBe(false);
+      expect(counter.classList.contains('sn-char-counter-error')).toBe(false);
+    });
+    
+    it('shows warning state at 90% (1800 chars)', () => {
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const counter = commentSection.element.querySelector('.sn-comment-char-counter');
+      
+      // Create a string of exactly 1800 characters (90% of 2000)
+      input.value = 'a'.repeat(1800);
+      input.dispatchEvent(new Event('input'));
+      
+      expect(counter.classList.contains('sn-char-counter-warning')).toBe(true);
+      expect(counter.classList.contains('sn-char-counter-error')).toBe(false);
+    });
+    
+    it('shows warning state between 90% and 100%', () => {
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const counter = commentSection.element.querySelector('.sn-comment-char-counter');
+      
+      // Create a string of 1900 characters (95% of 2000)
+      input.value = 'a'.repeat(1900);
+      input.dispatchEvent(new Event('input'));
+      
+      expect(counter.classList.contains('sn-char-counter-warning')).toBe(true);
+      expect(counter.classList.contains('sn-char-counter-error')).toBe(false);
+    });
+    
+    it('shows warning state at limit (2000 chars) since limit is still valid', () => {
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const counter = commentSection.element.querySelector('.sn-comment-char-counter');
+      
+      // Create a string of exactly 2000 characters (at limit, still valid)
+      input.value = 'a'.repeat(2000);
+      input.dispatchEvent(new Event('input'));
+      
+      // At exactly 2000, should show warning (not error) since 2000 is still valid
+      expect(counter.classList.contains('sn-char-counter-warning')).toBe(true);
+      expect(counter.classList.contains('sn-char-counter-error')).toBe(false);
+    });
+    
+    it('shows error state when over limit (2001+ chars)', () => {
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const counter = commentSection.element.querySelector('.sn-comment-char-counter');
+      
+      // Create a string of 2001 characters (over limit)
+      input.value = 'a'.repeat(2001);
+      input.dispatchEvent(new Event('input'));
+      
+      expect(counter.classList.contains('sn-char-counter-error')).toBe(true);
+      expect(counter.classList.contains('sn-char-counter-warning')).toBe(false);
+    });
+    
+    it('removes warning/error classes when below threshold', () => {
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const counter = commentSection.element.querySelector('.sn-comment-char-counter');
+      
+      // First go over limit
+      input.value = 'a'.repeat(2001);
+      input.dispatchEvent(new Event('input'));
+      expect(counter.classList.contains('sn-char-counter-error')).toBe(true);
+      
+      // Then go back to normal
+      input.value = 'Hello';
+      input.dispatchEvent(new Event('input'));
+      
+      expect(counter.classList.contains('sn-char-counter-warning')).toBe(false);
+      expect(counter.classList.contains('sn-char-counter-error')).toBe(false);
+    });
+    
+    it('allows submit at exactly 2000 chars (limit is valid)', () => {
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const submitBtn = commentSection.element.querySelector('.sn-comment-submit');
+      
+      // Exactly 2000 characters should be valid
+      input.value = 'a'.repeat(2000);
+      input.dispatchEvent(new Event('input'));
+      
+      expect(submitBtn.disabled).toBe(false);
+    });
+    
+    it('disables submit button when over limit', () => {
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const submitBtn = commentSection.element.querySelector('.sn-comment-submit');
+      
+      // First enable with valid content
+      input.value = 'Valid comment';
+      input.dispatchEvent(new Event('input'));
+      expect(submitBtn.disabled).toBe(false);
+      
+      // Now go over limit
+      input.value = 'a'.repeat(2001);
+      input.dispatchEvent(new Event('input'));
+      
+      expect(submitBtn.disabled).toBe(true);
+    });
+    
+    it('re-enables submit button when back under limit', () => {
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const submitBtn = commentSection.element.querySelector('.sn-comment-submit');
+      
+      // Go over limit first
+      input.value = 'a'.repeat(2001);
+      input.dispatchEvent(new Event('input'));
+      expect(submitBtn.disabled).toBe(true);
+      
+      // Come back under limit
+      input.value = 'Valid comment';
+      input.dispatchEvent(new Event('input'));
+      
+      expect(submitBtn.disabled).toBe(false);
+    });
+    
+    it('prevents Enter key submission when over limit', async () => {
+      await commentSection.togglePanel();
+      
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      
+      // Go over limit
+      input.value = 'a'.repeat(2001);
+      input.dispatchEvent(new Event('input'));
+      
+      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+      input.dispatchEvent(enterEvent);
+      
+      // Wait for any async operations
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
+      expect(mockCallbacks.onAddComment).not.toHaveBeenCalled();
+    });
+    
+    it('shows toast when trying to submit over limit', async () => {
+      await commentSection.togglePanel();
+      
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      
+      // Go over limit
+      input.value = 'a'.repeat(2001);
+      input.dispatchEvent(new Event('input'));
+      
+      // Try to submit directly
+      await commentSection.submitComment();
+      
+      // Check for error toast
+      const toast = localThis.container.querySelector('.sn-toast');
+      expect(toast).toBeTruthy();
+      expect(toast.classList.contains('sn-toast-error')).toBe(true);
+      expect(toast.textContent).toBe('commentTooLong');
+      
+      // Should not have called onAddComment
+      expect(mockCallbacks.onAddComment).not.toHaveBeenCalled();
+    });
+    
+    it('resets counter when canceling reply', async () => {
+      await commentSection.togglePanel();
+      
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const counter = commentSection.element.querySelector('.sn-comment-char-counter');
+      
+      // Type some text
+      input.value = 'a'.repeat(1900);
+      input.dispatchEvent(new Event('input'));
+      expect(counter.classList.contains('sn-char-counter-warning')).toBe(true);
+      
+      // Start and cancel reply (which clears input)
+      commentSection.startReply('c1', 'Jane');
+      commentSection.cancelReply();
+      
+      expect(counter.classList.contains('sn-char-counter-warning')).toBe(false);
+      expect(counter.classList.contains('sn-char-counter-error')).toBe(false);
+    });
+    
+    it('resets counter when canceling edit', async () => {
+      mockCallbacks.onLoadComments.mockResolvedValue([
+        { id: 'c1', authorId: 'user-1', authorName: 'Test User', content: 'Original', createdAt: new Date().toISOString() }
+      ]);
+      
+      await commentSection.togglePanel();
+      
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const counter = commentSection.element.querySelector('.sn-comment-char-counter');
+      
+      // Start edit (loads existing content)
+      commentSection.startEdit('c1');
+      
+      // Modify to go over warning threshold
+      input.value = 'a'.repeat(1900);
+      input.dispatchEvent(new Event('input'));
+      expect(counter.classList.contains('sn-char-counter-warning')).toBe(true);
+      
+      // Cancel edit (clears input)
+      commentSection.cancelEdit();
+      
+      expect(counter.classList.contains('sn-char-counter-warning')).toBe(false);
+      expect(counter.classList.contains('sn-char-counter-error')).toBe(false);
+    });
+    
+    it('updates counter when starting edit with existing content', async () => {
+      // Create a comment that's near the limit
+      const longContent = 'a'.repeat(1900);
+      mockCallbacks.onLoadComments.mockResolvedValue([
+        { id: 'c1', authorId: 'user-1', authorName: 'Test User', content: longContent, createdAt: new Date().toISOString() }
+      ]);
+      
+      await commentSection.togglePanel();
+      
+      const counter = commentSection.element.querySelector('.sn-comment-char-counter');
+      
+      // Start editing the long comment
+      commentSection.startEdit('c1');
+      
+      // Counter should show warning state for the loaded content
+      expect(counter.classList.contains('sn-char-counter-warning')).toBe(true);
+    });
+    
+    it('disables submit when editing comment that exceeds limit', async () => {
+      // Create a comment that's over the limit (edge case - shouldn't happen normally)
+      const overLimitContent = 'a'.repeat(2001);
+      mockCallbacks.onLoadComments.mockResolvedValue([
+        { id: 'c1', authorId: 'user-1', authorName: 'Test User', content: overLimitContent, createdAt: new Date().toISOString() }
+      ]);
+      
+      await commentSection.togglePanel();
+      
+      const submitBtn = commentSection.element.querySelector('.sn-comment-submit');
+      
+      // Start editing the over-limit comment
+      commentSection.startEdit('c1');
+      
+      // Submit button should be disabled
+      expect(submitBtn.disabled).toBe(true);
+    });
+    
+    it('includes character counter in getStyles', () => {
+      const styles = CommentSection.getStyles();
+      
+      expect(styles).toContain('.sn-comment-char-counter');
+      expect(styles).toContain('.sn-char-counter-warning');
+      expect(styles).toContain('.sn-char-counter-error');
+    });
+  });
 });

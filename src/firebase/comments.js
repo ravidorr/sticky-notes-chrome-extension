@@ -32,15 +32,13 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './config.js';
+import { MAX_COMMENT_LENGTH } from '../shared/utils.js';
 
 const NOTES_COLLECTION = 'notes';
 const COMMENTS_SUBCOLLECTION = 'comments';
 
 // Maximum nesting depth for replies (1 = only direct replies to top-level comments)
 const MAX_REPLY_DEPTH = 1;
-
-// Maximum comment content length
-const MAX_COMMENT_LENGTH = 2000;
 
 /**
  * Default Firestore dependencies - can be overridden for testing
