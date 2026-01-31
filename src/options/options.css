@@ -303,6 +303,34 @@ body {
   background: #f9fafb;
 }
 
+/* Auto position option - spans full width */
+.position-option-auto {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: center;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-color: #bae6fd;
+}
+
+.position-option-auto:hover {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  border-color: #7dd3fc;
+}
+
+.position-option-auto.selected {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-color: #3b82f6;
+}
+
+.position-option-auto span {
+  font-size: 13px;
+}
+
+.position-option-auto.selected span {
+  color: #1e40af;
+}
+
 /* Toggle switch */
 .toggle-switch {
   position: relative;

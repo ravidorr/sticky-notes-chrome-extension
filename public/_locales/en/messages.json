@@ -125,6 +125,10 @@
     "description": "Placeholder text in note editor"
   },
 
+  "positionAuto": {
+    "message": "Auto",
+    "description": "Position option label for automatic smart positioning based on available viewport space"
+  },
   "positionTopLeft": {
     "message": "Top Left",
     "description": "Position option label"

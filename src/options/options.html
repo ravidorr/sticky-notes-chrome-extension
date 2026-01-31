@@ -87,6 +87,15 @@
             <label class="setting-label" data-i18n="settingsDefaultPosition">Default Position</label>
             <p class="setting-description" data-i18n="settingsDefaultPositionDesc">Where new notes appear relative to the selected element</p>
             <div class="position-picker" id="positionPicker" role="radiogroup" aria-label="Note position">
+              <!-- Auto position - smart positioning based on available space -->
+              <button type="button" class="position-option position-option-auto" data-position="auto" title="Auto" role="radio" aria-checked="false" data-i18n-aria-label="positionAuto" aria-label="Auto">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke-width="1.5" aria-hidden="true">
+                  <circle cx="12" cy="12" r="3" stroke="#6b7280" fill="none"/>
+                  <path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="#6b7280" stroke-linecap="round"/>
+                  <path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="#6b7280" stroke-linecap="round"/>
+                </svg>
+                <span data-i18n="positionAuto">Auto</span>
+              </button>
               <!-- Row 1: Top positions -->
               <button type="button" class="position-option" data-position="top-left" title="Top Left" role="radio" aria-checked="false" data-i18n-aria-label="positionTopLeft" aria-label="Top Left">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke-width="1.5" aria-hidden="true">

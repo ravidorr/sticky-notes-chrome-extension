@@ -54,9 +54,10 @@ describe('DEFAULT_PREFERENCES', () => {
 });
 
 describe('VALID_POSITIONS', () => {
-  it('should contain all valid position options', async () => {
+  it('should contain all valid position options including auto', async () => {
     const { VALID_POSITIONS } = await import('../../src/shared/preferences.js');
     
+    expect(VALID_POSITIONS).toContain('auto');
     expect(VALID_POSITIONS).toContain('top-left');
     expect(VALID_POSITIONS).toContain('top-center');
     expect(VALID_POSITIONS).toContain('top-right');
@@ -65,7 +66,13 @@ describe('VALID_POSITIONS', () => {
     expect(VALID_POSITIONS).toContain('bottom-left');
     expect(VALID_POSITIONS).toContain('bottom-center');
     expect(VALID_POSITIONS).toContain('bottom-right');
-    expect(VALID_POSITIONS).toHaveLength(8);
+    expect(VALID_POSITIONS).toHaveLength(9);
+  });
+  
+  it('should have auto as the first position option', async () => {
+    const { VALID_POSITIONS } = await import('../../src/shared/preferences.js');
+    
+    expect(VALID_POSITIONS[0]).toBe('auto');
   });
 });
 
@@ -314,6 +321,22 @@ describe('setPreferences', () => {
       const loaded = await getPreferences({ chromeStorage: localThis.mockChromeStorage });
       expect(loaded.defaultPosition).toBe(position);
     }
+  });
+  
+  it('should save and load auto position', async () => {
+    const { setPreferences, getPreferences } = await import('../../src/shared/preferences.js');
+    
+    const result = await setPreferences(
+      { defaultPosition: 'auto' },
+      { chromeStorage: localThis.mockChromeStorage }
+    );
+    
+    expect(result.success).toBe(true);
+    expect(result.preferences.defaultPosition).toBe('auto');
+    
+    // Verify it can be loaded back
+    const loaded = await getPreferences({ chromeStorage: localThis.mockChromeStorage });
+    expect(loaded.defaultPosition).toBe('auto');
   });
   
   it('should ignore invalid note width values', async () => {

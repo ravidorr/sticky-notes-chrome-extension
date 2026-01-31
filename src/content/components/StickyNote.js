@@ -1238,6 +1238,12 @@ export class StickyNote {
     // Small filled square = element, larger empty square = note
     // Position names are intuitive: "top-right" means note is above and to the right of element
     const icons = {
+      'auto': `
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-width="1.5">
+          <circle cx="12" cy="12" r="3" stroke="#9ca3af" fill="none"/>
+          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="#9ca3af" stroke-linecap="round"/>
+          <path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="#9ca3af" stroke-linecap="round"/>
+        </svg>`,
       'top-left': `
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-width="1.5">
           <rect x="1" y="1" width="10" height="10" rx="1" stroke="#9ca3af" fill="none"/>
@@ -1287,6 +1293,7 @@ export class StickyNote {
    */
   showPositionPicker() {
     const positions = [
+      { value: 'auto', label: t('positionAuto') },
       { value: 'top-left', label: t('positionTopLeft') },
       { value: 'top-center', label: t('positionTopCenter') },
       { value: 'top-right', label: t('positionTopRight') },
@@ -1415,9 +1422,15 @@ export class StickyNote {
     
     let x, y;
     
+    // Determine effective position - if 'auto', calculate the best position dynamically
+    let effectivePosition = this.position.anchor;
+    if (effectivePosition === 'auto') {
+      effectivePosition = this.calculateBestPosition(anchorRect, measuredWidth, measuredHeight);
+    }
+    
     // Calculate position based on anchor position setting (all in viewport coordinates)
     // Position names are intuitive: "top-right" means note is ABOVE and to the RIGHT of element
-    switch (this.position.anchor) {
+    switch (effectivePosition) {
       case 'top-left':
         // Note above and to the left of element
         x = anchorRect.left - measuredWidth - 10;
@@ -1500,6 +1513,108 @@ export class StickyNote {
     // Apply position (no clamping for page-level notes - they scroll with the page)
     this.element.style.left = `${viewportX}px`;
     this.element.style.top = `${viewportY}px`;
+  }
+  
+  /**
+   * Calculate the best position for a note based on available viewport space
+   * Used when position.anchor is 'auto' to intelligently choose optimal placement
+   * @param {DOMRect} anchorRect - Bounding rect of the anchor element
+   * @param {number} noteWidth - Width of the note
+   * @param {number} noteHeight - Height of the note
+   * @returns {string} Best position ('top-left', 'top-right', 'bottom-left', 'bottom-right', etc.)
+   */
+  calculateBestPosition(anchorRect, noteWidth, noteHeight) {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const padding = 10; // Margin from viewport edges and anchor
+    
+    // Calculate available space in each direction from the anchor
+    const spaceTop = anchorRect.top - padding;
+    const spaceBottom = viewportHeight - anchorRect.bottom - padding;
+    const spaceLeft = anchorRect.left - padding;
+    const spaceRight = viewportWidth - anchorRect.right - padding;
+    
+    // Define all position candidates with their required space and coordinates
+    const positions = [
+      {
+        name: 'top-left',
+        fitsHorizontally: spaceLeft >= noteWidth,
+        fitsVertically: spaceTop >= noteHeight,
+        horizontalSpace: spaceLeft,
+        verticalSpace: spaceTop
+      },
+      {
+        name: 'top-center',
+        fitsHorizontally: noteWidth <= viewportWidth - 2 * padding,
+        fitsVertically: spaceTop >= noteHeight,
+        horizontalSpace: viewportWidth, // centered, so full width available conceptually
+        verticalSpace: spaceTop
+      },
+      {
+        name: 'top-right',
+        fitsHorizontally: spaceRight >= noteWidth,
+        fitsVertically: spaceTop >= noteHeight,
+        horizontalSpace: spaceRight,
+        verticalSpace: spaceTop
+      },
+      {
+        name: 'center-left',
+        fitsHorizontally: spaceLeft >= noteWidth,
+        fitsVertically: noteHeight <= viewportHeight - 2 * padding,
+        horizontalSpace: spaceLeft,
+        verticalSpace: viewportHeight // centered vertically
+      },
+      {
+        name: 'center-right',
+        fitsHorizontally: spaceRight >= noteWidth,
+        fitsVertically: noteHeight <= viewportHeight - 2 * padding,
+        horizontalSpace: spaceRight,
+        verticalSpace: viewportHeight // centered vertically
+      },
+      {
+        name: 'bottom-left',
+        fitsHorizontally: spaceLeft >= noteWidth,
+        fitsVertically: spaceBottom >= noteHeight,
+        horizontalSpace: spaceLeft,
+        verticalSpace: spaceBottom
+      },
+      {
+        name: 'bottom-center',
+        fitsHorizontally: noteWidth <= viewportWidth - 2 * padding,
+        fitsVertically: spaceBottom >= noteHeight,
+        horizontalSpace: viewportWidth, // centered
+        verticalSpace: spaceBottom
+      },
+      {
+        name: 'bottom-right',
+        fitsHorizontally: spaceRight >= noteWidth,
+        fitsVertically: spaceBottom >= noteHeight,
+        horizontalSpace: spaceRight,
+        verticalSpace: spaceBottom
+      }
+    ];
+    
+    // Score each position
+    // Priority: positions where note fits completely > positions with most remaining space
+    const scoredPositions = positions.map(pos => {
+      let score = 0;
+      
+      // Big bonus if note fits completely in both dimensions
+      if (pos.fitsHorizontally && pos.fitsVertically) {
+        score += 10000;
+      }
+      
+      // Add remaining space as secondary score (normalized)
+      // This helps choose the best fit among positions that all fit
+      score += Math.min(pos.horizontalSpace, 1000) + Math.min(pos.verticalSpace, 1000);
+      
+      return { ...pos, score };
+    });
+    
+    // Sort by score descending and return the best position
+    scoredPositions.sort((a, b) => b.score - a.score);
+    
+    return scoredPositions[0].name;
   }
   
   /**

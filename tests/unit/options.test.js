@@ -71,6 +71,7 @@ describe('Options Page Script', () => {
         <input type="hidden" name="defaultTheme" id="defaultTheme" value="yellow">
         
         <div class="position-picker" id="positionPicker">
+          <button type="button" class="position-option position-option-auto" data-position="auto" title="Auto"></button>
           <button type="button" class="position-option" data-position="top-left" title="Top Left"></button>
           <button type="button" class="position-option" data-position="top-center" title="Top Center"></button>
           <button type="button" class="position-option" data-position="top-right" title="Top Right"></button>
@@ -233,6 +234,19 @@ describe('Options Page Script', () => {
       expect(document.querySelector('[data-position="top-right"]').classList.contains('selected')).toBe(true);
     });
     
+    it('should select auto position', () => {
+      selectPosition('auto');
+      
+      const autoBtn = document.querySelector('[data-position="auto"]');
+      const topRightBtn = document.querySelector('[data-position="top-right"]');
+      
+      expect(autoBtn.classList.contains('selected')).toBe(true);
+      expect(topRightBtn.classList.contains('selected')).toBe(false);
+      
+      const input = document.getElementById('defaultPosition');
+      expect(input.value).toBe('auto');
+    });
+    
     it('should handle non-existent position gracefully', () => {
       // Should not throw - if it throws, Jest will fail the test
       expect(() => selectPosition('nonexistent')).not.toThrow();
@@ -345,6 +359,28 @@ describe('Options Page Script', () => {
       // Should apply defaults
       expect(document.querySelector('[data-theme="yellow"]').classList.contains('selected')).toBe(true);
       expect(document.querySelector('[data-position="top-right"]').classList.contains('selected')).toBe(true);
+    });
+    
+    it('should load and apply auto position from preferences', async () => {
+      chrome.storage.sync.get.mockImplementation((keys, callback) => {
+        const result = {
+          preferences: {
+            defaultTheme: 'yellow',
+            defaultPosition: 'auto',
+            noteWidth: 280,
+            fontSize: 'medium',
+            notesVisibleByDefault: true
+          }
+        };
+        if (callback) callback(result);
+        return Promise.resolve(result);
+      });
+      
+      await loadPreferences();
+      
+      // Check auto position is selected
+      expect(document.querySelector('[data-position="auto"]').classList.contains('selected')).toBe(true);
+      expect(document.getElementById('defaultPosition').value).toBe('auto');
     });
   });
   

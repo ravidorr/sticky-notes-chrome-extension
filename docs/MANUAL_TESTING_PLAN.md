@@ -450,6 +450,28 @@
 | 5 | Select "Bottom Left" | Note moves to element's bottom-left corner |
 | 6 | Select "Bottom Right" | Note moves to element's bottom-right corner |
 
+### TEST-6.3.1: Auto Position - Smart Positioning
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create a note anchored to element in top-left of viewport | Note appears |
+| 2 | Click position button in note header | Position picker appears with "Auto" option at top |
+| 3 | Select "Auto" | Note moves to best position based on available space |
+| 4 | Verify position | Note should be positioned where most viewport space is available (likely bottom-right area) |
+| 5 | Drag anchor element to bottom-right corner | Element moves |
+| 6 | Note with Auto position updates | Note repositions to area with more space (likely top-left area) |
+| 7 | Resize window smaller | Auto position recalculates to fit available space |
+
+### TEST-6.3.2: Auto Position - Settings Default
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open Settings page | Settings page loads |
+| 2 | Click "Auto" in position picker | Auto position selected (blue highlight) |
+| 3 | Click "Save Settings" | Success message shown |
+| 4 | Create a new note on any page | Note uses auto positioning based on anchor location |
+| 5 | Verify note position | Note is placed where most viewport space is available |
+
 ### TEST-6.4: Free Drag Positioning
 
 | Step | Action | Expected Result |
@@ -1474,6 +1496,8 @@ The extension has full WCAG 2.1 AA accessibility support:
 | 2 | Click a different position (e.g., bottom-left) | Position button becomes selected |
 | 3 | Click "Save Settings" | Success message shown |
 | 4 | Create a new note on any page | Note appears at bottom-left of element |
+| 5 | Return to settings and select "Auto" | Auto position (blue highlight, full width) is selected |
+| 6 | Click "Save Settings" and create note | Note uses smart auto-positioning based on available space |
 
 ### 20.4 Note Width Setting
 

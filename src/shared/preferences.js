@@ -8,8 +8,10 @@ import { VALID_THEMES } from './utils.js';
 
 /**
  * Valid position options for notes
+ * 'auto' - automatically choose best position based on available viewport space
  */
 export const VALID_POSITIONS = [
+  'auto',
   'top-left', 'top-center', 'top-right',
   'center-left', 'center-right',
   'bottom-left', 'bottom-center', 'bottom-right'

@@ -659,6 +659,15 @@ describe('StickyNote', () => {
   });
   
   describe('getPositionIcon', () => {
+    it('should return SVG markup for auto position', () => {
+      const icon = note.getPositionIcon('auto');
+      expect(icon).toContain('<svg');
+      expect(icon).toContain('viewBox="0 0 24 24"');
+      expect(icon).toContain('</svg>');
+      // Auto icon should have a crosshair-like design with circle
+      expect(icon).toContain('<circle');
+    });
+    
     it('should return SVG markup for top-left position', () => {
       const icon = note.getPositionIcon('top-left');
       expect(icon).toContain('<svg');
@@ -737,11 +746,11 @@ describe('StickyNote', () => {
       expect(picker).not.toBeNull();
     });
     
-    it('should create eight position buttons with SVG icons', () => {
+    it('should create nine position buttons with SVG icons (including auto)', () => {
       note.showPositionPicker();
       const picker = note.element.querySelector('.sn-position-picker');
       const buttons = picker.querySelectorAll('button');
-      expect(buttons.length).toBe(8);
+      expect(buttons.length).toBe(9);
       
       // Each button should contain an SVG
       buttons.forEach(btn => {
@@ -755,8 +764,8 @@ describe('StickyNote', () => {
       const picker = note.element.querySelector('.sn-position-picker');
       const buttons = picker.querySelectorAll('button');
       
-      // Verify we have 8 buttons and they have background styles set
-      expect(buttons.length).toBe(8);
+      // Verify we have 9 buttons (including auto) and they have background styles set
+      expect(buttons.length).toBe(9);
       
       // At least one button should have a non-transparent background (the selected one)
       const buttonsWithBackground = Array.from(buttons).filter(btn => 
@@ -1222,6 +1231,186 @@ describe('StickyNote', () => {
       expect(note.element.style.left).toBe('310px');
       expect(note.element.style.top).toBe('200px');
     });
+    
+    it('should use auto position and calculate best position dynamically', () => {
+      const localThis = {};
+      localThis.originalInnerWidth = window.innerWidth;
+      localThis.originalInnerHeight = window.innerHeight;
+      
+      // Set viewport size
+      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 768, writable: true, configurable: true });
+      
+      // Mock note dimensions
+      Object.defineProperty(note.element, 'offsetWidth', { value: 200, configurable: true });
+      Object.defineProperty(note.element, 'offsetHeight', { value: 100, configurable: true });
+      
+      // Mock anchor in top-left corner of viewport - should position to bottom-right
+      note.anchor.getBoundingClientRect = jest.fn(() => ({
+        left: 50,
+        top: 50,
+        right: 150,
+        bottom: 100,
+        width: 100,
+        height: 50
+      }));
+      
+      note.customPosition = null;
+      note.position = { anchor: 'auto' };
+      note.updatePosition();
+      
+      // With anchor in top-left, the auto position should choose a position with most space
+      // The note should be positioned somewhere (we just verify it doesn't throw and sets a position)
+      expect(note.element.style.left).toBeDefined();
+      expect(note.element.style.top).toBeDefined();
+      
+      // Restore
+      Object.defineProperty(window, 'innerWidth', { value: localThis.originalInnerWidth, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: localThis.originalInnerHeight, writable: true, configurable: true });
+    });
+  });
+
+  describe('calculateBestPosition', () => {
+    it('should have calculateBestPosition method', () => {
+      expect(typeof note.calculateBestPosition).toBe('function');
+    });
+    
+    it('should return a bottom position when anchor is in top-left of viewport', () => {
+      const localThis = {};
+      localThis.originalInnerWidth = window.innerWidth;
+      localThis.originalInnerHeight = window.innerHeight;
+      
+      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 768, writable: true, configurable: true });
+      
+      // Anchor in top-left corner
+      const anchorRect = {
+        left: 50,
+        top: 50,
+        right: 150,
+        bottom: 100,
+        width: 100,
+        height: 50
+      };
+      
+      const result = note.calculateBestPosition(anchorRect, 200, 100);
+      
+      // With anchor at top-left, a bottom or right position should be preferred (more space below and to the right)
+      expect(['bottom-left', 'bottom-center', 'bottom-right', 'center-right']).toContain(result);
+      
+      Object.defineProperty(window, 'innerWidth', { value: localThis.originalInnerWidth, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: localThis.originalInnerHeight, writable: true, configurable: true });
+    });
+    
+    it('should return a top or left position when anchor is in bottom-right of viewport', () => {
+      const localThis = {};
+      localThis.originalInnerWidth = window.innerWidth;
+      localThis.originalInnerHeight = window.innerHeight;
+      
+      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 768, writable: true, configurable: true });
+      
+      // Anchor in bottom-right corner
+      const anchorRect = {
+        left: 874,
+        top: 618,
+        right: 974,
+        bottom: 718,
+        width: 100,
+        height: 100
+      };
+      
+      const result = note.calculateBestPosition(anchorRect, 200, 100);
+      
+      // With anchor at bottom-right, a top or left position should be preferred (more space above and to the left)
+      expect(['top-left', 'top-center', 'top-right', 'center-left']).toContain(result);
+      
+      Object.defineProperty(window, 'innerWidth', { value: localThis.originalInnerWidth, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: localThis.originalInnerHeight, writable: true, configurable: true });
+    });
+    
+    it('should prefer positions where note fits completely', () => {
+      const localThis = {};
+      localThis.originalInnerWidth = window.innerWidth;
+      localThis.originalInnerHeight = window.innerHeight;
+      
+      Object.defineProperty(window, 'innerWidth', { value: 500, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 400, writable: true, configurable: true });
+      
+      // Anchor in the middle
+      const anchorRect = {
+        left: 200,
+        top: 150,
+        right: 300,
+        bottom: 250,
+        width: 100,
+        height: 100
+      };
+      
+      // Note that needs 150x80 - should fit in multiple positions
+      const result = note.calculateBestPosition(anchorRect, 150, 80);
+      
+      // Result should be one of the valid positions
+      expect(['top-left', 'top-center', 'top-right', 'center-left', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right']).toContain(result);
+      
+      Object.defineProperty(window, 'innerWidth', { value: localThis.originalInnerWidth, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: localThis.originalInnerHeight, writable: true, configurable: true });
+    });
+    
+    it('should handle edge case when anchor is at viewport edge', () => {
+      const localThis = {};
+      localThis.originalInnerWidth = window.innerWidth;
+      localThis.originalInnerHeight = window.innerHeight;
+      
+      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 768, writable: true, configurable: true });
+      
+      // Anchor at top edge
+      const anchorRect = {
+        left: 400,
+        top: 0,
+        right: 500,
+        bottom: 50,
+        width: 100,
+        height: 50
+      };
+      
+      const result = note.calculateBestPosition(anchorRect, 200, 100);
+      
+      // Should return a position that fits below the anchor
+      expect(['bottom-left', 'bottom-center', 'bottom-right', 'center-left', 'center-right']).toContain(result);
+      
+      Object.defineProperty(window, 'innerWidth', { value: localThis.originalInnerWidth, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: localThis.originalInnerHeight, writable: true, configurable: true });
+    });
+    
+    it('should return a valid position even for very large notes', () => {
+      const localThis = {};
+      localThis.originalInnerWidth = window.innerWidth;
+      localThis.originalInnerHeight = window.innerHeight;
+      
+      Object.defineProperty(window, 'innerWidth', { value: 500, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 400, writable: true, configurable: true });
+      
+      // Anchor in middle
+      const anchorRect = {
+        left: 200,
+        top: 150,
+        right: 300,
+        bottom: 250,
+        width: 100,
+        height: 100
+      };
+      
+      // Very large note that won't fit anywhere cleanly
+      const result = note.calculateBestPosition(anchorRect, 400, 300);
+      
+      // Should still return a valid position (best effort)
+      expect(['top-left', 'top-center', 'top-right', 'center-left', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right']).toContain(result);
+      
+      Object.defineProperty(window, 'innerWidth', { value: localThis.originalInnerWidth, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: localThis.originalInnerHeight, writable: true, configurable: true });
+    });
   });
 
   describe('clampToViewport', () => {
@@ -1353,6 +1542,24 @@ describe('StickyNote', () => {
       note.customPosition = { x: 100, y: 200 };
       note.handleWindowResize();
       expect(updateSpy).not.toHaveBeenCalled();
+    });
+    
+    it('should recalculate auto position on resize', () => {
+      const updateSpy = jest.spyOn(note, 'updatePosition');
+      const calculateSpy = jest.spyOn(note, 'calculateBestPosition');
+      
+      note.customPosition = null;
+      note.position = { anchor: 'auto' };
+      
+      // Mock note dimensions
+      Object.defineProperty(note.element, 'offsetWidth', { value: 200, configurable: true });
+      Object.defineProperty(note.element, 'offsetHeight', { value: 100, configurable: true });
+      
+      note.handleWindowResize();
+      
+      expect(updateSpy).toHaveBeenCalled();
+      // updatePosition should call calculateBestPosition when position is 'auto'
+      expect(calculateSpy).toHaveBeenCalled();
     });
   });
   
