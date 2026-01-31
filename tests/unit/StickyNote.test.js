@@ -97,6 +97,10 @@ describe('StickyNote', () => {
       expect(note.richEditor).toBeDefined();
     });
     
+    it('should pass maxLength to rich editor', () => {
+      expect(note.richEditor.maxLength).toBe(50000);
+    });
+    
     it('should restore custom position from saved position.custom', () => {
       const noteWithCustomPosition = new StickyNote({
         id: 'test-note-custom-pos',

@@ -1,6 +1,6 @@
 {
   "name": "sticky-notes-chrome-extension",
-  "version": "1.19.0",
+  "version": "1.19.1",
   "description": "Element-anchored sticky notes for annotating any website",
   "type": "module",
   "scripts": {

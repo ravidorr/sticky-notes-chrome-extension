@@ -253,6 +253,18 @@ export const THEME_COLORS = {
 export const VALID_THEMES = ['yellow', 'blue', 'green', 'pink'];
 
 /**
+ * Maximum allowed length for note content (in characters)
+ * Matches backend validation in functions/lib/utils.js
+ */
+export const MAX_NOTE_LENGTH = 50000;
+
+/**
+ * Threshold for showing character limit warning (as a fraction of MAX_NOTE_LENGTH)
+ * 0.9 = 90% = warning shown when content reaches 45,000 characters
+ */
+export const NOTE_LENGTH_WARNING_THRESHOLD = 0.9;
+
+/**
  * Special selector value for page-level notes (not anchored to any element)
  */
 export const PAGE_LEVEL_SELECTOR = '__PAGE__';

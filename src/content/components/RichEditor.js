@@ -4,7 +4,7 @@
  * Supports: Bold, Italic, Lists, Links, Auto-share via email detection
  */
 
-import { escapeHtml, isValidEmail, extractEmails } from '../../shared/utils.js';
+import { escapeHtml, isValidEmail, extractEmails, MAX_NOTE_LENGTH, NOTE_LENGTH_WARNING_THRESHOLD } from '../../shared/utils.js';
 import { t } from '../../shared/i18n.js';
 
 export class RichEditor {
@@ -16,6 +16,7 @@ export class RichEditor {
    * @param {Function} options.onChange - Change callback
    * @param {Function} options.onEmailShare - Callback when email detected for sharing (email) => void
    * @param {Function} options.onEmailUnshare - Callback when email removed (email) => void
+   * @param {number} options.maxLength - Maximum character limit (defaults to MAX_NOTE_LENGTH)
    */
   constructor(options = {}) {
     this.content = options.content || '';
@@ -23,6 +24,8 @@ export class RichEditor {
     this.onChange = options.onChange || (() => {});
     this.onEmailShare = options.onEmailShare || null;
     this.onEmailUnshare = options.onEmailUnshare || null;
+    this.maxLength = options.maxLength !== undefined ? options.maxLength : MAX_NOTE_LENGTH;
+    this.warningThreshold = NOTE_LENGTH_WARNING_THRESHOLD;
     
     // Track detected emails: Map<email, { status: 'pending'|'success'|'failed', tooltip: string }>
     this.trackedEmails = new Map();
@@ -30,6 +33,7 @@ export class RichEditor {
     this.element = null;
     this.toolbar = null;
     this.editor = null;
+    this.counter = null;
     
     this.render();
     this.setupEventListeners();
@@ -38,6 +42,9 @@ export class RichEditor {
     if (this.content) {
       this.processEmailsInContent();
     }
+    
+    // Initialize character counter
+    this.updateCharacterCounter();
   }
   
   /**
@@ -132,8 +139,15 @@ export class RichEditor {
     this.editor.innerHTML = this.content || '';
     this.editor.dataset.placeholder = this.placeholder;
     
+    // Create character counter
+    this.counter = document.createElement('div');
+    this.counter.className = 'sn-char-counter';
+    this.counter.setAttribute('aria-live', 'polite');
+    this.counter.setAttribute('aria-atomic', 'true');
+    
     this.element.appendChild(this.toolbar);
     this.element.appendChild(this.editor);
+    this.element.appendChild(this.counter);
   }
   
   /**
@@ -166,7 +180,17 @@ export class RichEditor {
     
     // Editor input
     this.editor.addEventListener('input', () => {
+      const textLength = this.getTextLength();
+      
+      // Check if content exceeds max length
+      if (this.maxLength && textLength > this.maxLength) {
+        // Truncate content to max length
+        this.truncateToMaxLength();
+        return;
+      }
+      
       this.content = this.editor.innerHTML;
+      this.updateCharacterCounter();
       this.onChange(this.content);
       this.updatePlaceholder();
       this.processEmailsInContent();
@@ -242,15 +266,34 @@ export class RichEditor {
       const html = event.clipboardData.getData('text/html');
       const text = event.clipboardData.getData('text/plain');
       
+      // Calculate how much space is available
+      const currentLength = this.getTextLength();
+      const availableSpace = this.maxLength ? this.maxLength - currentLength : Infinity;
+      
       if (html) {
         // Clean the HTML
         const cleaned = this.cleanHtml(html);
-        document.execCommand('insertHTML', false, cleaned);
+        
+        // If pasting would exceed limit, truncate to plain text
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = cleaned;
+        const pasteTextLength = (tempDiv.textContent || '').length;
+        
+        if (pasteTextLength > availableSpace) {
+          // Truncate to available space
+          const truncatedText = (tempDiv.textContent || '').substring(0, availableSpace);
+          document.execCommand('insertText', false, truncatedText);
+        } else {
+          document.execCommand('insertHTML', false, cleaned);
+        }
       } else {
-        document.execCommand('insertText', false, text);
+        // Truncate plain text if needed
+        const textToInsert = text.length > availableSpace ? text.substring(0, availableSpace) : text;
+        document.execCommand('insertText', false, textToInsert);
       }
       
       this.content = this.editor.innerHTML;
+      this.updateCharacterCounter();
       this.onChange(this.content);
       this.processEmailsInContent();
     });
@@ -584,6 +627,7 @@ export class RichEditor {
     this.editor.innerHTML = html || '';
     this.content = html || '';
     this.updatePlaceholder();
+    this.updateCharacterCounter();
   }
   
   /**
@@ -592,6 +636,165 @@ export class RichEditor {
    */
   getPlainText() {
     return this.editor.textContent || '';
+  }
+  
+  /**
+   * Get the length of plain text content (excluding HTML tags)
+   * @returns {number} Character count
+   */
+  getTextLength() {
+    return this.getPlainText().length;
+  }
+  
+  /**
+   * Update the character counter display
+   */
+  updateCharacterCounter() {
+    if (!this.counter || !this.maxLength) return;
+    
+    const currentLength = this.getTextLength();
+    const warningLimit = Math.floor(this.maxLength * this.warningThreshold);
+    
+    // Update counter text
+    this.counter.textContent = t('noteCharacterCount', [currentLength.toLocaleString(), this.maxLength.toLocaleString()]);
+    
+    // Update counter state classes
+    this.counter.classList.remove('sn-char-counter-warning', 'sn-char-counter-error');
+    
+    if (currentLength >= this.maxLength) {
+      this.counter.classList.add('sn-char-counter-error');
+    } else if (currentLength >= warningLimit) {
+      this.counter.classList.add('sn-char-counter-warning');
+    }
+  }
+  
+  /**
+   * Truncate content to max length
+   * Called when user tries to input beyond the limit
+   */
+  truncateToMaxLength() {
+    if (!this.maxLength) return;
+    
+    const plainText = this.getPlainText();
+    if (plainText.length <= this.maxLength) return;
+    
+    // Save current selection position
+    const selection = window.getSelection();
+    let cursorPosition = 0;
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      // Get cursor position relative to editor
+      const preCaretRange = range.cloneRange();
+      preCaretRange.selectNodeContents(this.editor);
+      preCaretRange.setEnd(range.endContainer, range.endOffset);
+      cursorPosition = preCaretRange.toString().length;
+    }
+    
+    // Truncate the plain text and set it back
+    // Note: This is a simple approach that preserves the truncation
+    // but may lose some formatting at the end
+    const truncatedText = plainText.substring(0, this.maxLength);
+    
+    // Find how much text to remove from the end
+    const charsToRemove = plainText.length - this.maxLength;
+    
+    // Remove characters from the end of the editor content
+    // We do this by walking backwards through text nodes
+    this.removeCharsFromEnd(charsToRemove);
+    
+    // Update content
+    this.content = this.editor.innerHTML;
+    this.updateCharacterCounter();
+    this.onChange(this.content);
+    
+    // Restore cursor position (clamped to new length)
+    const newLength = this.getTextLength();
+    const newCursorPos = Math.min(cursorPosition, newLength);
+    this.setCursorPosition(newCursorPos);
+  }
+  
+  /**
+   * Remove a number of characters from the end of the editor content
+   * @param {number} count - Number of characters to remove
+   */
+  removeCharsFromEnd(count) {
+    if (count <= 0) return;
+    
+    let remaining = count;
+    
+    // Walk through text nodes in reverse order
+    const walker = document.createTreeWalker(
+      this.editor,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+    
+    // Collect all text nodes
+    const textNodes = [];
+    while (walker.nextNode()) {
+      textNodes.push(walker.currentNode);
+    }
+    
+    // Process nodes in reverse order
+    for (let i = textNodes.length - 1; i >= 0 && remaining > 0; i--) {
+      const node = textNodes[i];
+      const text = node.textContent;
+      
+      if (text.length <= remaining) {
+        // Remove entire node content
+        remaining -= text.length;
+        node.textContent = '';
+      } else {
+        // Remove part of node content
+        node.textContent = text.substring(0, text.length - remaining);
+        remaining = 0;
+      }
+    }
+  }
+  
+  /**
+   * Set cursor position in the editor
+   * @param {number} position - Character position
+   */
+  setCursorPosition(position) {
+    const selection = window.getSelection();
+    const range = document.createRange();
+    
+    let currentPos = 0;
+    let targetNode = null;
+    let targetOffset = 0;
+    
+    // Walk through text nodes to find position
+    const walker = document.createTreeWalker(
+      this.editor,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+    
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      const nodeLength = node.textContent.length;
+      
+      if (currentPos + nodeLength >= position) {
+        targetNode = node;
+        targetOffset = position - currentPos;
+        break;
+      }
+      currentPos += nodeLength;
+    }
+    
+    if (targetNode) {
+      try {
+        range.setStart(targetNode, targetOffset);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } catch {
+        // Position may be invalid, ignore
+      }
+    }
   }
   
   /**
@@ -1128,6 +1331,26 @@ export class RichEditor {
       .sn-editor-content .sn-checkbox-input:checked + span {
         text-decoration: line-through;
         color: #9ca3af;
+      }
+      
+      /* Character counter */
+      .sn-char-counter {
+        font-size: 11px;
+        color: #6b7280;
+        text-align: right;
+        padding: 4px 8px;
+        background: rgba(0, 0, 0, 0.02);
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+      }
+      
+      .sn-char-counter-warning {
+        color: #b45309;
+        font-weight: 500;
+      }
+      
+      .sn-char-counter-error {
+        color: #dc2626;
+        font-weight: 600;
       }
       
       /* Reduced motion preference */

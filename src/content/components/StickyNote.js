@@ -17,7 +17,8 @@ import {
   formatRelativeTime,
   detectEnvironment,
   ENVIRONMENTS,
-  PAGE_LEVEL_SELECTOR
+  PAGE_LEVEL_SELECTOR,
+  MAX_NOTE_LENGTH
 } from '../../shared/utils.js';
 import { contentLogger as log } from '../../shared/logger.js';
 import { t } from '../../shared/i18n.js';
@@ -325,6 +326,7 @@ export class StickyNote {
     this.richEditor = new RichEditor({
       content: this.content,
       placeholder: t('notePlaceholder'),
+      maxLength: MAX_NOTE_LENGTH,
       onChange: (html) => this.handleEditorChange(html),
       onEmailShare: (email) => this.handleAutoShare(email),
       onEmailUnshare: (email) => this.handleAutoUnshare(email)

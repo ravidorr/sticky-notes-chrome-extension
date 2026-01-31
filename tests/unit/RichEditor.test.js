@@ -1543,5 +1543,537 @@ describe('RichEditor', () => {
       expect(styles).toContain('.sn-editor-content .sn-checkbox');
       expect(styles).toContain('.sn-checkbox-input');
     });
+    
+    it('should include character counter styles', () => {
+      const styles = RichEditor.getStyles();
+      expect(styles).toContain('.sn-char-counter');
+      expect(styles).toContain('.sn-char-counter-warning');
+      expect(styles).toContain('.sn-char-counter-error');
+    });
+  });
+
+  describe('character counter and length validation', () => {
+    describe('constructor options', () => {
+      it('should accept maxLength option', () => {
+        const editorWithMaxLength = new RichEditor({
+          content: '',
+          maxLength: 100
+        });
+        document.body.appendChild(editorWithMaxLength.element);
+        
+        expect(editorWithMaxLength.maxLength).toBe(100);
+        editorWithMaxLength.destroy();
+      });
+      
+      it('should use default maxLength when not specified', () => {
+        // Default is MAX_NOTE_LENGTH (50000)
+        expect(editor.maxLength).toBe(50000);
+      });
+      
+      it('should allow maxLength of 0 to disable validation', () => {
+        const editorNoLimit = new RichEditor({
+          content: '',
+          maxLength: 0
+        });
+        document.body.appendChild(editorNoLimit.element);
+        
+        expect(editorNoLimit.maxLength).toBe(0);
+        // Counter should not update when maxLength is 0 (falsy)
+        editorNoLimit.editor.innerHTML = 'a'.repeat(1000);
+        editorNoLimit.updateCharacterCounter();
+        // Should not throw and counter should not have warning/error classes
+        expect(editorNoLimit.counter.classList.contains('sn-char-counter-error')).toBe(false);
+        
+        editorNoLimit.destroy();
+      });
+      
+      it('should create counter element', () => {
+        expect(editor.counter).not.toBeNull();
+        expect(editor.counter.className).toBe('sn-char-counter');
+      });
+      
+      it('should append counter element after editor', () => {
+        const children = Array.from(editor.element.children);
+        const editorIndex = children.indexOf(editor.editor);
+        const counterIndex = children.indexOf(editor.counter);
+        
+        expect(counterIndex).toBeGreaterThan(editorIndex);
+      });
+      
+      it('should set aria-live on counter for accessibility', () => {
+        expect(editor.counter.getAttribute('aria-live')).toBe('polite');
+        expect(editor.counter.getAttribute('aria-atomic')).toBe('true');
+      });
+      
+      it('should initialize counter on construction', () => {
+        const editorWithContent = new RichEditor({
+          content: 'Initial content',
+          maxLength: 100
+        });
+        document.body.appendChild(editorWithContent.element);
+        
+        // Counter should have been updated during construction
+        expect(editorWithContent.counter.textContent).not.toBe('');
+        
+        editorWithContent.destroy();
+      });
+    });
+    
+    describe('getTextLength', () => {
+      it('should return length of plain text content', () => {
+        editor.editor.innerHTML = 'Hello world';
+        expect(editor.getTextLength()).toBe(11);
+      });
+      
+      it('should exclude HTML tags from count', () => {
+        editor.editor.innerHTML = '<b>Hello</b> <i>world</i>';
+        expect(editor.getTextLength()).toBe(11); // "Hello world"
+      });
+      
+      it('should return 0 for empty content', () => {
+        editor.editor.innerHTML = '';
+        expect(editor.getTextLength()).toBe(0);
+      });
+      
+      it('should handle complex HTML structures', () => {
+        editor.editor.innerHTML = '<p>Line 1</p><p>Line 2</p>';
+        const length = editor.getTextLength();
+        expect(length).toBeGreaterThan(0);
+      });
+      
+      it('should count HTML entities as single characters', () => {
+        // &amp; should count as 1 character, not 5
+        editor.editor.innerHTML = 'A &amp; B';
+        // textContent will decode &amp; to &, so "A & B" = 5 chars
+        expect(editor.getTextLength()).toBe(5);
+      });
+      
+      it('should handle nested HTML elements correctly', () => {
+        editor.editor.innerHTML = '<p><b><i>Nested</i></b></p>';
+        expect(editor.getTextLength()).toBe(6); // "Nested"
+      });
+    });
+    
+    describe('updateCharacterCounter', () => {
+      it('should update counter text with current and max values', () => {
+        editor.editor.innerHTML = 'Hello';
+        editor.updateCharacterCounter();
+        
+        // In tests, chrome.i18n.getMessage returns the key name
+        // The counter uses t('noteCharacterCount', [current, max])
+        expect(editor.counter.textContent).toContain('noteCharacterCount');
+      });
+      
+      it('should add warning class at 90% threshold', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 100
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        // Add 91 characters (over 90% of 100)
+        smallEditor.editor.innerHTML = 'a'.repeat(91);
+        smallEditor.updateCharacterCounter();
+        
+        expect(smallEditor.counter.classList.contains('sn-char-counter-warning')).toBe(true);
+        expect(smallEditor.counter.classList.contains('sn-char-counter-error')).toBe(false);
+        
+        smallEditor.destroy();
+      });
+      
+      it('should add error class at max length', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 100
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        // Add exactly 100 characters
+        smallEditor.editor.innerHTML = 'a'.repeat(100);
+        smallEditor.updateCharacterCounter();
+        
+        expect(smallEditor.counter.classList.contains('sn-char-counter-error')).toBe(true);
+        
+        smallEditor.destroy();
+      });
+      
+      it('should not add warning class below threshold', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 100
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        // Add 50 characters (50% of 100)
+        smallEditor.editor.innerHTML = 'a'.repeat(50);
+        smallEditor.updateCharacterCounter();
+        
+        expect(smallEditor.counter.classList.contains('sn-char-counter-warning')).toBe(false);
+        expect(smallEditor.counter.classList.contains('sn-char-counter-error')).toBe(false);
+        
+        smallEditor.destroy();
+      });
+      
+      it('should add warning class at exactly 90% threshold', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 100
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        // Add exactly 90 characters (exactly 90% of 100)
+        smallEditor.editor.innerHTML = 'a'.repeat(90);
+        smallEditor.updateCharacterCounter();
+        
+        expect(smallEditor.counter.classList.contains('sn-char-counter-warning')).toBe(true);
+        expect(smallEditor.counter.classList.contains('sn-char-counter-error')).toBe(false);
+        
+        smallEditor.destroy();
+      });
+      
+      it('should remove warning class when content shrinks below threshold', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 100
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        // First add content to trigger warning
+        smallEditor.editor.innerHTML = 'a'.repeat(95);
+        smallEditor.updateCharacterCounter();
+        expect(smallEditor.counter.classList.contains('sn-char-counter-warning')).toBe(true);
+        
+        // Then shrink content below threshold
+        smallEditor.editor.innerHTML = 'a'.repeat(50);
+        smallEditor.updateCharacterCounter();
+        
+        expect(smallEditor.counter.classList.contains('sn-char-counter-warning')).toBe(false);
+        expect(smallEditor.counter.classList.contains('sn-char-counter-error')).toBe(false);
+        
+        smallEditor.destroy();
+      });
+      
+      it('should remove error class when content shrinks below max', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 100
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        // First add content to trigger error
+        smallEditor.editor.innerHTML = 'a'.repeat(100);
+        smallEditor.updateCharacterCounter();
+        expect(smallEditor.counter.classList.contains('sn-char-counter-error')).toBe(true);
+        
+        // Then shrink content below max (but still in warning zone)
+        smallEditor.editor.innerHTML = 'a'.repeat(95);
+        smallEditor.updateCharacterCounter();
+        
+        expect(smallEditor.counter.classList.contains('sn-char-counter-error')).toBe(false);
+        expect(smallEditor.counter.classList.contains('sn-char-counter-warning')).toBe(true);
+        
+        smallEditor.destroy();
+      });
+      
+      it('should handle null counter gracefully', () => {
+        editor.counter = null;
+        expect(() => editor.updateCharacterCounter()).not.toThrow();
+      });
+      
+      it('should handle null maxLength gracefully', () => {
+        editor.maxLength = null;
+        expect(() => editor.updateCharacterCounter()).not.toThrow();
+      });
+    });
+    
+    describe('content length enforcement on input', () => {
+      it('should call updateCharacterCounter on input', () => {
+        const updateSpy = jest.spyOn(editor, 'updateCharacterCounter');
+        
+        editor.editor.innerHTML = 'New content';
+        editor.editor.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        expect(updateSpy).toHaveBeenCalled();
+        updateSpy.mockRestore();
+      });
+      
+      it('should call truncateToMaxLength when content exceeds limit', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 10,
+          onChange: jest.fn()
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        const truncateSpy = jest.spyOn(smallEditor, 'truncateToMaxLength');
+        
+        // Set content that exceeds limit
+        smallEditor.editor.innerHTML = 'This is more than 10 characters';
+        smallEditor.editor.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        expect(truncateSpy).toHaveBeenCalled();
+        
+        truncateSpy.mockRestore();
+        smallEditor.destroy();
+      });
+      
+      it('should not call truncateToMaxLength when content is within limit', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 100,
+          onChange: jest.fn()
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        const truncateSpy = jest.spyOn(smallEditor, 'truncateToMaxLength');
+        
+        // Set content within limit
+        smallEditor.editor.innerHTML = 'Short';
+        smallEditor.editor.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        expect(truncateSpy).not.toHaveBeenCalled();
+        
+        truncateSpy.mockRestore();
+        smallEditor.destroy();
+      });
+    });
+    
+    describe('truncateToMaxLength', () => {
+      it('should truncate content to max length', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 10,
+          onChange: jest.fn()
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        smallEditor.editor.innerHTML = 'This is way too long for the limit';
+        smallEditor.truncateToMaxLength();
+        
+        expect(smallEditor.getTextLength()).toBeLessThanOrEqual(10);
+        
+        smallEditor.destroy();
+      });
+      
+      it('should truncate to exactly maxLength characters', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 5,
+          onChange: jest.fn()
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        smallEditor.editor.innerHTML = 'Hello World';
+        smallEditor.truncateToMaxLength();
+        
+        // Should truncate "Hello World" (11 chars) to "Hello" (5 chars)
+        expect(smallEditor.getTextLength()).toBe(5);
+        expect(smallEditor.getPlainText()).toBe('Hello');
+        
+        smallEditor.destroy();
+      });
+      
+      it('should call onChange after truncation', () => {
+        const onChange = jest.fn();
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 10,
+          onChange
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        smallEditor.editor.innerHTML = 'This is way too long';
+        smallEditor.truncateToMaxLength();
+        
+        expect(onChange).toHaveBeenCalled();
+        
+        smallEditor.destroy();
+      });
+      
+      it('should not truncate if content is within limit', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 100,
+          onChange: jest.fn()
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        smallEditor.editor.innerHTML = 'Short';
+        const originalContent = smallEditor.editor.innerHTML;
+        smallEditor.truncateToMaxLength();
+        
+        expect(smallEditor.editor.innerHTML).toBe(originalContent);
+        
+        smallEditor.destroy();
+      });
+      
+      it('should handle empty maxLength', () => {
+        editor.maxLength = null;
+        editor.editor.innerHTML = 'Some content';
+        
+        expect(() => editor.truncateToMaxLength()).not.toThrow();
+      });
+    });
+    
+    describe('paste with length validation', () => {
+      it('should truncate pasted plain text to available space', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 20,
+          onChange: jest.fn()
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        // Set initial content (5 chars)
+        smallEditor.editor.innerHTML = 'Hello';
+        
+        const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+        
+        const clipboardData = {
+          getData: jest.fn((type) => {
+            if (type === 'text/html') return '';
+            if (type === 'text/plain') return 'This is a very long paste that exceeds the limit';
+            return '';
+          })
+        };
+        
+        const pasteEvent = new Event('paste', { bubbles: true });
+        pasteEvent.clipboardData = clipboardData;
+        pasteEvent.preventDefault = jest.fn();
+        
+        smallEditor.editor.dispatchEvent(pasteEvent);
+        
+        // Should have called insertText with truncated content
+        expect(execCommandSpy).toHaveBeenCalledWith('insertText', false, expect.any(String));
+        const insertedText = execCommandSpy.mock.calls.find(call => call[0] === 'insertText')?.[2];
+        expect(insertedText.length).toBeLessThanOrEqual(15); // 20 - 5 = 15 available
+        
+        execCommandSpy.mockRestore();
+        smallEditor.destroy();
+      });
+      
+      it('should truncate pasted HTML content to available space', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 20,
+          onChange: jest.fn()
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        // Set initial content (5 chars)
+        smallEditor.editor.innerHTML = 'Hello';
+        
+        const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+        
+        const clipboardData = {
+          getData: jest.fn((type) => {
+            if (type === 'text/html') return '<p>This is a very long paste that exceeds the limit</p>';
+            if (type === 'text/plain') return 'This is a very long paste that exceeds the limit';
+            return '';
+          })
+        };
+        
+        const pasteEvent = new Event('paste', { bubbles: true });
+        pasteEvent.clipboardData = clipboardData;
+        pasteEvent.preventDefault = jest.fn();
+        
+        smallEditor.editor.dispatchEvent(pasteEvent);
+        
+        // Should have called insertText (fallback when HTML exceeds limit)
+        expect(execCommandSpy).toHaveBeenCalled();
+        
+        execCommandSpy.mockRestore();
+        smallEditor.destroy();
+      });
+      
+      it('should update character counter after paste', () => {
+        const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+        const updateSpy = jest.spyOn(editor, 'updateCharacterCounter');
+        
+        const clipboardData = {
+          getData: jest.fn((type) => {
+            if (type === 'text/plain') return 'Pasted text';
+            return '';
+          })
+        };
+        
+        const pasteEvent = new Event('paste', { bubbles: true });
+        pasteEvent.clipboardData = clipboardData;
+        pasteEvent.preventDefault = jest.fn();
+        
+        editor.editor.dispatchEvent(pasteEvent);
+        
+        expect(updateSpy).toHaveBeenCalled();
+        
+        execCommandSpy.mockRestore();
+        updateSpy.mockRestore();
+      });
+    });
+    
+    describe('setContent with character counter', () => {
+      it('should update character counter when setContent is called', () => {
+        const updateSpy = jest.spyOn(editor, 'updateCharacterCounter');
+        
+        editor.setContent('New content');
+        
+        expect(updateSpy).toHaveBeenCalled();
+        updateSpy.mockRestore();
+      });
+    });
+    
+    describe('removeCharsFromEnd', () => {
+      it('should remove specified number of characters from end', () => {
+        editor.editor.innerHTML = 'Hello World';
+        editor.removeCharsFromEnd(5);
+        
+        expect(editor.getPlainText()).toBe('Hello ');
+      });
+      
+      it('should handle removing more chars than available in last node', () => {
+        editor.editor.innerHTML = 'Hello World';
+        editor.removeCharsFromEnd(20); // More than content length
+        
+        // Should not throw and content should be empty or minimal
+        expect(editor.getPlainText().length).toBeLessThanOrEqual(0);
+      });
+      
+      it('should handle count of 0', () => {
+        editor.editor.innerHTML = 'Hello World';
+        const original = editor.getPlainText();
+        editor.removeCharsFromEnd(0);
+        
+        expect(editor.getPlainText()).toBe(original);
+      });
+      
+      it('should handle negative count', () => {
+        editor.editor.innerHTML = 'Hello World';
+        const original = editor.getPlainText();
+        editor.removeCharsFromEnd(-5);
+        
+        expect(editor.getPlainText()).toBe(original);
+      });
+    });
+    
+    describe('setCursorPosition', () => {
+      it('should set cursor to specified position', () => {
+        editor.editor.innerHTML = 'Hello World';
+        
+        // This won't throw even if selection fails in JSDOM
+        expect(() => editor.setCursorPosition(5)).not.toThrow();
+      });
+      
+      it('should handle position beyond content length', () => {
+        editor.editor.innerHTML = 'Hello';
+        
+        // Should not throw
+        expect(() => editor.setCursorPosition(100)).not.toThrow();
+      });
+      
+      it('should handle empty content', () => {
+        editor.editor.innerHTML = '';
+        
+        expect(() => editor.setCursorPosition(0)).not.toThrow();
+      });
+    });
   });
 });

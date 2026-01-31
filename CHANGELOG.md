@@ -5,6 +5,18 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.1] - 2026-01-31
+
+### Added
+
+- **Note Content Length Validation**: Prevents excessively long notes for better UX and performance
+  - Maximum limit of 50,000 characters per note
+  - Real-time character counter (always visible when editing)
+  - Visual warning at 90% of limit (amber counter)
+  - Visual error state at limit (red counter)
+  - Hard block prevents typing or pasting beyond the limit
+  - Full i18n support for all character limit messages
+
 ## [1.19.0] - 2026-01-31
 
 ### Added

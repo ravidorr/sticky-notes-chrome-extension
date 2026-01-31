@@ -1332,5 +1332,44 @@
   "reportDateRangeRequired": {
     "message": "Bitte wahlen Sie Start- und Enddatum aus",
     "description": "Error when date range is incomplete"
+  },
+
+  "noteCharacterCount": {
+    "message": "$CURRENT$ / $MAX$",
+    "description": "Character counter showing current and max characters",
+    "placeholders": {
+      "current": {
+        "content": "$1",
+        "example": "1500"
+      },
+      "max": {
+        "content": "$2",
+        "example": "50000"
+      }
+    }
+  },
+  "noteTooLong": {
+    "message": "Notiz darf $COUNT$ Zeichen nicht uberschreiten",
+    "description": "Error when note content exceeds maximum length",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "50000"
+      }
+    }
+  },
+  "noteApproachingLimit": {
+    "message": "Zeichenlimit fast erreicht ($CURRENT$ / $MAX$)",
+    "description": "Warning when note content is approaching maximum length",
+    "placeholders": {
+      "current": {
+        "content": "$1",
+        "example": "45000"
+      },
+      "max": {
+        "content": "$2",
+        "example": "50000"
+      }
+    }
   }
 }

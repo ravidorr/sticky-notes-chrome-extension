@@ -268,7 +268,7 @@ Content-Type: application/json
 |-------|------|----------|-------------|
 | `url` | string | Yes | The page URL where the note should appear |
 | `selector` | string | Yes | CSS selector for the target element, or `__PAGE__` for page-level notes |
-| `content` | string | No | HTML content of the note |
+| `content` | string | No | HTML content of the note (max 50,000 characters) |
 | `theme` | string | No | Color theme: `yellow`, `blue`, `green`, `pink` |
 | `position` | object | No | Position relative to element (`{ anchor: "VALUE" }`) where VALUE is one of: `top-left`, `top-center`, `top-right`, `center-left`, `center-right`, `bottom-left`, `bottom-center`, `bottom-right`. For page-level notes, use absolute page position (`{ pageX: 100, pageY: 200 }`) |
 | `isHidden` | boolean | No | Per-note visibility. If `true`, the note is hidden and won't appear even with global "show all". Defaults to `false`. |
@@ -342,7 +342,7 @@ Content-Type: application/json
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `content` | string | New note content |
+| `content` | string | New note content (max 50,000 characters) |
 | `theme` | string | New color theme |
 | `position` | object | New position (use `{ pageX, pageY }` for page-level notes) |
 | `selector` | string | New CSS selector (use `__PAGE__` for page-level notes) |
