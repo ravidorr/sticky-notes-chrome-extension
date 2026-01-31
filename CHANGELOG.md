@@ -5,10 +5,21 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.14.0] - 2026-01-31
+## [1.15.0] - 2026-01-31
 
 ### Added
 
+- WCAG 2.1 AA accessibility compliance for extension UI:
+  - Skip link for keyboard navigation in popup (bypasses header to main content)
+  - Comprehensive ARIA roles and labels (tablist, radiogroup, dialog, status, toolbar)
+  - Keyboard arrow navigation for tab panels and radio groups
+  - Visible focus indicators on all interactive elements
+  - Color contrast improvements (4.6:1 ratio for secondary text)
+  - `prefers-reduced-motion` support across all CSS (popup, options, content scripts)
+  - `aria-hidden="true"` on decorative SVGs and icons
+  - `role="status"` for live status messages
+  - Semantic HTML structure with header, main, footer landmarks
+- Automated accessibility testing with jest-axe (unit) and @axe-core/playwright (E2E)
 - Delete Old Notes feature - bulk delete notes older than a specified age threshold
   - Access via popup menu > Actions dropdown > "Delete old notes"
   - Preset age options: 7 days, 30 days, 90 days, 1 year

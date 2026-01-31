@@ -1,6 +1,6 @@
 {
   "name": "sticky-notes-chrome-extension",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "description": "Element-anchored sticky notes for annotating any website",
   "type": "module",
   "scripts": {
@@ -46,6 +46,7 @@
   },
   "homepage": "https://github.com/ravidorr/sticky-notes-chrome-extension#readme",
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
     "@eslint/js": "^9.39.2",
     "@jest/globals": "^29.7.0",
     "@playwright/test": "^1.52.0",
@@ -59,6 +60,7 @@
     "htmlhint": "^1.8.0",
     "husky": "^9.1.7",
     "jest": "^29.7.0",
+    "jest-axe": "^10.0.0",
     "jest-environment-jsdom": "^29.7.0",
     "lint-staged": "^16.2.7",
     "markdownlint-cli2": "^0.20.0",

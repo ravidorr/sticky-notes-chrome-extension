@@ -76,13 +76,17 @@ describe('RichEditor', () => {
     it('should have bold button', () => {
       const boldBtn = editor.toolbar.querySelector('[data-command="bold"]');
       expect(boldBtn).not.toBeNull();
-      expect(boldBtn.title).toContain('Bold');
+      // Title is now i18n key in tests (chrome.i18n.getMessage returns key)
+      expect(boldBtn.title).toBe('boldText');
+      expect(boldBtn.getAttribute('aria-label')).toBe('boldText');
     });
     
     it('should have italic button', () => {
       const italicBtn = editor.toolbar.querySelector('[data-command="italic"]');
       expect(italicBtn).not.toBeNull();
-      expect(italicBtn.title).toContain('Italic');
+      // Title is now i18n key in tests (chrome.i18n.getMessage returns key)
+      expect(italicBtn.title).toBe('italicText');
+      expect(italicBtn.getAttribute('aria-label')).toBe('italicText');
     });
     
     it('should have unordered list button', () => {

@@ -50,23 +50,25 @@ export class RichEditor {
     // Create toolbar
     this.toolbar = document.createElement('div');
     this.toolbar.className = 'sn-editor-toolbar';
+    this.toolbar.setAttribute('role', 'toolbar');
+    this.toolbar.setAttribute('aria-label', t('textFormatting'));
     this.toolbar.innerHTML = `
-      <button type="button" class="sn-toolbar-btn" data-command="bold" title="Bold (Ctrl+B)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <button type="button" class="sn-toolbar-btn" data-command="bold" title="${t('boldText')}" aria-label="${t('boldText')}" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
           <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
           <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
         </svg>
       </button>
-      <button type="button" class="sn-toolbar-btn" data-command="italic" title="Italic (Ctrl+I)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button type="button" class="sn-toolbar-btn" data-command="italic" title="${t('italicText')}" aria-label="${t('italicText')}" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <line x1="19" y1="4" x2="10" y2="4"/>
           <line x1="14" y1="20" x2="5" y2="20"/>
           <line x1="15" y1="4" x2="9" y2="20"/>
         </svg>
       </button>
-      <span class="sn-toolbar-divider"></span>
-      <button type="button" class="sn-toolbar-btn" data-command="insertUnorderedList" title="Bullet List">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <span class="sn-toolbar-divider" aria-hidden="true"></span>
+      <button type="button" class="sn-toolbar-btn" data-command="insertUnorderedList" title="${t('bulletList')}" aria-label="${t('bulletList')}" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <line x1="9" y1="6" x2="20" y2="6"/>
           <line x1="9" y1="12" x2="20" y2="12"/>
           <line x1="9" y1="18" x2="20" y2="18"/>
@@ -75,8 +77,8 @@ export class RichEditor {
           <circle cx="4" cy="18" r="1.5" fill="currentColor"/>
         </svg>
       </button>
-      <button type="button" class="sn-toolbar-btn" data-command="insertOrderedList" title="Numbered List">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button type="button" class="sn-toolbar-btn" data-command="insertOrderedList" title="${t('numberedList')}" aria-label="${t('numberedList')}" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <line x1="10" y1="6" x2="21" y2="6"/>
           <line x1="10" y1="12" x2="21" y2="12"/>
           <line x1="10" y1="18" x2="21" y2="18"/>
@@ -85,9 +87,9 @@ export class RichEditor {
           <text x="3" y="20" font-size="8" fill="currentColor" stroke="none">3</text>
         </svg>
       </button>
-      <span class="sn-toolbar-divider"></span>
-      <button type="button" class="sn-toolbar-btn" data-command="createLink" title="Add Link (Ctrl+K)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <span class="sn-toolbar-divider" aria-hidden="true"></span>
+      <button type="button" class="sn-toolbar-btn" data-command="createLink" title="${t('addLink')}" aria-label="${t('addLink')}" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
           <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
         </svg>
@@ -98,6 +100,9 @@ export class RichEditor {
     this.editor = document.createElement('div');
     this.editor.className = 'sn-editor-content';
     this.editor.contentEditable = 'true';
+    this.editor.setAttribute('role', 'textbox');
+    this.editor.setAttribute('aria-multiline', 'true');
+    this.editor.setAttribute('aria-label', this.placeholder);
     this.editor.innerHTML = this.content || '';
     this.editor.dataset.placeholder = this.placeholder;
     
@@ -250,6 +255,7 @@ export class RichEditor {
     input.className = 'sn-inline-popup-input';
     input.type = 'url';
     input.placeholder = t('linkUrlPlaceholder');
+    input.setAttribute('aria-label', t('linkUrlPlaceholder'));
     input.value = 'https://';
     
     const confirmBtn = document.createElement('button');
@@ -320,6 +326,7 @@ export class RichEditor {
       const command = btn.dataset.command;
       const active = document.queryCommandState(command);
       btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
   }
   
@@ -792,6 +799,15 @@ export class RichEditor {
         color: #713f12;
       }
       
+      .sn-toolbar-btn:focus {
+        outline: 2px solid var(--sn-color-primary, #facc15);
+        outline-offset: 1px;
+      }
+      
+      .sn-toolbar-btn:focus:not(:focus-visible) {
+        outline: none;
+      }
+      
       .sn-toolbar-divider {
         width: 1px;
         height: 20px;
@@ -812,6 +828,8 @@ export class RichEditor {
       
       .sn-editor-content:focus {
         background: rgba(255, 255, 255, 0.3);
+        outline: 2px solid var(--sn-color-primary, #facc15);
+        outline-offset: -2px;
       }
       
       .sn-editor-content.empty::before {
@@ -884,6 +902,15 @@ export class RichEditor {
         border-bottom-color: #1f2937;
         z-index: 9999;
         pointer-events: none;
+      }
+      
+      /* Reduced motion preference */
+      @media (prefers-reduced-motion: reduce) {
+        .sn-toolbar-btn,
+        .sn-editor-content,
+        .sn-inline-popup {
+          transition: none !important;
+        }
       }
     `;
   }

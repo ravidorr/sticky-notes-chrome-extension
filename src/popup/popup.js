@@ -339,6 +339,10 @@ async function switchTab(tabName) {
   thisPageTab.classList.toggle('active', tabName === 'this-page');
   sharedTab.classList.toggle('active', tabName === 'shared');
   
+  // Update ARIA selected states
+  thisPageTab.setAttribute('aria-selected', tabName === 'this-page' ? 'true' : 'false');
+  sharedTab.setAttribute('aria-selected', tabName === 'shared' ? 'true' : 'false');
+  
   // Update tab content visibility
   thisPageContent.classList.toggle('hidden', tabName !== 'this-page');
   sharedContent.classList.toggle('hidden', tabName !== 'shared');
@@ -409,6 +413,32 @@ async function updateSharedNotesCount() {
 function setupTabs() {
   thisPageTab.addEventListener('click', () => switchTab('this-page'));
   sharedTab.addEventListener('click', () => switchTab('shared'));
+  
+  // Add keyboard navigation for tabs (arrow keys)
+  const tabs = [thisPageTab, sharedTab];
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('keydown', (event) => {
+      let newIndex = index;
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        newIndex = index === 0 ? tabs.length - 1 : index - 1;
+      } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        newIndex = index === tabs.length - 1 ? 0 : index + 1;
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        newIndex = 0;
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        newIndex = tabs.length - 1;
+      }
+      
+      if (newIndex !== index) {
+        tabs[newIndex].focus();
+        tabs[newIndex].click();
+      }
+    });
+  });
 }
 
 /**
@@ -534,6 +564,9 @@ function setupActionsDropdown() {
     const wasHidden = actionsMenu.classList.contains('hidden');
     actionsMenu.classList.toggle('hidden');
     
+    // Update aria-expanded state
+    actionsBtn.setAttribute('aria-expanded', wasHidden ? 'true' : 'false');
+    
     // Sync visibility button state when opening dropdown
     if (wasHidden) {
       try {
@@ -554,6 +587,7 @@ function setupActionsDropdown() {
   // Close dropdown when clicking outside
   document.addEventListener('click', () => {
     actionsMenu.classList.add('hidden');
+    actionsBtn.setAttribute('aria-expanded', 'false');
   });
   
   // Toggle visibility button
@@ -768,13 +802,37 @@ function setupDeleteOldNotesModal() {
     btn.addEventListener('click', () => {
       const days = parseInt(btn.dataset.days, 10);
       
-      // Update active state
-      agePresetBtns.forEach(b => b.classList.remove('active'));
+      // Update active state and aria-checked
+      agePresetBtns.forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-checked', 'false');
+      });
       btn.classList.add('active');
+      btn.setAttribute('aria-checked', 'true');
       customDaysInput.value = '';
       
       // Preview notes
       previewOldNotes(days);
+    });
+  });
+  
+  // Add keyboard navigation for age preset radiogroup
+  const presetBtnsArray = Array.from(agePresetBtns);
+  presetBtnsArray.forEach((btn, index) => {
+    btn.addEventListener('keydown', (event) => {
+      let newIndex = index;
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        newIndex = index === 0 ? presetBtnsArray.length - 1 : index - 1;
+      } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        newIndex = index === presetBtnsArray.length - 1 ? 0 : index + 1;
+      }
+      
+      if (newIndex !== index) {
+        presetBtnsArray[newIndex].focus();
+        presetBtnsArray[newIndex].click();
+      }
     });
   });
   
@@ -827,8 +885,11 @@ function applyCustomDays() {
     return;
   }
   
-  // Clear preset selection
-  agePresetBtns.forEach(b => b.classList.remove('active'));
+  // Clear preset selection and aria-checked
+  agePresetBtns.forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-checked', 'false');
+  });
   
   // Preview notes
   previewOldNotes(days);

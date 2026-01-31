@@ -1148,5 +1148,58 @@
   "settingsResetError": {
     "message": "Failed to reset settings",
     "description": "Settings reset error message"
+  },
+
+  "customDaysInput": {
+    "message": "Enter custom number of days",
+    "description": "ARIA label for custom days input field"
+  },
+  "applyCustomDays": {
+    "message": "Apply custom days",
+    "description": "ARIA label for apply custom days button"
+  },
+  "notesTabs": {
+    "message": "Notes tabs",
+    "description": "ARIA label for the notes tab navigation"
+  },
+  "agePresets": {
+    "message": "Age threshold presets",
+    "description": "ARIA label for the age preset radio group"
+  },
+  "textFormatting": {
+    "message": "Text formatting",
+    "description": "ARIA label for the rich text editor toolbar"
+  },
+  "boldText": {
+    "message": "Bold (Ctrl+B)",
+    "description": "ARIA label for bold button with keyboard shortcut"
+  },
+  "italicText": {
+    "message": "Italic (Ctrl+I)",
+    "description": "ARIA label for italic button with keyboard shortcut"
+  },
+  "bulletList": {
+    "message": "Bullet List",
+    "description": "ARIA label for bullet list button"
+  },
+  "numberedList": {
+    "message": "Numbered List",
+    "description": "ARIA label for numbered list button"
+  },
+  "addLink": {
+    "message": "Add Link (Ctrl+K)",
+    "description": "ARIA label for add link button with keyboard shortcut"
+  },
+  "noteContent": {
+    "message": "Note content",
+    "description": "ARIA label for the note editor content area"
+  },
+  "noteHeaderToolbar": {
+    "message": "Note actions",
+    "description": "ARIA label for the note header toolbar"
+  },
+  "skipToContent": {
+    "message": "Skip to content",
+    "description": "Skip link text for keyboard navigation"
   }
 }

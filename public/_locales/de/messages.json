@@ -1142,5 +1142,58 @@
   "settingsResetError": {
     "message": "Fehler beim Zurucksetzen der Einstellungen",
     "description": "Settings reset error message"
+  },
+
+  "customDaysInput": {
+    "message": "Benutzerdefinierte Anzahl von Tagen eingeben",
+    "description": "ARIA label for custom days input field"
+  },
+  "applyCustomDays": {
+    "message": "Benutzerdefinierte Tage anwenden",
+    "description": "ARIA label for apply custom days button"
+  },
+  "notesTabs": {
+    "message": "Notizen-Tabs",
+    "description": "ARIA label for the notes tab navigation"
+  },
+  "agePresets": {
+    "message": "Altersschwellenwert-Voreinstellungen",
+    "description": "ARIA label for the age preset radio group"
+  },
+  "textFormatting": {
+    "message": "Textformatierung",
+    "description": "ARIA label for the rich text editor toolbar"
+  },
+  "boldText": {
+    "message": "Fett (Strg+B)",
+    "description": "ARIA label for bold button with keyboard shortcut"
+  },
+  "italicText": {
+    "message": "Kursiv (Strg+I)",
+    "description": "ARIA label for italic button with keyboard shortcut"
+  },
+  "bulletList": {
+    "message": "Aufzahlungsliste",
+    "description": "ARIA label for bullet list button"
+  },
+  "numberedList": {
+    "message": "Nummerierte Liste",
+    "description": "ARIA label for numbered list button"
+  },
+  "addLink": {
+    "message": "Link hinzufugen (Strg+K)",
+    "description": "ARIA label for add link button with keyboard shortcut"
+  },
+  "noteContent": {
+    "message": "Notizinhalt",
+    "description": "ARIA label for the note editor content area"
+  },
+  "noteHeaderToolbar": {
+    "message": "Notizaktionen",
+    "description": "ARIA label for the note header toolbar"
+  },
+  "skipToContent": {
+    "message": "Zum Inhalt springen",
+    "description": "Skip link text for keyboard navigation"
   }
 }

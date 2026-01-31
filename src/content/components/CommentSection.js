@@ -54,22 +54,22 @@ export class CommentSection {
     this.element.className = 'sn-comment-section';
     
     this.element.innerHTML = `
-      <button class="sn-comments-toggle">
-        <svg class="sn-comments-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button class="sn-comments-toggle" aria-expanded="false" aria-controls="sn-comments-panel-${this.noteId}" aria-label="${t('comments')}">
+        <svg class="sn-comments-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
         <span class="sn-comments-count">${t('comments')}</span>
-        <svg class="sn-comments-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="sn-comments-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
-      <div class="sn-comments-panel sn-hidden">
-        <div class="sn-comments-list"></div>
+      <div class="sn-comments-panel sn-hidden" id="sn-comments-panel-${this.noteId}" role="region" aria-label="${t('comments')}">
+        <div class="sn-comments-list" role="list" aria-label="${t('comments')}"></div>
         <div class="sn-comment-input-container">
           <div class="sn-comment-input-wrapper">
-            <input type="text" class="sn-comment-input" placeholder="${t('addComment')}" />
-            <button class="sn-comment-submit" title="${t('addComment')}" disabled>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <input type="text" class="sn-comment-input" placeholder="${t('addComment')}" aria-label="${t('addComment')}" />
+            <button class="sn-comment-submit" title="${t('addComment')}" aria-label="${t('addComment')}" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <line x1="22" y1="2" x2="11" y2="13"/>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"/>
               </svg>
@@ -100,10 +100,12 @@ export class CommentSection {
     
     const panel = this.element.querySelector('.sn-comments-panel');
     const chevron = this.element.querySelector('.sn-comments-chevron');
+    const toggle = this.element.querySelector('.sn-comments-toggle');
     
     if (this.isExpanded) {
       panel.classList.remove('sn-hidden');
       chevron.style.transform = 'rotate(180deg)';
+      toggle.setAttribute('aria-expanded', 'true');
       
       // Load comments first if not already loaded
       if (!this.hasLoaded && !this.isLoading) {
@@ -116,6 +118,7 @@ export class CommentSection {
     } else {
       panel.classList.add('sn-hidden');
       chevron.style.transform = '';
+      toggle.setAttribute('aria-expanded', 'false');
       
       // Notify that panel is closed (to unsubscribe from real-time)
       this.onPanelClosed(this.noteId);
@@ -219,7 +222,7 @@ export class CommentSection {
     const avatarHtml = this.renderAvatar(comment.authorPhotoURL, comment.authorName);
     
     return `
-      <div class="sn-comment" data-comment-id="${comment.id}">
+      <div class="sn-comment" data-comment-id="${comment.id}" role="listitem">
         <div class="sn-comment-header">
           ${avatarHtml}
           <div class="sn-comment-meta">
@@ -229,14 +232,14 @@ export class CommentSection {
         </div>
         <div class="sn-comment-content">${escapeHtml(comment.content)}</div>
         <div class="sn-comment-actions">
-          <button class="sn-comment-action sn-reply-btn" data-comment-id="${comment.id}" data-author-name="${escapeHtml(comment.authorName || t('anonymous'))}">
+          <button class="sn-comment-action sn-reply-btn" data-comment-id="${comment.id}" data-author-name="${escapeHtml(comment.authorName || t('anonymous'))}" aria-label="${t('replyTo', [comment.authorName || t('anonymous')])}">
             ${t('reply')}
           </button>
           ${isAuthor ? `
-            <button class="sn-comment-action sn-edit-btn" data-comment-id="${comment.id}">
+            <button class="sn-comment-action sn-edit-btn" data-comment-id="${comment.id}" aria-label="${t('editComment')}">
               ${t('editComment')}
             </button>
-            <button class="sn-comment-action sn-delete-btn" data-comment-id="${comment.id}">
+            <button class="sn-comment-action sn-delete-btn" data-comment-id="${comment.id}" aria-label="${t('deleteComment')}">
               ${t('deleteComment')}
             </button>
           ` : ''}
@@ -259,7 +262,7 @@ export class CommentSection {
     const avatarHtml = this.renderAvatar(reply.authorPhotoURL, reply.authorName, true);
     
     return `
-      <div class="sn-comment sn-comment-reply" data-comment-id="${reply.id}">
+      <div class="sn-comment sn-comment-reply" data-comment-id="${reply.id}" role="listitem">
         <div class="sn-comment-header">
           ${avatarHtml}
           <div class="sn-comment-meta">
@@ -270,10 +273,10 @@ export class CommentSection {
         <div class="sn-comment-content">${escapeHtml(reply.content)}</div>
         ${isAuthor ? `
           <div class="sn-comment-actions">
-            <button class="sn-comment-action sn-edit-btn" data-comment-id="${reply.id}">
+            <button class="sn-comment-action sn-edit-btn" data-comment-id="${reply.id}" aria-label="${t('editComment')}">
               ${t('editComment')}
             </button>
-            <button class="sn-comment-action sn-delete-btn" data-comment-id="${reply.id}">
+            <button class="sn-comment-action sn-delete-btn" data-comment-id="${reply.id}" aria-label="${t('deleteComment')}">
               ${t('deleteComment')}
             </button>
           </div>
@@ -292,20 +295,21 @@ export class CommentSection {
   renderAvatar(photoURL, authorName, isSmall = false) {
     const sizeClass = isSmall ? 'sn-avatar-small' : '';
     const initial = escapeHtml((authorName || '?').charAt(0).toUpperCase());
+    const altText = escapeHtml(authorName || t('anonymous'));
     
     if (photoURL) {
       return `
         <div class="sn-avatar ${sizeClass}">
-          <img src="${escapeHtml(photoURL)}" alt="" class="sn-avatar-img" 
+          <img src="${escapeHtml(photoURL)}" alt="${altText}" class="sn-avatar-img" 
                onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-          <span class="sn-avatar-fallback" style="display:none;">${initial}</span>
+          <span class="sn-avatar-fallback" style="display:none;" aria-hidden="true">${initial}</span>
         </div>
       `;
     }
     
     return `
-      <div class="sn-avatar ${sizeClass}">
-        <span class="sn-avatar-fallback">${initial}</span>
+      <div class="sn-avatar ${sizeClass}" role="img" aria-label="${altText}">
+        <span class="sn-avatar-fallback" aria-hidden="true">${initial}</span>
       </div>
     `;
   }
@@ -634,9 +638,9 @@ export class CommentSection {
       // Show comment input
       inputContainer.innerHTML = `
         <div class="sn-comment-input-wrapper">
-          <input type="text" class="sn-comment-input" placeholder="${t('addComment')}" />
-          <button class="sn-comment-submit" title="${t('addComment')}" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <input type="text" class="sn-comment-input" placeholder="${t('addComment')}" aria-label="${t('addComment')}" />
+          <button class="sn-comment-submit" title="${t('addComment')}" aria-label="${t('addComment')}" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <line x1="22" y1="2" x2="11" y2="13"/>
               <polygon points="22 2 15 22 11 13 2 9 22 2"/>
             </svg>
@@ -737,6 +741,15 @@ export class CommentSection {
       
       .sn-comments-toggle:hover {
         background: rgba(0, 0, 0, 0.05);
+      }
+      
+      .sn-comments-toggle:focus {
+        outline: 2px solid #3b82f6;
+        outline-offset: -2px;
+      }
+      
+      .sn-comments-toggle:focus:not(:focus-visible) {
+        outline: none;
       }
       
       .sn-comments-icon {
@@ -915,6 +928,15 @@ export class CommentSection {
         color: #374151;
       }
       
+      .sn-comment-action:focus {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+      }
+      
+      .sn-comment-action:focus:not(:focus-visible) {
+        outline: none;
+      }
+      
       .sn-delete-btn:hover {
         color: #ef4444;
       }
@@ -966,6 +988,17 @@ export class CommentSection {
         line-height: 1;
       }
       
+      .sn-cancel-reply:focus,
+      .sn-cancel-edit:focus {
+        outline: 2px solid #3b82f6;
+        outline-offset: 1px;
+      }
+      
+      .sn-cancel-reply:focus:not(:focus-visible),
+      .sn-cancel-edit:focus:not(:focus-visible) {
+        outline: none;
+      }
+      
       .sn-comment-input {
         flex: 1;
         padding: 8px 10px;
@@ -980,6 +1013,8 @@ export class CommentSection {
       
       .sn-comment-input:focus {
         border-color: rgba(59, 130, 246, 0.5);
+        outline: 2px solid #3b82f6;
+        outline-offset: -2px;
       }
       
       .sn-comment-input::placeholder {
@@ -1009,6 +1044,15 @@ export class CommentSection {
         cursor: not-allowed;
       }
       
+      .sn-comment-submit:focus {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+      }
+      
+      .sn-comment-submit:focus:not(:focus-visible) {
+        outline: none;
+      }
+      
       .sn-comment-submit svg {
         width: 14px;
         height: 14px;
@@ -1021,6 +1065,17 @@ export class CommentSection {
         color: #6b7280;
         font-size: 13px;
         font-style: italic;
+      }
+      
+      /* Reduced motion preference */
+      @media (prefers-reduced-motion: reduce) {
+        .sn-comments-toggle,
+        .sn-comments-panel,
+        .sn-comments-chevron,
+        .sn-comment-submit,
+        .sn-comment-action {
+          transition: none !important;
+        }
       }
     `;
   }

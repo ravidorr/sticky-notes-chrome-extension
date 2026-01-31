@@ -520,6 +520,15 @@ export function getShadowStyles() {
       background: rgba(255, 255, 255, 0.5);
     }
 
+    .sn-note-btn:focus {
+      outline: 2px solid var(--sn-color-primary);
+      outline-offset: 2px;
+    }
+
+    .sn-note-btn:focus:not(:focus-visible) {
+      outline: none;
+    }
+
     .sn-note-btn svg {
       width: 14px;
       height: 14px;
@@ -549,6 +558,8 @@ export function getShadowStyles() {
 
     .sn-note-textarea:focus {
       background: rgba(255, 255, 255, 0.8);
+      outline: 2px solid var(--sn-color-primary);
+      outline-offset: -2px;
     }
 
     .sn-note-textarea::placeholder {
@@ -648,6 +659,15 @@ export function getShadowStyles() {
       background: rgba(0, 0, 0, 0.05);
     }
     
+    .sn-metadata-toggle:focus {
+      outline: 2px solid var(--sn-color-primary);
+      outline-offset: -2px;
+    }
+    
+    .sn-metadata-toggle:focus:not(:focus-visible) {
+      outline: none;
+    }
+    
     .sn-metadata-chevron {
       width: 12px;
       height: 12px;
@@ -720,6 +740,16 @@ export function getShadowStyles() {
     
     .sn-metadata-copy-btn:hover {
       color: #4b5563;
+    }
+    
+    .sn-metadata-copy-btn:focus {
+      outline: 2px solid var(--sn-color-primary);
+      outline-offset: 1px;
+      opacity: 1;
+    }
+    
+    .sn-metadata-copy-btn:focus:not(:focus-visible) {
+      outline: none;
     }
     
     .sn-metadata-copy-btn svg {
@@ -897,6 +927,15 @@ export function getShadowStyles() {
       opacity: 0.8;
     }
     
+    .sn-console-errors-toggle:focus {
+      outline: 2px solid #dc2626;
+      outline-offset: -2px;
+    }
+    
+    .sn-console-errors-toggle:focus:not(:focus-visible) {
+      outline: none;
+    }
+    
     .sn-console-errors-icon {
       width: 14px;
       height: 14px;
@@ -1027,6 +1066,33 @@ export function getShadowStyles() {
       transform: translateY(-10px);
       padding: 0;
       margin: 0;
+    }
+
+    /* ==========================================
+       Reduced Motion Preference
+       ========================================== */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      
+      .sn-toast,
+      .sn-modal-overlay,
+      .sn-modal,
+      .sn-banner,
+      .sn-instruction-tooltip,
+      .sn-note,
+      .sn-note .sn-note-content,
+      .sn-note .sn-comment-section,
+      .sn-note .sn-note-footer {
+        animation: none !important;
+        transition: none !important;
+      }
     }
     
     ${RichEditor.getStyles()}

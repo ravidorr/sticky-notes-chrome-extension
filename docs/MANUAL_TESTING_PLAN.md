@@ -19,7 +19,7 @@
 15. [Internationalization (i18n)](#15-internationalization-i18n)
 16. [Restricted URLs & Edge Cases](#16-restricted-urls--edge-cases)
 17. [Performance Benchmarks](#17-performance-benchmarks)
-18. [Basic Accessibility Testing](#18-basic-accessibility-testing)
+18. [Accessibility Testing (WCAG 2.1 AA)](#18-accessibility-testing-wcag-21-aa)
 19. [Marketing Site Verification](#19-marketing-site-verification)
 20. [Settings/Preferences Page](#20-settingspreferences-page)
 21. [Bug Tracking Workflow](#21-bug-tracking-workflow)
@@ -1282,17 +1282,50 @@
 
 ---
 
-## 18. Basic Accessibility Testing
+## 18. Accessibility Testing (WCAG 2.1 AA)
 
 ### Current Implementation
 
-The extension has partial accessibility support:
+The extension has full WCAG 2.1 AA accessibility support:
 
-- `aria-modal`, `aria-labelledby` on confirmation dialogs
-- `aria-label` on interactive buttons
+**Semantic Structure:**
+
+- Skip link in popup for keyboard navigation
+- Semantic HTML (`<header>`, `<main>`, `<footer>` landmarks)
+- Proper heading hierarchy
+
+**ARIA Roles and Labels:**
+
+- `role="tablist"` / `role="tab"` / `role="tabpanel"` for note tabs
+- `role="radiogroup"` / `role="radio"` for theme/position pickers
+- `role="dialog"` / `aria-modal` on confirmation dialogs and modals
+- `role="menu"` / `role="menuitem"` for dropdown menus
+- `role="toolbar"` for rich text editor toolbar
+- `role="status"` for live status messages
+- `aria-label` on all interactive buttons
+- `aria-expanded`, `aria-selected`, `aria-checked`, `aria-pressed` states
+- `aria-hidden="true"` on decorative SVGs and icons
+
+**Keyboard Support:**
+
+- Arrow key navigation for tab panels and radio groups
 - Focus trapping in modal dialogs
-- Keyboard shortcuts (Escape to cancel/close)
-- Focus management when dialogs open
+- Keyboard shortcuts (Escape to cancel/close, Ctrl+H to toggle visibility)
+
+**Visual Accessibility:**
+
+- Visible focus indicators (yellow outline) on all interactive elements
+- Color contrast 4.6:1 for secondary text (WCAG AA compliant)
+- `prefers-reduced-motion` support (disables animations)
+
+### TEST-18.0: Skip Link Navigation
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open popup | Popup opens |
+| 2 | Press Tab once | Skip link becomes visible ("Skip to content") |
+| 3 | Press Enter on skip link | Focus moves to main content area |
+| 4 | Tab again | Focus moves to first interactive element in main content |
 
 ### TEST-18.1: Keyboard Navigation - Note Creation
 
@@ -1338,7 +1371,47 @@ The extension has partial accessibility support:
 |------|--------|-----------------|
 | 1 | Tab through popup elements | Focus indicator visible on each element |
 | 2 | Tab through note controls | Focus indicator visible |
-| 3 | Focus indicator meets contrast requirements | Clearly visible against background |
+| 3 | Focus indicator meets contrast requirements | Clearly visible against background (yellow outline) |
+
+### TEST-18.6: Tab Panel Arrow Navigation
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Focus on "This Page" tab in popup | Tab focused |
+| 2 | Press Right Arrow | Focus moves to "Shared" tab |
+| 3 | Press Left Arrow | Focus moves back to "This Page" tab |
+| 4 | Press Enter or Space | Tab activates, panel content shown |
+
+### TEST-18.7: Radio Group Arrow Navigation (Options Page)
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open options page | Options page loads |
+| 2 | Focus on theme picker | First theme option focused |
+| 3 | Press Right Arrow | Focus moves to next theme |
+| 4 | Press Left Arrow | Focus moves to previous theme |
+| 5 | Theme selection changes with focus | `aria-checked` updates |
+
+### TEST-18.8: Reduced Motion Preference
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Enable "Reduce motion" in OS accessibility settings | OS setting enabled |
+| 2 | Open popup | Popup opens without animations |
+| 3 | Switch tabs | No transition animations |
+| 4 | Open/close modals | No fade/slide animations |
+| 5 | Create a note | Note appears instantly without animations |
+
+### TEST-18.9: Screen Reader Compatibility
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open popup with screen reader | "Sticky Notes" heading announced |
+| 2 | Navigate to tabs | "Notes tabs, tablist" announced |
+| 3 | Focus on tab | Tab name and selected state announced |
+| 4 | Navigate to action button | Button name announced |
+| 5 | Open dropdown menu | "Menu" role announced |
+| 6 | Navigate menu items | Menu item names announced |
 
 ---
 

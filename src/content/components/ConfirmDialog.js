@@ -258,6 +258,16 @@ export class ConfirmDialog {
       .sn-confirm-danger:focus {
         outline-color: var(--sn-color-error, #ef4444);
       }
+      
+      /* Reduced motion preference */
+      @media (prefers-reduced-motion: reduce) {
+        .sn-confirm-backdrop,
+        .sn-confirm-dialog,
+        .sn-confirm-btn {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
     `;
   }
 }
