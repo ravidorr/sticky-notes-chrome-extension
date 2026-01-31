@@ -72,7 +72,7 @@
     title: "Page Title",
     browser: "Chrome 120",
     viewport: "1920x1080",
-    timestamp: "2026-01-17T10:00:00.000Z",
+    timestamp: "2026-01-17T10:00:00.000Z",ut
     isTopFrame: true,
     frameUrl: null,                          // Iframe URL if not top frame
     environment: "staging",                  // local | development | staging | production
@@ -149,34 +149,34 @@ Features that differentiate for developer and QA workflows:
 
 ### Screenshot & Export
 
-- [] Screenshot on note creation
+- [ ] Screenshot on note creation
 - [x] "Copy as Markdown" - generates bug report template
 - [x] "Copy screenshot" - one-click annotated screenshot
-- [] Shareable link that highlights the element
+- [ ] Shareable link that highlights the element
 - [x] Export all notes as JSON
 - [x] Export all notes as CSV (from popup)
 
 ### Issue Tracking Integration
 
-- [] Jira integration (one-click ticket creation)
-- [] Linear integration
-- [] GitHub Issues integration
-- [] Status tracking (open/resolved/reopened)
+- [ ] Jira integration (one-click ticket creation)
+- [ ] Linear integration
+- [ ] GitHub Issues integration
+- [ ] Status tracking (open/resolved/reopened)
 
 ### Advanced
 
-- [] Session replay link support (LogRocket/FullStory)
-- [] Batch export notes as report
+- [ ] Session replay link support (LogRocket/FullStory)
+- [ ] Batch export notes as report
 
 ---
 
 ## Phase 4: Team & Billing
 
-- [] Team workspaces
-- [] Role-based permissions
-- [] Usage analytics dashboard
-- [] Priority support (Team and Pro tiers)
-- [] Custom branding (Pro tier - custom logo, colors for shared notes)
+- [ ] Team workspaces
+- [ ] Role-based permissions
+- [ ] Usage analytics dashboard
+- [ ] Priority support (Team and Pro tiers)
+- [ ] Custom branding (Pro tier - custom logo, colors for shared notes)
 
 ### Pricing Model
 
@@ -196,42 +196,42 @@ Internal tools for managing users, subscriptions, and analytics.
 
 ### User Management
 
-- [] User list with search/filter
-- [] View user details (notes count, usage, tier)
-- [] Manually upgrade/downgrade user tier
-- [] Suspend/unsuspend users
-- [] Delete user and associated data (GDPR)
+- [ ] User list with search/filter
+- [ ] View user details (notes count, usage, tier)
+- [ ] Manually upgrade/downgrade user tier
+- [ ] Suspend/unsuspend users
+- [ ] Delete user and associated data (GDPR)
 
 ### Subscription Management
 
-- [] View all subscriptions
-- [] Stripe integration for billing
-- [] Trial management (start, extend, end)
-- [] Invoice history per user
-- [] Refund processing
+- [ ] View all subscriptions
+- [ ] Stripe integration for billing
+- [ ] Trial management (start, extend, end)
+- [ ] Invoice history per user
+- [ ] Refund processing
 
 ### Analytics Dashboard
 
-- [] Active users (DAU/MAU)
-- [] Notes created per day/week/month
-- [] Conversion rates (free -> basic -> pro)
-- [] Churn rate tracking
-- [] Revenue metrics (MRR, ARR)
-- [] Usage by feature
+- [ ] Active users (DAU/MAU)
+- [ ] Notes created per day/week/month
+- [ ] Conversion rates (free -> basic -> pro)
+- [ ] Churn rate tracking
+- [ ] Revenue metrics (MRR, ARR)
+- [ ] Usage by feature
 
 ### Support Tools
 
-- [] View user's notes (with permission/audit log)
-- [] Impersonate user for debugging
-- [] Audit log for admin actions
-- [] Support ticket integration
+- [ ] View user's notes (with permission/audit log)
+- [ ] Impersonate user for debugging
+- [ ] Audit log for admin actions
+- [ ] Support ticket integration
 
 ### System Health
 
-- [] Firebase usage metrics
-- [] Error tracking dashboard
-- [] API latency monitoring
-- [] Storage usage per user
+- [ ] Firebase usage metrics
+- [ ] Error tracking dashboard
+- [ ] API latency monitoring
+- [ ] Storage usage per user
 
 ---
 
@@ -272,7 +272,7 @@ Unplanned feature ideas for future consideration:
 
 - [x] Minimize note (collapse to small indicator)
 - [x] Delete/bulk delete notes from popup.html
-- [] Delete old notes from popup UI (filter by age, cleanup stale notes)
+- [ ] Delete old notes from popup UI (filter by age, cleanup stale notes)
 - [x] Add note through right-click context menu
 - [x] Page-level notes (notes without element anchor, attached to page itself)
 - [x] Per-note visibility controls (hide/show individual notes, persisted across refreshes)
@@ -284,19 +284,19 @@ Unplanned feature ideas for future consideration:
   - "Open Notes Dashboard" context menu item
   - Keyboard shortcut Alt+Shift+D to open dashboard
   - Welcome page on first install with feature highlights
-- [] Read-only user permissions (viewers who can see notes but not edit/comment) - pricing implications?
-- [] Freemium model with ads - all features free forever but with ads in notes (research: can Google Ads be injected into extension UI?)
-- [] Edge browser support (Chromium-based, should be straightforward)
-- [] Firefox browser support (requires WebExtensions API adaptation)
-- [] Test data cleanup feature (delete all notes for testing purposes)
+- [ ] Read-only user permissions (viewers who can see notes but not edit/comment) - pricing implications?
+- [ ] Freemium model with ads - all features free forever but with ads in notes (research: can Google Ads be injected into extension UI?)
+- [ ] Edge browser support (Chromium-based, should be straightforward)
+- [ ] Firefox browser support (requires WebExtensions API adaptation)
+- [ ] Test data cleanup feature (delete all notes for testing purposes)
 - [x] WCAG 2.1 AA accessibility compliance (landing page) - skip links, focus states, heading hierarchy, aria labels, prefers-reduced-motion, touch targets
-- [] WCAG 2.1 AA accessibility compliance (extension UI)
-- [] Additional note positions: Center Left, Center Right, Top Center, Bottom Center
-- [] Auto position: smart positioning based on available viewport space
-- [] Note content length validation (e.g., 10,000-50,000 chars) for UX, performance, and cost control
-- [] Image support in notes (Pro feature - requires Firebase Storage, upload flow, cost considerations)
-- [] RichEditor enhancements: code/monospace, strikethrough, checkboxes, blockquotes
-- [] Slack Integration: Share notes directly to Slack channels/users (High effort - requires Slack app setup, OAuth, webhooks)
+- [ ] WCAG 2.1 AA accessibility compliance (extension UI)
+- [ ] Additional note positions: Center Left, Center Right, Top Center, Bottom Center
+- [ ] Auto position: smart positioning based on available viewport space
+- [ ] Note content length validation (e.g., 10,000-50,000 chars) for UX, performance, and cost control
+- [ ] Image support in notes (Pro feature - requires Firebase Storage, upload flow, cost considerations)
+- [ ] RichEditor enhancements: code/monospace, strikethrough, checkboxes, blockquotes
+- [ ] Slack Integration: Share notes directly to Slack channels/users (High effort - requires Slack app setup, OAuth, webhooks)
 - [x] Inline sharing via email detection in note content:
   - Implemented: Auto-share when email + space is typed
   - Visual feedback: green underline (success), red underline (failed)
@@ -309,8 +309,8 @@ Unplanned feature ideas for future consideration:
   - [x] Bulk delete all notes
   - [x] Share notes from popup
   - [x] Jump to note and maximize it
-  - [] View and delete notes from other pages (cross-page note management)
-  - [] Potential UI: list view with page grouping, search/filter capabilities
+  - [ ] View and delete notes from other pages (cross-page note management)
+  - [ ] Potential UI: list view with page grouping, search/filter capabilities
 - [x] Preferences/Settings page:
   - [x] Default theme for new notes
   - [x] Default position preference
@@ -323,7 +323,7 @@ Unplanned feature ideas for future consideration:
 
 ## Tech Debt
 
-- [] Remove CHANGELOG.md from markdownlint ignores and fix any linting issues
+- [ ] Remove CHANGELOG.md from markdownlint ignores and fix any linting issues
 
 ---
 
@@ -332,12 +332,12 @@ Unplanned feature ideas for future consideration:
 ### Major
 
 - [x] ~~Note position relative to element (top/bottom + right/left) isn't always working correctly~~ (Fixed: notes now use viewport coordinates and follow anchor elements when scrolling)
-- [] On some pages, notes fail to attach to elements at all
-- [] On pages with repeated content structures (e.g., live news feeds), notes may attach to the wrong instance of an element due to non-unique CSS selectors
+- [ ] On some pages, notes fail to attach to elements at all
+- [ ] On pages with repeated content structures (e.g., live news feeds), notes may attach to the wrong instance of an element due to non-unique CSS selectors
 
 ### Minor
 
-- [] The yellow color of the "Add to Chrome" button doesn't work well with the colors in the Chrome SVG logo
+- [ ] The yellow color of the "Add to Chrome" button doesn't work well with the colors in the Chrome SVG logo
 
 ---
 
