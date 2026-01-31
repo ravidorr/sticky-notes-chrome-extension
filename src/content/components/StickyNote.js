@@ -189,7 +189,7 @@ export class StickyNote {
           </svg>
           <span class="sn-metadata-time">${formatRelativeTime(this.createdAt)}</span>
         </button>
-        <div class="sn-metadata-panel sn-hidden" id="sn-metadata-panel-${this.id}" role="region" aria-label="${t('viewMetadata')}"">
+        <div class="sn-metadata-panel sn-hidden" id="sn-metadata-panel-${this.id}" role="region" aria-label="${t('viewMetadata')}">
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataUrl')}</span>
             <span class="sn-metadata-value sn-metadata-url" title="${escapeHtml(this.metadata.url)}">${escapeHtml(this.truncateUrl(this.metadata.url))}</span>
