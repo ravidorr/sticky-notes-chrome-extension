@@ -180,9 +180,25 @@ body {
   background: #f9fafb;
 }
 
-.theme-option.selected {
+/* Theme-specific selected states */
+.theme-option[data-theme="yellow"].selected {
   border-color: #facc15;
   background: #fffbeb;
+}
+
+.theme-option[data-theme="blue"].selected {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.theme-option[data-theme="green"].selected {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.theme-option[data-theme="pink"].selected {
+  border-color: #ec4899;
+  background: #fdf2f8;
 }
 
 .theme-color {

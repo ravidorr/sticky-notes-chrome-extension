@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New manifest command `toggle-all-notes` registered as browser-level keyboard shortcut
 - i18n support for the new command description (`commandToggleAllNotes`) in all supported languages
 
+### Improved
+
+- Settings page title changed from "Settings" to "Sticky Settings" for better branding consistency
+- Theme picker in Settings now shows color-matched border and background when a theme is selected (yellow shows yellow highlight, blue shows blue highlight, etc.)
+
 ### Fixed
 
 - `Ctrl+H`/`Cmd+H` keyboard shortcut now works when the note editor has focus. Previously, the RichEditor component blocked all keyboard events from bubbling up, which prevented the visibility toggle shortcut from reaching the StickyNote handler when users were typing in the editor.
