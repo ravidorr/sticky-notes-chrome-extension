@@ -304,7 +304,7 @@ Unplanned feature ideas for future consideration:
   - Visual feedback: green underline (success), red underline (failed)
   - Hover tooltip shows share status
   - Auto-unshare when email is removed from note
-  - [ ] Add toast notifications for auto-share success/failure (matches manual share UX)
+  - [x] Add toast notifications for auto-share success/failure (matches manual share UX)
 - [x] Manage sticky notes from popup:
   - [x] View note metadata in popup (expand/preview mode)
   - [x] Delete notes on current page from popup

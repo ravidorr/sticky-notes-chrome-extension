@@ -2488,6 +2488,9 @@ describe('StickyNote', () => {
       });
       container.appendChild(localThis.shareNote.element);
       
+      // Spy on showToast to verify toast notification
+      localThis.showToastSpy = jest.spyOn(localThis.shareNote, 'showToast');
+      
       await localThis.shareNote.handleAutoShare('other@example.com');
       
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
@@ -2496,10 +2499,14 @@ describe('StickyNote', () => {
         email: 'other@example.com'
       });
       
+      // Verify toast is shown for success (t() returns key name in tests)
+      expect(localThis.showToastSpy).toHaveBeenCalledWith('noteShared');
+      
+      localThis.showToastSpy.mockRestore();
       localThis.shareNote.destroy();
     });
     
-    it('should handle share error gracefully', async () => {
+    it('should handle share error gracefully with custom error message', async () => {
       chrome.runtime.sendMessage.mockResolvedValue({ success: false, error: 'User not found' });
       
       const localThis = {};
@@ -2510,9 +2517,39 @@ describe('StickyNote', () => {
       });
       container.appendChild(localThis.shareNote.element);
       
+      // Spy on showToast to verify error toast notification
+      localThis.showToastSpy = jest.spyOn(localThis.shareNote, 'showToast');
+      
       // Should not throw - if it throws, Jest will fail the test
       await localThis.shareNote.handleAutoShare('invalid@example.com');
       
+      // Verify error toast is shown with the error message
+      expect(localThis.showToastSpy).toHaveBeenCalledWith('User not found', 'error');
+      
+      localThis.showToastSpy.mockRestore();
+      localThis.shareNote.destroy();
+    });
+    
+    it('should show fallback error toast when response has no error message', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: false });
+      
+      const localThis = {};
+      localThis.shareNote = new StickyNote({
+        id: 'share-error-fallback',
+        anchor: anchor,
+        content: 'Test content'
+      });
+      container.appendChild(localThis.shareNote.element);
+      
+      // Spy on showToast to verify error toast notification
+      localThis.showToastSpy = jest.spyOn(localThis.shareNote, 'showToast');
+      
+      await localThis.shareNote.handleAutoShare('test@example.com');
+      
+      // Verify fallback error toast is shown (t() returns key name in tests)
+      expect(localThis.showToastSpy).toHaveBeenCalledWith('failedToShare', 'error');
+      
+      localThis.showToastSpy.mockRestore();
       localThis.shareNote.destroy();
     });
     
@@ -2527,9 +2564,16 @@ describe('StickyNote', () => {
       });
       container.appendChild(localThis.shareNote.element);
       
+      // Spy on showToast to verify error toast notification
+      localThis.showToastSpy = jest.spyOn(localThis.shareNote, 'showToast');
+      
       // Should not throw - if it throws, Jest will fail the test
       await localThis.shareNote.handleAutoShare('test@example.com');
       
+      // Verify error toast is shown for network errors (t() returns key name in tests)
+      expect(localThis.showToastSpy).toHaveBeenCalledWith('failedToShare', 'error');
+      
+      localThis.showToastSpy.mockRestore();
       localThis.shareNote.destroy();
     });
     

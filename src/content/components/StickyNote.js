@@ -1812,17 +1812,23 @@ export class StickyNote {
         if (this.richEditor) {
           this.richEditor.updateEmailStatus(email, true, t('sharedWithEmail', [email]) || `Shared with ${email}`);
         }
+        // Show toast feedback to match manual share UX
+        this.showToast(t('noteShared'));
       } else {
         // Update email visual status to failed
         if (this.richEditor) {
           this.richEditor.updateEmailStatus(email, false, response?.error || t('failedToShare'));
         }
+        // Show toast feedback to match manual share UX
+        this.showToast(response?.error || t('failedToShare'), 'error');
       }
     } catch (error) {
       log.error('Auto-share error:', error);
       if (this.richEditor) {
         this.richEditor.updateEmailStatus(email, false, t('failedToShare'));
       }
+      // Show toast feedback to match manual share UX
+      this.showToast(t('failedToShare'), 'error');
     }
   }
   

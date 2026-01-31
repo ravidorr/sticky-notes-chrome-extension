@@ -5,7 +5,7 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.19.2] - 2026-01-31
+## [1.19.3] - 2026-01-31
 
 ### Added
 
@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Visual error state over limit (red counter)
   - Submit blocked when over limit with toast notification
   - Full i18n support for all locales
+
+### Changed
+
+- **Auto-Share Toast Notifications**: Inline email sharing now shows toast notifications for success/failure, matching the manual share modal UX
 
 ### Fixed
 
