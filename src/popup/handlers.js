@@ -6,6 +6,7 @@
 import { isRestrictedUrl, THEME_COLORS, escapeHtml, stripHtml, truncate, isValidEmail, formatRelativeTime } from '../shared/utils.js';
 import { popupLogger as defaultLog } from '../shared/logger.js';
 import { t } from '../shared/i18n.js';
+import { ReportGenerator, REPORT_SCOPES, downloadReport } from '../shared/reportGenerator.js';
 
 /**
  * Create popup handlers with injected dependencies
@@ -676,6 +677,90 @@ export function createPopupHandlers(deps = {}) {
   }
 
   /**
+   * Generate a formatted report from notes
+   * @param {Object} options - Report options (format, scope, includeMetadata, etc.)
+   * @param {Array} currentPageNotes - Notes from the current page (for currentPage scope)
+   * @returns {Promise<Object>} Result with success flag
+   */
+  async function handleGenerateReport(options, currentPageNotes = []) {
+    try {
+      // Determine which notes to include based on scope
+      let notes = [];
+      
+      if (options.scope === REPORT_SCOPES.CURRENT_PAGE) {
+        notes = currentPageNotes;
+      } else if (options.scope === REPORT_SCOPES.ALL_NOTES || options.scope === REPORT_SCOPES.DATE_RANGE) {
+        const result = await getAllNotes();
+        if (!result.success) {
+          return { success: false, error: result.error };
+        }
+        notes = result.notes;
+      } else if (options.scope === REPORT_SCOPES.SELECTED) {
+        // Selected notes would be filtered by selectedNoteIds in options
+        if (!options.selectedNoteIds || options.selectedNoteIds.length === 0) {
+          return { success: false, error: t('reportNoNotesSelected') || 'No notes selected' };
+        }
+        const result = await getAllNotes();
+        if (!result.success) {
+          return { success: false, error: result.error };
+        }
+        const selectedSet = new Set(options.selectedNoteIds);
+        notes = result.notes.filter(n => selectedSet.has(n.id));
+      }
+      
+      if (!notes || notes.length === 0) {
+        if (showErrorToast) {
+          showErrorToast(t('noNotesForReport') || 'No notes to include in report');
+        }
+        return { success: false, error: t('noNotesForReport') || 'No notes to include in report' };
+      }
+      
+      // If comments are requested, fetch them for each note
+      if (options.includeComments) {
+        for (const note of notes) {
+          try {
+            const response = await chromeRuntime.sendMessage({
+              action: 'getCommentsForNote',
+              noteId: note.id
+            });
+            if (response?.success && response.comments) {
+              note.comments = response.comments;
+            }
+          } catch {
+            // If comments fail to load, continue without them
+            note.comments = [];
+          }
+        }
+      }
+      
+      // Get user context
+      const user = await checkAuthState();
+      const context = {
+        userEmail: user?.email || ''
+      };
+      
+      // Create generator and generate report
+      const generator = new ReportGenerator(options);
+      const report = await generator.generate(notes, context);
+      
+      // Download the report
+      downloadReport(report);
+      
+      if (showSuccessToast) {
+        showSuccessToast(t('reportGenerated') || 'Report generated');
+      }
+      
+      return { success: true, filename: report.filename };
+    } catch (error) {
+      log.error('Generate report error:', error);
+      if (showErrorToast) {
+        showErrorToast(t('reportFailed') || 'Failed to generate report');
+      }
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Format timestamp for display
    * @param {any} timestamp - Timestamp (Date, string, or Firestore timestamp)
    * @returns {string} Formatted date string
@@ -1190,6 +1275,7 @@ export function createPopupHandlers(deps = {}) {
     handleShareNote,
     handleLeaveNote,
     handleExportCSV,
+    handleGenerateReport,
     getAllNotes,
     showShareModal,
     showConfirmDialog,

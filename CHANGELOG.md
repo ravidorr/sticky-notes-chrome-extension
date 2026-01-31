@@ -5,7 +5,7 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.18.0] - 2026-01-31
+## [1.19.0] - 2026-01-31
 
 ### Added
 
@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Blockquote formatting (toolbar button + `Ctrl+Shift+Q`)
   - Interactive checkboxes for task lists (toolbar button)
   - All new formats preserved during paste operations
+- **Report Export**: Generate formatted reports of your notes
+  - Output formats: HTML (styled, self-contained), PDF (via browser print), Markdown
+  - Scope options: Current page notes, all notes, or notes within a date range
+  - Content options: Include/exclude metadata, comments, and screenshots
+  - Available from popup menu ("More actions") and web dashboard
+  - Report includes statistics (note count, theme breakdown, top domains)
 
 ## [1.17.0] - 2026-01-31
 

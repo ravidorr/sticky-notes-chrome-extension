@@ -1137,6 +1137,81 @@
 | 3 | Expand metadata panel and copy "Element" selector | Selector is copied successfully |
 | 4 | Observe DevTools console | No Permissions Policy clipboard violation noise is emitted from these actions |
 
+### TEST-14.7: Report Export - HTML Format
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create several notes on different pages | Notes exist |
+| 2 | Click extension icon, then "More actions" menu | Dropdown opens |
+| 3 | Click "Generate Report" | Report modal opens |
+| 4 | Select "HTML" format | HTML option selected |
+| 5 | Select "All Notes" scope | Scope selected |
+| 6 | Check "Include Metadata" and "Include Comments" | Options checked |
+| 7 | Click "Generate" button | Report downloads as .html file |
+| 8 | Open downloaded file in browser | Styled report displays with notes, metadata, comments |
+| 9 | Verify report contains statistics | Note count, theme breakdown, top domains shown |
+
+### TEST-14.8: Report Export - PDF Format
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open report modal | Modal opens |
+| 2 | Select "PDF" format | PDF option selected |
+| 3 | Click "Generate" button | Browser print dialog opens |
+| 4 | Select "Save as PDF" in print dialog | PDF saved |
+| 5 | Open PDF | Report displays correctly |
+
+### TEST-14.9: Report Export - Markdown Format
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open report modal | Modal opens |
+| 2 | Select "Markdown" format | Markdown option selected |
+| 3 | Click "Generate" button | Report downloads as .md file |
+| 4 | Open in text editor | Markdown formatted report with notes |
+
+### TEST-14.10: Report Export - Current Page Scope
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create 3 notes on current page | Notes exist |
+| 2 | Create 2 notes on a different page | Notes exist elsewhere |
+| 3 | Return to first page, open report modal | Modal opens |
+| 4 | Select "Current Page" scope | Scope selected |
+| 5 | Generate report | Report contains only 3 notes from current page |
+
+### TEST-14.11: Report Export - Date Range Scope
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open report modal | Modal opens |
+| 2 | Select "Date Range" scope | Date inputs appear |
+| 3 | Set start date to 7 days ago | Start date set |
+| 4 | Set end date to today | End date set |
+| 5 | Generate report | Report contains only notes within date range |
+
+### TEST-14.12: Report Export - Dashboard
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open dashboard (Alt+Shift+D) | Dashboard opens |
+| 2 | Click "Report" button in controls | Report modal opens |
+| 3 | Select format and scope | Options selected |
+| 4 | Click "Generate" | Report downloads |
+| 5 | Verify report content | Matches dashboard notes |
+
+### TEST-14.13: Report Export - Content Options
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create note with metadata and comments | Note exists with data |
+| 2 | Open report modal | Modal opens |
+| 3 | Uncheck "Include Metadata" | Option unchecked |
+| 4 | Generate HTML report | Report excludes metadata section |
+| 5 | Open report modal again | Modal opens |
+| 6 | Check "Include Metadata", uncheck "Include Comments" | Options set |
+| 7 | Generate report | Report includes metadata, excludes comments |
+
 ---
 
 ## 15. Internationalization (i18n)

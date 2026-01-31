@@ -1383,6 +1383,252 @@ body {
   border-radius: 6px;
 }
 
+/* Report Modal Specific Styles */
+.report-modal-content {
+  max-width: 380px;
+}
+
+.report-option-group {
+  margin-bottom: 20px;
+}
+
+.report-option-group:last-child {
+  margin-bottom: 0;
+}
+
+.report-option-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 10px;
+}
+
+/* Format Options */
+.report-format-options {
+  display: flex;
+  gap: 8px;
+}
+
+.report-format-option {
+  flex: 1;
+  cursor: pointer;
+}
+
+.report-format-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.report-format-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  transition: all 0.15s ease;
+}
+
+.report-format-option input:checked + .report-format-card {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.report-format-option input:focus + .report-format-card {
+  outline: 2px solid #facc15;
+  outline-offset: 2px;
+}
+
+.report-format-card:hover {
+  border-color: #d1d5db;
+}
+
+.report-format-card svg {
+  color: #9ca3af;
+}
+
+.report-format-option input:checked + .report-format-card svg {
+  color: #3b82f6;
+}
+
+/* Scope Options */
+.report-scope-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-scope-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  transition: all 0.15s ease;
+}
+
+.report-scope-option:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.report-scope-option input {
+  margin: 0;
+  accent-color: #3b82f6;
+}
+
+.report-scope-option input:checked ~ span:first-of-type {
+  font-weight: 500;
+}
+
+.selected-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Date Range Inputs */
+.date-range-inputs {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.date-range-inputs.hidden {
+  display: none;
+}
+
+.date-input-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-input-group label {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.date-input {
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Content Options */
+.report-content-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  transition: background 0.15s ease;
+}
+
+.report-checkbox-option:hover {
+  background: #f9fafb;
+}
+
+.report-checkbox-option input {
+  margin: 0;
+  accent-color: #3b82f6;
+}
+
+.option-hint {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.option-hint-disabled {
+  color: #d1d5db;
+}
+
+/* Modal footer button with icon */
+#report-modal-generate {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#report-modal-generate svg {
+  flex-shrink: 0;
+}
+
+/* Note selection checkboxes */
+.note-item-select {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.note-item-select input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.note-item-select input[type="checkbox"]:focus {
+  outline: 2px solid #facc15;
+  outline-offset: 2px;
+}
+
+.note-item-select input[type="checkbox"]:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Select all toggle in notes header */
+.select-all-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.select-all-toggle input {
+  accent-color: #3b82f6;
+}
+
+.select-all-toggle:hover {
+  color: #374151;
+}
+
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   *,

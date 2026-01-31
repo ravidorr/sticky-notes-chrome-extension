@@ -1231,5 +1231,110 @@
   "skipToContent": {
     "message": "דלג לתוכן",
     "description": "Skip link text for keyboard navigation"
+  },
+
+  "generateReport": {
+    "message": "צור דוח",
+    "description": "Button to generate a formatted report from notes"
+  },
+  "reportTitle": {
+    "message": "דוח פתקיות דביקות",
+    "description": "Title of the generated report"
+  },
+  "reportFormat": {
+    "message": "פורמט",
+    "description": "Label for report format selection"
+  },
+  "reportFormatHTML": {
+    "message": "HTML",
+    "description": "HTML format option"
+  },
+  "reportFormatPDF": {
+    "message": "PDF",
+    "description": "PDF format option"
+  },
+  "reportFormatMarkdown": {
+    "message": "Markdown",
+    "description": "Markdown format option"
+  },
+  "reportScope": {
+    "message": "כלול",
+    "description": "Label for report scope selection"
+  },
+  "reportScopeCurrentPage": {
+    "message": "פתקיות מהעמוד הזה",
+    "description": "Option to include only current page notes"
+  },
+  "reportScopeAllNotes": {
+    "message": "כל הפתקיות",
+    "description": "Option to include all notes"
+  },
+  "reportScopeSelected": {
+    "message": "פתקיות נבחרות",
+    "description": "Option to include only selected notes"
+  },
+  "reportScopeDateRange": {
+    "message": "פתקיות בטווח תאריכים",
+    "description": "Option to include notes within a date range"
+  },
+  "reportDateFrom": {
+    "message": "מתאריך",
+    "description": "Label for start date input"
+  },
+  "reportDateTo": {
+    "message": "עד תאריך",
+    "description": "Label for end date input"
+  },
+  "reportContent": {
+    "message": "תוכן",
+    "description": "Label for report content options"
+  },
+  "reportIncludeMetadata": {
+    "message": "כלול מטא נתונים",
+    "description": "Option to include note metadata"
+  },
+  "reportMetadataHint": {
+    "message": "(דפדפן, חלון צפייה, סביבה)",
+    "description": "Hint text for metadata option"
+  },
+  "reportIncludeComments": {
+    "message": "כלול תגובות",
+    "description": "Option to include comment threads"
+  },
+  "reportIncludeScreenshots": {
+    "message": "כלול צילומי מסך",
+    "description": "Option to include screenshots"
+  },
+  "reportScreenshotsHint": {
+    "message": "(אם קיימים)",
+    "description": "Hint text for screenshots option"
+  },
+  "reportGenerate": {
+    "message": "צור",
+    "description": "Button to generate the report"
+  },
+  "reportGenerating": {
+    "message": "יוצר דוח...",
+    "description": "Message shown while generating report"
+  },
+  "reportGenerated": {
+    "message": "הדוח נוצר",
+    "description": "Success message after report generation"
+  },
+  "reportFailed": {
+    "message": "יצירת הדוח נכשלה",
+    "description": "Error message when report generation fails"
+  },
+  "noNotesForReport": {
+    "message": "אין פתקיות לכלול בדוח",
+    "description": "Error when there are no notes for the report"
+  },
+  "reportNoNotesSelected": {
+    "message": "אנא בחר לפחות פתקית אחת",
+    "description": "Error when no notes are selected for report"
+  },
+  "reportDateRangeRequired": {
+    "message": "אנא בחר תאריך התחלה וסיום",
+    "description": "Error when date range is incomplete"
   }
 }

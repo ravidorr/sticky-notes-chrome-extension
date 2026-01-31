@@ -1227,5 +1227,110 @@
   "skipToContent": {
     "message": "Aller au contenu",
     "description": "Skip link text for keyboard navigation"
+  },
+
+  "generateReport": {
+    "message": "Generer un rapport",
+    "description": "Button to generate a formatted report from notes"
+  },
+  "reportTitle": {
+    "message": "Rapport Sticky Notes",
+    "description": "Title of the generated report"
+  },
+  "reportFormat": {
+    "message": "Format",
+    "description": "Label for report format selection"
+  },
+  "reportFormatHTML": {
+    "message": "HTML",
+    "description": "HTML format option"
+  },
+  "reportFormatPDF": {
+    "message": "PDF",
+    "description": "PDF format option"
+  },
+  "reportFormatMarkdown": {
+    "message": "Markdown",
+    "description": "Markdown format option"
+  },
+  "reportScope": {
+    "message": "Inclure",
+    "description": "Label for report scope selection"
+  },
+  "reportScopeCurrentPage": {
+    "message": "Notes de cette page",
+    "description": "Option to include only current page notes"
+  },
+  "reportScopeAllNotes": {
+    "message": "Toutes les notes",
+    "description": "Option to include all notes"
+  },
+  "reportScopeSelected": {
+    "message": "Notes selectionnees",
+    "description": "Option to include only selected notes"
+  },
+  "reportScopeDateRange": {
+    "message": "Notes dans la periode",
+    "description": "Option to include notes within a date range"
+  },
+  "reportDateFrom": {
+    "message": "Du",
+    "description": "Label for start date input"
+  },
+  "reportDateTo": {
+    "message": "Au",
+    "description": "Label for end date input"
+  },
+  "reportContent": {
+    "message": "Contenu",
+    "description": "Label for report content options"
+  },
+  "reportIncludeMetadata": {
+    "message": "Inclure les metadonnees",
+    "description": "Option to include note metadata"
+  },
+  "reportMetadataHint": {
+    "message": "(navigateur, fenetre, environnement)",
+    "description": "Hint text for metadata option"
+  },
+  "reportIncludeComments": {
+    "message": "Inclure les commentaires",
+    "description": "Option to include comment threads"
+  },
+  "reportIncludeScreenshots": {
+    "message": "Inclure les captures",
+    "description": "Option to include screenshots"
+  },
+  "reportScreenshotsHint": {
+    "message": "(si disponibles)",
+    "description": "Hint text for screenshots option"
+  },
+  "reportGenerate": {
+    "message": "Generer",
+    "description": "Button to generate the report"
+  },
+  "reportGenerating": {
+    "message": "Generation du rapport...",
+    "description": "Message shown while generating report"
+  },
+  "reportGenerated": {
+    "message": "Rapport genere",
+    "description": "Success message after report generation"
+  },
+  "reportFailed": {
+    "message": "Echec de la generation du rapport",
+    "description": "Error message when report generation fails"
+  },
+  "noNotesForReport": {
+    "message": "Aucune note a inclure dans le rapport",
+    "description": "Error when there are no notes for the report"
+  },
+  "reportNoNotesSelected": {
+    "message": "Veuillez selectionner au moins une note",
+    "description": "Error when no notes are selected for report"
+  },
+  "reportDateRangeRequired": {
+    "message": "Veuillez selectionner les dates de debut et de fin",
+    "description": "Error when date range is incomplete"
   }
 }

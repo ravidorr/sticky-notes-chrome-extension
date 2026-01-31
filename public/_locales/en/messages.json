@@ -1237,5 +1237,110 @@
   "skipToContent": {
     "message": "Skip to content",
     "description": "Skip link text for keyboard navigation"
+  },
+
+  "generateReport": {
+    "message": "Generate Report",
+    "description": "Button to generate a formatted report from notes"
+  },
+  "reportTitle": {
+    "message": "Sticky Notes Report",
+    "description": "Title of the generated report"
+  },
+  "reportFormat": {
+    "message": "Format",
+    "description": "Label for report format selection"
+  },
+  "reportFormatHTML": {
+    "message": "HTML",
+    "description": "HTML format option"
+  },
+  "reportFormatPDF": {
+    "message": "PDF",
+    "description": "PDF format option"
+  },
+  "reportFormatMarkdown": {
+    "message": "Markdown",
+    "description": "Markdown format option"
+  },
+  "reportScope": {
+    "message": "Include",
+    "description": "Label for report scope selection"
+  },
+  "reportScopeCurrentPage": {
+    "message": "Notes from this page",
+    "description": "Option to include only current page notes"
+  },
+  "reportScopeAllNotes": {
+    "message": "All notes",
+    "description": "Option to include all notes"
+  },
+  "reportScopeSelected": {
+    "message": "Selected notes",
+    "description": "Option to include only selected notes"
+  },
+  "reportScopeDateRange": {
+    "message": "Notes within date range",
+    "description": "Option to include notes within a date range"
+  },
+  "reportDateFrom": {
+    "message": "From",
+    "description": "Label for start date input"
+  },
+  "reportDateTo": {
+    "message": "To",
+    "description": "Label for end date input"
+  },
+  "reportContent": {
+    "message": "Content",
+    "description": "Label for report content options"
+  },
+  "reportIncludeMetadata": {
+    "message": "Include metadata",
+    "description": "Option to include note metadata"
+  },
+  "reportMetadataHint": {
+    "message": "(browser, viewport, environment)",
+    "description": "Hint text for metadata option"
+  },
+  "reportIncludeComments": {
+    "message": "Include comments",
+    "description": "Option to include comment threads"
+  },
+  "reportIncludeScreenshots": {
+    "message": "Include screenshots",
+    "description": "Option to include screenshots"
+  },
+  "reportScreenshotsHint": {
+    "message": "(if captured)",
+    "description": "Hint text for screenshots option"
+  },
+  "reportGenerate": {
+    "message": "Generate",
+    "description": "Button to generate the report"
+  },
+  "reportGenerating": {
+    "message": "Generating report...",
+    "description": "Message shown while generating report"
+  },
+  "reportGenerated": {
+    "message": "Report generated",
+    "description": "Success message after report generation"
+  },
+  "reportFailed": {
+    "message": "Failed to generate report",
+    "description": "Error message when report generation fails"
+  },
+  "noNotesForReport": {
+    "message": "No notes to include in report",
+    "description": "Error when there are no notes for the report"
+  },
+  "reportNoNotesSelected": {
+    "message": "Please select at least one note",
+    "description": "Error when no notes are selected for report"
+  },
+  "reportDateRangeRequired": {
+    "message": "Please select both start and end dates",
+    "description": "Error when date range is incomplete"
   }
 }

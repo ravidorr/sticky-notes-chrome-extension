@@ -1083,3 +1083,322 @@ img {
     border-radius: var(--radius-md);
 }
 
+/* ============================================
+   Report Modal
+   ============================================ */
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.15s ease;
+}
+
+.modal-content {
+    position: relative;
+    background: var(--color-bg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: calc(100% - 2rem);
+    max-width: 480px;
+    max-height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+    animation: slideIn 0.2s ease;
+    overflow: hidden;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.btn-icon:hover {
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
+}
+
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+}
+
+/* Report Option Groups */
+.report-option-group {
+    margin-bottom: 1.5rem;
+}
+
+.report-option-group:last-child {
+    margin-bottom: 0;
+}
+
+.report-option-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 0.75rem;
+}
+
+/* Format Options */
+.report-format-options {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.report-format-option {
+    flex: 1;
+    cursor: pointer;
+}
+
+.report-format-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.report-format-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 0.5rem;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    transition: all var(--transition);
+}
+
+.report-format-option input:checked + .report-format-card {
+    border-color: var(--c-blue-500);
+    background: var(--c-blue-50);
+    color: var(--c-blue-700);
+}
+
+.report-format-option input:focus + .report-format-card {
+    outline: 2px solid var(--c-yellow-400);
+    outline-offset: 2px;
+}
+
+.report-format-card:hover {
+    border-color: var(--color-border-hover);
+}
+
+.report-format-card svg {
+    color: var(--color-text-muted);
+}
+
+.report-format-option input:checked + .report-format-card svg {
+    color: var(--c-blue-500);
+}
+
+/* Scope Options */
+.report-scope-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.report-scope-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--color-text);
+    transition: all var(--transition);
+}
+
+.report-scope-option:hover {
+    border-color: var(--color-border-hover);
+    background: var(--color-bg-secondary);
+}
+
+.report-scope-option input {
+    margin: 0;
+    accent-color: var(--c-blue-500);
+}
+
+.report-scope-option input:checked ~ span:first-of-type {
+    font-weight: 500;
+}
+
+/* Date Range Inputs */
+.date-range-inputs {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+}
+
+.date-range-inputs.hidden {
+    display: none;
+}
+
+.date-input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.date-input-group label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.date-input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    color: var(--color-text);
+    background: var(--color-bg);
+}
+
+.date-input:focus {
+    outline: none;
+    border-color: var(--c-blue-500);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Content Options */
+.report-content-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.report-checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--color-text);
+    transition: background var(--transition);
+    border-radius: var(--radius-md);
+}
+
+.report-checkbox-option:hover {
+    background: var(--color-bg-secondary);
+}
+
+.report-checkbox-option input {
+    margin: 0;
+    accent-color: var(--c-blue-500);
+}
+
+.option-hint {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+/* Modal Footer Buttons */
+.modal-footer .btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-footer .btn svg {
+    flex-shrink: 0;
+}
+
+/* Dashboard Controls Button Style */
+.dashboard-controls .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.dashboard-controls .btn svg {
+    flex-shrink: 0;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .modal-backdrop,
+    .modal-content {
+        animation: none !important;
+    }
+}
+

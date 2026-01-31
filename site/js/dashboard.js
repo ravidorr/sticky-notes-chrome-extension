@@ -923,6 +923,548 @@ function setupCleanup(appState) {
     });
 }
 
+// ============================================
+// Report Generation
+// ============================================
+
+/**
+ * Theme colors for report styling
+ */
+const THEME_COLORS = {
+    yellow: '#facc15',
+    blue: '#3b82f6',
+    green: '#22c55e',
+    pink: '#ec4899'
+};
+
+/**
+ * Environment colors for report styling
+ */
+const ENVIRONMENT_COLORS = {
+    local: '#6b7280',
+    development: '#3b82f6',
+    staging: '#eab308',
+    production: '#ef4444'
+};
+
+/**
+ * Open the report modal
+ */
+function openReportModal() {
+    const modal = document.getElementById('reportModal');
+    if (!modal) return;
+    
+    // Reset form to defaults
+    const formatRadios = document.querySelectorAll('input[name="reportFormat"]');
+    formatRadios.forEach(radio => {
+        radio.checked = radio.value === 'html';
+    });
+    
+    const scopeRadios = document.querySelectorAll('input[name="reportScope"]');
+    scopeRadios.forEach(radio => {
+        radio.checked = radio.value === 'allNotes';
+    });
+    
+    const dateRangeInputs = document.getElementById('dateRangeInputs');
+    if (dateRangeInputs) {
+        dateRangeInputs.classList.add('hidden');
+    }
+    
+    const metadataCheckbox = document.getElementById('reportIncludeMetadata');
+    const commentsCheckbox = document.getElementById('reportIncludeComments');
+    
+    if (metadataCheckbox) metadataCheckbox.checked = true;
+    if (commentsCheckbox) commentsCheckbox.checked = true;
+    
+    modal.classList.remove('hidden');
+}
+
+/**
+ * Close the report modal
+ */
+function closeReportModal() {
+    const modal = document.getElementById('reportModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+/**
+ * Get report options from modal form
+ * @returns {Object} Report options
+ */
+function getReportOptions() {
+    const formatEl = document.querySelector('input[name="reportFormat"]:checked');
+    const scopeEl = document.querySelector('input[name="reportScope"]:checked');
+    const metadataEl = document.getElementById('reportIncludeMetadata');
+    const commentsEl = document.getElementById('reportIncludeComments');
+    const dateStartEl = document.getElementById('reportDateStart');
+    const dateEndEl = document.getElementById('reportDateEnd');
+
+    const options = {
+        format: formatEl?.value || 'html',
+        scope: scopeEl?.value || 'allNotes',
+        includeMetadata: metadataEl?.checked ?? true,
+        includeComments: commentsEl?.checked ?? true
+    };
+
+    if (options.scope === 'dateRange' && dateStartEl && dateEndEl) {
+        if (dateStartEl.value && dateEndEl.value) {
+            options.dateRange = {
+                start: new Date(dateStartEl.value),
+                end: new Date(dateEndEl.value + 'T23:59:59')
+            };
+        }
+    }
+
+    return options;
+}
+
+/**
+ * Get notes to include in report based on scope
+ * @param {Object} options - Report options
+ * @param {Array} allNotes - All notes from state
+ * @param {Array} filteredNotes - Currently filtered/displayed notes
+ * @returns {Array} Notes to include in report
+ */
+function getNotesForReport(options, allNotes, filteredNotes) {
+    let notes = [];
+    
+    switch (options.scope) {
+        case 'filtered':
+            notes = filteredNotes;
+            break;
+        case 'dateRange':
+            if (options.dateRange) {
+                const { start, end } = options.dateRange;
+                notes = allNotes.filter(note => {
+                    const noteDate = new Date(note.createdAt);
+                    return noteDate >= start && noteDate <= end;
+                });
+            } else {
+                notes = allNotes;
+            }
+            break;
+        case 'allNotes':
+        default:
+            notes = allNotes;
+            break;
+    }
+    
+    return notes;
+}
+
+/**
+ * Generate report HTML content
+ * @param {Array} notes - Notes to include
+ * @param {Object} options - Report options
+ * @returns {string} HTML content
+ */
+function generateReportHTML(notes, options) {
+    const generatedAt = new Date().toLocaleString();
+    const userEmail = document.getElementById('userEmail')?.textContent || '';
+    
+    // Calculate stats
+    const stats = {
+        total: notes.length,
+        byTheme: { yellow: 0, blue: 0, green: 0, pink: 0 },
+        byDomain: {}
+    };
+    
+    for (const note of notes) {
+        const theme = note.theme || 'yellow';
+        if (stats.byTheme[theme] !== undefined) {
+            stats.byTheme[theme]++;
+        }
+        
+        try {
+            const url = note.url || note.metadata?.url;
+            if (url) {
+                const domain = new URL(url).hostname;
+                stats.byDomain[domain] = (stats.byDomain[domain] || 0) + 1;
+            }
+        } catch {
+            // Invalid URL
+        }
+    }
+    
+    // Build stats HTML
+    let themeStatsHTML = '<div class="stats-themes">';
+    for (const [theme, count] of Object.entries(stats.byTheme)) {
+        if (count > 0) {
+            const color = THEME_COLORS[theme] || THEME_COLORS.yellow;
+            themeStatsHTML += `<span class="theme-stat" style="background-color: ${color};">${theme}: ${count}</span>`;
+        }
+    }
+    themeStatsHTML += '</div>';
+    
+    const sortedDomains = Object.entries(stats.byDomain).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    let domainStatsHTML = '<div class="stats-domains"><strong>Top Domains:</strong>';
+    if (sortedDomains.length > 0) {
+        domainStatsHTML += '<ul>';
+        for (const [domain, count] of sortedDomains) {
+            domainStatsHTML += `<li>${escapeHtml(domain)}: ${count} notes</li>`;
+        }
+        domainStatsHTML += '</ul>';
+    }
+    domainStatsHTML += '</div>';
+    
+    // Build notes HTML
+    let notesHTML = '';
+    for (const note of notes) {
+        const theme = note.theme || 'yellow';
+        const themeColor = THEME_COLORS[theme] || THEME_COLORS.yellow;
+        const content = note.content || '';
+        const createdAt = formatDate(note.createdAt);
+        const url = note.url || '';
+        
+        notesHTML += `
+            <div class="note-card" style="border-left-color: ${themeColor};">
+                <div class="note-header">
+                    <span class="note-theme" style="background-color: ${themeColor};">${theme}</span>
+                    <span class="note-date">${escapeHtml(createdAt)}</span>
+                </div>
+                <div class="note-content">${content}</div>`;
+        
+        if (url) {
+            notesHTML += `
+                <div class="note-url">
+                    <strong>URL:</strong> <a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>
+                </div>`;
+        }
+        
+        // Add metadata if enabled
+        if (options.includeMetadata && note.metadata) {
+            const metadata = note.metadata;
+            const env = metadata.environment || 'production';
+            const envColor = ENVIRONMENT_COLORS[env] || ENVIRONMENT_COLORS.production;
+            
+            notesHTML += `
+                <div class="note-metadata">
+                    <div class="metadata-header">Metadata</div>
+                    <div class="metadata-grid">`;
+            
+            if (metadata.browser) {
+                notesHTML += `<div class="metadata-item"><strong>Browser:</strong> ${escapeHtml(metadata.browser)}</div>`;
+            }
+            if (metadata.viewport) {
+                notesHTML += `<div class="metadata-item"><strong>Viewport:</strong> ${escapeHtml(metadata.viewport)}</div>`;
+            }
+            if (env) {
+                notesHTML += `<div class="metadata-item"><strong>Environment:</strong> <span style="color: ${envColor};">${escapeHtml(env)}</span></div>`;
+            }
+            if (note.selector && note.selector !== '__PAGE__') {
+                notesHTML += `<div class="metadata-item metadata-selector"><strong>Selector:</strong> <code>${escapeHtml(note.selector)}</code></div>`;
+            }
+            
+            notesHTML += `
+                    </div>
+                </div>`;
+        }
+        
+        notesHTML += `
+            </div>`;
+    }
+    
+    // Full HTML document with embedded styles
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sticky Notes Report</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; background: #f9fafb; margin: 0; padding: 20px; }
+        .report-container { max-width: 900px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+        .report-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px 32px; }
+        .report-title { margin: 0 0 8px 0; font-size: 24px; font-weight: 600; }
+        .report-meta { font-size: 14px; opacity: 0.9; }
+        .report-meta span { margin-right: 16px; }
+        .report-body { padding: 24px 32px; }
+        .report-stats { background: #f3f4f6; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; }
+        .stats-themes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+        .theme-stat { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; color: #1f2937; }
+        .stats-domains { font-size: 14px; }
+        .stats-domains ul { margin: 8px 0 0 0; padding-left: 20px; }
+        .notes-section { margin-top: 24px; }
+        .notes-section-title { font-size: 18px; font-weight: 600; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }
+        .note-card { background: white; border: 1px solid #e5e7eb; border-left: 4px solid #facc15; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
+        .note-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .note-theme { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #1f2937; }
+        .note-date { font-size: 12px; color: #6b7280; }
+        .note-content { font-size: 14px; line-height: 1.7; margin-bottom: 12px; }
+        .note-url { font-size: 13px; color: #6b7280; margin-bottom: 12px; word-break: break-all; }
+        .note-url a { color: #3b82f6; text-decoration: none; }
+        .note-metadata { background: #f9fafb; border-radius: 6px; padding: 12px 16px; margin-top: 12px; font-size: 13px; }
+        .metadata-header { font-weight: 600; margin-bottom: 8px; color: #4b5563; }
+        .metadata-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+        .metadata-item { color: #6b7280; }
+        .metadata-item strong { color: #4b5563; }
+        .metadata-selector { grid-column: 1 / -1; }
+        .metadata-selector code { background: #e5e7eb; padding: 2px 6px; border-radius: 4px; font-size: 12px; word-break: break-all; }
+        .report-footer { text-align: center; padding: 16px 32px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; }
+        @media print { body { background: white; padding: 0; } .report-container { box-shadow: none; } .note-card { break-inside: avoid; } }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <header class="report-header">
+            <h1 class="report-title">Sticky Notes Report</h1>
+            <div class="report-meta">
+                <span>Generated: ${escapeHtml(generatedAt)}</span>
+                ${userEmail ? `<span>By: ${escapeHtml(userEmail)}</span>` : ''}
+                <span>${notes.length} notes</span>
+            </div>
+        </header>
+        <main class="report-body">
+            <div class="report-stats">
+                <div class="stats-summary">
+                    <strong>Total Notes:</strong> ${stats.total}
+                </div>
+                ${themeStatsHTML}
+                ${domainStatsHTML}
+            </div>
+            <section class="notes-section">
+                <h2 class="notes-section-title">Notes</h2>
+                ${notesHTML}
+            </section>
+        </main>
+        <footer class="report-footer">
+            Generated by Sticky Notes Chrome Extension
+        </footer>
+    </div>
+</body>
+</html>`;
+}
+
+/**
+ * Generate report Markdown content
+ * @param {Array} notes - Notes to include
+ * @param {Object} options - Report options
+ * @returns {string} Markdown content
+ */
+function generateReportMarkdown(notes, options) {
+    const generatedAt = new Date().toLocaleString();
+    const userEmail = document.getElementById('userEmail')?.textContent || '';
+    
+    let md = '# Sticky Notes Report\n\n';
+    md += `**Generated:** ${generatedAt}`;
+    if (userEmail) {
+        md += ` | **By:** ${userEmail}`;
+    }
+    md += ` | **Total Notes:** ${notes.length}\n\n`;
+    
+    md += '## Notes\n\n';
+    
+    for (const note of notes) {
+        const theme = note.theme || 'yellow';
+        const content = stripHtml(note.content || '').trim();
+        const createdAt = formatDate(note.createdAt);
+        const url = note.url || '';
+        
+        md += `### Note (${theme})\n\n`;
+        md += `**Created:** ${createdAt}\n\n`;
+        
+        if (content) {
+            md += `${content}\n\n`;
+        }
+        
+        if (url) {
+            md += `**URL:** ${url}\n\n`;
+        }
+        
+        if (options.includeMetadata && note.metadata) {
+            md += '**Metadata:**\n\n';
+            if (note.metadata.browser) {
+                md += `- Browser: ${note.metadata.browser}\n`;
+            }
+            if (note.metadata.viewport) {
+                md += `- Viewport: ${note.metadata.viewport}\n`;
+            }
+            if (note.metadata.environment) {
+                md += `- Environment: ${note.metadata.environment}\n`;
+            }
+            if (note.selector && note.selector !== '__PAGE__') {
+                md += `- Selector: \`${note.selector}\`\n`;
+            }
+            md += '\n';
+        }
+        
+        md += '---\n\n';
+    }
+    
+    md += '*Generated by Sticky Notes Chrome Extension*\n';
+    
+    return md;
+}
+
+/**
+ * Download report file
+ * @param {string} content - Report content
+ * @param {string} format - Report format (html, markdown)
+ */
+function downloadReportFile(content, format) {
+    const dateStr = new Date().toISOString().split('T')[0];
+    let filename, mimeType;
+    
+    switch (format) {
+        case 'markdown':
+            filename = `sticky-notes-report-${dateStr}.md`;
+            mimeType = 'text/markdown;charset=utf-8';
+            break;
+        case 'html':
+        default:
+            filename = `sticky-notes-report-${dateStr}.html`;
+            mimeType = 'text/html;charset=utf-8';
+            break;
+    }
+    
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Handle report generation
+ */
+function handleGenerateReport() {
+    const options = getReportOptions();
+    
+    // Validate date range if selected
+    if (options.scope === 'dateRange') {
+        const dateStartEl = document.getElementById('reportDateStart');
+        const dateEndEl = document.getElementById('reportDateEnd');
+        
+        if (!dateStartEl?.value || !dateEndEl?.value) {
+            showStatus(document.getElementById('status'), 'Please select both start and end dates', 'error');
+            return;
+        }
+    }
+    
+    closeReportModal();
+    
+    // Get the currently filtered notes from the page
+    const notesList = document.getElementById('notesList');
+    const displayedNoteElements = notesList?.querySelectorAll('.note-card') || [];
+    
+    // For 'filtered' scope, we need to use the currently displayed notes
+    // For 'allNotes' and 'dateRange', we use state.allNotes
+    const notes = getNotesForReport(options, state.allNotes, state.allNotes);
+    
+    if (notes.length === 0) {
+        showStatus(document.getElementById('status'), 'No notes to include in report', 'error');
+        return;
+    }
+    
+    // Generate report based on format
+    let content;
+    
+    switch (options.format) {
+        case 'pdf': {
+            // For PDF, generate HTML and open in new window for print
+            content = generateReportHTML(notes, options);
+            const printWindow = window.open('', '_blank');
+            if (printWindow) {
+                printWindow.document.write(content);
+                printWindow.document.close();
+                printWindow.print();
+            }
+            showStatus(document.getElementById('status'), `Report generated with ${notes.length} notes (use browser print to save as PDF)`, 'success');
+            return;
+        }
+        case 'markdown':
+            content = generateReportMarkdown(notes, options);
+            break;
+        case 'html':
+        default:
+            content = generateReportHTML(notes, options);
+            break;
+    }
+    
+    downloadReportFile(content, options.format);
+    showStatus(document.getElementById('status'), `Report generated with ${notes.length} notes`, 'success');
+}
+
+/**
+ * Set up report modal event listeners
+ */
+function setupReportModal() {
+    const modal = document.getElementById('reportModal');
+    if (!modal) return;
+    
+    const generateBtn = document.getElementById('generateReportBtn');
+    const closeBtn = document.getElementById('reportModalClose');
+    const cancelBtn = document.getElementById('reportModalCancel');
+    const generateReportBtn = document.getElementById('report-modal-generate');
+    const backdrop = modal.querySelector('.modal-backdrop');
+    const scopeRadios = document.querySelectorAll('input[name="reportScope"]');
+    
+    // Open modal
+    if (generateBtn) {
+        generateBtn.addEventListener('click', openReportModal);
+    }
+    
+    // Close buttons
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeReportModal);
+    }
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeReportModal);
+    }
+    if (backdrop) {
+        backdrop.addEventListener('click', closeReportModal);
+    }
+    
+    // Generate button
+    if (generateReportBtn) {
+        generateReportBtn.addEventListener('click', handleGenerateReport);
+    }
+    
+    // Scope change - show/hide date range inputs
+    scopeRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const dateRangeInputs = document.getElementById('dateRangeInputs');
+            if (e.target.value === 'dateRange') {
+                dateRangeInputs?.classList.remove('hidden');
+                // Set default dates (last 30 days)
+                const endDate = new Date();
+                const startDate = new Date();
+                startDate.setDate(startDate.getDate() - 30);
+                
+                const dateStartEl = document.getElementById('reportDateStart');
+                const dateEndEl = document.getElementById('reportDateEnd');
+                
+                if (dateStartEl && !dateStartEl.value) {
+                    dateStartEl.value = startDate.toISOString().split('T')[0];
+                }
+                if (dateEndEl && !dateEndEl.value) {
+                    dateEndEl.value = endDate.toISOString().split('T')[0];
+                }
+            } else {
+                dateRangeInputs?.classList.add('hidden');
+            }
+        });
+    });
+    
+    // Close on Escape key
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+            closeReportModal();
+        }
+    });
+}
+
+// ============================================
+// Initialization
+// ============================================
+
 /**
  * Initialize the dashboard
  */
@@ -963,6 +1505,7 @@ function init() {
     
     handleUrlParams(elements);
     setupEventListeners(elements, state, handlers);
+    setupReportModal();
     setupCleanup(state);
     checkApiKey(elements, state, {
         onApiKeyValid: () => {
@@ -1027,5 +1570,15 @@ export {
     checkApiKey,
     setupEventListeners,
     setupCleanup,
-    init
+    init,
+    // Report functions
+    openReportModal,
+    closeReportModal,
+    getReportOptions,
+    getNotesForReport,
+    generateReportHTML,
+    generateReportMarkdown,
+    downloadReportFile,
+    handleGenerateReport,
+    setupReportModal
 };

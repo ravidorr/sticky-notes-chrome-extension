@@ -41,7 +41,11 @@ const handlers = createPopupHandlers({
 let authSection, userSection, loginBtn, logoutBtn, closeBtn;
 let userAvatar, userName, userEmail;
 let addNoteBtn, addPageNoteBtn, notesList, notesCount, actionHint;
-let actionsBtn, actionsMenu, toggleVisibilityBtn, exportPageBtn, exportAllBtn, deletePageNotesBtn, deleteAllNotesBtn, deleteOldNotesBtn, settingsBtn;
+let actionsBtn, actionsMenu, toggleVisibilityBtn, exportPageBtn, exportAllBtn, generateReportBtn, deletePageNotesBtn, deleteAllNotesBtn, deleteOldNotesBtn, settingsBtn;
+// Report modal elements
+let reportModal, reportModalClose, reportModalCancel, reportModalGenerate;
+let reportScopeRadios, dateRangeInputs, reportDateStart, reportDateEnd;
+let selectedNotesCount;
 // Delete old notes modal elements
 let deleteOldNotesModal, closeDeleteOldNotesModal, agePresetBtns, customDaysInput, applyCustomDaysBtn;
 let oldNotesPreview, oldNotesCount, oldNotesList, cancelDeleteOldNotes, confirmDeleteOldNotes;
@@ -81,7 +85,19 @@ function initDOMElements() {
   deleteAllNotesBtn = document.getElementById('deleteAllNotesBtn');
   deleteOldNotesBtn = document.getElementById('deleteOldNotesBtn');
   settingsBtn = document.getElementById('settingsBtn');
+  generateReportBtn = document.getElementById('generateReportBtn');
   totalNotesCount = document.getElementById('totalNotesCount');
+  
+  // Report modal elements
+  reportModal = document.getElementById('reportModal');
+  reportModalClose = document.getElementById('reportModalClose');
+  reportModalCancel = document.getElementById('reportModalCancel');
+  reportModalGenerate = document.getElementById('report-modal-generate');
+  reportScopeRadios = document.querySelectorAll('input[name="reportScope"]');
+  dateRangeInputs = document.getElementById('dateRangeInputs');
+  reportDateStart = document.getElementById('reportDateStart');
+  reportDateEnd = document.getElementById('reportDateEnd');
+  selectedNotesCount = document.getElementById('selectedNotesCount');
   
   // Delete old notes modal elements
   deleteOldNotesModal = document.getElementById('deleteOldNotesModal');
@@ -676,8 +692,19 @@ function setupActionsDropdown() {
     chrome.runtime.openOptionsPage();
   });
   
+  // Generate report button - open report modal
+  if (generateReportBtn) {
+    generateReportBtn.addEventListener('click', () => {
+      actionsMenu.classList.add('hidden');
+      openReportModal();
+    });
+  }
+  
   // Setup delete old notes modal
   setupDeleteOldNotesModal();
+  
+  // Setup report modal
+  setupReportModal();
 }
 
 // State for delete old notes modal
@@ -875,6 +902,187 @@ function setupDeleteOldNotesModal() {
 }
 
 /**
+ * Open the report modal
+ */
+function openReportModal() {
+  if (!reportModal) return;
+  
+  // Reset form to defaults
+  const formatRadios = document.querySelectorAll('input[name="reportFormat"]');
+  formatRadios.forEach(radio => {
+    radio.checked = radio.value === 'html';
+  });
+  
+  reportScopeRadios.forEach(radio => {
+    radio.checked = radio.value === 'currentPage';
+  });
+  
+  if (dateRangeInputs) {
+    dateRangeInputs.classList.add('hidden');
+  }
+  
+  const metadataCheckbox = document.getElementById('reportIncludeMetadata');
+  const commentsCheckbox = document.getElementById('reportIncludeComments');
+  const screenshotsCheckbox = document.getElementById('reportIncludeScreenshots');
+  
+  if (metadataCheckbox) metadataCheckbox.checked = true;
+  if (commentsCheckbox) commentsCheckbox.checked = true;
+  if (screenshotsCheckbox) screenshotsCheckbox.checked = false;
+  
+  // Update selected notes count
+  updateSelectedNotesCount();
+  
+  // Show modal
+  reportModal.classList.remove('hidden');
+  
+  // Focus first focusable element
+  const firstFocusable = reportModal.querySelector('input, button');
+  if (firstFocusable) firstFocusable.focus();
+}
+
+/**
+ * Close the report modal
+ */
+function closeReportModal() {
+  if (!reportModal) return;
+  reportModal.classList.add('hidden');
+}
+
+/**
+ * Update the selected notes count display
+ */
+function updateSelectedNotesCount() {
+  if (!selectedNotesCount) return;
+  // For now, we don't have checkbox selection implemented, so show 0
+  // This will be updated when note selection is implemented
+  selectedNotesCount.textContent = '(0)';
+}
+
+/**
+ * Get report options from modal form
+ */
+function getReportOptions() {
+  const formatEl = document.querySelector('input[name="reportFormat"]:checked');
+  const scopeEl = document.querySelector('input[name="reportScope"]:checked');
+  const metadataEl = document.getElementById('reportIncludeMetadata');
+  const commentsEl = document.getElementById('reportIncludeComments');
+  const screenshotsEl = document.getElementById('reportIncludeScreenshots');
+
+  const options = {
+    format: formatEl?.value || 'html',
+    scope: scopeEl?.value || 'currentPage',
+    includeMetadata: metadataEl?.checked ?? true,
+    includeComments: commentsEl?.checked ?? true,
+    includeScreenshots: screenshotsEl?.checked ?? false
+  };
+
+  // Add date range if selected
+  if (options.scope === 'dateRange' && reportDateStart && reportDateEnd) {
+    if (reportDateStart.value && reportDateEnd.value) {
+      options.dateRange = {
+        start: new Date(reportDateStart.value),
+        end: new Date(reportDateEnd.value + 'T23:59:59')
+      };
+    }
+  }
+
+  return options;
+}
+
+/**
+ * Handle report generation
+ */
+async function handleGenerateReport() {
+  const options = getReportOptions();
+  
+  // Validate options
+  if (options.scope === 'dateRange') {
+    if (!reportDateStart?.value || !reportDateEnd?.value) {
+      showToast(t('reportDateRangeRequired') || 'Please select both start and end dates', 'error');
+      return;
+    }
+  }
+  
+  if (options.scope === 'selected') {
+    // For now, show error since selection is not implemented
+    showToast(t('reportNoNotesSelected') || 'Please select at least one note', 'error');
+    return;
+  }
+  
+  closeReportModal();
+  
+  // Show loading toast
+  showToast(t('reportGenerating') || 'Generating report...', 'success');
+  
+  try {
+    const result = await handlers.handleGenerateReport(options, currentPageNotes);
+    
+    if (result.success) {
+      showToast(t('reportGenerated') || 'Report generated', 'success');
+    } else {
+      showToast(result.error || t('reportFailed') || 'Failed to generate report', 'error');
+    }
+  } catch (error) {
+    showToast(error.message || t('reportFailed') || 'Failed to generate report', 'error');
+  }
+}
+
+/**
+ * Setup report modal event listeners
+ */
+function setupReportModal() {
+  if (!reportModal) return;
+  
+  // Close buttons
+  if (reportModalClose) {
+    reportModalClose.addEventListener('click', closeReportModal);
+  }
+  if (reportModalCancel) {
+    reportModalCancel.addEventListener('click', closeReportModal);
+  }
+  
+  // Click on backdrop to close
+  const backdrop = reportModal.querySelector('.modal-backdrop');
+  if (backdrop) {
+    backdrop.addEventListener('click', closeReportModal);
+  }
+  
+  // Generate button
+  if (reportModalGenerate) {
+    reportModalGenerate.addEventListener('click', handleGenerateReport);
+  }
+  
+  // Scope change - show/hide date range inputs
+  reportScopeRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      if (e.target.value === 'dateRange') {
+        dateRangeInputs?.classList.remove('hidden');
+        // Set default dates (last 30 days)
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+        
+        if (reportDateStart && !reportDateStart.value) {
+          reportDateStart.value = startDate.toISOString().split('T')[0];
+        }
+        if (reportDateEnd && !reportDateEnd.value) {
+          reportDateEnd.value = endDate.toISOString().split('T')[0];
+        }
+      } else {
+        dateRangeInputs?.classList.add('hidden');
+      }
+    });
+  });
+  
+  // Close on Escape key
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !reportModal.classList.contains('hidden')) {
+      closeReportModal();
+    }
+  });
+}
+
+/**
  * Apply custom days from input
  */
 function applyCustomDays() {
@@ -928,6 +1136,13 @@ export {
   previewOldNotes,
   renderOldNotePreviewItem,
   setupDeleteOldNotesModal,
-  applyCustomDays
+  applyCustomDays,
+  // Report modal
+  openReportModal,
+  closeReportModal,
+  updateSelectedNotesCount,
+  getReportOptions,
+  handleGenerateReport,
+  setupReportModal
 };
 export { createPopupHandlers } from './handlers.js';

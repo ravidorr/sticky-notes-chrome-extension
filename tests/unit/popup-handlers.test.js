@@ -1571,4 +1571,289 @@ describe('Popup Handlers', () => {
       expect(localThis.mockLog.error).toHaveBeenCalledWith('Some notes failed to delete:', expect.any(Array));
     });
   });
+
+  describe('handleGenerateReport', () => {
+    beforeEach(() => {
+      // Mock URL for blob creation
+      global.URL = {
+        createObjectURL: jest.fn(() => 'blob:test'),
+        revokeObjectURL: jest.fn()
+      };
+      
+      // Mock Blob
+      global.Blob = jest.fn().mockImplementation((content, options) => ({
+        content,
+        type: options?.type
+      }));
+      
+      // Mock document for download
+      const mockLink = {
+        href: '',
+        download: '',
+        click: jest.fn()
+      };
+      global.document = {
+        createElement: jest.fn(() => mockLink),
+        body: {
+          appendChild: jest.fn(),
+          removeChild: jest.fn()
+        }
+      };
+      localThis.mockLink = mockLink;
+    });
+
+    it('should generate HTML report from current page notes', async () => {
+      const currentPageNotes = [
+        { id: '1', content: 'Note 1', theme: 'yellow', url: 'https://example.com', createdAt: new Date() },
+        { id: '2', content: 'Note 2', theme: 'blue', url: 'https://example.com', createdAt: new Date() }
+      ];
+      
+      const options = {
+        format: 'html',
+        scope: 'currentPage',
+        includeMetadata: false,
+        includeComments: false
+      };
+      
+      const result = await localThis.handlers.handleGenerateReport(options, currentPageNotes);
+      
+      expect(result.success).toBe(true);
+      expect(result.filename).toMatch(/sticky-notes-report-.*\.html$/);
+    });
+
+    it('should generate Markdown report', async () => {
+      const currentPageNotes = [
+        { id: '1', content: 'Note 1', theme: 'yellow', url: 'https://example.com', createdAt: new Date() }
+      ];
+      
+      const options = {
+        format: 'markdown',
+        scope: 'currentPage',
+        includeMetadata: false,
+        includeComments: false
+      };
+      
+      const result = await localThis.handlers.handleGenerateReport(options, currentPageNotes);
+      
+      expect(result.success).toBe(true);
+      expect(result.filename).toMatch(/sticky-notes-report-.*\.md$/);
+    });
+
+    it('should fetch all notes for allNotes scope', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({
+        success: true,
+        notes: [
+          { id: '1', content: 'Note 1', theme: 'yellow', url: 'https://example.com', createdAt: new Date() }
+        ]
+      });
+      
+      const options = {
+        format: 'html',
+        scope: 'allNotes',
+        includeMetadata: false,
+        includeComments: false
+      };
+      
+      const result = await localThis.handlers.handleGenerateReport(options, []);
+      
+      expect(result.success).toBe(true);
+      expect(localThis.mockChromeRuntime.sendMessage).toHaveBeenCalledWith({ action: 'getAllNotes' });
+    });
+
+    it('should filter notes by selected IDs', async () => {
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({
+        success: true,
+        notes: [
+          { id: '1', content: 'Note 1', theme: 'yellow', url: 'https://example.com', createdAt: new Date() },
+          { id: '2', content: 'Note 2', theme: 'blue', url: 'https://example.com', createdAt: new Date() },
+          { id: '3', content: 'Note 3', theme: 'green', url: 'https://example.com', createdAt: new Date() }
+        ]
+      });
+      
+      const options = {
+        format: 'html',
+        scope: 'selected',
+        selectedNoteIds: ['1', '3'],
+        includeMetadata: false,
+        includeComments: false
+      };
+      
+      const result = await localThis.handlers.handleGenerateReport(options, []);
+      
+      expect(result.success).toBe(true);
+    });
+
+    it('should return error when no notes are available', async () => {
+      const options = {
+        format: 'html',
+        scope: 'currentPage',
+        includeMetadata: false,
+        includeComments: false
+      };
+      
+      const result = await localThis.handlers.handleGenerateReport(options, []);
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+    });
+
+    it('should return error when selected scope has no selectedNoteIds', async () => {
+      const options = {
+        format: 'html',
+        scope: 'selected',
+        selectedNoteIds: [],
+        includeMetadata: false,
+        includeComments: false
+      };
+      
+      const result = await localThis.handlers.handleGenerateReport(options, []);
+      
+      expect(result.success).toBe(false);
+    });
+
+    it('should filter notes by date range', async () => {
+      const now = new Date();
+      const oldDate = new Date(now);
+      oldDate.setDate(oldDate.getDate() - 60); // 60 days ago
+      
+      const recentDate = new Date(now);
+      recentDate.setDate(recentDate.getDate() - 10); // 10 days ago
+      
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({
+        success: true,
+        notes: [
+          { id: '1', content: 'Old note', theme: 'yellow', url: 'https://example.com', createdAt: oldDate },
+          { id: '2', content: 'Recent note', theme: 'blue', url: 'https://example.com', createdAt: recentDate }
+        ]
+      });
+      
+      const startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 30);
+      
+      const options = {
+        format: 'html',
+        scope: 'dateRange',
+        dateRange: {
+          start: startDate,
+          end: now
+        },
+        includeMetadata: false,
+        includeComments: false
+      };
+      
+      const result = await localThis.handlers.handleGenerateReport(options, []);
+      
+      expect(result.success).toBe(true);
+      // The generator filters by date range, so it should work
+    });
+
+    it('should generate PDF format (falls back to HTML with print mode)', async () => {
+      const currentPageNotes = [
+        { id: '1', content: 'Note 1', theme: 'yellow', url: 'https://example.com', createdAt: new Date() }
+      ];
+      
+      // Mock window.open for print mode
+      const mockPrintWindow = {
+        document: {
+          write: jest.fn(),
+          close: jest.fn()
+        },
+        print: jest.fn()
+      };
+      global.window = { open: jest.fn(() => mockPrintWindow) };
+      
+      const options = {
+        format: 'pdf',
+        scope: 'currentPage',
+        includeMetadata: false,
+        includeComments: false
+      };
+      
+      const result = await localThis.handlers.handleGenerateReport(options, currentPageNotes);
+      
+      expect(result.success).toBe(true);
+    });
+
+    it('should fetch comments when includeComments is true', async () => {
+      const currentPageNotes = [
+        { id: '1', content: 'Note 1', theme: 'yellow', url: 'https://example.com', createdAt: new Date() }
+      ];
+      
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({
+        success: true,
+        comments: [{ id: 'c1', content: 'Test comment' }]
+      });
+      
+      const options = {
+        format: 'html',
+        scope: 'currentPage',
+        includeMetadata: false,
+        includeComments: true
+      };
+      
+      const result = await localThis.handlers.handleGenerateReport(options, currentPageNotes);
+      
+      expect(result.success).toBe(true);
+      expect(localThis.mockChromeRuntime.sendMessage).toHaveBeenCalledWith({
+        action: 'getCommentsForNote',
+        noteId: '1'
+      });
+    });
+
+    it('should continue generating report even if comments fail to load', async () => {
+      const currentPageNotes = [
+        { id: '1', content: 'Note 1', theme: 'yellow', url: 'https://example.com', createdAt: new Date() }
+      ];
+      
+      localThis.mockChromeRuntime.sendMessage.mockRejectedValue(new Error('Comments failed'));
+      
+      const options = {
+        format: 'html',
+        scope: 'currentPage',
+        includeMetadata: false,
+        includeComments: true
+      };
+      
+      const result = await localThis.handlers.handleGenerateReport(options, currentPageNotes);
+      
+      expect(result.success).toBe(true);
+    });
+
+    it('should show success toast when report is generated', async () => {
+      const currentPageNotes = [
+        { id: '1', content: 'Note 1', theme: 'yellow', url: 'https://example.com', createdAt: new Date() }
+      ];
+      
+      const options = {
+        format: 'html',
+        scope: 'currentPage',
+        includeMetadata: false,
+        includeComments: false
+      };
+      
+      await localThis.handlers.handleGenerateReport(options, currentPageNotes);
+      
+      expect(localThis.mockShowSuccessToast).toHaveBeenCalled();
+    });
+
+    it('should handle report generation errors', async () => {
+      // Force an error by providing invalid data
+      const options = {
+        format: 'invalid-format',
+        scope: 'currentPage',
+        includeMetadata: false,
+        includeComments: false
+      };
+      
+      const currentPageNotes = [
+        { id: '1', content: 'Note 1', theme: 'yellow', url: 'https://example.com', createdAt: new Date() }
+      ];
+      
+      const result = await localThis.handlers.handleGenerateReport(options, currentPageNotes);
+      
+      expect(result.success).toBe(false);
+      expect(localThis.mockShowErrorToast).toHaveBeenCalled();
+      expect(localThis.mockLog.error).toHaveBeenCalled();
+    });
+  });
 });

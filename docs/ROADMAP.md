@@ -166,7 +166,7 @@ Features that differentiate for developer and QA workflows:
 ### Advanced
 
 - [ ] Session replay link support (LogRocket/FullStory)
-- [ ] Batch export notes as report
+- [x] Batch export notes as report (HTML, PDF, Markdown formats with scope options)
 
 ---
 
