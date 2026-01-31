@@ -309,8 +309,8 @@ describe('src/popup/popup.js', () => {
 
         it('should not throw when called', async () => {
             // This will make a chrome.runtime.sendMessage call that will fail in test,
-            // but it should handle the error gracefully
-            await expect(updateSharedNotesCount()).resolves.not.toThrow();
+            // but it should handle the error gracefully - if it throws, Jest will fail the test
+            await updateSharedNotesCount();
         });
     });
 

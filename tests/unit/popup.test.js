@@ -970,8 +970,8 @@ describe('Popup Script Logic', () => {
       chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
       chrome.tabs.sendMessage.mockRejectedValue(new Error('Tab closed'));
       
-      // Should not throw
-      await expect(handleNoteNavigate('note-1', false)).resolves.not.toThrow();
+      // Should not throw - if it throws, Jest will fail the test
+      await handleNoteNavigate('note-1', false);
     });
   });
 
@@ -1136,8 +1136,8 @@ describe('Popup Script Logic', () => {
       item.dataset.id = 'shared-1';
       item.dataset.url = 'https://example.com/shared';
       
-      // Should not throw
-      await expect(handleSharedNoteClick(item)).resolves.not.toThrow();
+      // Should not throw - if it throws, Jest will fail the test
+      await handleSharedNoteClick(item);
     });
   });
 

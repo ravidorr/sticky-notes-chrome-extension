@@ -146,7 +146,7 @@ describe('Options Page Script', () => {
       document.getElementById('versionDisplay').remove();
       initDOMElements();
       
-      // Should not throw
+      // Should not throw - if it throws, Jest will fail the test
       expect(() => displayVersion()).not.toThrow();
     });
     
@@ -193,7 +193,7 @@ describe('Options Page Script', () => {
     });
     
     it('should handle non-existent theme gracefully', () => {
-      // Should not throw
+      // Should not throw - if it throws, Jest will fail the test
       expect(() => selectTheme('nonexistent')).not.toThrow();
     });
   });
@@ -229,7 +229,7 @@ describe('Options Page Script', () => {
     });
     
     it('should handle non-existent position gracefully', () => {
-      // Should not throw
+      // Should not throw - if it throws, Jest will fail the test
       expect(() => selectPosition('nonexistent')).not.toThrow();
     });
   });
@@ -303,8 +303,8 @@ describe('Options Page Script', () => {
     it('should handle load error gracefully', async () => {
       chrome.storage.sync.get.mockRejectedValue(new Error('Load failed'));
       
-      // Should not throw
-      await expect(loadPreferences()).resolves.not.toThrow();
+      // Should not throw - if it throws, Jest will fail the test
+      await loadPreferences();
     });
     
     it('should apply default preferences when storage is empty', async () => {
@@ -361,8 +361,8 @@ describe('Options Page Script', () => {
       
       const mockEvent = { preventDefault: jest.fn() };
       
-      // Should not throw
-      await expect(handleSave(mockEvent)).resolves.not.toThrow();
+      // Should not throw - if it throws, Jest will fail the test
+      await handleSave(mockEvent);
       
       const statusMessage = document.getElementById('statusMessage');
       expect(statusMessage.className).toContain('error');
@@ -447,8 +447,8 @@ describe('Options Page Script', () => {
       window.confirm = jest.fn(() => true);
       chrome.storage.sync.set.mockRejectedValue(new Error('Network error'));
       
-      // Should not throw
-      await expect(handleReset()).resolves.not.toThrow();
+      // Should not throw - if it throws, Jest will fail the test
+      await handleReset();
       
       const statusMessage = document.getElementById('statusMessage');
       expect(statusMessage.className).toContain('error');

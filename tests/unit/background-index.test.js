@@ -233,8 +233,8 @@ describe('Background commands - toggle-all-notes', () => {
         chrome.tabs.query.mockResolvedValue([{ id: 42 }]);
         chrome.tabs.sendMessage.mockRejectedValue(new Error('Could not establish connection'));
 
-        // Should not throw
-        await expect(localThis.commandHandler('toggle-all-notes')).resolves.not.toThrow();
+        // Should not throw - if it throws, Jest will fail the test
+        await localThis.commandHandler('toggle-all-notes');
     });
 
     it('should open dashboard when open-dashboard command is received', async () => {

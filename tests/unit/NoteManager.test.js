@@ -2726,7 +2726,8 @@ describe('NoteManager', () => {
       localThis.sendMessage = jest.fn().mockRejectedValue(new Error('Network error'));
       const manager = new NoteManager(localThis);
       
-      await expect(manager.handleVisibilityChange('note-789', true)).resolves.not.toThrow();
+      // Should not throw - if it throws, Jest will fail the test
+      await manager.handleVisibilityChange('note-789', true);
     });
   });
 });

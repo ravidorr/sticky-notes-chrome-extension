@@ -2175,8 +2175,8 @@ describe('StickyNote', () => {
       });
       container.appendChild(localThis.shareNote.element);
       
-      // Should not throw
-      await expect(localThis.shareNote.handleAutoShare('invalid@example.com')).resolves.not.toThrow();
+      // Should not throw - if it throws, Jest will fail the test
+      await localThis.shareNote.handleAutoShare('invalid@example.com');
       
       localThis.shareNote.destroy();
     });
@@ -2192,8 +2192,8 @@ describe('StickyNote', () => {
       });
       container.appendChild(localThis.shareNote.element);
       
-      // Should not throw
-      await expect(localThis.shareNote.handleAutoShare('test@example.com')).resolves.not.toThrow();
+      // Should not throw - if it throws, Jest will fail the test
+      await localThis.shareNote.handleAutoShare('test@example.com');
       
       localThis.shareNote.destroy();
     });
@@ -2265,8 +2265,8 @@ describe('StickyNote', () => {
         content: 'Test content'
       });
       
-      // Should not throw
-      await expect(localThis.unshareNote.handleAutoUnshare('test@example.com')).resolves.not.toThrow();
+      // Should not throw - if it throws, Jest will fail the test
+      await localThis.unshareNote.handleAutoUnshare('test@example.com');
       
       localThis.unshareNote.destroy();
     });
@@ -2281,8 +2281,8 @@ describe('StickyNote', () => {
         content: 'Test content'
       });
       
-      // Should not throw
-      await expect(localThis.unshareNote.handleAutoUnshare('test@example.com')).resolves.not.toThrow();
+      // Should not throw - if it throws, Jest will fail the test
+      await localThis.unshareNote.handleAutoUnshare('test@example.com');
       
       localThis.unshareNote.destroy();
     });
