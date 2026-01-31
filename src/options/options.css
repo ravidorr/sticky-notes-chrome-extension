@@ -192,6 +192,23 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
+/* Theme color swatches */
+.theme-option[data-theme="yellow"] .theme-color {
+  background: #facc15;
+}
+
+.theme-option[data-theme="blue"] .theme-color {
+  background: #3b82f6;
+}
+
+.theme-option[data-theme="green"] .theme-color {
+  background: #22c55e;
+}
+
+.theme-option[data-theme="pink"] .theme-color {
+  background: #ec4899;
+}
+
 .theme-name {
   font-size: 13px;
   font-weight: 500;
