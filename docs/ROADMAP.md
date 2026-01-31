@@ -286,7 +286,7 @@ Unplanned feature ideas for future consideration:
   - Welcome page on first install with feature highlights
 - [ ] Read-only user permissions (viewers who can see notes but not edit/comment) - pricing implications?
 - [ ] Freemium model with ads - all features free forever but with ads in notes (research: can Google Ads be injected into extension UI?)
-- [ ] Edge browser support (Chromium-based, should be straightforward)
+- [ ] Edge browser support (requires alternative auth flow - `chrome.identity` API not supported, see Known Bugs)
 - [ ] Firefox browser support (requires WebExtensions API adaptation)
 - [ ] Test data cleanup feature (delete all notes for testing purposes)
 - [x] WCAG 2.1 AA accessibility compliance (landing page) - skip links, focus states, heading hierarchy, aria labels, prefers-reduced-motion, touch targets
@@ -334,6 +334,7 @@ Unplanned feature ideas for future consideration:
 - [x] ~~Note position relative to element (top/bottom + right/left) isn't always working correctly~~ (Fixed: notes now use viewport coordinates and follow anchor elements when scrolling)
 - [ ] On some pages, notes fail to attach to elements at all
 - [ ] On pages with repeated content structures (e.g., live news feeds), notes may attach to the wrong instance of an element due to non-unique CSS selectors
+- [ ] **Edge Extension: Google Sign-in not working** - Microsoft Edge Add-ons store certification rejected because `chrome.identity` API is not supported on Edge. Error: "This API is not supported on Microsoft Edge." Need to implement alternative authentication flow for Edge (e.g., web-based OAuth flow with `chrome.tabs` or `launchWebAuthFlow`). See: [Microsoft Partner Center certification report](https://partner.microsoft.com/en-us/dashboard/microsoftedge/e8c23177-3423-4a2e-9d99-949fbe77f9ae/certification/reports/6cbe7b01-5962-427f-909f-211f487d5036)
 
 ### Minor
 
