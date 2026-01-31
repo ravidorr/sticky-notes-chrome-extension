@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Available from popup menu ("More actions") and web dashboard
   - Report includes statistics (note count, theme breakdown, top domains)
 
+### Fixed
+
+- Dashboard report "Currently filtered notes" scope now correctly exports only filtered notes instead of all notes
+
 ## [1.17.0] - 2026-01-31
 
 ### Added

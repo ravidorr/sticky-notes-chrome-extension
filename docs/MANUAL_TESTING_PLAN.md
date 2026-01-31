@@ -1212,6 +1212,20 @@
 | 6 | Check "Include Metadata", uncheck "Include Comments" | Options set |
 | 7 | Generate report | Report includes metadata, excludes comments |
 
+### TEST-14.14: Report Export - Dashboard Filtered Notes Scope
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open dashboard | Dashboard opens with all notes |
+| 2 | Type a search term that matches some notes | Notes list filters to show only matching notes |
+| 3 | Note the count of filtered notes | e.g., "Found 3 of 10 notes" |
+| 4 | Click "Report" button | Report modal opens |
+| 5 | Select "Currently filtered notes" scope | Scope selected |
+| 6 | Click "Generate" | Report downloads |
+| 7 | Open report and count notes | Report contains only the filtered notes (3, not 10) |
+| 8 | Clear search, select domain filter | Notes filter by domain |
+| 9 | Generate report with "Currently filtered notes" | Report contains only domain-filtered notes |
+
 ---
 
 ## 15. Internationalization (i18n)

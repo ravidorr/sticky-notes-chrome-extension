@@ -41,7 +41,9 @@ import {
     // Initialization
     checkApiKey,
     setupEventListeners,
-    setupCleanup
+    setupCleanup,
+    // Report functions
+    getNotesForReport
 } from '../../site/js/dashboard.js';
 
 describe('site/js/dashboard.js', () => {
@@ -60,6 +62,7 @@ describe('site/js/dashboard.js', () => {
         state.refreshInterval = null;
         state.searchQuery = '';
         state.allNotes = [];
+        state.displayedNotes = [];
         
         // Mock fetch
         global.fetch = jest.fn();
@@ -1727,6 +1730,215 @@ describe('site/js/dashboard.js', () => {
             expect(localThis.appState.refreshInterval).toBeNull();
             
             document.body.removeChild(checkbox);
+        });
+    });
+
+    // ============================================
+    // Report Function Tests
+    // ============================================
+
+    describe('getNotesForReport', () => {
+        const localThis = {};
+
+        beforeEach(() => {
+            localThis.allNotes = [
+                { id: '1', url: 'https://example.com', content: 'Note 1', createdAt: '2024-01-01T10:00:00Z' },
+                { id: '2', url: 'https://test.com', content: 'Note 2', createdAt: '2024-01-05T10:00:00Z' },
+                { id: '3', url: 'https://example.com', content: 'Note 3', createdAt: '2024-01-10T10:00:00Z' },
+                { id: '4', url: 'https://other.com', content: 'Note 4', createdAt: '2024-01-15T10:00:00Z' }
+            ];
+            localThis.filteredNotes = [
+                { id: '1', url: 'https://example.com', content: 'Note 1', createdAt: '2024-01-01T10:00:00Z' },
+                { id: '3', url: 'https://example.com', content: 'Note 3', createdAt: '2024-01-10T10:00:00Z' }
+            ];
+        });
+
+        it('should return all notes when scope is allNotes', () => {
+            const options = { scope: 'allNotes' };
+            const result = getNotesForReport(options, localThis.allNotes, localThis.filteredNotes);
+            
+            expect(result).toEqual(localThis.allNotes);
+            expect(result.length).toBe(4);
+        });
+
+        it('should return filtered notes when scope is filtered', () => {
+            const options = { scope: 'filtered' };
+            const result = getNotesForReport(options, localThis.allNotes, localThis.filteredNotes);
+            
+            expect(result).toEqual(localThis.filteredNotes);
+            expect(result.length).toBe(2);
+            expect(result[0].id).toBe('1');
+            expect(result[1].id).toBe('3');
+        });
+
+        it('should return notes within date range when scope is dateRange', () => {
+            const options = {
+                scope: 'dateRange',
+                dateRange: {
+                    start: new Date('2024-01-03T00:00:00Z'),
+                    end: new Date('2024-01-12T00:00:00Z')
+                }
+            };
+            const result = getNotesForReport(options, localThis.allNotes, localThis.filteredNotes);
+            
+            expect(result.length).toBe(2);
+            expect(result[0].id).toBe('2');
+            expect(result[1].id).toBe('3');
+        });
+
+        it('should return all notes when scope is dateRange but no dateRange provided', () => {
+            const options = { scope: 'dateRange' };
+            const result = getNotesForReport(options, localThis.allNotes, localThis.filteredNotes);
+            
+            expect(result).toEqual(localThis.allNotes);
+        });
+
+        it('should return all notes for unknown scope', () => {
+            const options = { scope: 'unknown' };
+            const result = getNotesForReport(options, localThis.allNotes, localThis.filteredNotes);
+            
+            expect(result).toEqual(localThis.allNotes);
+        });
+
+        it('should return empty array when filteredNotes is empty and scope is filtered', () => {
+            const options = { scope: 'filtered' };
+            const result = getNotesForReport(options, localThis.allNotes, []);
+            
+            expect(result).toEqual([]);
+            expect(result.length).toBe(0);
+        });
+    });
+
+    describe('state.displayedNotes', () => {
+        const localThis = {};
+
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="status"></div>
+                <div id="notesList"></div>
+                <select id="domainSelect">
+                    <option value="">All</option>
+                </select>
+                <input id="urlInput" value="" />
+                <input id="searchInput" value="" />
+                <span id="lastUpdated"></span>
+            `;
+            localThis.elements = {
+                status: document.getElementById('status'),
+                notesList: document.getElementById('notesList'),
+                domainSelect: document.getElementById('domainSelect'),
+                urlInput: document.getElementById('urlInput'),
+                searchInput: document.getElementById('searchInput')
+            };
+        });
+
+        it('should update displayedNotes when loadNotes is called', async () => {
+            const mockNotes = {
+                notes: [
+                    { id: '1', url: 'https://example.com', selector: '.test', content: 'Test 1', createdAt: '2024-01-15T10:00:00Z' },
+                    { id: '2', url: 'https://test.com', selector: '.other', content: 'Test 2', createdAt: '2024-01-15T11:00:00Z' }
+                ]
+            };
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(mockNotes)
+            });
+            
+            await loadNotes({
+                apiKey: 'test-key',
+                elements: localThis.elements
+            });
+            
+            expect(state.displayedNotes.length).toBe(2);
+            expect(state.displayedNotes).toEqual(state.allNotes);
+        });
+
+        it('should update displayedNotes with filtered notes when search is active', async () => {
+            localThis.elements.searchInput.value = 'example';
+            
+            const mockNotes = {
+                notes: [
+                    { id: '1', url: 'https://example.com', selector: '.test', content: 'Test 1', createdAt: '2024-01-15T10:00:00Z' },
+                    { id: '2', url: 'https://test.com', selector: '.other', content: 'Test 2', createdAt: '2024-01-15T11:00:00Z' }
+                ]
+            };
+            
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(mockNotes)
+            });
+            
+            await loadNotes({
+                apiKey: 'test-key',
+                elements: localThis.elements
+            });
+            
+            // displayedNotes should only contain the filtered note
+            expect(state.displayedNotes.length).toBe(1);
+            expect(state.displayedNotes[0].id).toBe('1');
+            // allNotes should still contain all notes
+            expect(state.allNotes.length).toBe(2);
+        });
+
+        it('should update displayedNotes when search input changes', () => {
+            jest.useFakeTimers();
+            
+            // Set up some notes in state
+            state.allNotes = [
+                { id: '1', url: 'https://example.com', selector: '.test', content: '<p>Example content</p>' },
+                { id: '2', url: 'https://other.com', selector: '.other', content: '<p>Other content</p>' }
+            ];
+            state.displayedNotes = [...state.allNotes];
+            
+            const appState = {
+                currentFilter: 'all',
+                searchQuery: '',
+                allNotes: state.allNotes,
+                displayedNotes: state.displayedNotes
+            };
+            
+            document.body.innerHTML = `
+                <button id="saveApiKeyBtn"></button>
+                <input id="apiKeyInput" />
+                <button id="loadBtn"></button>
+                <input id="urlInput" />
+                <select id="domainSelect"></select>
+                <button class="filter-tab" data-filter="all"></button>
+                <input type="checkbox" id="autoRefresh" />
+                <button id="settingsBtn"></button>
+                <input type="search" id="searchInput" />
+                <div id="notesList"></div>
+                <div id="status"></div>
+            `;
+            
+            const elements = {
+                saveApiKeyBtn: document.getElementById('saveApiKeyBtn'),
+                apiKeyInput: document.getElementById('apiKeyInput'),
+                loadBtn: document.getElementById('loadBtn'),
+                urlInput: document.getElementById('urlInput'),
+                domainSelect: document.getElementById('domainSelect'),
+                filterTabs: document.querySelectorAll('.filter-tab'),
+                autoRefreshCheckbox: document.getElementById('autoRefresh'),
+                settingsBtn: document.getElementById('settingsBtn'),
+                searchInput: document.getElementById('searchInput'),
+                notesList: document.getElementById('notesList')
+            };
+            
+            setupEventListeners(elements, appState, {});
+            
+            // Simulate typing in search
+            elements.searchInput.value = 'example';
+            elements.searchInput.dispatchEvent(new Event('input'));
+            
+            // Advance past debounce delay
+            jest.advanceTimersByTime(300);
+            
+            // After debounce, displayedNotes should be updated
+            expect(appState.displayedNotes.length).toBe(1);
+            expect(appState.displayedNotes[0].id).toBe('1');
+            
+            jest.useRealTimers();
         });
     });
 });

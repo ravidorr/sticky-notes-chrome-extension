@@ -14,7 +14,8 @@ const state = {
     currentFilter: 'all',
     refreshInterval: null,
     searchQuery: '',
-    allNotes: []
+    allNotes: [],
+    displayedNotes: []
 };
 
 // ============================================
@@ -660,6 +661,9 @@ async function loadNotes(options = {}) {
         const searchQuery = elements?.searchInput?.value?.trim() || state.searchQuery;
         const displayNotes = filterNotesBySearch(notes, searchQuery);
         
+        // Track currently displayed notes for filtered reports
+        state.displayedNotes = displayNotes;
+        
         // Build context for empty states
         const context = {
             filter: currentFilter,
@@ -845,6 +849,8 @@ function setupEventListeners(elements, appState, handlers = {}) {
         const handleSearch = debounce((query) => {
             appState.searchQuery = query;
             const filtered = filterNotesBySearch(appState.allNotes, query);
+            // Track currently displayed notes for filtered reports
+            appState.displayedNotes = filtered;
             const context = {
                 filter: appState.currentFilter,
                 isSearch: !!query
@@ -1350,13 +1356,9 @@ function handleGenerateReport() {
     
     closeReportModal();
     
-    // Get the currently filtered notes from the page
-    const notesList = document.getElementById('notesList');
-    const displayedNoteElements = notesList?.querySelectorAll('.note-card') || [];
-    
-    // For 'filtered' scope, we need to use the currently displayed notes
+    // For 'filtered' scope, use the currently displayed notes from state
     // For 'allNotes' and 'dateRange', we use state.allNotes
-    const notes = getNotesForReport(options, state.allNotes, state.allNotes);
+    const notes = getNotesForReport(options, state.allNotes, state.displayedNotes);
     
     if (notes.length === 0) {
         showStatus(document.getElementById('status'), 'No notes to include in report', 'error');
