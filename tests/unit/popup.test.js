@@ -21,7 +21,15 @@ import {
   setupTabs,
   updateSharedNotesCount,
   createPopupHandlers,
-  updateToggleVisibilityButton
+  updateToggleVisibilityButton,
+  refreshNotes,
+  handleNoteNavigate,
+  updateTotalNotesCount,
+  loadAndRenderSharedNotes,
+  handleSharedNoteClick,
+  displayVersion,
+  setupActionsDropdown,
+  init
 } from '../../src/popup/popup.js';
 
 describe('Popup Script Logic', () => {
@@ -41,10 +49,11 @@ describe('Popup Script Logic', () => {
         <span id="userName"></span>
         <span id="userEmail"></span>
       </div>
-      <button id="loginBtn"></button>
+      <button id="loginBtn">Sign In</button>
       <button id="logoutBtn"></button>
       <button id="closeBtn"></button>
       <button id="addNoteBtn"></button>
+      <button id="addPageNoteBtn"></button>
       <div id="notesList"></div>
       <span id="notesCount"></span>
       <div class="action-hint"></div>
@@ -67,7 +76,11 @@ describe('Popup Script Logic', () => {
       <span id="thisPageCount">0</span>
       <span id="sharedCount" class="hidden">0</span>
       <div id="sharedNotesList"></div>
+      <span id="versionDisplay"></span>
     `;
+    
+    // Mock window.close
+    window.close = jest.fn();
     
     // Initialize DOM elements
     initDOMElements();
@@ -915,6 +928,411 @@ describe('Popup Script Logic', () => {
       
       // Should not throw
       expect(() => updateToggleVisibilityButton(true)).not.toThrow();
+    });
+  });
+
+  describe('handleNoteNavigate', () => {
+    it('should send highlightAndMaximizeNote message for normal note', async () => {
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.tabs.sendMessage.mockResolvedValue({ success: true });
+      
+      await handleNoteNavigate('note-1', false);
+      
+      expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(1, {
+        action: 'highlightAndMaximizeNote',
+        noteId: 'note-1'
+      });
+      expect(window.close).toHaveBeenCalled();
+    });
+    
+    it('should send showOrphanedNote message for orphaned note', async () => {
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.tabs.sendMessage.mockResolvedValue({ success: true });
+      
+      await handleNoteNavigate('orphan-1', true);
+      
+      expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(1, {
+        action: 'showOrphanedNote',
+        noteId: 'orphan-1'
+      });
+    });
+    
+    it('should handle no active tab', async () => {
+      chrome.tabs.query.mockResolvedValue([]);
+      
+      // Should not throw
+      await handleNoteNavigate('note-1', false);
+      
+      expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
+    });
+    
+    it('should handle sendMessage error gracefully', async () => {
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.tabs.sendMessage.mockRejectedValue(new Error('Tab closed'));
+      
+      // Should not throw
+      await expect(handleNoteNavigate('note-1', false)).resolves.not.toThrow();
+    });
+  });
+
+  describe('refreshNotes', () => {
+    it('should refresh notes list and update counts', async () => {
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.runtime.sendMessage
+        .mockResolvedValueOnce({ success: true, notes: [{ id: 'note-1', content: 'Test', theme: 'yellow', selector: '#test' }] })
+        .mockResolvedValueOnce({ success: true, notes: [{ id: 'note-1' }, { id: 'note-2' }] });
+      
+      await refreshNotes();
+      
+      const notesCount = document.getElementById('notesCount');
+      const thisPageCount = document.getElementById('thisPageCount');
+      
+      expect(notesCount.textContent).toBe('1');
+      expect(thisPageCount.textContent).toBe('1');
+    });
+    
+    it('should render empty state when no notes', async () => {
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.runtime.sendMessage
+        .mockResolvedValueOnce({ success: true, notes: [] })
+        .mockResolvedValueOnce({ success: true, notes: [] });
+      
+      await refreshNotes();
+      
+      const notesList = document.getElementById('notesList');
+      expect(notesList.innerHTML).toContain('empty');
+    });
+  });
+
+  describe('updateTotalNotesCount', () => {
+    it('should display total notes count when notes exist', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ 
+        success: true, 
+        notes: [{ id: 'note-1' }, { id: 'note-2' }, { id: 'note-3' }] 
+      });
+      
+      await updateTotalNotesCount();
+      
+      const totalNotesCount = document.getElementById('totalNotesCount');
+      // The i18n mock returns the key with substitutions, so it will be 'totalNotes' with '3'
+      expect(totalNotesCount.textContent).not.toBe('');
+    });
+    
+    it('should clear count when no notes', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true, notes: [] });
+      
+      await updateTotalNotesCount();
+      
+      const totalNotesCount = document.getElementById('totalNotesCount');
+      expect(totalNotesCount.textContent).toBe('');
+    });
+    
+    it('should clear count on failure', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: false });
+      
+      await updateTotalNotesCount();
+      
+      const totalNotesCount = document.getElementById('totalNotesCount');
+      expect(totalNotesCount.textContent).toBe('');
+    });
+  });
+
+  describe('displayVersion', () => {
+    it('should display version from manifest', () => {
+      chrome.runtime.getManifest.mockReturnValue({ version: '1.13.0' });
+      
+      displayVersion();
+      
+      const versionDisplay = document.getElementById('versionDisplay');
+      expect(versionDisplay.textContent).toBe('v1.13.0');
+    });
+    
+    it('should handle missing versionDisplay element', () => {
+      document.getElementById('versionDisplay').remove();
+      initDOMElements();
+      
+      // Should not throw
+      expect(() => displayVersion()).not.toThrow();
+    });
+    
+    it('should handle getManifest error', () => {
+      chrome.runtime.getManifest.mockImplementation(() => {
+        throw new Error('Not available');
+      });
+      
+      displayVersion();
+      
+      const versionDisplay = document.getElementById('versionDisplay');
+      expect(versionDisplay.textContent).toBe('');
+    });
+  });
+
+  describe('loadAndRenderSharedNotes', () => {
+    it('should render shared notes', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ 
+        success: true, 
+        notes: [
+          { id: 'shared-1', content: 'Note 1', url: 'https://example.com/1' },
+          { id: 'shared-2', content: 'Note 2', url: 'https://example.com/2' }
+        ] 
+      });
+      
+      await loadAndRenderSharedNotes();
+      
+      const sharedNotesList = document.getElementById('sharedNotesList');
+      expect(sharedNotesList.innerHTML).toContain('shared-1');
+    });
+    
+    it('should render empty state when no shared notes', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true, notes: [] });
+      
+      await loadAndRenderSharedNotes();
+      
+      const sharedNotesList = document.getElementById('sharedNotesList');
+      expect(sharedNotesList.innerHTML).toContain('empty');
+    });
+  });
+
+  describe('handleSharedNoteClick', () => {
+    it('should mark note as read and open in new tab', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+      chrome.tabs.create.mockResolvedValue({ id: 2 });
+      
+      const item = document.createElement('div');
+      item.dataset.id = 'shared-1';
+      item.dataset.url = 'https://example.com/shared';
+      
+      await handleSharedNoteClick(item);
+      
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'markSharedNoteRead', noteId: 'shared-1' })
+      );
+      expect(chrome.tabs.create).toHaveBeenCalledWith({ url: 'https://example.com/shared' });
+      expect(window.close).toHaveBeenCalled();
+    });
+    
+    it('should do nothing if noteId is missing', async () => {
+      const item = document.createElement('div');
+      item.dataset.url = 'https://example.com/shared';
+      
+      await handleSharedNoteClick(item);
+      
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+    });
+    
+    it('should do nothing if noteUrl is missing', async () => {
+      const item = document.createElement('div');
+      item.dataset.id = 'shared-1';
+      
+      await handleSharedNoteClick(item);
+      
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+    });
+    
+    it('should handle error gracefully', async () => {
+      chrome.runtime.sendMessage.mockRejectedValue(new Error('Network error'));
+      
+      const item = document.createElement('div');
+      item.dataset.id = 'shared-1';
+      item.dataset.url = 'https://example.com/shared';
+      
+      // Should not throw
+      await expect(handleSharedNoteClick(item)).resolves.not.toThrow();
+    });
+  });
+
+  describe('setupActionsDropdown', () => {
+    it('should toggle actions menu on button click', async () => {
+      setupActionsDropdown();
+      
+      const actionsBtn = document.getElementById('actionsBtn');
+      const actionsMenu = document.getElementById('actionsMenu');
+      
+      // Initially hidden
+      expect(actionsMenu.classList.contains('hidden')).toBe(true);
+      
+      // Click to show
+      actionsBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(actionsMenu.classList.contains('hidden')).toBe(false);
+      
+      // Click again to hide
+      actionsBtn.click();
+      expect(actionsMenu.classList.contains('hidden')).toBe(true);
+    });
+    
+    it('should close menu on document click', async () => {
+      setupActionsDropdown();
+      
+      const actionsBtn = document.getElementById('actionsBtn');
+      const actionsMenu = document.getElementById('actionsMenu');
+      
+      // Show menu
+      actionsBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(actionsMenu.classList.contains('hidden')).toBe(false);
+      
+      // Click document to close
+      document.body.click();
+      expect(actionsMenu.classList.contains('hidden')).toBe(true);
+    });
+    
+    it('should handle export page button when no notes', async () => {
+      setupActionsDropdown();
+      
+      const exportPageBtn = document.getElementById('exportPageBtn');
+      
+      // No notes to export
+      exportPageBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // Should not throw (shows toast)
+    });
+    
+    it('should handle delete page notes when no notes', async () => {
+      setupActionsDropdown();
+      
+      const deletePageNotesBtn = document.getElementById('deletePageNotesBtn');
+      
+      deletePageNotesBtn.click();
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // Should show toast for no notes
+    });
+    
+    it('should handle settings button click', () => {
+      setupActionsDropdown();
+      
+      const settingsBtn = document.getElementById('settingsBtn');
+      const actionsMenu = document.getElementById('actionsMenu');
+      
+      settingsBtn.click();
+      
+      expect(chrome.runtime.openOptionsPage).toHaveBeenCalled();
+      expect(actionsMenu.classList.contains('hidden')).toBe(true);
+    });
+  });
+
+  describe('init', () => {
+    it('should initialize the popup', async () => {
+      // Mock storage.local.get to return user for checkAuthState
+      chrome.storage.local.get.mockImplementation((keys, callback) => {
+        const result = { user: { email: 'test@example.com', displayName: 'Test User' } };
+        if (callback) callback(result);
+        return Promise.resolve(result);
+      });
+      chrome.runtime.sendMessage
+        .mockResolvedValueOnce({ success: true, notes: [] })
+        .mockResolvedValueOnce({ success: true, notes: [] })
+        .mockResolvedValueOnce({ success: true, count: 0 });
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.runtime.getManifest.mockReturnValue({ version: '1.13.0' });
+      
+      await init();
+      
+      // Should display version
+      const versionDisplay = document.getElementById('versionDisplay');
+      expect(versionDisplay.textContent).toBe('v1.13.0');
+      
+      // Should show user section since user is logged in
+      const userSection = document.getElementById('userSection');
+      expect(userSection.classList.contains('hidden')).toBe(false);
+    });
+    
+    it('should show auth section when not logged in', async () => {
+      chrome.storage.local.get.mockImplementation((keys, callback) => {
+        const result = {};
+        if (callback) callback(result);
+        return Promise.resolve(result);
+      });
+      chrome.runtime.sendMessage
+        .mockResolvedValueOnce({ success: true, notes: [] })
+        .mockResolvedValueOnce({ success: true, notes: [] })
+        .mockResolvedValueOnce({ success: true, count: 0 });
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.runtime.getManifest.mockReturnValue({ version: '1.13.0' });
+      
+      await init();
+      
+      const authSection = document.getElementById('authSection');
+      expect(authSection.classList.contains('hidden')).toBe(false);
+    });
+    
+    it('should disable add note button on restricted URL', async () => {
+      chrome.storage.local.get.mockImplementation((keys, callback) => {
+        const result = {};
+        if (callback) callback(result);
+        return Promise.resolve(result);
+      });
+      chrome.runtime.sendMessage
+        .mockResolvedValueOnce({ success: true, notes: [] })
+        .mockResolvedValueOnce({ success: true, notes: [] })
+        .mockResolvedValueOnce({ success: true, count: 0 });
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'chrome://extensions' }]);
+      chrome.runtime.getManifest.mockReturnValue({ version: '1.13.0' });
+      
+      await init();
+      
+      const addNoteBtn = document.getElementById('addNoteBtn');
+      expect(addNoteBtn.disabled).toBe(true);
+    });
+  });
+
+  describe('handlers.handleAddPageNote', () => {
+    it('should trigger add page note on current tab', async () => {
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.tabs.sendMessage.mockResolvedValue({ success: true });
+      
+      await localThis.handlers.handleAddPageNote();
+      
+      expect(chrome.tabs.query).toHaveBeenCalled();
+    });
+  });
+
+  describe('handlers.handleLeaveNote', () => {
+    it('should handle leaving a shared note', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+      
+      const result = await localThis.handlers.handleLeaveNote('shared-1');
+      expect(result.success).toBe(true);
+    });
+    
+    it('should handle leave note failure', async () => {
+      // Clear any previous mocks and set up failure response
+      chrome.runtime.sendMessage.mockReset();
+      chrome.runtime.sendMessage.mockResolvedValue({ success: false, error: 'Failed' });
+      
+      const result = await localThis.handlers.handleLeaveNote('shared-1');
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Failed');
+    });
+  });
+
+  describe('handlers.handleDeleteAllFromPage', () => {
+    it('should delete all notes from page', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.tabs.sendMessage.mockResolvedValue({ success: true });
+      
+      const notes = [{ id: 'note-1' }, { id: 'note-2' }];
+      await localThis.handlers.handleDeleteAllFromPage(notes);
+      
+      // Should have called delete for each note
+      expect(chrome.runtime.sendMessage).toHaveBeenCalled();
+    });
+  });
+
+  describe('handlers.handleDeleteAllNotes', () => {
+    it('should delete all notes', async () => {
+      chrome.runtime.sendMessage
+        .mockResolvedValueOnce({ success: true, notes: [{ id: 'note-1' }, { id: 'note-2' }] })
+        .mockResolvedValue({ success: true });
+      chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      chrome.tabs.sendMessage.mockResolvedValue({ success: true });
+      
+      await localThis.handlers.handleDeleteAllNotes();
+      
+      expect(chrome.runtime.sendMessage).toHaveBeenCalled();
     });
   });
 });

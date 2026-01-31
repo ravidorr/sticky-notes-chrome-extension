@@ -134,6 +134,17 @@ npm test -- --coverage
 npm run test:e2e
 ```
 
+#### Code Coverage Thresholds
+
+The project enforces minimum coverage thresholds (configured in `jest.config.js`):
+
+| Metric | Minimum |
+|--------|---------|
+| Statements | 85% |
+| Branches | 75% |
+| Functions | 75% |
+| Lines | 85% |
+
 ### Pre-commit Hooks
 
 This project uses Husky and lint-staged to ensure code quality before commits:

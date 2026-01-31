@@ -746,6 +746,157 @@ describe('StickyNote', () => {
     it('should call share modal method', () => {
       expect(typeof note.showShareModal).toBe('function');
     });
+    
+    it('should create modal overlay when called', () => {
+      note.showShareModal();
+      
+      const overlay = container.querySelector('.sn-modal-overlay');
+      expect(overlay).not.toBeNull();
+      
+      // Clean up
+      overlay.remove();
+    });
+    
+    it('should create modal with email input', () => {
+      note.showShareModal();
+      
+      const modal = container.querySelector('.sn-modal');
+      const emailInput = modal.querySelector('input[type="email"]');
+      expect(emailInput).not.toBeNull();
+      
+      // Clean up
+      container.querySelector('.sn-modal-overlay').remove();
+    });
+    
+    it('should close modal when cancel button is clicked', async () => {
+      note.showShareModal();
+      
+      const modal = container.querySelector('.sn-modal');
+      const cancelBtn = modal.querySelector('.sn-btn-secondary');
+      expect(cancelBtn).not.toBeNull();
+      
+      cancelBtn.click();
+      
+      // Wait for animation
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const overlay = container.querySelector('.sn-modal-overlay');
+      // Modal should be removed or have closing class
+      expect(!overlay || overlay.classList.contains('sn-closing')).toBe(true);
+    });
+    
+    it('should close modal when Escape key is pressed', async () => {
+      note.showShareModal();
+      
+      const overlay = container.querySelector('.sn-modal-overlay');
+      expect(overlay).not.toBeNull();
+      
+      const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+      overlay.dispatchEvent(escapeEvent);
+      
+      // Wait for animation
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const afterOverlay = container.querySelector('.sn-modal-overlay');
+      expect(!afterOverlay || afterOverlay.classList.contains('sn-closing')).toBe(true);
+    });
+    
+    it('should close modal when clicking overlay background', async () => {
+      note.showShareModal();
+      
+      const overlay = container.querySelector('.sn-modal-overlay');
+      expect(overlay).not.toBeNull();
+      
+      // Click on overlay (not the modal itself)
+      overlay.click();
+      
+      // Wait for animation
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const afterOverlay = container.querySelector('.sn-modal-overlay');
+      expect(!afterOverlay || afterOverlay.classList.contains('sn-closing')).toBe(true);
+    });
+    
+    it('should not submit share form with invalid email', async () => {
+      chrome.runtime.sendMessage.mockClear();
+      
+      note.showShareModal();
+      
+      const modal = container.querySelector('.sn-modal');
+      const emailInput = modal.querySelector('input[type="email"]');
+      const shareBtn = modal.querySelector('.sn-btn-primary');
+      
+      emailInput.value = 'invalid-email';
+      shareBtn.click();
+      
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Should NOT have called shareNote with invalid email
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'shareNote', email: 'invalid-email' })
+      );
+      
+      // Clean up
+      container.querySelector('.sn-modal-overlay')?.remove();
+    });
+    
+    it('should share successfully with valid email', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+      
+      note.showShareModal();
+      
+      const modal = container.querySelector('.sn-modal');
+      const emailInput = modal.querySelector('input[type="email"]');
+      const shareBtn = modal.querySelector('.sn-btn-primary');
+      
+      emailInput.value = 'valid@example.com';
+      shareBtn.click();
+      
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        action: 'shareNote',
+        noteId: 'test-note-1',
+        email: 'valid@example.com'
+      });
+    });
+    
+    it('should handle Enter key to submit share form', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+      
+      note.showShareModal();
+      
+      const modal = container.querySelector('.sn-modal');
+      const emailInput = modal.querySelector('input[type="email"]');
+      
+      emailInput.value = 'enter@example.com';
+      
+      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+      emailInput.dispatchEvent(enterEvent);
+      
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        action: 'shareNote',
+        noteId: 'test-note-1',
+        email: 'enter@example.com'
+      });
+    });
+    
+    it('should focus email input when modal opens', () => {
+      note.showShareModal();
+      
+      const modal = container.querySelector('.sn-modal');
+      const emailInput = modal.querySelector('input[type="email"]');
+      
+      expect(document.activeElement).toBe(emailInput);
+      
+      // Clean up
+      container.querySelector('.sn-modal-overlay').remove();
+    });
   });
   
   describe('handleScreenshot', () => {
@@ -1989,6 +2140,82 @@ describe('StickyNote', () => {
       
       localThis.noteWithUser.destroy();
     });
+    
+    it('should share successfully when note has ID', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+      
+      const localThis = {};
+      localThis.shareNote = new StickyNote({
+        id: 'share-test-note',
+        anchor: anchor,
+        content: 'Test content',
+        user: { email: 'owner@example.com' }
+      });
+      container.appendChild(localThis.shareNote.element);
+      
+      await localThis.shareNote.handleAutoShare('other@example.com');
+      
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        action: 'shareNote',
+        noteId: 'share-test-note',
+        email: 'other@example.com'
+      });
+      
+      localThis.shareNote.destroy();
+    });
+    
+    it('should handle share error gracefully', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: false, error: 'User not found' });
+      
+      const localThis = {};
+      localThis.shareNote = new StickyNote({
+        id: 'share-error-note',
+        anchor: anchor,
+        content: 'Test content'
+      });
+      container.appendChild(localThis.shareNote.element);
+      
+      // Should not throw
+      await expect(localThis.shareNote.handleAutoShare('invalid@example.com')).resolves.not.toThrow();
+      
+      localThis.shareNote.destroy();
+    });
+    
+    it('should handle network error gracefully', async () => {
+      chrome.runtime.sendMessage.mockRejectedValue(new Error('Network error'));
+      
+      const localThis = {};
+      localThis.shareNote = new StickyNote({
+        id: 'share-network-error',
+        anchor: anchor,
+        content: 'Test content'
+      });
+      container.appendChild(localThis.shareNote.element);
+      
+      // Should not throw
+      await expect(localThis.shareNote.handleAutoShare('test@example.com')).resolves.not.toThrow();
+      
+      localThis.shareNote.destroy();
+    });
+    
+    it('should handle case-insensitive self-share check', async () => {
+      const localThis = {};
+      localThis.noteWithUser = new StickyNote({
+        id: 'case-share-test',
+        anchor: anchor,
+        content: '',
+        user: { email: 'ME@EXAMPLE.COM' }
+      });
+      
+      await localThis.noteWithUser.handleAutoShare('me@example.com');
+      
+      // Should not have called shareNote for self
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'shareNote' })
+      );
+      
+      localThis.noteWithUser.destroy();
+    });
   });
 
   describe('handleAutoUnshare', () => {
@@ -2005,6 +2232,59 @@ describe('StickyNote', () => {
       expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith(
         expect.objectContaining({ action: 'unshareNote' })
       );
+    });
+    
+    it('should unshare successfully when note has ID', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+      
+      const localThis = {};
+      localThis.unshareNote = new StickyNote({
+        id: 'unshare-test-note',
+        anchor: anchor,
+        content: 'Test content'
+      });
+      
+      await localThis.unshareNote.handleAutoUnshare('other@example.com');
+      
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        action: 'unshareNote',
+        noteId: 'unshare-test-note',
+        email: 'other@example.com'
+      });
+      
+      localThis.unshareNote.destroy();
+    });
+    
+    it('should handle unshare error gracefully', async () => {
+      chrome.runtime.sendMessage.mockResolvedValue({ success: false, error: 'Failed' });
+      
+      const localThis = {};
+      localThis.unshareNote = new StickyNote({
+        id: 'unshare-error-note',
+        anchor: anchor,
+        content: 'Test content'
+      });
+      
+      // Should not throw
+      await expect(localThis.unshareNote.handleAutoUnshare('test@example.com')).resolves.not.toThrow();
+      
+      localThis.unshareNote.destroy();
+    });
+    
+    it('should handle network error gracefully', async () => {
+      chrome.runtime.sendMessage.mockRejectedValue(new Error('Network error'));
+      
+      const localThis = {};
+      localThis.unshareNote = new StickyNote({
+        id: 'unshare-network-error',
+        anchor: anchor,
+        content: 'Test content'
+      });
+      
+      // Should not throw
+      await expect(localThis.unshareNote.handleAutoUnshare('test@example.com')).resolves.not.toThrow();
+      
+      localThis.unshareNote.destroy();
     });
   });
 
