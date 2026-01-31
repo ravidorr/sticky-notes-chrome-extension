@@ -1,9 +1,10 @@
 {
   "customRules": ["markdownlint-rule-search-replace"],
-  "ignores": ["CHANGELOG.md"],
+  "ignores": [],
   "config": {
     "default": true,
     "MD013": false,
+    "MD024": { "siblings_only": true },
     "MD033": false,
     "MD041": false,
     "MD029": false,
