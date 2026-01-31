@@ -298,11 +298,13 @@ Unplanned feature ideas for future consideration:
 - [ ] Image support in notes (Pro feature - requires Firebase Storage, upload flow, cost considerations)
 - [x] RichEditor enhancements: code/monospace, strikethrough, checkboxes, blockquotes
 - [ ] Slack Integration: Share notes directly to Slack channels/users (High effort - requires Slack app setup, OAuth, webhooks)
+- [ ] In-app mentions: @mention users within notes to notify them (Medium-High effort - requires notification system, user lookup)
 - [x] Inline sharing via email detection in note content:
   - Implemented: Auto-share when email + space is typed
   - Visual feedback: green underline (success), red underline (failed)
   - Hover tooltip shows share status
   - Auto-unshare when email is removed from note
+  - [ ] Add toast notifications for auto-share success/failure (matches manual share UX)
 - [x] Manage sticky notes from popup:
   - [x] View note metadata in popup (expand/preview mode)
   - [x] Delete notes on current page from popup
@@ -335,6 +337,7 @@ Unplanned feature ideas for future consideration:
 - [x] ~~Note position relative to element (top/bottom + right/left) isn't always working correctly~~ (Fixed: notes now use viewport coordinates and follow anchor elements when scrolling)
 - [ ] On some pages, notes fail to attach to elements at all
 - [ ] On pages with repeated content structures (e.g., live news feeds), notes may attach to the wrong instance of an element due to non-unique CSS selectors
+- [ ] **Figma Make / iframe compatibility**: Notes in iframes have issues affecting Figma Make prototypes and similar tools that render content inside iframes (High effort - complex DOM traversal, cross-origin restrictions)
 - [ ] **Edge Extension: Google Sign-in not working** - Microsoft Edge Add-ons store certification rejected because `chrome.identity` API is not supported on Edge. Error: "This API is not supported on Microsoft Edge." Need to implement alternative authentication flow for Edge (e.g., web-based OAuth flow with `chrome.tabs` or `launchWebAuthFlow`). See: [Microsoft Partner Center certification report](https://partner.microsoft.com/en-us/dashboard/microsoftedge/e8c23177-3423-4a2e-9d99-949fbe77f9ae/certification/reports/6cbe7b01-5962-427f-909f-211f487d5036)
 
 ### Minor
