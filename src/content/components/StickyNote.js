@@ -118,23 +118,23 @@ export class StickyNote {
     this.element.style.zIndex = StickyNote.baseZIndex;
     
     this.element.innerHTML = `
-      <div class="sn-note-header">
-        <button class="sn-note-btn sn-minimize-btn" title="${this.isMinimized ? t('expand') : t('minimize')}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <div class="sn-note-header" aria-label="${t('noteHeaderToolbar')}" role="toolbar">
+        <button class="sn-note-btn sn-minimize-btn" title="${this.isMinimized ? t('expand') : t('minimize')}" aria-label="${this.isMinimized ? t('expand') : t('minimize')}" aria-expanded="${!this.isMinimized}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="${this.isMinimized ? '6 15 12 9 18 15' : '6 9 12 15 18 9'}"/>
           </svg>
         </button>
         <span class="sn-note-header-title"></span>
         <div class="sn-note-header-actions">
-          <button class="sn-note-btn sn-hide-btn" title="${this.isHidden ? t('showNote') : t('hideNote')}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="sn-note-btn sn-hide-btn" title="${this.isHidden ? t('showNote') : t('hideNote')}" aria-label="${this.isHidden ? t('showNote') : t('hideNote')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               ${this.isHidden 
                 ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
                 : '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'}
             </svg>
           </button>
-          <button class="sn-note-btn sn-copy-md-btn" title="${t('copyAsMarkdown')}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="sn-note-btn sn-copy-md-btn" title="${t('copyAsMarkdown')}" aria-label="${t('copyAsMarkdown')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M8 4l2 2M16 4l-2 2"/>
               <ellipse cx="12" cy="14" rx="6" ry="7"/>
               <path d="M12 7v14"/>
@@ -143,37 +143,37 @@ export class StickyNote {
               <path d="M6 19l-2 2M18 19l2 2"/>
             </svg>
           </button>
-          <button class="sn-note-btn sn-screenshot-btn" title="${t('copyScreenshot')}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="sn-note-btn sn-screenshot-btn" title="${t('copyScreenshot')}" aria-label="${t('copyScreenshot')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <rect x="3" y="3" width="18" height="18" rx="2"/>
               <circle cx="8.5" cy="8.5" r="1.5"/>
               <path d="M21 15l-5-5L5 21"/>
             </svg>
           </button>
-          <button class="sn-note-btn sn-theme-btn" title="${t('changeColor')}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="sn-note-btn sn-theme-btn" title="${t('changeColor')}" aria-label="${t('changeColor')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.14-.74-.39-1.04-.23-.28-.37-.61-.37-.96 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.5-9-10-9z"/>
               <circle cx="7.5" cy="11.5" r="1.5" fill="currentColor"/>
               <circle cx="12" cy="7.5" r="1.5" fill="currentColor"/>
               <circle cx="16.5" cy="11.5" r="1.5" fill="currentColor"/>
             </svg>
           </button>
-          <button class="sn-note-btn sn-position-btn" title="${t('changePosition')}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="sn-note-btn sn-position-btn" title="${t('changePosition')}" aria-label="${t('changePosition')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l3 3 3-3M19 9l3 3-3 3"/>
               <path d="M2 12h20M12 2v20"/>
             </svg>
           </button>
-          <button class="sn-note-btn sn-share-btn" title="${t('share')}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="sn-note-btn sn-share-btn" title="${t('share')}" aria-label="${t('share')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <circle cx="18" cy="5" r="3"/>
               <circle cx="6" cy="12" r="3"/>
               <circle cx="18" cy="19" r="3"/>
               <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/>
             </svg>
           </button>
-          <button class="sn-note-btn sn-delete-btn" title="${t('delete')}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="sn-note-btn sn-delete-btn" title="${t('delete')}" aria-label="${t('delete')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
             </svg>
           </button>
@@ -183,13 +183,13 @@ export class StickyNote {
         <div class="sn-note-editor-container"></div>
       </div>
       <div class="sn-note-footer">
-        <button class="sn-metadata-toggle">
-          <svg class="sn-metadata-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="sn-metadata-toggle" aria-expanded="false" aria-controls="sn-metadata-panel-${this.id}" aria-label="${t('viewMetadata')}">
+          <svg class="sn-metadata-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
           <span class="sn-metadata-time">${formatRelativeTime(this.createdAt)}</span>
         </button>
-        <div class="sn-metadata-panel sn-hidden">
+        <div class="sn-metadata-panel sn-hidden" id="sn-metadata-panel-${this.id}" role="region" aria-label="${t('viewMetadata')}">
           <div class="sn-metadata-row">
             <span class="sn-metadata-label">${t('metadataUrl')}</span>
             <span class="sn-metadata-value sn-metadata-url" title="${escapeHtml(this.metadata.url)}">${escapeHtml(this.truncateUrl(this.metadata.url))}</span>
@@ -406,19 +406,19 @@ export class StickyNote {
     
     return `
       <div class="sn-console-errors-section">
-        <button class="sn-console-errors-toggle">
+        <button class="sn-console-errors-toggle" aria-expanded="false" aria-controls="sn-console-errors-${this.id}" aria-label="${t('metadataConsoleErrors')} (${errors.length})">
           <svg class="sn-console-errors-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="8" x2="12" y2="12"/>
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
           <span class="sn-console-errors-label">${t('metadataConsoleErrors')}</span>
-          <span class="sn-console-errors-count">${errors.length}</span>
+          <span class="sn-console-errors-count" aria-hidden="true">${errors.length}</span>
           <svg class="sn-console-errors-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </button>
-        <div class="sn-console-errors-list sn-hidden">
+        <div class="sn-console-errors-list sn-hidden" id="sn-console-errors-${this.id}" role="list" aria-label="${t('metadataConsoleErrors')}">
           ${errorItems}
         </div>
       </div>
@@ -633,21 +633,23 @@ export class StickyNote {
     if (this.isHidden) {
       // Note is hidden, show eye icon (click to show)
       hideBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
           <circle cx="12" cy="12" r="3"/>
         </svg>
       `;
       hideBtn.title = t('showNote');
+      hideBtn.setAttribute('aria-label', t('showNote'));
     } else {
       // Note is visible, show eye-off icon (click to hide)
       hideBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
           <line x1="1" y1="1" x2="23" y2="23"/>
         </svg>
       `;
       hideBtn.title = t('hideNote');
+      hideBtn.setAttribute('aria-label', t('hideNote'));
     }
   }
   
@@ -754,15 +756,18 @@ export class StickyNote {
     
     const panel = this.element.querySelector('.sn-metadata-panel');
     const chevron = this.element.querySelector('.sn-metadata-chevron');
+    const toggle = this.element.querySelector('.sn-metadata-toggle');
     
     this.isMetadataExpanded = !this.isMetadataExpanded;
     
     if (this.isMetadataExpanded) {
       panel.classList.remove('sn-hidden');
       chevron.style.transform = 'rotate(180deg)';
+      toggle.setAttribute('aria-expanded', 'true');
     } else {
       panel.classList.add('sn-hidden');
       chevron.style.transform = '';
+      toggle.setAttribute('aria-expanded', 'false');
     }
   }
   
@@ -775,12 +780,16 @@ export class StickyNote {
     
     const list = this.element.querySelector('.sn-console-errors-list');
     const chevron = this.element.querySelector('.sn-console-errors-chevron');
+    const toggle = this.element.querySelector('.sn-console-errors-toggle');
     
     if (list) {
       const isHidden = list.classList.contains('sn-hidden');
       list.classList.toggle('sn-hidden');
       if (chevron) {
         chevron.style.transform = isHidden ? 'rotate(180deg)' : '';
+      }
+      if (toggle) {
+        toggle.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
       }
     }
   }
@@ -1113,20 +1122,24 @@ export class StickyNote {
       this.element.classList.add('sn-minimized');
       // Update button to show expand icon (up arrow)
       minimizeBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <polyline points="6 15 12 9 18 15"/>
         </svg>
       `;
       minimizeBtn.title = t('expand');
+      minimizeBtn.setAttribute('aria-label', t('expand'));
+      minimizeBtn.setAttribute('aria-expanded', 'false');
     } else {
       this.element.classList.remove('sn-minimized');
       // Update button to show minimize icon (down arrow)
       minimizeBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       `;
       minimizeBtn.title = t('minimize');
+      minimizeBtn.setAttribute('aria-label', t('minimize'));
+      minimizeBtn.setAttribute('aria-expanded', 'true');
     }
   }
   
@@ -1139,16 +1152,10 @@ export class StickyNote {
     if (event.key === 'Escape') {
       this.element.blur();
       document.activeElement?.blur();
-      return;
     }
     
-    // Ctrl+H (Windows/Linux) or Cmd+H (Mac) to toggle note visibility
-    // Note: Ctrl+Shift+H is reserved for toggle all notes (handled by background script)
-    const isH = event.key === 'h' || event.key === 'H';
-    const hasCtrlOrCmd = event.ctrlKey || event.metaKey;
-    const noShift = !event.shiftKey;
-    
-    if (isH && hasCtrlOrCmd && noShift) {
+    // Ctrl+H (or Cmd+H on Mac) to toggle this note's visibility
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'h' && !event.shiftKey) {
       event.preventDefault();
       event.stopPropagation();
       this.handleHideClick(event);
@@ -1431,12 +1438,12 @@ export class StickyNote {
         y = anchorRect.top - measuredHeight - 10;
         break;
       case 'center-left':
-        // Note to the left, vertically centered
+        // Note to the left of element, vertically centered
         x = anchorRect.left - measuredWidth - 10;
         y = anchorRect.top + (anchorRect.height - measuredHeight) / 2;
         break;
       case 'center-right':
-        // Note to the right, vertically centered
+        // Note to the right of element, vertically centered
         if (isWideElement) {
           x = Math.min(anchorRect.right, viewportWidth - measuredWidth - 20);
         } else {
