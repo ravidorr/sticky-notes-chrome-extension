@@ -5,6 +5,16 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2026-01-31
+
+### Added
+
+- Extended note position options from 4 to 8 positions:
+  - Corner positions: top-left, top-right, bottom-left, bottom-right
+  - Edge positions: top-center, bottom-center, center-left, center-right
+  - Updated Settings page with 3x3 position picker grid
+  - Position picker in note header now shows all 8 options
+
 ## [1.15.0] - 2026-01-31
 
 ### Added

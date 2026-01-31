@@ -42,7 +42,7 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 - **Re-anchoring UI**: Easily re-attach notes when elements move
 - **Rich Text Editor**: Format notes with bold, italic, lists, and links
 - **Color Themes**: Choose from yellow, blue, green, or pink themes
-- **Position Controls**: Snap notes to top-left, top-right, bottom-left, or bottom-right
+- **Position Controls**: Snap notes to 8 positions around the anchor element (corners: top-left, top-right, bottom-left, bottom-right; edges: top-center, bottom-center, center-left, center-right)
 - **Settings Page**: Configure default theme, position, note width, and font size for new notes
 - **Internationalization**: Supports English, French, German, and Hebrew (auto-detects browser language)
 - **Dashboard**: View and manage all your notes in one place (access via popup, context menu, or `Alt+Shift+D`)

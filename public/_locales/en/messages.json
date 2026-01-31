@@ -141,6 +141,22 @@
     "message": "Bottom Right",
     "description": "Position option label"
   },
+  "positionTopCenter": {
+    "message": "Top Center",
+    "description": "Position option label"
+  },
+  "positionBottomCenter": {
+    "message": "Bottom Center",
+    "description": "Position option label"
+  },
+  "positionCenterLeft": {
+    "message": "Center Left",
+    "description": "Position option label"
+  },
+  "positionCenterRight": {
+    "message": "Center Right",
+    "description": "Position option label"
+  },
 
   "copiedToClipboard": {
     "message": "Copied to clipboard!",

@@ -141,6 +141,22 @@
     "message": "En bas a droite",
     "description": "Position option label"
   },
+  "positionTopCenter": {
+    "message": "En haut au centre",
+    "description": "Position option label"
+  },
+  "positionBottomCenter": {
+    "message": "En bas au centre",
+    "description": "Position option label"
+  },
+  "positionCenterLeft": {
+    "message": "Au centre a gauche",
+    "description": "Position option label"
+  },
+  "positionCenterRight": {
+    "message": "Au centre a droite",
+    "description": "Position option label"
+  },
 
   "copiedToClipboard": {
     "message": "Copie dans le presse-papiers !",

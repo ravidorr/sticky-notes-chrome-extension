@@ -141,6 +141,22 @@
     "message": "Unten rechts",
     "description": "Position option label"
   },
+  "positionTopCenter": {
+    "message": "Oben Mitte",
+    "description": "Position option label"
+  },
+  "positionBottomCenter": {
+    "message": "Unten Mitte",
+    "description": "Position option label"
+  },
+  "positionCenterLeft": {
+    "message": "Mitte links",
+    "description": "Position option label"
+  },
+  "positionCenterRight": {
+    "message": "Mitte rechts",
+    "description": "Position option label"
+  },
 
   "copiedToClipboard": {
     "message": "In die Zwischenablage kopiert!",

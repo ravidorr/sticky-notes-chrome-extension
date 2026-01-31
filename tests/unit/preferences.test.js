@@ -58,10 +58,14 @@ describe('VALID_POSITIONS', () => {
     const { VALID_POSITIONS } = await import('../../src/shared/preferences.js');
     
     expect(VALID_POSITIONS).toContain('top-left');
+    expect(VALID_POSITIONS).toContain('top-center');
     expect(VALID_POSITIONS).toContain('top-right');
+    expect(VALID_POSITIONS).toContain('center-left');
+    expect(VALID_POSITIONS).toContain('center-right');
     expect(VALID_POSITIONS).toContain('bottom-left');
+    expect(VALID_POSITIONS).toContain('bottom-center');
     expect(VALID_POSITIONS).toContain('bottom-right');
-    expect(VALID_POSITIONS).toHaveLength(4);
+    expect(VALID_POSITIONS).toHaveLength(8);
   });
 });
 
@@ -289,6 +293,27 @@ describe('setPreferences', () => {
     
     expect(result.success).toBe(true);
     expect(result.preferences.defaultPosition).toBe(DEFAULT_PREFERENCES.defaultPosition);
+  });
+  
+  it('should save and load new center positions', async () => {
+    const { setPreferences, getPreferences } = await import('../../src/shared/preferences.js');
+    
+    // Test all 4 new center positions
+    const newPositions = ['top-center', 'bottom-center', 'center-left', 'center-right'];
+    
+    for (const position of newPositions) {
+      const result = await setPreferences(
+        { defaultPosition: position },
+        { chromeStorage: localThis.mockChromeStorage }
+      );
+      
+      expect(result.success).toBe(true);
+      expect(result.preferences.defaultPosition).toBe(position);
+      
+      // Verify it can be loaded back
+      const loaded = await getPreferences({ chromeStorage: localThis.mockChromeStorage });
+      expect(loaded.defaultPosition).toBe(position);
+    }
   });
   
   it('should ignore invalid note width values', async () => {

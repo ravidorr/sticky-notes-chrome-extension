@@ -291,7 +291,7 @@ Unplanned feature ideas for future consideration:
 - [ ] Test data cleanup feature (delete all notes for testing purposes)
 - [x] WCAG 2.1 AA accessibility compliance (landing page) - skip links, focus states, heading hierarchy, aria labels, prefers-reduced-motion, touch targets
 - [x] WCAG 2.1 AA accessibility compliance (extension UI) - skip links, ARIA roles/labels, keyboard navigation, focus indicators, color contrast, reduced motion support
-- [ ] Additional note positions: Center Left, Center Right, Top Center, Bottom Center
+- [x] Additional note positions: Center Left, Center Right, Top Center, Bottom Center
 - [ ] Auto position: smart positioning based on available viewport space
 - [ ] Note content length validation (e.g., 10,000-50,000 chars) for UX, performance, and cost control
 - [ ] Image support in notes (Pro feature - requires Firebase Storage, upload flow, cost considerations)

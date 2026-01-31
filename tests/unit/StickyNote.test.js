@@ -666,14 +666,38 @@ describe('StickyNote', () => {
       expect(icon).toContain('</svg>');
     });
     
+    it('should return SVG markup for top-center position', () => {
+      const icon = note.getPositionIcon('top-center');
+      expect(icon).toContain('<svg');
+      expect(icon).toContain('</svg>');
+    });
+    
     it('should return SVG markup for top-right position', () => {
       const icon = note.getPositionIcon('top-right');
       expect(icon).toContain('<svg');
       expect(icon).toContain('</svg>');
     });
     
+    it('should return SVG markup for center-left position', () => {
+      const icon = note.getPositionIcon('center-left');
+      expect(icon).toContain('<svg');
+      expect(icon).toContain('</svg>');
+    });
+    
+    it('should return SVG markup for center-right position', () => {
+      const icon = note.getPositionIcon('center-right');
+      expect(icon).toContain('<svg');
+      expect(icon).toContain('</svg>');
+    });
+    
     it('should return SVG markup for bottom-left position', () => {
       const icon = note.getPositionIcon('bottom-left');
+      expect(icon).toContain('<svg');
+      expect(icon).toContain('</svg>');
+    });
+    
+    it('should return SVG markup for bottom-center position', () => {
+      const icon = note.getPositionIcon('bottom-center');
       expect(icon).toContain('<svg');
       expect(icon).toContain('</svg>');
     });
@@ -713,11 +737,11 @@ describe('StickyNote', () => {
       expect(picker).not.toBeNull();
     });
     
-    it('should create four position buttons with SVG icons', () => {
+    it('should create eight position buttons with SVG icons', () => {
       note.showPositionPicker();
       const picker = note.element.querySelector('.sn-position-picker');
       const buttons = picker.querySelectorAll('button');
-      expect(buttons.length).toBe(4);
+      expect(buttons.length).toBe(8);
       
       // Each button should contain an SVG
       buttons.forEach(btn => {
@@ -731,8 +755,8 @@ describe('StickyNote', () => {
       const picker = note.element.querySelector('.sn-position-picker');
       const buttons = picker.querySelectorAll('button');
       
-      // Verify we have 4 buttons and they have background styles set
-      expect(buttons.length).toBe(4);
+      // Verify we have 8 buttons and they have background styles set
+      expect(buttons.length).toBe(8);
       
       // At least one button should have a non-transparent background (the selected one)
       const buttonsWithBackground = Array.from(buttons).filter(btn => 
@@ -1097,6 +1121,106 @@ describe('StickyNote', () => {
       
       // Restore
       Object.defineProperty(window, 'scrollY', { value: localThis.originalScrollY, writable: true });
+    });
+    
+    it('should position top-center (above element, horizontally centered)', () => {
+      // Mock note dimensions
+      Object.defineProperty(note.element, 'offsetWidth', { value: 200, configurable: true });
+      Object.defineProperty(note.element, 'offsetHeight', { value: 100, configurable: true });
+      
+      // Mock anchor position
+      note.anchor.getBoundingClientRect = jest.fn(() => ({
+        left: 100,
+        top: 200,
+        right: 300,
+        bottom: 250,
+        width: 200,
+        height: 50
+      }));
+      
+      note.customPosition = null;
+      note.position = { anchor: 'top-center' };
+      note.updatePosition();
+      
+      // top-center: x = anchorRect.left + (anchorWidth - noteWidth) / 2 = 100 + (200 - 200) / 2 = 100
+      // y = anchorRect.top - noteHeight - 10 = 200 - 100 - 10 = 90
+      expect(note.element.style.left).toBe('100px');
+      expect(note.element.style.top).toBe('90px');
+    });
+    
+    it('should position bottom-center (below element, horizontally centered)', () => {
+      // Mock note dimensions
+      Object.defineProperty(note.element, 'offsetWidth', { value: 200, configurable: true });
+      Object.defineProperty(note.element, 'offsetHeight', { value: 100, configurable: true });
+      
+      // Mock anchor position
+      note.anchor.getBoundingClientRect = jest.fn(() => ({
+        left: 100,
+        top: 200,
+        right: 300,
+        bottom: 250,
+        width: 200,
+        height: 50
+      }));
+      
+      note.customPosition = null;
+      note.position = { anchor: 'bottom-center' };
+      note.updatePosition();
+      
+      // bottom-center: x = anchorRect.left + (anchorWidth - noteWidth) / 2 = 100 + (200 - 200) / 2 = 100
+      // y = anchorRect.bottom + 10 = 250 + 10 = 260
+      expect(note.element.style.left).toBe('100px');
+      expect(note.element.style.top).toBe('260px');
+    });
+    
+    it('should position center-left (to the left, vertically centered)', () => {
+      // Mock note dimensions
+      Object.defineProperty(note.element, 'offsetWidth', { value: 200, configurable: true });
+      Object.defineProperty(note.element, 'offsetHeight', { value: 100, configurable: true });
+      
+      // Mock anchor position
+      note.anchor.getBoundingClientRect = jest.fn(() => ({
+        left: 300,
+        top: 200,
+        right: 500,
+        bottom: 300,
+        width: 200,
+        height: 100
+      }));
+      
+      note.customPosition = null;
+      note.position = { anchor: 'center-left' };
+      note.updatePosition();
+      
+      // center-left: x = anchorRect.left - noteWidth - 10 = 300 - 200 - 10 = 90
+      // y = anchorRect.top + (anchorHeight - noteHeight) / 2 = 200 + (100 - 100) / 2 = 200
+      expect(note.element.style.left).toBe('90px');
+      expect(note.element.style.top).toBe('200px');
+    });
+    
+    it('should position center-right (to the right, vertically centered)', () => {
+      // Mock note dimensions
+      Object.defineProperty(note.element, 'offsetWidth', { value: 200, configurable: true });
+      Object.defineProperty(note.element, 'offsetHeight', { value: 100, configurable: true });
+      
+      // Mock anchor position
+      note.anchor.getBoundingClientRect = jest.fn(() => ({
+        left: 100,
+        top: 200,
+        right: 300,
+        bottom: 300,
+        width: 200,
+        height: 100
+      }));
+      
+      note.customPosition = null;
+      note.position = { anchor: 'center-right' };
+      note.updatePosition();
+      
+      // center-right: x = anchorRect.right + 10 = 300 + 10 = 310
+      // y = anchorRect.top + (anchorHeight - noteHeight) / 2 = 200 + (100 - 100) / 2 = 200
+      expect(note.element.style.left).toBe('310px');
+      expect(note.element.style.top).toBe('200px');
     });
   });
 

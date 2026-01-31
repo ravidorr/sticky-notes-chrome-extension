@@ -141,6 +141,22 @@
     "message": "למטה מימין",
     "description": "Position option label"
   },
+  "positionTopCenter": {
+    "message": "למעלה במרכז",
+    "description": "Position option label"
+  },
+  "positionBottomCenter": {
+    "message": "למטה במרכז",
+    "description": "Position option label"
+  },
+  "positionCenterLeft": {
+    "message": "באמצע משמאל",
+    "description": "Position option label"
+  },
+  "positionCenterRight": {
+    "message": "באמצע מימין",
+    "description": "Position option label"
+  },
 
   "copiedToClipboard": {
     "message": "הועתק ללוח!",

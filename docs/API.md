@@ -270,7 +270,7 @@ Content-Type: application/json
 | `selector` | string | Yes | CSS selector for the target element, or `__PAGE__` for page-level notes |
 | `content` | string | No | HTML content of the note |
 | `theme` | string | No | Color theme: `yellow`, `blue`, `green`, `pink` |
-| `position` | object | No | Position relative to element (`{ anchor: "top-right" }`), or absolute page position for page-level notes (`{ pageX: 100, pageY: 200 }`) |
+| `position` | object | No | Position relative to element (`{ anchor: "VALUE" }`) where VALUE is one of: `top-left`, `top-center`, `top-right`, `center-left`, `center-right`, `bottom-left`, `bottom-center`, `bottom-right`. For page-level notes, use absolute page position (`{ pageX: 100, pageY: 200 }`) |
 | `isHidden` | boolean | No | Per-note visibility. If `true`, the note is hidden and won't appear even with global "show all". Defaults to `false`. |
 | `metadata` | object | No | Custom metadata (see [Metadata Object](#metadata-object) below) |
 

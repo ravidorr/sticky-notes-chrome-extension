@@ -72,8 +72,13 @@ describe('Options Page Script', () => {
         
         <div class="position-picker" id="positionPicker">
           <button type="button" class="position-option" data-position="top-left" title="Top Left"></button>
+          <button type="button" class="position-option" data-position="top-center" title="Top Center"></button>
           <button type="button" class="position-option" data-position="top-right" title="Top Right"></button>
+          <button type="button" class="position-option" data-position="center-left" title="Center Left"></button>
+          <div class="position-placeholder"></div>
+          <button type="button" class="position-option" data-position="center-right" title="Center Right"></button>
           <button type="button" class="position-option" data-position="bottom-left" title="Bottom Left"></button>
+          <button type="button" class="position-option" data-position="bottom-center" title="Bottom Center"></button>
           <button type="button" class="position-option" data-position="bottom-right" title="Bottom Right"></button>
         </div>
         <input type="hidden" name="defaultPosition" id="defaultPosition" value="top-right">
@@ -231,6 +236,27 @@ describe('Options Page Script', () => {
     it('should handle non-existent position gracefully', () => {
       // Should not throw - if it throws, Jest will fail the test
       expect(() => selectPosition('nonexistent')).not.toThrow();
+    });
+    
+    it('should select center positions correctly', () => {
+      // Test top-center
+      selectPosition('top-center');
+      expect(document.querySelector('[data-position="top-center"]').classList.contains('selected')).toBe(true);
+      expect(document.getElementById('defaultPosition').value).toBe('top-center');
+      
+      // Test center-left
+      selectPosition('center-left');
+      expect(document.querySelector('[data-position="center-left"]').classList.contains('selected')).toBe(true);
+      expect(document.querySelector('[data-position="top-center"]').classList.contains('selected')).toBe(false);
+      
+      // Test center-right
+      selectPosition('center-right');
+      expect(document.querySelector('[data-position="center-right"]').classList.contains('selected')).toBe(true);
+      
+      // Test bottom-center
+      selectPosition('bottom-center');
+      expect(document.querySelector('[data-position="bottom-center"]').classList.contains('selected')).toBe(true);
+      expect(document.getElementById('defaultPosition').value).toBe('bottom-center');
     });
   });
   

@@ -87,12 +87,20 @@
             <label class="setting-label" data-i18n="settingsDefaultPosition">Default Position</label>
             <p class="setting-description" data-i18n="settingsDefaultPositionDesc">Where new notes appear relative to the selected element</p>
             <div class="position-picker" id="positionPicker" role="radiogroup" aria-label="Note position">
+              <!-- Row 1: Top positions -->
               <button type="button" class="position-option" data-position="top-left" title="Top Left" role="radio" aria-checked="false" data-i18n-aria-label="positionTopLeft" aria-label="Top Left">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke-width="1.5" aria-hidden="true">
                   <rect x="1" y="1" width="10" height="10" rx="1" stroke="#6b7280" fill="none"/>
                   <rect x="13" y="13" width="6" height="6" rx="1" fill="#374151" stroke="none"/>
                 </svg>
                 <span data-i18n="positionTopLeft">Top Left</span>
+              </button>
+              <button type="button" class="position-option" data-position="top-center" title="Top Center" role="radio" aria-checked="false" data-i18n-aria-label="positionTopCenter" aria-label="Top Center">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke-width="1.5" aria-hidden="true">
+                  <rect x="7" y="1" width="10" height="10" rx="1" stroke="#6b7280" fill="none"/>
+                  <rect x="9" y="13" width="6" height="6" rx="1" fill="#374151" stroke="none"/>
+                </svg>
+                <span data-i18n="positionTopCenter">Top Center</span>
               </button>
               <button type="button" class="position-option" data-position="top-right" title="Top Right" role="radio" aria-checked="false" data-i18n-aria-label="positionTopRight" aria-label="Top Right">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke-width="1.5" aria-hidden="true">
@@ -101,12 +109,36 @@
                 </svg>
                 <span data-i18n="positionTopRight">Top Right</span>
               </button>
+              <!-- Row 2: Center positions -->
+              <button type="button" class="position-option" data-position="center-left" title="Center Left" role="radio" aria-checked="false" data-i18n-aria-label="positionCenterLeft" aria-label="Center Left">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke-width="1.5" aria-hidden="true">
+                  <rect x="1" y="7" width="10" height="10" rx="1" stroke="#6b7280" fill="none"/>
+                  <rect x="13" y="9" width="6" height="6" rx="1" fill="#374151" stroke="none"/>
+                </svg>
+                <span data-i18n="positionCenterLeft">Center Left</span>
+              </button>
+              <div class="position-placeholder" aria-hidden="true"></div>
+              <button type="button" class="position-option" data-position="center-right" title="Center Right" role="radio" aria-checked="false" data-i18n-aria-label="positionCenterRight" aria-label="Center Right">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke-width="1.5" aria-hidden="true">
+                  <rect x="13" y="7" width="10" height="10" rx="1" stroke="#6b7280" fill="none"/>
+                  <rect x="5" y="9" width="6" height="6" rx="1" fill="#374151" stroke="none"/>
+                </svg>
+                <span data-i18n="positionCenterRight">Center Right</span>
+              </button>
+              <!-- Row 3: Bottom positions -->
               <button type="button" class="position-option" data-position="bottom-left" title="Bottom Left" role="radio" aria-checked="false" data-i18n-aria-label="positionBottomLeft" aria-label="Bottom Left">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke-width="1.5" aria-hidden="true">
                   <rect x="1" y="13" width="10" height="10" rx="1" stroke="#6b7280" fill="none"/>
                   <rect x="13" y="5" width="6" height="6" rx="1" fill="#374151" stroke="none"/>
                 </svg>
                 <span data-i18n="positionBottomLeft">Bottom Left</span>
+              </button>
+              <button type="button" class="position-option" data-position="bottom-center" title="Bottom Center" role="radio" aria-checked="false" data-i18n-aria-label="positionBottomCenter" aria-label="Bottom Center">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke-width="1.5" aria-hidden="true">
+                  <rect x="7" y="13" width="10" height="10" rx="1" stroke="#6b7280" fill="none"/>
+                  <rect x="9" y="5" width="6" height="6" rx="1" fill="#374151" stroke="none"/>
+                </svg>
+                <span data-i18n="positionBottomCenter">Bottom Center</span>
               </button>
               <button type="button" class="position-option" data-position="bottom-right" title="Bottom Right" role="radio" aria-checked="false" data-i18n-aria-label="positionBottomRight" aria-label="Bottom Right">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke-width="1.5" aria-hidden="true">
