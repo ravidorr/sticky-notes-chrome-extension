@@ -43,16 +43,10 @@
             font-size: 2.5rem;
             font-weight: 700;
             color: #1f2937;
-            margin-bottom: 1rem;
+            margin-bottom: 2rem;
             letter-spacing: -0.02em;
         }
         
-        .welcome-subtitle {
-            font-size: 1.25rem;
-            color: #6b7280;
-            margin-bottom: 3rem;
-            line-height: 1.6;
-        }
         
         .features-grid {
             display: grid;
@@ -124,24 +118,6 @@
             box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
         }
         
-        .welcome-links {
-            display: flex;
-            gap: 1.5rem;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 1rem;
-        }
-        
-        .welcome-link {
-            color: #6b7280;
-            text-decoration: none;
-            font-size: 0.9375rem;
-            transition: color 0.15s ease;
-        }
-        
-        .welcome-link:hover {
-            color: #3b82f6;
-        }
         
         .shortcut-hint {
             margin-top: 2rem;
@@ -163,12 +139,13 @@
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
         
+        .shortcut-keys-hidden {
+            display: none;
+        }
+        
         @media (max-width: 640px) {
             .welcome-title {
                 font-size: 1.875rem;
-            }
-            .welcome-subtitle {
-                font-size: 1.0625rem;
             }
             .features-grid {
                 grid-template-columns: 1fr;
@@ -188,10 +165,6 @@
         </div>
         
         <h1 class="welcome-title">Welcome to Sticky Notes!</h1>
-        <p class="welcome-subtitle">
-            You're all set to annotate the web. Pin notes to any UI element, 
-            collaborate with your team, and track everything in your dashboard.
-        </p>
         
         <div class="features-grid">
             <div class="feature-card">
@@ -202,7 +175,7 @@
                     </svg>
                 </div>
                 <h3>Pin to Elements</h3>
-                <p>Click "Add Note" and select any element. Your note stays attached even when the page changes.</p>
+                <p>Click "Add Note" and select any element.</p>
             </div>
             
             <div class="feature-card">
@@ -243,16 +216,25 @@
                 Open Dashboard
             </a>
             
-            <div class="welcome-links">
-                <a href="index.html" class="welcome-link">Learn More</a>
-                <a href="index.html#pricing" class="welcome-link">Pricing</a>
-                <a href="contact.html" class="welcome-link">Contact Us</a>
-            </div>
         </div>
         
         <div class="shortcut-hint">
-            <strong>Pro tip:</strong> Press <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd> anytime to open your dashboard
+            <strong>Pro tip:</strong> Press 
+            <span class="shortcut-keys shortcut-keys-hidden" data-mac="true"><kbd>Option</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd></span>
+            <span class="shortcut-keys" data-mac="false"><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd></span>
+            anytime to open your dashboard
         </div>
+        <script>
+            // Show correct keyboard shortcut based on OS
+            (function() {
+                const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0 || 
+                              navigator.userAgent.toUpperCase().indexOf('MAC') >= 0;
+                document.querySelectorAll('.shortcut-keys').forEach(function(el) {
+                    const isForMac = el.getAttribute('data-mac') === 'true';
+                    el.classList.toggle('shortcut-keys-hidden', isMac !== isForMac);
+                });
+            })();
+        </script>
     </div>
 </main>
 
