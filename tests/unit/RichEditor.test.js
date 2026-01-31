@@ -103,6 +103,34 @@ describe('RichEditor', () => {
       const linkBtn = editor.toolbar.querySelector('[data-command="createLink"]');
       expect(linkBtn).not.toBeNull();
     });
+    
+    it('should have strikethrough button', () => {
+      const strikeBtn = editor.toolbar.querySelector('[data-command="strikethrough"]');
+      expect(strikeBtn).not.toBeNull();
+      expect(strikeBtn.title).toBe('strikethroughText');
+      expect(strikeBtn.getAttribute('aria-label')).toBe('strikethroughText');
+    });
+    
+    it('should have code button', () => {
+      const codeBtn = editor.toolbar.querySelector('[data-command="code"]');
+      expect(codeBtn).not.toBeNull();
+      expect(codeBtn.title).toBe('codeText');
+      expect(codeBtn.getAttribute('aria-label')).toBe('codeText');
+    });
+    
+    it('should have blockquote button', () => {
+      const quoteBtn = editor.toolbar.querySelector('[data-command="blockquote"]');
+      expect(quoteBtn).not.toBeNull();
+      expect(quoteBtn.title).toBe('blockquoteText');
+      expect(quoteBtn.getAttribute('aria-label')).toBe('blockquoteText');
+    });
+    
+    it('should have checkbox button', () => {
+      const checkboxBtn = editor.toolbar.querySelector('[data-command="insertCheckbox"]');
+      expect(checkboxBtn).not.toBeNull();
+      expect(checkboxBtn.title).toBe('checkboxText');
+      expect(checkboxBtn.getAttribute('aria-label')).toBe('checkboxText');
+    });
   });
   
   describe('getContent', () => {
@@ -217,6 +245,46 @@ describe('RichEditor', () => {
       execCommandSpy.mockRestore();
     });
 
+    it('should execute strikethrough command when strikethrough button clicked', () => {
+      const strikeBtn = editor.toolbar.querySelector('[data-command="strikethrough"]');
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      strikeBtn.click();
+      
+      expect(execCommandSpy).toHaveBeenCalledWith('strikethrough', false, null);
+      execCommandSpy.mockRestore();
+    });
+
+    it('should call handleCode when code button clicked', () => {
+      const handleCodeSpy = jest.spyOn(editor, 'handleCode').mockImplementation(() => {});
+      const codeBtn = editor.toolbar.querySelector('[data-command="code"]');
+      
+      codeBtn.click();
+      
+      expect(handleCodeSpy).toHaveBeenCalled();
+      handleCodeSpy.mockRestore();
+    });
+
+    it('should call handleBlockquote when blockquote button clicked', () => {
+      const handleBlockquoteSpy = jest.spyOn(editor, 'handleBlockquote').mockImplementation(() => {});
+      const quoteBtn = editor.toolbar.querySelector('[data-command="blockquote"]');
+      
+      quoteBtn.click();
+      
+      expect(handleBlockquoteSpy).toHaveBeenCalled();
+      handleBlockquoteSpy.mockRestore();
+    });
+
+    it('should call handleInsertCheckbox when checkbox button clicked', () => {
+      const handleCheckboxSpy = jest.spyOn(editor, 'handleInsertCheckbox').mockImplementation(() => {});
+      const checkboxBtn = editor.toolbar.querySelector('[data-command="insertCheckbox"]');
+      
+      checkboxBtn.click();
+      
+      expect(handleCheckboxSpy).toHaveBeenCalled();
+      handleCheckboxSpy.mockRestore();
+    });
+
     it('should not execute command when clicking non-button element', () => {
       const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
       
@@ -277,6 +345,90 @@ describe('RichEditor', () => {
       // Should not call execCommand for regular keys
       expect(execCommandSpy).not.toHaveBeenCalledWith('bold', false, null);
       execCommandSpy.mockRestore();
+    });
+    
+    it('should execute strikethrough on Ctrl+Shift+S', () => {
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      const event = new KeyboardEvent('keydown', {
+        key: 's',
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true
+      });
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(execCommandSpy).toHaveBeenCalledWith('strikethrough', false, null);
+      execCommandSpy.mockRestore();
+    });
+    
+    it('should call handleCode on Ctrl+`', () => {
+      const handleCodeSpy = jest.spyOn(editor, 'handleCode').mockImplementation(() => {});
+      
+      const event = new KeyboardEvent('keydown', {
+        key: '`',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true
+      });
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(handleCodeSpy).toHaveBeenCalled();
+      handleCodeSpy.mockRestore();
+    });
+    
+    it('should call handleBlockquote on Ctrl+Shift+Q', () => {
+      const handleBlockquoteSpy = jest.spyOn(editor, 'handleBlockquote').mockImplementation(() => {});
+      
+      const event = new KeyboardEvent('keydown', {
+        key: 'q',
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true
+      });
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(handleBlockquoteSpy).toHaveBeenCalled();
+      handleBlockquoteSpy.mockRestore();
+    });
+    
+    it('should NOT execute strikethrough on Ctrl+S without Shift', () => {
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      const event = new KeyboardEvent('keydown', {
+        key: 's',
+        ctrlKey: true,
+        shiftKey: false,
+        bubbles: true,
+        cancelable: true
+      });
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(execCommandSpy).not.toHaveBeenCalledWith('strikethrough', false, null);
+      execCommandSpy.mockRestore();
+    });
+    
+    it('should NOT call handleBlockquote on Ctrl+Q without Shift', () => {
+      const handleBlockquoteSpy = jest.spyOn(editor, 'handleBlockquote').mockImplementation(() => {});
+      
+      const event = new KeyboardEvent('keydown', {
+        key: 'q',
+        ctrlKey: true,
+        shiftKey: false,
+        bubbles: true,
+        cancelable: true
+      });
+      
+      editor.editor.dispatchEvent(event);
+      
+      expect(handleBlockquoteSpy).not.toHaveBeenCalled();
+      handleBlockquoteSpy.mockRestore();
     });
   });
 
@@ -870,6 +1022,56 @@ describe('RichEditor', () => {
       expect(cleaned).toContain('Cell content');
       expect(cleaned).not.toContain('<table>');
     });
+    
+    it('should preserve code tags', () => {
+      const html = '<p>Some <code>inline code</code> here</p>';
+      const cleaned = editor.cleanHtml(html);
+      expect(cleaned).toContain('<code>inline code</code>');
+    });
+    
+    it('should preserve strikethrough tags (strike)', () => {
+      const html = '<p>Some <strike>deleted text</strike> here</p>';
+      const cleaned = editor.cleanHtml(html);
+      expect(cleaned).toContain('<strike>deleted text</strike>');
+    });
+    
+    it('should preserve strikethrough tags (s)', () => {
+      const html = '<p>Some <s>deleted text</s> here</p>';
+      const cleaned = editor.cleanHtml(html);
+      expect(cleaned).toContain('<s>deleted text</s>');
+    });
+    
+    it('should preserve strikethrough tags (del)', () => {
+      const html = '<p>Some <del>deleted text</del> here</p>';
+      const cleaned = editor.cleanHtml(html);
+      expect(cleaned).toContain('<del>deleted text</del>');
+    });
+    
+    it('should preserve blockquote tags', () => {
+      const html = '<blockquote>A quoted text</blockquote>';
+      const cleaned = editor.cleanHtml(html);
+      expect(cleaned).toContain('<blockquote>A quoted text</blockquote>');
+    });
+    
+    it('should preserve checkbox input elements with type and checked attributes', () => {
+      const html = '<label class="sn-checkbox" contenteditable="false"><input type="checkbox" checked class="sn-checkbox-input"></label>';
+      const cleaned = editor.cleanHtml(html);
+      expect(cleaned).toContain('type="checkbox"');
+      expect(cleaned).toContain('class="sn-checkbox"');
+    });
+    
+    it('should preserve checkbox input without checked attribute', () => {
+      const html = '<label class="sn-checkbox"><input type="checkbox" class="sn-checkbox-input"></label>';
+      const cleaned = editor.cleanHtml(html);
+      expect(cleaned).toContain('type="checkbox"');
+      expect(cleaned).toContain('class="sn-checkbox-input"');
+    });
+    
+    it('should preserve contenteditable attribute on checkbox label', () => {
+      const html = '<label class="sn-checkbox" contenteditable="false"><input type="checkbox"></label>';
+      const cleaned = editor.cleanHtml(html);
+      expect(cleaned).toContain('contenteditable="false"');
+    });
   });
 
 
@@ -973,6 +1175,373 @@ describe('RichEditor', () => {
       expect(onShareInit).toHaveBeenCalledWith('me@example.com');
       
       editorWithInitialContent.destroy();
+    });
+  });
+
+  describe('handleCode', () => {
+    it('should not throw when no selection range', () => {
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 0,
+        toString: () => ''
+      }));
+      
+      expect(() => editor.handleCode()).not.toThrow();
+    });
+    
+    it('should remove code formatting when inside code element', () => {
+      editor.editor.innerHTML = '<code>some code</code>';
+      const codeEl = editor.editor.querySelector('code');
+      
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 1,
+        anchorNode: codeEl.firstChild,
+        toString: () => 'some code',
+        getRangeAt: () => ({
+          cloneRange: () => ({}),
+          selectNodeContents: jest.fn()
+        })
+      }));
+      
+      editor.handleCode();
+      
+      // Code element should be removed
+      expect(editor.editor.querySelector('code')).toBeNull();
+      expect(editor.editor.textContent).toContain('some code');
+    });
+    
+    it('should wrap selected text in code element', () => {
+      editor.editor.innerHTML = 'some text here';
+      const textNode = editor.editor.firstChild;
+      
+      const mockRange = {
+        surroundContents: jest.fn()
+      };
+      
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 1,
+        anchorNode: textNode,
+        toString: () => 'text',
+        getRangeAt: () => mockRange
+      }));
+      
+      editor.handleCode();
+      
+      expect(mockRange.surroundContents).toHaveBeenCalled();
+    });
+    
+    it('should use insertHTML fallback when surroundContents throws', () => {
+      editor.editor.innerHTML = '<p>some</p><p>text</p>';
+      
+      const mockRange = {
+        surroundContents: jest.fn(() => { throw new Error('Cannot surroundContents'); })
+      };
+      
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 1,
+        anchorNode: editor.editor.firstChild,
+        toString: () => 'some text',
+        getRangeAt: () => mockRange
+      }));
+      
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      editor.handleCode();
+      
+      expect(execCommandSpy).toHaveBeenCalledWith('insertHTML', false, expect.stringContaining('<code>'));
+      execCommandSpy.mockRestore();
+    });
+    
+    it('should do nothing when no text selected and not in code element', () => {
+      editor.editor.innerHTML = 'some text';
+      const textNode = editor.editor.firstChild;
+      
+      const originalContent = editor.editor.innerHTML;
+      
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 1,
+        anchorNode: textNode,
+        toString: () => '',
+        getRangeAt: () => ({})
+      }));
+      
+      editor.handleCode();
+      
+      // Content should remain unchanged
+      expect(editor.editor.innerHTML).toBe(originalContent);
+    });
+    
+    it('should not unwrap code element outside the editor', () => {
+      const externalCode = document.createElement('code');
+      externalCode.textContent = 'external code';
+      document.body.appendChild(externalCode);
+      
+      editor.editor.innerHTML = 'some text';
+      
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 1,
+        anchorNode: externalCode.firstChild,
+        toString: () => 'external code',
+        getRangeAt: () => ({})
+      }));
+      
+      expect(() => editor.handleCode()).not.toThrow();
+      expect(externalCode.parentNode).toBe(document.body);
+      
+      externalCode.remove();
+    });
+    
+    it('should call onChange after toggling code', () => {
+      const onChange = jest.fn();
+      const editorWithCallback = new RichEditor({
+        content: '<code>code</code>',
+        onChange
+      });
+      document.body.appendChild(editorWithCallback.element);
+      
+      const codeEl = editorWithCallback.editor.querySelector('code');
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 1,
+        anchorNode: codeEl.firstChild,
+        toString: () => 'code',
+        getRangeAt: () => ({
+          cloneRange: () => ({})
+        })
+      }));
+      
+      editorWithCallback.handleCode();
+      
+      expect(onChange).toHaveBeenCalled();
+      editorWithCallback.destroy();
+    });
+  });
+
+  describe('handleBlockquote', () => {
+    it('should not throw when no selection range', () => {
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 0
+      }));
+      
+      expect(() => editor.handleBlockquote()).not.toThrow();
+    });
+    
+    it('should remove blockquote when inside blockquote element', () => {
+      editor.editor.innerHTML = '<blockquote>quoted text</blockquote>';
+      const blockquoteEl = editor.editor.querySelector('blockquote');
+      
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 1,
+        anchorNode: blockquoteEl.firstChild,
+        getRangeAt: () => ({})
+      }));
+      
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      editor.handleBlockquote();
+      
+      // Should call formatBlock with div to remove blockquote
+      expect(execCommandSpy).toHaveBeenCalledWith('formatBlock', false, 'div');
+      execCommandSpy.mockRestore();
+    });
+    
+    it('should add blockquote when not inside blockquote', () => {
+      editor.editor.innerHTML = 'some text';
+      const textNode = editor.editor.firstChild;
+      
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 1,
+        anchorNode: textNode,
+        getRangeAt: () => ({})
+      }));
+      
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      editor.handleBlockquote();
+      
+      // Should call formatBlock with blockquote
+      expect(execCommandSpy).toHaveBeenCalledWith('formatBlock', false, 'blockquote');
+      execCommandSpy.mockRestore();
+    });
+    
+    it('should call onChange after toggling blockquote', () => {
+      const onChange = jest.fn();
+      const editorWithCallback = new RichEditor({
+        content: 'text',
+        onChange
+      });
+      document.body.appendChild(editorWithCallback.element);
+      
+      const textNode = editorWithCallback.editor.firstChild;
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 1,
+        anchorNode: textNode,
+        getRangeAt: () => ({})
+      }));
+      
+      jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      editorWithCallback.handleBlockquote();
+      
+      expect(onChange).toHaveBeenCalled();
+      editorWithCallback.destroy();
+    });
+    
+    it('should add blockquote when existing blockquote is outside editor', () => {
+      const externalBlockquote = document.createElement('blockquote');
+      externalBlockquote.textContent = 'external quote';
+      document.body.appendChild(externalBlockquote);
+      
+      editor.editor.innerHTML = 'some text';
+      
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 1,
+        anchorNode: externalBlockquote.firstChild,
+        getRangeAt: () => ({})
+      }));
+      
+      const execCommandSpy = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      
+      editor.handleBlockquote();
+      
+      expect(execCommandSpy).toHaveBeenCalledWith('formatBlock', false, 'blockquote');
+      execCommandSpy.mockRestore();
+      externalBlockquote.remove();
+    });
+  });
+
+  describe('handleInsertCheckbox', () => {
+    it('should insert checkbox element at cursor position', () => {
+      editor.editor.innerHTML = 'some text';
+      
+      // Create a proper range mock
+      const mockRange = {
+        deleteContents: jest.fn(),
+        insertNode: jest.fn(),
+        setStartAfter: jest.fn(),
+        setEndAfter: jest.fn()
+      };
+      
+      const mockSelection = {
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        removeAllRanges: jest.fn(),
+        addRange: jest.fn()
+      };
+      
+      window.getSelection = jest.fn(() => mockSelection);
+      
+      editor.handleInsertCheckbox();
+      
+      // insertNode should be called twice (for wrapper and space)
+      expect(mockRange.insertNode).toHaveBeenCalledTimes(2);
+    });
+    
+    it('should append checkbox to end when no selection', () => {
+      editor.editor.innerHTML = 'some text';
+      
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 0
+      }));
+      
+      const initialChildCount = editor.editor.childNodes.length;
+      
+      editor.handleInsertCheckbox();
+      
+      // Should have appended checkbox elements
+      expect(editor.editor.childNodes.length).toBeGreaterThan(initialChildCount);
+      expect(editor.editor.querySelector('.sn-checkbox')).not.toBeNull();
+    });
+    
+    it('should create checkbox with correct structure', () => {
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 0
+      }));
+      
+      editor.handleInsertCheckbox();
+      
+      const checkbox = editor.editor.querySelector('.sn-checkbox');
+      expect(checkbox).not.toBeNull();
+      expect(checkbox.tagName).toBe('LABEL');
+      expect(checkbox.contentEditable).toBe('false');
+      
+      const input = checkbox.querySelector('input[type="checkbox"]');
+      expect(input).not.toBeNull();
+      expect(input.className).toBe('sn-checkbox-input');
+    });
+    
+    it('should call onChange after inserting checkbox', () => {
+      const onChange = jest.fn();
+      const editorWithCallback = new RichEditor({
+        content: '',
+        onChange
+      });
+      document.body.appendChild(editorWithCallback.element);
+      
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 0
+      }));
+      
+      editorWithCallback.handleInsertCheckbox();
+      
+      expect(onChange).toHaveBeenCalled();
+      editorWithCallback.destroy();
+    });
+  });
+
+  describe('checkbox click handling', () => {
+    it('should update content when checkbox is clicked', async () => {
+      const onChange = jest.fn();
+      const editorWithCallback = new RichEditor({
+        content: '',
+        onChange
+      });
+      document.body.appendChild(editorWithCallback.element);
+      
+      // Insert a checkbox
+      window.getSelection = jest.fn(() => ({
+        rangeCount: 0
+      }));
+      editorWithCallback.handleInsertCheckbox();
+      
+      // Reset onChange mock after insertion
+      onChange.mockClear();
+      
+      // Simulate checkbox click
+      const checkbox = editorWithCallback.editor.querySelector('input[type="checkbox"]');
+      checkbox.click();
+      
+      // Wait for setTimeout in click handler
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      expect(onChange).toHaveBeenCalled();
+      editorWithCallback.destroy();
+    });
+  });
+
+  describe('static getStyles - new formatting styles', () => {
+    it('should include code styles', () => {
+      const styles = RichEditor.getStyles();
+      expect(styles).toContain('.sn-editor-content code');
+      expect(styles).toContain('monospace');
+    });
+    
+    it('should include strikethrough styles', () => {
+      const styles = RichEditor.getStyles();
+      expect(styles).toContain('.sn-editor-content s');
+      expect(styles).toContain('.sn-editor-content strike');
+      expect(styles).toContain('.sn-editor-content del');
+      expect(styles).toContain('line-through');
+    });
+    
+    it('should include blockquote styles', () => {
+      const styles = RichEditor.getStyles();
+      expect(styles).toContain('.sn-editor-content blockquote');
+      expect(styles).toContain('border-left');
+    });
+    
+    it('should include checkbox styles', () => {
+      const styles = RichEditor.getStyles();
+      expect(styles).toContain('.sn-editor-content .sn-checkbox');
+      expect(styles).toContain('.sn-checkbox-input');
     });
   });
 });

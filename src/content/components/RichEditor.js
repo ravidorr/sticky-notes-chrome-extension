@@ -94,6 +94,32 @@ export class RichEditor {
           <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
         </svg>
       </button>
+      <span class="sn-toolbar-divider" aria-hidden="true"></span>
+      <button type="button" class="sn-toolbar-btn" data-command="strikethrough" title="${t('strikethroughText')}" aria-label="${t('strikethroughText')}" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <path d="M17.5 7.5c0-2.5-2-4-5.5-4s-5.5 1.5-5.5 4c0 1.5 1 2.5 2.5 3.5"/>
+          <path d="M6.5 16.5c0 2.5 2 4 5.5 4s5.5-1.5 5.5-4c0-1.5-1-2.5-2.5-3.5"/>
+        </svg>
+      </button>
+      <button type="button" class="sn-toolbar-btn" data-command="code" title="${t('codeText')}" aria-label="${t('codeText')}" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <polyline points="16 18 22 12 16 6"/>
+          <polyline points="8 6 2 12 8 18"/>
+        </svg>
+      </button>
+      <button type="button" class="sn-toolbar-btn" data-command="blockquote" title="${t('blockquoteText')}" aria-label="${t('blockquoteText')}" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21"/>
+          <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v4"/>
+        </svg>
+      </button>
+      <button type="button" class="sn-toolbar-btn" data-command="insertCheckbox" title="${t('checkboxText')}" aria-label="${t('checkboxText')}" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <polyline points="9 11 12 14 22 4" stroke-width="2"/>
+        </svg>
+      </button>
     `;
     
     // Create editor area
@@ -124,6 +150,12 @@ export class RichEditor {
       
       if (command === 'createLink') {
         this.handleCreateLink();
+      } else if (command === 'code') {
+        this.handleCode();
+      } else if (command === 'blockquote') {
+        this.handleBlockquote();
+      } else if (command === 'insertCheckbox') {
+        this.handleInsertCheckbox();
       } else {
         document.execCommand(command, false, null);
         this.updateToolbarState();
@@ -165,6 +197,22 @@ export class RichEditor {
           case 'k':
             event.preventDefault();
             this.handleCreateLink();
+            break;
+          case 's':
+            if (event.shiftKey) {
+              event.preventDefault();
+              document.execCommand('strikethrough', false, null);
+            }
+            break;
+          case '`':
+            event.preventDefault();
+            this.handleCode();
+            break;
+          case 'q':
+            if (event.shiftKey) {
+              event.preventDefault();
+              this.handleBlockquote();
+            }
             break;
         }
         this.updateToolbarState();
@@ -209,6 +257,19 @@ export class RichEditor {
     
     // Initial placeholder state
     this.updatePlaceholder();
+    
+    // Checkbox click handling
+    this.editor.addEventListener('click', (event) => {
+      const checkbox = event.target.closest('input[type="checkbox"]');
+      if (checkbox && this.editor.contains(checkbox)) {
+        // Toggle checkbox state and update content
+        // Use setTimeout to let the checkbox update first
+        setTimeout(() => {
+          this.content = this.editor.innerHTML;
+          this.onChange(this.content);
+        }, 0);
+      }
+    });
   }
   
   /**
@@ -233,6 +294,113 @@ export class RichEditor {
     
     // Show inline URL input
     this.showLinkInput(range, selectedText);
+  }
+  
+  /**
+   * Handle code/monospace formatting toggle
+   */
+  handleCode() {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    const selectedText = selection.toString();
+    
+    // Check if selection is inside a code element
+    const anchorNode = selection.anchorNode;
+    const existingCode = anchorNode?.parentElement?.closest('code');
+    
+    if (existingCode && this.editor.contains(existingCode)) {
+      // Remove code formatting - unwrap the code element
+      const parent = existingCode.parentNode;
+      while (existingCode.firstChild) {
+        parent.insertBefore(existingCode.firstChild, existingCode);
+      }
+      parent.removeChild(existingCode);
+      this.content = this.editor.innerHTML;
+      this.onChange(this.content);
+    } else if (selectedText) {
+      // Wrap selection in code element
+      const code = document.createElement('code');
+      try {
+        range.surroundContents(code);
+        this.content = this.editor.innerHTML;
+        this.onChange(this.content);
+      } catch {
+        // surroundContents fails if selection spans multiple elements
+        // Fall back to insertHTML
+        const escapedText = escapeHtml(selectedText);
+        document.execCommand('insertHTML', false, `<code>${escapedText}</code>`);
+        this.content = this.editor.innerHTML;
+        this.onChange(this.content);
+      }
+    }
+    
+    this.updateToolbarState();
+  }
+  
+  /**
+   * Handle blockquote formatting toggle
+   */
+  handleBlockquote() {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    
+    // Check if cursor is inside a blockquote
+    const anchorNode = selection.anchorNode;
+    const existingBlockquote = anchorNode?.parentElement?.closest('blockquote');
+    
+    if (existingBlockquote && this.editor.contains(existingBlockquote)) {
+      // Remove blockquote - use formatBlock with div to unwrap
+      document.execCommand('formatBlock', false, 'div');
+    } else {
+      // Add blockquote
+      document.execCommand('formatBlock', false, 'blockquote');
+    }
+    
+    this.content = this.editor.innerHTML;
+    this.onChange(this.content);
+    this.updateToolbarState();
+  }
+  
+  /**
+   * Handle checkbox insertion
+   */
+  handleInsertCheckbox() {
+    // Create checkbox element with label wrapper
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'sn-checkbox-input';
+    
+    const wrapper = document.createElement('label');
+    wrapper.className = 'sn-checkbox';
+    wrapper.contentEditable = 'false';
+    wrapper.appendChild(checkbox);
+    
+    // Add a space after for typing
+    const space = document.createTextNode('\u00A0');
+    
+    // Insert at cursor position
+    const selection = window.getSelection();
+    if (selection.rangeCount) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(space);
+      range.insertNode(wrapper);
+      
+      // Move cursor after the checkbox
+      range.setStartAfter(space);
+      range.setEndAfter(space);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      // No selection, append to end
+      this.editor.appendChild(wrapper);
+      this.editor.appendChild(space);
+    }
+    
+    this.content = this.editor.innerHTML;
+    this.onChange(this.content);
   }
   
   /**
@@ -352,11 +520,13 @@ export class RichEditor {
     const unwanted = temp.querySelectorAll('script, style, meta, link, head');
     unwanted.forEach(el => el.remove());
     
-    // Remove most attributes except href on links and data-* on email share spans
+    // Remove most attributes except specific allowed ones
     const allElements = temp.querySelectorAll('*');
     allElements.forEach(el => {
       const attrs = Array.from(el.attributes);
       const isEmailShareSpan = el.tagName === 'SPAN' && el.classList.contains('sn-email-share');
+      const isCheckboxInput = el.tagName === 'INPUT' && el.getAttribute('type') === 'checkbox';
+      const isCheckboxLabel = el.tagName === 'LABEL' && el.classList.contains('sn-checkbox');
       attrs.forEach(attr => {
         if (el.tagName === 'A' && attr.name === 'href') {
           return; // Keep href on links
@@ -364,12 +534,18 @@ export class RichEditor {
         if (isEmailShareSpan && (attr.name === 'class' || attr.name.startsWith('data-'))) {
           return; // Keep class and data attributes on email share spans
         }
+        if (isCheckboxInput && (attr.name === 'type' || attr.name === 'checked' || attr.name === 'class')) {
+          return; // Keep type, checked, and class on checkbox inputs
+        }
+        if (isCheckboxLabel && (attr.name === 'class' || attr.name === 'contenteditable')) {
+          return; // Keep class and contenteditable on checkbox labels
+        }
         el.removeAttribute(attr.name);
       });
     });
     
     // Only allow certain tags
-    const allowedTags = ['P', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'A', 'UL', 'OL', 'LI', 'DIV', 'SPAN'];
+    const allowedTags = ['P', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'A', 'UL', 'OL', 'LI', 'DIV', 'SPAN', 'CODE', 'STRIKE', 'S', 'DEL', 'BLOCKQUOTE', 'INPUT', 'LABEL'];
     const walker = document.createTreeWalker(temp, NodeFilter.SHOW_ELEMENT);
     const nodesToRemove = [];
     
@@ -902,6 +1078,56 @@ export class RichEditor {
         border-bottom-color: #1f2937;
         z-index: 9999;
         pointer-events: none;
+      }
+      
+      /* Code/monospace inline */
+      .sn-editor-content code {
+        font-family: 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace;
+        font-size: 0.9em;
+        background: rgba(0, 0, 0, 0.06);
+        padding: 2px 5px;
+        border-radius: 3px;
+        color: #c7254e;
+      }
+      
+      /* Strikethrough */
+      .sn-editor-content s,
+      .sn-editor-content strike,
+      .sn-editor-content del {
+        text-decoration: line-through;
+        color: #6b7280;
+      }
+      
+      /* Blockquote */
+      .sn-editor-content blockquote {
+        border-left: 3px solid rgba(0, 0, 0, 0.2);
+        margin: 8px 0;
+        padding: 4px 0 4px 12px;
+        color: #4b5563;
+        font-style: italic;
+      }
+      
+      /* Checkbox styles */
+      .sn-editor-content .sn-checkbox {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        user-select: none;
+        vertical-align: middle;
+      }
+      
+      .sn-editor-content .sn-checkbox-input {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        cursor: pointer;
+        accent-color: #facc15;
+      }
+      
+      .sn-editor-content .sn-checkbox-input:checked + span {
+        text-decoration: line-through;
+        color: #9ca3af;
       }
       
       /* Reduced motion preference */

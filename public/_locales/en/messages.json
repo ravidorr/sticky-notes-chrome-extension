@@ -1210,6 +1210,22 @@
     "message": "Add Link (Ctrl+K)",
     "description": "ARIA label for add link button with keyboard shortcut"
   },
+  "strikethroughText": {
+    "message": "Strikethrough (Ctrl+Shift+S)",
+    "description": "ARIA label for strikethrough button with keyboard shortcut"
+  },
+  "codeText": {
+    "message": "Code (Ctrl+`)",
+    "description": "ARIA label for code/monospace button with keyboard shortcut"
+  },
+  "blockquoteText": {
+    "message": "Blockquote (Ctrl+Shift+Q)",
+    "description": "ARIA label for blockquote button with keyboard shortcut"
+  },
+  "checkboxText": {
+    "message": "Add Checkbox",
+    "description": "ARIA label for checkbox button"
+  },
   "noteContent": {
     "message": "Note content",
     "description": "ARIA label for the note editor content area"

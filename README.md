@@ -40,7 +40,7 @@ A Chrome extension that allows users to annotate the web by attaching persistent
 
 - **Fuzzy Matching**: Finds elements even when selectors change
 - **Re-anchoring UI**: Easily re-attach notes when elements move
-- **Rich Text Editor**: Format notes with bold, italic, lists, and links
+- **Rich Text Editor**: Format notes with bold, italic, strikethrough, code, blockquotes, lists, links, and checkboxes
 - **Color Themes**: Choose from yellow, blue, green, or pink themes
 - **Position Controls**: Snap notes to 9 positions around the anchor element:
   - **Auto**: Smart positioning that automatically chooses the best location based on available viewport space
@@ -236,7 +236,7 @@ See `.cursor/rules/i18n.mdc` for detailed i18n guidelines.
 
 2. **Editing Notes**: Click on a note to edit. The note auto-saves after you stop typing.
 
-3. **Formatting**: Use the toolbar to add bold, italic, lists, or links.
+3. **Formatting**: Use the toolbar to add bold, italic, strikethrough, code, blockquotes, lists, links, or checkboxes.
 
 4. **Changing Theme**: Click the color button to change the note's color theme.
 

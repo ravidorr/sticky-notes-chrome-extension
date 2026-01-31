@@ -295,7 +295,7 @@ Unplanned feature ideas for future consideration:
 - [x] Auto position: smart positioning based on available viewport space
 - [ ] Note content length validation (e.g., 10,000-50,000 chars) for UX, performance, and cost control
 - [ ] Image support in notes (Pro feature - requires Firebase Storage, upload flow, cost considerations)
-- [ ] RichEditor enhancements: code/monospace, strikethrough, checkboxes, blockquotes
+- [x] RichEditor enhancements: code/monospace, strikethrough, checkboxes, blockquotes
 - [ ] Slack Integration: Share notes directly to Slack channels/users (High effort - requires Slack app setup, OAuth, webhooks)
 - [x] Inline sharing via email detection in note content:
   - Implemented: Auto-share when email + space is typed

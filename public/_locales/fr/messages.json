@@ -1200,6 +1200,22 @@
     "message": "Ajouter un lien (Ctrl+K)",
     "description": "ARIA label for add link button with keyboard shortcut"
   },
+  "strikethroughText": {
+    "message": "Barre (Ctrl+Maj+S)",
+    "description": "ARIA label for strikethrough button with keyboard shortcut"
+  },
+  "codeText": {
+    "message": "Code (Ctrl+`)",
+    "description": "ARIA label for code/monospace button with keyboard shortcut"
+  },
+  "blockquoteText": {
+    "message": "Citation (Ctrl+Maj+Q)",
+    "description": "ARIA label for blockquote button with keyboard shortcut"
+  },
+  "checkboxText": {
+    "message": "Ajouter une case a cocher",
+    "description": "ARIA label for checkbox button"
+  },
   "noteContent": {
     "message": "Contenu de la note",
     "description": "ARIA label for the note editor content area"

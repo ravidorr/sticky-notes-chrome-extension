@@ -5,6 +5,17 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0] - 2026-01-31
+
+### Added
+
+- **RichEditor Enhancements**: New text formatting options in the note editor
+  - Strikethrough formatting (toolbar button + `Ctrl+Shift+S`)
+  - Code/monospace formatting (toolbar button + `Ctrl+\``)
+  - Blockquote formatting (toolbar button + `Ctrl+Shift+Q`)
+  - Interactive checkboxes for task lists (toolbar button)
+  - All new formats preserved during paste operations
+
 ## [1.17.0] - 2026-01-31
 
 ### Added
