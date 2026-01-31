@@ -706,6 +706,11 @@ export class RichEditor {
     this.content = this.editor.innerHTML;
     this.updateCharacterCounter();
     this.onChange(this.content);
+    this.updatePlaceholder();
+    
+    // Process emails in truncated content to ensure auto-email-sharing works
+    // even when typing at the character limit
+    this.processEmailsInContent();
     
     // Restore cursor position (clamped to new length)
     const newLength = this.getTextLength();

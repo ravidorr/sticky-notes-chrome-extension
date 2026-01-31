@@ -1836,6 +1836,28 @@ describe('RichEditor', () => {
         truncateSpy.mockRestore();
         smallEditor.destroy();
       });
+      
+      it('should process emails even when input triggers truncation', () => {
+        // This tests the fix for the bug where truncation skipped email processing
+        const onEmailShare = jest.fn();
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 30,
+          onChange: jest.fn(),
+          onEmailShare
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        // Simulate typing email + space + extra content that exceeds limit
+        // The input handler should truncate AND still process emails
+        smallEditor.editor.innerHTML = 'test@example.com extra text here';
+        smallEditor.editor.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        // Email should be detected even though truncation occurred
+        expect(onEmailShare).toHaveBeenCalledWith('test@example.com');
+        
+        smallEditor.destroy();
+      });
     });
     
     describe('truncateToMaxLength', () => {
@@ -1912,6 +1934,46 @@ describe('RichEditor', () => {
         editor.editor.innerHTML = 'Some content';
         
         expect(() => editor.truncateToMaxLength()).not.toThrow();
+      });
+      
+      it('should call processEmailsInContent after truncation', () => {
+        const onEmailShare = jest.fn();
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 30,
+          onChange: jest.fn(),
+          onEmailShare
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        // Set content with email followed by space that exceeds limit
+        // Email + space + extra text that will be truncated
+        smallEditor.editor.innerHTML = 'test@example.com extra content here';
+        smallEditor.truncateToMaxLength();
+        
+        // processEmailsInContent should have been called and detected the email
+        expect(onEmailShare).toHaveBeenCalledWith('test@example.com');
+        
+        smallEditor.destroy();
+      });
+      
+      it('should call updatePlaceholder after truncation', () => {
+        const smallEditor = new RichEditor({
+          content: '',
+          maxLength: 10,
+          onChange: jest.fn()
+        });
+        document.body.appendChild(smallEditor.element);
+        
+        const updatePlaceholderSpy = jest.spyOn(smallEditor, 'updatePlaceholder');
+        
+        smallEditor.editor.innerHTML = 'This is way too long';
+        smallEditor.truncateToMaxLength();
+        
+        expect(updatePlaceholderSpy).toHaveBeenCalled();
+        
+        updatePlaceholderSpy.mockRestore();
+        smallEditor.destroy();
       });
     });
     
