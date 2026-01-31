@@ -84,17 +84,15 @@ async function loadPreferences() {
  * @param {string} theme - Theme to select
  */
 function selectTheme(theme) {
-  // Remove selected from all and update aria-checked
+  // Remove selected from all
   themePicker.querySelectorAll('.theme-option').forEach(btn => {
     btn.classList.remove('selected');
-    btn.setAttribute('aria-checked', 'false');
   });
   
-  // Add selected to matching and update aria-checked
+  // Add selected to matching
   const selectedBtn = themePicker.querySelector(`[data-theme="${theme}"]`);
   if (selectedBtn) {
     selectedBtn.classList.add('selected');
-    selectedBtn.setAttribute('aria-checked', 'true');
     defaultThemeInput.value = theme;
   }
 }
@@ -104,55 +102,17 @@ function selectTheme(theme) {
  * @param {string} position - Position to select
  */
 function selectPosition(position) {
-  // Remove selected from all and update aria-checked
+  // Remove selected from all
   positionPicker.querySelectorAll('.position-option').forEach(btn => {
     btn.classList.remove('selected');
-    btn.setAttribute('aria-checked', 'false');
   });
   
-  // Add selected to matching and update aria-checked
+  // Add selected to matching
   const selectedBtn = positionPicker.querySelector(`[data-position="${position}"]`);
   if (selectedBtn) {
     selectedBtn.classList.add('selected');
-    selectedBtn.setAttribute('aria-checked', 'true');
     defaultPositionInput.value = position;
   }
-}
-
-/**
- * Setup keyboard navigation for a radiogroup
- * @param {HTMLElement} container - The radiogroup container
- * @param {string} itemSelector - Selector for radio items
- * @param {Function} selectFn - Function to call when selecting an item
- * @param {string} dataAttr - Data attribute name for the value
- */
-function setupRadiogroupKeyboard(container, itemSelector, selectFn, dataAttr) {
-  const items = Array.from(container.querySelectorAll(itemSelector));
-  
-  items.forEach((item, index) => {
-    item.addEventListener('keydown', (event) => {
-      let newIndex = index;
-      
-      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-        event.preventDefault();
-        newIndex = index === items.length - 1 ? 0 : index + 1;
-      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-        event.preventDefault();
-        newIndex = index === 0 ? items.length - 1 : index - 1;
-      } else if (event.key === 'Home') {
-        event.preventDefault();
-        newIndex = 0;
-      } else if (event.key === 'End') {
-        event.preventDefault();
-        newIndex = items.length - 1;
-      }
-      
-      if (newIndex !== index) {
-        items[newIndex].focus();
-        selectFn(items[newIndex].dataset[dataAttr]);
-      }
-    });
-  });
 }
 
 /**
@@ -167,23 +127,12 @@ function setupEventListeners() {
     });
   });
   
-  // Theme picker keyboard navigation
-  setupRadiogroupKeyboard(themePicker, '.theme-option', selectTheme, 'theme');
-  
   // Position picker
   positionPicker.querySelectorAll('.position-option').forEach(btn => {
     btn.addEventListener('click', () => {
       const position = btn.dataset.position;
       selectPosition(position);
     });
-  });
-  
-  // Position picker keyboard navigation
-  setupRadiogroupKeyboard(positionPicker, '.position-option', selectPosition, 'position');
-  
-  // Toggle switch - update aria-checked
-  notesVisibleCheckbox.addEventListener('change', () => {
-    notesVisibleCheckbox.setAttribute('aria-checked', notesVisibleCheckbox.checked ? 'true' : 'false');
   });
   
   // Form submit
@@ -248,6 +197,7 @@ async function handleReset() {
       noteWidthSelect.value = DEFAULT_PREFERENCES.noteWidth.toString();
       fontSizeSelect.value = DEFAULT_PREFERENCES.fontSize;
       notesVisibleCheckbox.checked = DEFAULT_PREFERENCES.notesVisibleByDefault;
+      notesVisibleCheckbox.setAttribute('aria-checked', DEFAULT_PREFERENCES.notesVisibleByDefault ? 'true' : 'false');
       
       showStatus(t('settingsReset') || 'Settings reset to defaults', 'success');
     } else {
@@ -310,6 +260,5 @@ export {
   selectPosition,
   showStatus,
   initDOMElements,
-  displayVersion,
-  setupRadiogroupKeyboard
+  displayVersion
 };
