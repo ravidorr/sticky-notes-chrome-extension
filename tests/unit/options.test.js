@@ -649,4 +649,122 @@ describe('Options Page Script', () => {
       expect(localThis.DEFAULT_PREFERENCES.notesVisibleByDefault).toBe(true);
     });
   });
+
+  describe('Permission functions', () => {
+    beforeEach(() => {
+      // Reset permission mocks
+      chrome.permissions.contains.mockClear();
+      chrome.permissions.request.mockClear();
+      chrome.permissions.remove.mockClear();
+    });
+
+    describe('checkAllSitesPermission', () => {
+      it('should return true when permission is granted', async () => {
+        const { checkAllSitesPermission } = await import('../../src/options/options.js');
+        chrome.permissions.contains.mockResolvedValue(true);
+        
+        const result = await checkAllSitesPermission();
+        
+        expect(result).toBe(true);
+        expect(chrome.permissions.contains).toHaveBeenCalledWith({ origins: ['<all_urls>'] });
+      });
+
+      it('should return false when permission is not granted', async () => {
+        const { checkAllSitesPermission } = await import('../../src/options/options.js');
+        chrome.permissions.contains.mockResolvedValue(false);
+        
+        const result = await checkAllSitesPermission();
+        
+        expect(result).toBe(false);
+      });
+
+      it('should return false on error', async () => {
+        const { checkAllSitesPermission } = await import('../../src/options/options.js');
+        chrome.permissions.contains.mockRejectedValue(new Error('Permission error'));
+        
+        const result = await checkAllSitesPermission();
+        
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('updatePermissionUI', () => {
+      it('should show granted state when permission exists', async () => {
+        const { updatePermissionUI } = await import('../../src/options/options.js');
+        chrome.permissions.contains.mockResolvedValue(true);
+        
+        await updatePermissionUI();
+        
+        expect(document.getElementById('permissionGranted').classList.contains('hidden')).toBe(false);
+        expect(document.getElementById('permissionNotGranted').classList.contains('hidden')).toBe(true);
+        expect(document.getElementById('grantPermissionBtn').classList.contains('hidden')).toBe(true);
+        expect(document.getElementById('revokePermissionBtn').classList.contains('hidden')).toBe(false);
+      });
+
+      it('should show not-granted state when permission missing', async () => {
+        const { updatePermissionUI } = await import('../../src/options/options.js');
+        chrome.permissions.contains.mockResolvedValue(false);
+        
+        await updatePermissionUI();
+        
+        expect(document.getElementById('permissionGranted').classList.contains('hidden')).toBe(true);
+        expect(document.getElementById('permissionNotGranted').classList.contains('hidden')).toBe(false);
+        expect(document.getElementById('grantPermissionBtn').classList.contains('hidden')).toBe(false);
+        expect(document.getElementById('revokePermissionBtn').classList.contains('hidden')).toBe(true);
+      });
+    });
+
+    describe('handleGrantPermission', () => {
+      it('should request permission and update UI on success', async () => {
+        const { handleGrantPermission, updatePermissionUI } = await import('../../src/options/options.js');
+        chrome.permissions.request.mockResolvedValue(true);
+        chrome.permissions.contains.mockResolvedValue(true);
+        
+        await handleGrantPermission();
+        
+        expect(chrome.permissions.request).toHaveBeenCalledWith({ origins: ['<all_urls>'] });
+      });
+
+      it('should handle permission request failure', async () => {
+        const { handleGrantPermission } = await import('../../src/options/options.js');
+        chrome.permissions.request.mockRejectedValue(new Error('Request failed'));
+        chrome.permissions.contains.mockResolvedValue(false);
+        
+        await handleGrantPermission();
+        
+        // Should not throw, just handle gracefully
+        expect(chrome.permissions.request).toHaveBeenCalled();
+      });
+    });
+
+    describe('handleRevokePermission', () => {
+      it('should revoke permission when confirmed', async () => {
+        const { handleRevokePermission } = await import('../../src/options/options.js');
+        // Mock window.confirm to return true
+        const originalConfirm = window.confirm;
+        window.confirm = jest.fn().mockReturnValue(true);
+        chrome.permissions.remove.mockResolvedValue(true);
+        chrome.permissions.contains.mockResolvedValue(false);
+        
+        await handleRevokePermission();
+        
+        expect(chrome.permissions.remove).toHaveBeenCalledWith({ origins: ['<all_urls>'] });
+        
+        window.confirm = originalConfirm;
+      });
+
+      it('should not revoke when user cancels', async () => {
+        const { handleRevokePermission } = await import('../../src/options/options.js');
+        // Mock window.confirm to return false
+        const originalConfirm = window.confirm;
+        window.confirm = jest.fn().mockReturnValue(false);
+        
+        await handleRevokePermission();
+        
+        expect(chrome.permissions.remove).not.toHaveBeenCalled();
+        
+        window.confirm = originalConfirm;
+      });
+    });
+  });
 });

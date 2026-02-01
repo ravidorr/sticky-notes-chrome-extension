@@ -2383,4 +2383,76 @@ describe('Background Handlers', () => {
       expect(result.notes).toHaveLength(1);
     });
   });
+
+  describe('handleMessage - injectContentScript', () => {
+    beforeEach(() => {
+      localThis.deps.chromeTabs = {
+        sendMessage: jest.fn()
+      };
+      localThis.handlers = createHandlers(localThis.deps);
+    });
+
+    it('should inject content scripts successfully', async () => {
+      localThis.deps.chromeTabs.sendMessage.mockRejectedValue(new Error('No receiver')); // ping fails
+      globalThis.chrome.scripting = {
+        executeScript: jest.fn().mockResolvedValue([{ result: true }])
+      };
+      
+      const result = await localThis.handlers.handleMessage(
+        { action: 'injectContentScript', tabId: 1, url: 'https://example.com' },
+        null
+      );
+      
+      expect(result.success).toBe(true);
+      expect(result.injected).toBe(true);
+      expect(globalThis.chrome.scripting.executeScript).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return alreadyInjected when content script responds to ping', async () => {
+      localThis.deps.chromeTabs.sendMessage.mockResolvedValue({ success: true }); // ping succeeds
+      
+      const result = await localThis.handlers.handleMessage(
+        { action: 'injectContentScript', tabId: 1, url: 'https://example.com' },
+        null
+      );
+      
+      expect(result.success).toBe(true);
+      expect(result.alreadyInjected).toBe(true);
+    });
+
+    it('should return error for restricted URLs', async () => {
+      const result = await localThis.handlers.handleMessage(
+        { action: 'injectContentScript', tabId: 1, url: 'chrome://extensions' },
+        null
+      );
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Restricted URL');
+    });
+
+    it('should return error for empty URL', async () => {
+      const result = await localThis.handlers.handleMessage(
+        { action: 'injectContentScript', tabId: 1, url: '' },
+        null
+      );
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Restricted URL');
+    });
+
+    it('should handle injection failure gracefully', async () => {
+      localThis.deps.chromeTabs.sendMessage.mockRejectedValue(new Error('No receiver'));
+      globalThis.chrome.scripting = {
+        executeScript: jest.fn().mockRejectedValue(new Error('Injection failed'))
+      };
+      
+      const result = await localThis.handlers.handleMessage(
+        { action: 'injectContentScript', tabId: 1, url: 'https://example.com' },
+        null
+      );
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Injection failed');
+    });
+  });
 });

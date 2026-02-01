@@ -1869,4 +1869,35 @@ describe('Popup Handlers', () => {
       expect(localThis.mockLog.error).toHaveBeenCalled();
     });
   });
+
+  describe('ensureContentScriptInCurrentTab', () => {
+    it('should return success when content script is already injected (ping succeeds)', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      // Ping succeeds - content script already loaded
+      localThis.mockChromeTabs.sendMessage.mockResolvedValue({ success: true });
+      
+      const result = await localThis.handlers.ensureContentScriptInCurrentTab();
+      
+      expect(result.success).toBe(true);
+      expect(result.alreadyInjected).toBe(true);
+    });
+
+    it('should return error for restricted URLs', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'chrome://extensions' }]);
+      
+      const result = await localThis.handlers.ensureContentScriptInCurrentTab();
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Restricted URL');
+    });
+
+    it('should return error when no active tab', async () => {
+      localThis.mockChromeTabs.query.mockResolvedValue([]);
+      
+      const result = await localThis.handlers.ensureContentScriptInCurrentTab();
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('No active tab');
+    });
+  });
 });
