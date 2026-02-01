@@ -1151,6 +1151,92 @@
     "description": "Visibility setting description"
   },
 
+  "welcomeTitle": {
+    "message": "Welcome to Sticky Notes!",
+    "description": "Welcome section title"
+  },
+  "welcomeFeature1Title": {
+    "message": "Pin to Elements",
+    "description": "First feature title"
+  },
+  "welcomeFeature1Desc": {
+    "message": "Click \"Add Note\" and select any element.",
+    "description": "First feature description"
+  },
+  "welcomeFeature2Title": {
+    "message": "Share with Team",
+    "description": "Second feature title"
+  },
+  "welcomeFeature2Desc": {
+    "message": "Type an email in your note to share instantly.",
+    "description": "Second feature description"
+  },
+  "welcomeFeature3Title": {
+    "message": "Your Dashboard",
+    "description": "Third feature title"
+  },
+  "welcomeFeature3Desc": {
+    "message": "View all your notes in one place.",
+    "description": "Third feature description"
+  },
+  "welcomeOpenDashboard": {
+    "message": "Open Dashboard",
+    "description": "Open dashboard button"
+  },
+
+  "settingsPermissions": {
+    "message": "Permissions",
+    "description": "Permissions settings section title"
+  },
+  "settingsAllSitesPermission": {
+    "message": "Access to All Websites",
+    "description": "All sites permission setting label"
+  },
+  "settingsAllSitesPermissionDesc": {
+    "message": "Allow Sticky Notes to show your notes automatically on all websites. Without this, you'll need to grant permission for each site individually.",
+    "description": "All sites permission setting description"
+  },
+  "permissionGranted": {
+    "message": "Granted",
+    "description": "Permission granted badge"
+  },
+  "permissionNotGranted": {
+    "message": "Not Granted",
+    "description": "Permission not granted badge"
+  },
+  "grantPermission": {
+    "message": "Grant Permission",
+    "description": "Grant permission button"
+  },
+  "revokePermission": {
+    "message": "Revoke Permission",
+    "description": "Revoke permission button"
+  },
+  "permissionGrantedSuccess": {
+    "message": "Permission granted! Notes will now appear automatically on all websites.",
+    "description": "Success message after granting permission"
+  },
+  "permissionGrantError": {
+    "message": "Failed to grant permission",
+    "description": "Error message when permission grant fails"
+  },
+  "permissionRevokeConfirm": {
+    "message": "Revoke access to all websites? You will need to grant permission for each site individually.",
+    "description": "Confirmation message for revoking permission"
+  },
+  "permissionRevokedSuccess": {
+    "message": "Permission revoked. You will be asked for permission on each site.",
+    "description": "Success message after revoking permission"
+  },
+  "permissionRevokeError": {
+    "message": "Failed to revoke permission",
+    "description": "Error message when permission revoke fails"
+  },
+  "permissionRequired": {
+    "message": "Permission required to create notes on this page",
+    "description": "Error message when permission is needed"
+  },
+
   "settingsSave": {
     "message": "Save Settings",
     "description": "Save settings button"

@@ -104,12 +104,81 @@ export function bootstrap() {
 
   // Context menus are created in onInstalled (see below) - they persist across sessions
 
+  /**
+   * Check if we have host permission for a URL
+   * @param {string} url - URL to check permission for
+   * @returns {Promise<boolean>}
+   */
+  async function hasHostPermission(url) {
+    try {
+      const origin = new URL(url).origin + '/*';
+      return await chrome.permissions.contains({ origins: [origin] });
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Inject content scripts into a tab if not already injected
+   * @param {number} tabId - Tab ID to inject into
+   * @param {string} url - Tab URL (for permission check)
+   * @returns {Promise<boolean>} - Whether injection was successful
+   */
+  async function ensureContentScriptInjected(tabId, url) {
+    // Skip restricted URLs
+    if (!url || url.startsWith('chrome://') || url.startsWith('chrome-extension://') || 
+        url.startsWith('edge://') || url.startsWith('about:') || url.startsWith('moz-extension://')) {
+      return false;
+    }
+
+    // Check if content script is already injected
+    try {
+      await chrome.tabs.sendMessage(tabId, { action: 'ping' });
+      return true; // Already injected
+    } catch {
+      // Not injected, need to inject
+    }
+
+    // Check if we have permission
+    const hasPermission = await hasHostPermission(url);
+    if (!hasPermission) {
+      log.debug('No host permission for:', url);
+      return false;
+    }
+
+    // Inject content scripts
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['src/content/pageContext.js'],
+        world: 'MAIN'
+      });
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['src/content/content.js']
+      });
+      log.debug('Content scripts injected into tab', tabId);
+      return true;
+    } catch (error) {
+      log.debug('Failed to inject content scripts:', error.message);
+      return false;
+    }
+  }
+
   // Handle context menu click
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-    if (!tab?.id) return;
+    if (!tab?.id || !tab?.url) return;
     
     if (info.menuItemId === 'create-sticky-note') {
       log.debug('Context menu clicked, frameId:', info.frameId, 'frameUrl:', info.frameUrl, 'pageUrl:', info.pageUrl);
+      
+      // Ensure content script is injected
+      const injected = await ensureContentScriptInjected(tab.id, tab.url);
+      if (!injected) {
+        // No permission - user needs to click the popup first to grant permission
+        log.warn('No permission for this page. User needs to open popup first to grant permission.');
+        return;
+      }
       
       // Send to all frames - each frame will check if it has the right-clicked element
       // This is necessary because Chrome's frameId may not match where the contextmenu event was captured
@@ -132,6 +201,14 @@ export function bootstrap() {
       }
     } else if (info.menuItemId === 'create-page-note') {
       log.debug('Page note context menu clicked, frameId:', info.frameId);
+      
+      // Ensure content script is injected
+      const injected = await ensureContentScriptInjected(tab.id, tab.url);
+      if (!injected) {
+        // No permission - user needs to click the popup first to grant permission
+        log.warn('No permission for this page. User needs to open popup first to grant permission.');
+        return;
+      }
       
       // Send to top frame only for page-level notes
       // The content script will use the right-click position from the contextmenu event
@@ -169,21 +246,30 @@ export function bootstrap() {
     }
   });
 
-  // Listen for tab updates to inject content scripts
-  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Listen for tab updates to inject content scripts automatically
+  // This runs when user navigates to a page and we have permission for it
+  chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
-      // Notify content script about page load
-      chrome.tabs.sendMessage(tabId, { action: 'pageLoaded', url: tab.url })
-        .catch(() => {
-          // Content script might not be loaded yet, that's okay
-        });
+      // Try to inject content scripts (will check permission internally)
+      const injected = await ensureContentScriptInjected(tabId, tab.url);
+      
+      if (injected) {
+        // Notify content script about page load
+        chrome.tabs.sendMessage(tabId, { action: 'pageLoaded', url: tab.url })
+          .catch(() => {
+            // Content script might not be ready yet, that's okay
+          });
+      }
     }
   });
 
   // Listen for history state updates (SPA navigation)
-  chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
+  chrome.webNavigation.onHistoryStateUpdated.addListener(async (details) => {
     const payload = getUrlChangedMessageFromHistoryUpdate(details);
     if (!payload) return;
+
+    // Ensure content script is injected (for SPAs where initial load might not have had permission)
+    await ensureContentScriptInjected(payload.tabId, details.url);
 
     chrome.tabs.sendMessage(payload.tabId, payload.message).catch(() => {
       // Content script might not be loaded yet
@@ -250,13 +336,21 @@ export function bootstrap() {
   });
 
   // Handle extension install/update
-  chrome.runtime.onInstalled.addListener((details) => {
+  chrome.runtime.onInstalled.addListener(async (details) => {
     if (details.reason === 'install') {
-      // Open welcome page on first install
-      chrome.tabs.create({ 
-        url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/welcome.html' 
-      });
-      log.info('Opened welcome page for new installation');
+      // Open options page on first install (includes welcome section and permission prompt)
+      chrome.runtime.openOptionsPage();
+      log.info('Opened options page for new installation');
+    } else if (details.reason === 'update') {
+      // Check if user has all-sites permission
+      const hasAllSites = await chrome.permissions.contains({ origins: ['<all_urls>'] });
+      
+      if (!hasAllSites) {
+        // Open options page to prompt for permission on update
+        // This is important because we removed declarative content_scripts
+        chrome.runtime.openOptionsPage();
+        log.info('Opened options page for permission prompt after update');
+      }
     }
   });
 

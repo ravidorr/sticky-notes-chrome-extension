@@ -125,6 +125,16 @@ export function createPopupHandlers(deps = {}) {
         return { success: false, error: 'Restricted URL' };
       }
       
+      // Ensure content script is injected (requests permission if needed)
+      const injectResult = await ensureContentScriptInCurrentTab();
+      if (!injectResult.success && injectResult.needsPermission) {
+        log.error('Permission denied by user');
+        if (showErrorToast) {
+          showErrorToast(t('permissionRequired') || 'Permission required to create notes on this page');
+        }
+        return { success: false, error: 'Permission denied' };
+      }
+      
       // Send enableSelectionMode to ALL frames in the tab
       // This is necessary because each frame has its own content script instance
       log.debug(' Sending enableSelectionMode message to all frames in tab', tab.id);
@@ -156,7 +166,7 @@ export function createPopupHandlers(deps = {}) {
       } catch (error) {
         log.error(' First attempt failed:', error.message);
         
-        // Content script not loaded - inject it first
+        // Content script not loaded - inject it first (fallback)
         if (error.message.includes('Receiving end does not exist') || 
             error.message.includes('Could not establish connection')) {
           log.error(' Content script not found, injecting...');
@@ -217,6 +227,16 @@ export function createPopupHandlers(deps = {}) {
       if (isRestrictedUrl(tab.url)) {
         log.debug(' URL is restricted, cannot create note');
         return { success: false, error: 'Restricted URL' };
+      }
+      
+      // Ensure content script is injected (requests permission if needed)
+      const injectResult = await ensureContentScriptInCurrentTab();
+      if (!injectResult.success && injectResult.needsPermission) {
+        log.error('Permission denied by user');
+        if (showErrorToast) {
+          showErrorToast(t('permissionRequired') || 'Permission required to create notes on this page');
+        }
+        return { success: false, error: 'Permission denied' };
       }
       
       // Send createPageLevelNote message to content script
@@ -284,6 +304,59 @@ export function createPopupHandlers(deps = {}) {
       if (showErrorToast) {
         showErrorToast(t('failedToCreatePageNote'));
       }
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Ensure content script is injected in the current tab
+   * Requests permission from popup context (has user gesture) if needed
+   * @returns {Promise<Object>} Result with success flag
+   */
+  async function ensureContentScriptInCurrentTab() {
+    try {
+      const [tab] = await chromeTabs.query({ active: true, currentWindow: true });
+      if (!tab?.id || !tab?.url) {
+        return { success: false, error: 'No active tab' };
+      }
+      
+      // Skip restricted URLs
+      if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') ||
+          tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
+        return { success: false, error: 'Restricted URL' };
+      }
+      
+      // Check if content script is already loaded
+      try {
+        await chromeTabs.sendMessage(tab.id, { action: 'ping' });
+        return { success: true, alreadyInjected: true };
+      } catch {
+        // Not loaded, need to inject
+      }
+      
+      // Check if we have permission for this origin
+      const origin = new URL(tab.url).origin + '/*';
+      const hasPermission = await chrome.permissions.contains({ origins: [origin] });
+      
+      if (!hasPermission) {
+        // Request permission from popup (has user gesture context)
+        log.debug('Requesting permission for:', origin);
+        const granted = await chrome.permissions.request({ origins: [origin] });
+        if (!granted) {
+          return { success: false, error: 'Permission denied', needsPermission: true };
+        }
+      }
+      
+      // Now inject content scripts via background
+      const response = await chromeRuntime.sendMessage({
+        action: 'injectContentScript',
+        tabId: tab.id,
+        url: tab.url
+      });
+      
+      return response;
+    } catch (error) {
+      log.error('Failed to ensure content script:', error);
       return { success: false, error: error.message };
     }
   }
@@ -1275,6 +1348,7 @@ export function createPopupHandlers(deps = {}) {
     loadNotesForCurrentTab,
     handleNoteClick,
     injectContentScript,
+    ensureContentScriptInCurrentTab,
     getThemeColor,
     truncateSelector,
     renderNoteItem,

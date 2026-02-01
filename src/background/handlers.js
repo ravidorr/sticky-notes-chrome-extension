@@ -89,6 +89,9 @@ export function createHandlers(deps = {}) {
       case 'getUser':
         return getUser();
       
+      case 'injectContentScript':
+        return injectContentScriptIntoTab(message.tabId, message.url);
+      
       case 'captureScreenshot':
         return captureScreenshot();
       
@@ -365,6 +368,47 @@ export function createHandlers(deps = {}) {
       const user = await getCurrentUser();
       return { success: true, user };
     } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Inject content script into a tab
+   * Called after popup has already obtained permission
+   * @param {number} tabId - Tab ID
+   * @param {string} url - Tab URL
+   * @returns {Promise<Object>} Result
+   */
+  async function injectContentScriptIntoTab(tabId, url) {
+    try {
+      // Skip restricted URLs
+      if (!url || url.startsWith('chrome://') || url.startsWith('chrome-extension://') || 
+          url.startsWith('edge://') || url.startsWith('about:') || url.startsWith('moz-extension://')) {
+        return { success: false, error: 'Restricted URL' };
+      }
+
+      // Check if already injected
+      try {
+        await chromeTabs.sendMessage(tabId, { action: 'ping' });
+        return { success: true, alreadyInjected: true };
+      } catch {
+        // Not injected, proceed
+      }
+
+      // Inject content scripts (permission should already be granted by popup)
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['src/content/pageContext.js'],
+        world: 'MAIN'
+      });
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['src/content/content.js']
+      });
+      
+      return { success: true, injected: true };
+    } catch (error) {
+      log.error('Failed to inject content script:', error);
       return { success: false, error: error.message };
     }
   }

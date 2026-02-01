@@ -19,6 +19,11 @@ let resetBtn;
 let saveBtn;
 let statusMessage;
 let versionDisplay;
+// Permission elements
+let permissionGranted;
+let permissionNotGranted;
+let grantPermissionBtn;
+let revokePermissionBtn;
 
 /**
  * Initialize DOM element references
@@ -36,6 +41,11 @@ function initDOMElements() {
   saveBtn = document.getElementById('saveBtn');
   statusMessage = document.getElementById('statusMessage');
   versionDisplay = document.getElementById('versionDisplay');
+  // Permission elements
+  permissionGranted = document.getElementById('permissionGranted');
+  permissionNotGranted = document.getElementById('permissionNotGranted');
+  grantPermissionBtn = document.getElementById('grantPermissionBtn');
+  revokePermissionBtn = document.getElementById('revokePermissionBtn');
 }
 
 /**
@@ -117,6 +127,72 @@ function selectPosition(position) {
 }
 
 /**
+ * Check if all-sites permission is granted
+ * @returns {Promise<boolean>}
+ */
+async function checkAllSitesPermission() {
+  try {
+    return await chrome.permissions.contains({ origins: ['<all_urls>'] });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Update permission UI based on current permission state
+ */
+async function updatePermissionUI() {
+  const hasPermission = await checkAllSitesPermission();
+  
+  if (hasPermission) {
+    permissionGranted.classList.remove('hidden');
+    permissionNotGranted.classList.add('hidden');
+    grantPermissionBtn.classList.add('hidden');
+    revokePermissionBtn.classList.remove('hidden');
+  } else {
+    permissionGranted.classList.add('hidden');
+    permissionNotGranted.classList.remove('hidden');
+    grantPermissionBtn.classList.remove('hidden');
+    revokePermissionBtn.classList.add('hidden');
+  }
+}
+
+/**
+ * Handle grant permission button click
+ */
+async function handleGrantPermission() {
+  try {
+    const granted = await chrome.permissions.request({ origins: ['<all_urls>'] });
+    if (granted) {
+      showStatus(t('permissionGrantedSuccess') || 'Permission granted! Notes will now appear automatically on all websites.', 'success');
+    }
+    await updatePermissionUI();
+  } catch (error) {
+    console.error('Failed to request permission:', error);
+    showStatus(t('permissionGrantError') || 'Failed to grant permission', 'error');
+  }
+}
+
+/**
+ * Handle revoke permission button click
+ */
+async function handleRevokePermission() {
+  const confirmed = window.confirm(t('permissionRevokeConfirm') || 'Revoke access to all websites? You will need to grant permission for each site individually.');
+  if (!confirmed) return;
+  
+  try {
+    const revoked = await chrome.permissions.remove({ origins: ['<all_urls>'] });
+    if (revoked) {
+      showStatus(t('permissionRevokedSuccess') || 'Permission revoked. You will be asked for permission on each site.', 'success');
+    }
+    await updatePermissionUI();
+  } catch (error) {
+    console.error('Failed to revoke permission:', error);
+    showStatus(t('permissionRevokeError') || 'Failed to revoke permission', 'error');
+  }
+}
+
+/**
  * Setup event listeners
  */
 function setupEventListeners() {
@@ -141,6 +217,10 @@ function setupEventListeners() {
   
   // Reset button
   resetBtn.addEventListener('click', handleReset);
+  
+  // Permission buttons
+  grantPermissionBtn.addEventListener('click', handleGrantPermission);
+  revokePermissionBtn.addEventListener('click', handleRevokePermission);
 }
 
 /**
@@ -244,6 +324,9 @@ async function init() {
   
   // Load current preferences
   await loadPreferences();
+  
+  // Check and display permission status
+  await updatePermissionUI();
 }
 
 // Initialize when DOM is ready
@@ -261,5 +344,9 @@ export {
   selectPosition,
   showStatus,
   initDOMElements,
-  displayVersion
+  displayVersion,
+  checkAllSitesPermission,
+  updatePermissionUI,
+  handleGrantPermission,
+  handleRevokePermission
 };

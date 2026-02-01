@@ -24,7 +24,85 @@
 
     <!-- Main Content -->
     <main class="options-main">
+      <!-- Welcome Section (shown on first install) -->
+      <section class="welcome-section" id="welcomeSection">
+        <h2 class="welcome-title" data-i18n="welcomeTitle">Welcome to Sticky Notes!</h2>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-card-icon yellow">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M12 8v8M8 12h8"/>
+              </svg>
+            </div>
+            <h3 data-i18n="welcomeFeature1Title">Pin to Elements</h3>
+            <p data-i18n="welcomeFeature1Desc">Click "Add Note" and select any element.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-card-icon blue">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <h3 data-i18n="welcomeFeature2Title">Share with Team</h3>
+            <p data-i18n="welcomeFeature2Desc">Type an email in your note to share instantly.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-card-icon green">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="3" y="3" width="8" height="11" rx="1.5"/>
+                <rect x="3" y="16" width="8" height="5" rx="1.5"/>
+                <rect x="13" y="3" width="8" height="5" rx="1.5"/>
+                <rect x="13" y="10" width="8" height="11" rx="1.5"/>
+              </svg>
+            </div>
+            <h3 data-i18n="welcomeFeature3Title">Your Dashboard</h3>
+            <p data-i18n="welcomeFeature3Desc">View all your notes in one place.</p>
+          </div>
+        </div>
+        <a href="https://ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html" class="btn btn-dashboard" target="_blank" data-i18n="welcomeOpenDashboard">Open Dashboard</a>
+      </section>
+
       <form id="settingsForm" class="settings-form">
+        <!-- Permissions Section -->
+        <section class="settings-section" id="permissions-section">
+          <h2 class="section-title" data-i18n="settingsPermissions">Permissions</h2>
+          
+          <!-- All Sites Permission -->
+          <div class="setting-group">
+            <div class="setting-info">
+              <label class="setting-label" data-i18n="settingsAllSitesPermission">Access to All Websites</label>
+              <p class="setting-description" data-i18n="settingsAllSitesPermissionDesc">Allow Sticky Notes to show your notes automatically on all websites. Without this, you'll need to grant permission for each site individually.</p>
+            </div>
+            <div class="permission-status" id="permissionStatus">
+              <span class="permission-badge permission-granted hidden" id="permissionGranted" data-i18n="permissionGranted">Granted</span>
+              <span class="permission-badge permission-not-granted hidden" id="permissionNotGranted" data-i18n="permissionNotGranted">Not Granted</span>
+            </div>
+            <button type="button" id="grantPermissionBtn" class="btn btn-primary" data-i18n="grantPermission">Grant Permission</button>
+            <button type="button" id="revokePermissionBtn" class="btn btn-secondary hidden" data-i18n="revokePermission">Revoke Permission</button>
+          </div>
+        </section>
+
+        <!-- Behavior Section -->
+        <section class="settings-section">
+          <h2 class="section-title" data-i18n="settingsBehavior">Behavior</h2>
+          
+          <!-- Notes Visible by Default -->
+          <div class="setting-group setting-group-toggle">
+            <div class="setting-info">
+              <label class="setting-label" for="notesVisibleByDefault" data-i18n="settingsVisibility">Notes Visible by Default</label>
+              <p class="setting-description" data-i18n="settingsVisibilityDesc">Show notes automatically when visiting a page with notes</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" name="notesVisibleByDefault" id="notesVisibleByDefault" checked role="switch" aria-checked="true">
+              <span class="toggle-slider" aria-hidden="true"></span>
+            </label>
+          </div>
+        </section>
+
         <!-- Appearance Section -->
         <section class="settings-section">
           <h2 class="section-title" data-i18n="settingsAppearance">Appearance</h2>
@@ -158,23 +236,6 @@
               </button>
             </div>
             <input type="hidden" name="defaultPosition" id="defaultPosition" value="top-right">
-          </div>
-        </section>
-
-        <!-- Behavior Section -->
-        <section class="settings-section">
-          <h2 class="section-title" data-i18n="settingsBehavior">Behavior</h2>
-          
-          <!-- Notes Visible by Default -->
-          <div class="setting-group setting-group-toggle">
-            <div class="setting-info">
-              <label class="setting-label" for="notesVisibleByDefault" data-i18n="settingsVisibility">Notes Visible by Default</label>
-              <p class="setting-description" data-i18n="settingsVisibilityDesc">Show notes automatically when visiting a page with notes</p>
-            </div>
-            <label class="toggle-switch">
-              <input type="checkbox" name="notesVisibleByDefault" id="notesVisibleByDefault" checked role="switch" aria-checked="true">
-              <span class="toggle-slider" aria-hidden="true"></span>
-            </label>
           </div>
         </section>
 

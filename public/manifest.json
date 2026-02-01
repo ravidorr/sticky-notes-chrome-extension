@@ -15,7 +15,7 @@
     "contextMenus",
     "alarms"
   ],
-  "host_permissions": [
+  "optional_host_permissions": [
     "<all_urls>"
   ],
   "action": {
@@ -41,21 +41,6 @@
     "service_worker": "src/background/background.js",
     "type": "module"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["src/content/pageContext.js"],
-      "run_at": "document_start",
-      "all_frames": true,
-      "world": "MAIN"
-    },
-    {
-      "matches": ["<all_urls>"],
-      "js": ["src/content/content.js"],
-      "run_at": "document_idle",
-      "all_frames": true
-    }
-  ],
   "oauth2": {
     "client_id": "413613230006-c8044e50sohrq813h1ejfjdojfcsfa2n.apps.googleusercontent.com",
     "scopes": [

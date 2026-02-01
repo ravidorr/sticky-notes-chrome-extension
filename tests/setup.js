@@ -100,6 +100,11 @@ global.chrome = {
     setBadgeBackgroundColor: jest.fn(() => Promise.resolve()),
     getBadgeText: jest.fn(() => Promise.resolve('')),
     getBadgeBackgroundColor: jest.fn(() => Promise.resolve([0, 0, 0, 0]))
+  },
+  permissions: {
+    contains: jest.fn(() => Promise.resolve(false)),
+    request: jest.fn(() => Promise.resolve(true)),
+    remove: jest.fn(() => Promise.resolve(true))
   }
 };
 

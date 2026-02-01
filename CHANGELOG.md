@@ -5,6 +5,30 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0] - 2026-02-01
+
+### Changed
+
+- **Permission Model**: Switched from mandatory to optional host permissions
+  - Popup now opens instantly regardless of number of open tabs (fixes 3-5 second delay)
+  - Users can grant "Access to All Websites" permission in Settings to enable automatic note display
+  - Without the permission, notes are requested per-site when creating notes
+  - Content scripts are now injected programmatically based on granted permissions
+
+### Added
+
+- **Permissions Section**: New section in Settings page to manage website access
+  - Grant/revoke "Access to All Websites" permission with one click
+  - Clear status indicator showing current permission state
+- **Welcome Section**: Integrated welcome content into the Settings page
+  - Shows key features (Pin to Elements, Share with Team, Dashboard) on first install
+  - Direct link to open the Dashboard
+
+### Removed
+
+- External welcome.html page (content now integrated into Settings page)
+- Declarative content_scripts from manifest (replaced with programmatic injection)
+
 ## [1.19.3] - 2026-01-31
 
 ### Added

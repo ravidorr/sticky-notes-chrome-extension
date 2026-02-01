@@ -41,11 +41,16 @@ describe('Popup Handlers', () => {
       }
     };
 
-    // Mock chrome.webNavigation globally (used directly in handleAddNote)
+    // Mock chrome.webNavigation and chrome.permissions globally
     globalThis.chrome = {
       ...globalThis.chrome,
       webNavigation: {
         getAllFrames: jest.fn().mockResolvedValue([{ frameId: 0 }])
+      },
+      permissions: {
+        contains: jest.fn().mockResolvedValue(true),
+        request: jest.fn().mockResolvedValue(true),
+        remove: jest.fn().mockResolvedValue(true)
       }
     };
 
@@ -179,12 +184,16 @@ describe('Popup Handlers', () => {
         { frameId: 1 },
         { frameId: 2 }
       ]);
+      
+      // Mock injectContentScript response from background
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true, alreadyInjected: true });
 
-      // Some frames succeed, some fail - that's okay
+      // First call is ping (succeeds = already injected), then enableSelectionMode calls
       localThis.mockChromeTabs.sendMessage
-        .mockResolvedValueOnce({ success: true })
-        .mockRejectedValueOnce(new Error('Frame not available'))
-        .mockResolvedValueOnce({ success: true })
+        .mockResolvedValueOnce({ success: true }) // ping succeeds
+        .mockResolvedValueOnce({ success: true }) // frame 0
+        .mockRejectedValueOnce(new Error('Frame not available')) // frame 1 fails
+        .mockResolvedValueOnce({ success: true }) // frame 2
         .mockResolvedValueOnce({ success: true }); // fallback without frameId
 
       const result = await localThis.handlers.handleAddNote();
@@ -278,34 +287,38 @@ describe('Popup Handlers', () => {
       expect(localThis.mockShowErrorToast).toHaveBeenCalled();
     });
 
-    it('should inject content script and retry when content script not loaded', async () => {
+    it('should inject content script via background and retry when content script not loaded', async () => {
       localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      // First ping fails (not injected), then injection via background succeeds
       localThis.mockChromeTabs.sendMessage
-        .mockRejectedValueOnce(new Error('Receiving end does not exist'))
-        .mockResolvedValueOnce({ success: true });
-      localThis.mockChromeScripting.executeScript.mockResolvedValue([{ result: true }]);
+        .mockRejectedValueOnce(new Error('Receiving end does not exist')) // ping fails
+        .mockResolvedValueOnce({ success: true }); // createPageLevelNote succeeds
+      // Background injects content script successfully
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true, injected: true });
       
       const result = await localThis.handlers.handleAddPageNote();
       
-      expect(localThis.mockChromeScripting.executeScript).toHaveBeenCalled();
+      // Injection is now done via background, not directly via scripting API
+      expect(localThis.mockChromeRuntime.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'injectContentScript' })
+      );
       expect(result.success).toBe(true);
     });
 
     it('should fail immediately when retry gets success:false response (not infinite loop)', async () => {
       localThis.mockChromeTabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
+      // First ping fails, then createPageLevelNote returns failure
       localThis.mockChromeTabs.sendMessage
-        .mockRejectedValueOnce(new Error('Receiving end does not exist'))
-        .mockResolvedValueOnce({ success: false, error: 'Content script failure' });
-      localThis.mockChromeScripting.executeScript.mockResolvedValue([{ result: true }]);
+        .mockRejectedValueOnce(new Error('Receiving end does not exist')) // ping fails
+        .mockResolvedValueOnce({ success: false, error: 'Content script failure' }); // createPageLevelNote fails
+      // Background injects content script successfully
+      localThis.mockChromeRuntime.sendMessage.mockResolvedValue({ success: true, injected: true });
       
       const result = await localThis.handlers.handleAddPageNote();
       
-      expect(localThis.mockChromeScripting.executeScript).toHaveBeenCalled();
       expect(result.success).toBe(false);
       expect(result.error).toBe('Content script failure');
       expect(localThis.mockShowErrorToast).toHaveBeenCalled();
-      // Should only call sendMessage twice (initial + one retry), not loop forever
-      expect(localThis.mockChromeTabs.sendMessage).toHaveBeenCalledTimes(2);
     });
 
     it('should handle injection failure', async () => {

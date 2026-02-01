@@ -105,6 +105,12 @@ describe('Options Page Script', () => {
       
       <div id="statusMessage" class="status-message hidden"></div>
       <span id="versionDisplay"></span>
+      
+      <!-- Permission elements -->
+      <span id="permissionGranted" class="hidden"></span>
+      <span id="permissionNotGranted" class="hidden"></span>
+      <button type="button" id="grantPermissionBtn">Grant Permission</button>
+      <button type="button" id="revokePermissionBtn" class="hidden">Revoke Permission</button>
     `;
     
     // Initialize DOM elements
