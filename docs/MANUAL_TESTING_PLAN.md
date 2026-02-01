@@ -102,7 +102,7 @@
 | 2 | Press `Alt+Shift+D` | Dashboard opens in new tab |
 | 3 | Verify dashboard URL | Shows `ravidorr.github.io/sticky-notes-chrome-extension/dashboard.html` |
 
-### TEST-2.7: Keyboard Shortcut - Toggle All Notes
+### TEST-2.8: Keyboard Shortcut - Toggle All Notes
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
@@ -111,15 +111,27 @@
 | 3 | Press `Ctrl+Shift+H` again | All notes become visible again |
 | 4 | Verify shortcut works on different pages | Shortcut toggles visibility consistently |
 
-### TEST-2.6: Welcome Page on First Install
+### TEST-2.6: Welcome/Settings Page on First Install
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
 | 1 | Remove extension from Chrome | Extension uninstalled |
 | 2 | Reinstall extension (Load unpacked) | Extension installed |
-| 3 | Check for new tab | Welcome page opens automatically |
-| 4 | Verify welcome page content | Shows welcome message, feature highlights, and "Open Dashboard" button |
-| 5 | Click "Open Dashboard" button | Dashboard opens in new tab |
+| 3 | Check for new tab | Settings page opens automatically |
+| 4 | Verify Welcome section at top | Shows welcome message, feature cards (Pin to Elements, Share with Team, Dashboard) |
+| 5 | Click "Open Dashboard" button in Welcome section | Dashboard opens in new tab |
+| 6 | Verify Permissions section visible | Shows permission status and grant/revoke buttons |
+
+### TEST-2.7: Permission Request on First Note
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Navigate to any website (e.g., `https://example.com`) | Page loads |
+| 2 | Click extension icon | Popup opens |
+| 3 | Click "Add Note" button | Selection mode activates |
+| 4 | Click any element on the page | Permission request dialog appears (first time only) |
+| 5 | Click "Allow" in the permission dialog | Note created and anchored to element |
+| 6 | Create another note on the same site | No permission prompt (already granted) |
 
 ---
 
@@ -1635,7 +1647,7 @@ The extension has full WCAG 2.1 AA accessibility support:
 | 3 | Confirm reset | All settings return to default values |
 | 4 | Click "Save Settings" | Settings saved with defaults |
 
-### 20.8 Settings Persistence
+### 20.9 Settings Persistence
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
@@ -1643,6 +1655,47 @@ The extension has full WCAG 2.1 AA accessibility support:
 | 2 | Close settings tab | Tab closes |
 | 3 | Reopen settings page | Previously saved settings are loaded |
 | 4 | Settings persist across browser restart | Same settings loaded after restart |
+
+### 20.10 Permissions Section - View Status
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open settings page | Settings page loads |
+| 2 | Locate Permissions section | Section visible at top of settings (after Welcome section) |
+| 3 | Check permission status indicator | Shows "Granted" (green) or "Not granted" (gray) badge |
+| 4 | Verify button state | If not granted: "Grant Access" button visible; if granted: "Revoke Access" button visible |
+
+### 20.11 Permissions Section - Grant All Sites Access
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open settings page with permission NOT granted | "Grant Access" button visible |
+| 2 | Click "Grant Access" button | Browser permission dialog appears |
+| 3 | Click "Allow" in browser dialog | Permission granted |
+| 4 | Status badge updates | Shows "Granted" (green) |
+| 5 | Button changes | "Revoke Access" button now visible |
+| 6 | Navigate to any site with notes | Notes automatically visible (no permission prompt) |
+
+### 20.12 Permissions Section - Revoke All Sites Access
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open settings page with permission granted | "Revoke Access" button visible |
+| 2 | Click "Revoke Access" button | Confirmation dialog appears |
+| 3 | Confirm revocation | Permission revoked |
+| 4 | Status badge updates | Shows "Not granted" (gray) |
+| 5 | Button changes | "Grant Access" button now visible |
+| 6 | Navigate to site and create note | Permission prompt appears for that site |
+
+### 20.13 Permissions Section - Cancel Grant
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open settings page with permission NOT granted | "Grant Access" button visible |
+| 2 | Click "Grant Access" button | Browser permission dialog appears |
+| 3 | Click "Cancel" or "Deny" in browser dialog | Permission NOT granted |
+| 4 | Status badge unchanged | Still shows "Not granted" |
+| 5 | Button unchanged | "Grant Access" button still visible |
 
 ---
 

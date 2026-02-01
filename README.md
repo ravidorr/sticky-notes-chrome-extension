@@ -234,9 +234,17 @@ The extension automatically detects and uses your browser's language. Currently 
 
 See `.cursor/rules/i18n.mdc` for detailed i18n guidelines.
 
+## Permissions
+
+The extension uses an optional permission model for better performance:
+
+- **First-time use**: When you create a note on a site for the first time, the browser will ask you to grant permission for that site
+- **All-sites access** (optional): In Settings > Permissions, you can grant "Access to All Websites" to skip per-site prompts and enable automatic note display across all sites
+- **Privacy**: Without the all-sites permission, the extension only has access to sites where you explicitly create notes
+
 ## Usage
 
-1. **Adding a Note**: Click the extension icon, then click "Add Note". Your cursor will change to a crosshair. Click on any element to attach a note. Alternatively, click "Page Note" to create a note attached to the page itself (not a specific element).
+1. **Adding a Note**: Click the extension icon, then click "Add Note". Your cursor will change to a crosshair. Click on any element to attach a note. Alternatively, click "Page Note" to create a note attached to the page itself (not a specific element). On first use, your browser may ask for permission to access the site.
 
 2. **Editing Notes**: Click on a note to edit. The note auto-saves after you stop typing.
 
