@@ -212,6 +212,7 @@ describe('pageContext', () => {
   
   describe('console method preservation', () => {
     it('should preserve original console.error behavior', async () => {
+      jest.useFakeTimers();
       const mockOriginal = jest.fn();
       console.error = mockOriginal;
       
@@ -219,10 +220,14 @@ describe('pageContext', () => {
       
       console.error('Test', 'multiple', 'args');
       
+      // Original is called via setTimeout(0) to avoid extension attribution
+      jest.runAllTimers();
       expect(mockOriginal).toHaveBeenCalledWith('Test', 'multiple', 'args');
+      jest.useRealTimers();
     });
     
     it('should preserve original console.warn behavior', async () => {
+      jest.useFakeTimers();
       const mockOriginal = jest.fn();
       console.warn = mockOriginal;
       
@@ -230,7 +235,10 @@ describe('pageContext', () => {
       
       console.warn('Warning', 123);
       
+      // Original is called via setTimeout(0) to avoid extension attribution
+      jest.runAllTimers();
       expect(mockOriginal).toHaveBeenCalledWith('Warning', 123);
+      jest.useRealTimers();
     });
   });
   

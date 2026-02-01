@@ -81,6 +81,8 @@
   }
   
   // Capture console.error
+  // Use setTimeout(0) to call original method outside our stack frame,
+  // so Chrome doesn't attribute website errors to the extension
   const originalError = console.error;
   console.error = function() {
     const args = Array.prototype.slice.call(arguments);
@@ -90,7 +92,7 @@
       timestamp: Date.now()
     };
     sendError(errorData);
-    return originalError.apply(console, args);
+    setTimeout(() => { originalError.apply(console, args); }, 0);
   };
   
   // Capture console.warn
@@ -103,7 +105,7 @@
       timestamp: Date.now()
     };
     sendError(errorData);
-    return originalWarn.apply(console, args);
+    setTimeout(() => { originalWarn.apply(console, args); }, 0);
   };
   
   // Capture uncaught exceptions
