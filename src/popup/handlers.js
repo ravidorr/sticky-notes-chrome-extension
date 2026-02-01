@@ -6,7 +6,16 @@
 import { isRestrictedUrl, THEME_COLORS, escapeHtml, stripHtml, truncate, isValidEmail, formatRelativeTime } from '../shared/utils.js';
 import { popupLogger as defaultLog } from '../shared/logger.js';
 import { t } from '../shared/i18n.js';
-import { ReportGenerator, REPORT_SCOPES, downloadReport } from '../shared/reportGenerator.js';
+// Report generator is lazy-loaded to reduce initial bundle size
+// import { ReportGenerator, REPORT_SCOPES, downloadReport } from '../shared/reportGenerator.js';
+
+// Constants needed for report scope (avoid loading full module)
+const REPORT_SCOPES = {
+  CURRENT_PAGE: 'currentPage',
+  ALL_NOTES: 'allNotes',
+  SELECTED: 'selected',
+  DATE_RANGE: 'dateRange'
+};
 
 /**
  * Create popup handlers with injected dependencies
@@ -738,6 +747,9 @@ export function createPopupHandlers(deps = {}) {
       const context = {
         userEmail: user?.email || ''
       };
+      
+      // Lazy load report generator only when needed
+      const { ReportGenerator, downloadReport } = await import('../shared/reportGenerator.js');
       
       // Create generator and generate report
       const generator = new ReportGenerator(options);

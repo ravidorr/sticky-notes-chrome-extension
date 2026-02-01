@@ -857,12 +857,12 @@ export function createHandlers(deps = {}) {
       
       // Clean up existing subscription for this tab/frame
       const existingSub = noteSubscriptions.get(subKey);
-      if (existingSub) {
+      if (existingSub && typeof existingSub.unsubscribe === 'function') {
         existingSub.unsubscribe();
       }
       
-      // Set up new subscription
-      const unsubscribe = subscribeToNotesForUrl(
+      // Set up new subscription (await since lazy-loaded functions return promises)
+      const unsubscribe = await subscribeToNotesForUrl(
         url,
         user.uid,
         user.email,
@@ -875,7 +875,9 @@ export function createHandlers(deps = {}) {
             }, { frameId }).catch(() => {
               // Tab/frame might be closed, clean up subscription
               try {
-                unsubscribe();
+                if (typeof unsubscribe === 'function') {
+                  unsubscribe();
+                }
               } catch (error) {
                 log.error('Error during unsubscribe:', error);
               }
@@ -964,12 +966,12 @@ export function createHandlers(deps = {}) {
       
       // Clean up existing subscription
       const existingSub = commentSubscriptions.get(subKey);
-      if (existingSub) {
+      if (existingSub && typeof existingSub === 'function') {
         existingSub();
       }
       
-      // Set up new subscription
-      const unsubscribe = subscribeToComments(
+      // Set up new subscription (await since lazy-loaded functions return promises)
+      const unsubscribe = await subscribeToComments(
         noteId,
         user,
         (comments) => {
@@ -982,7 +984,9 @@ export function createHandlers(deps = {}) {
             }).catch(() => {
               // Tab might be closed, clean up subscription
               try {
-                unsubscribe();
+                if (typeof unsubscribe === 'function') {
+                  unsubscribe();
+                }
               } catch (error) {
                 log.error('Error during unsubscribe:', error);
               }
@@ -1275,13 +1279,13 @@ export function createHandlers(deps = {}) {
       }
       
       // Clean up existing subscription
-      if (sharedNotesSubscription.current) {
+      if (sharedNotesSubscription.current && typeof sharedNotesSubscription.current === 'function') {
         sharedNotesSubscription.current();
         sharedNotesSubscription.current = null;
       }
       
-      // Set up new subscription
-      sharedNotesSubscription.current = subscribeToSharedNotes(
+      // Set up new subscription (await since lazy-loaded functions return promises)
+      sharedNotesSubscription.current = await subscribeToSharedNotes(
         user.email,
         async (sharedNotes) => {
           // Update the badge whenever shared notes change

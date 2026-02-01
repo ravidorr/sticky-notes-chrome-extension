@@ -13,7 +13,10 @@ jest.unstable_mockModule('firebase/app', () => ({
 }));
 
 jest.unstable_mockModule('firebase/auth', () => ({
-  getAuth: jest.fn(() => ({ name: 'mock-auth' }))
+  getAuth: jest.fn(() => ({ name: 'mock-auth' })),
+  initializeAuth: jest.fn(() => ({ name: 'mock-auth' })),
+  browserLocalPersistence: { type: 'LOCAL' },
+  indexedDBLocalPersistence: { type: 'LOCAL' }
 }));
 
 jest.unstable_mockModule('firebase/firestore', () => ({

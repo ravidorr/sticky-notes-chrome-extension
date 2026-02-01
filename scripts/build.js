@@ -216,12 +216,14 @@ async function buildPageContext() {
 }
 
 // Build background script (ES module - service workers support it)
+// Uses code splitting to lazy-load Firebase SDK for faster cold starts
 async function buildBackground() {
   console.log('Building background script...');
   
   // Create directory
   mkdirSync(resolve(distDir, 'src/background'), { recursive: true });
   
+  // Build as ES module with code splitting for Firebase lazy loading
   await build({
     ...commonOptions,
     build: {
@@ -233,7 +235,17 @@ async function buildBackground() {
         output: {
           format: 'es',
           entryFileNames: 'src/background/background.js',
-          inlineDynamicImports: true
+          // Enable code splitting - Firebase will be in separate chunks
+          chunkFileNames: 'src/background/[name]-[hash].js',
+          // Separate Firebase into its own chunk for lazy loading
+          manualChunks(id) {
+            if (id.includes('node_modules/firebase')) {
+              return 'firebase-sdk';
+            }
+            if (id.includes('src/firebase/')) {
+              return 'firebase-app';
+            }
+          }
         }
       }
     }
@@ -241,13 +253,15 @@ async function buildBackground() {
   console.log('Background script built');
 }
 
-// Build popup (standard web bundle)
+// Build popup (IIFE bundle for fastest loading)
+// Note: Code splitting hurts popup performance because each open is a fresh load
 async function buildPopup() {
   console.log('Building popup...');
   
   // Create popup directory
   mkdirSync(resolve(distDir, 'src/popup'), { recursive: true });
   
+  // Build popup.js as IIFE - single file loads faster than ES modules with chunks
   await build({
     ...commonOptions,
     build: {
@@ -255,24 +269,32 @@ async function buildPopup() {
       outDir: distDir,
       emptyOutDir: false,
       rollupOptions: {
-        input: {
-          popup: resolve(rootDir, 'src/popup/popup.html')
-        },
+        input: resolve(rootDir, 'src/popup/popup.js'),
         output: {
           format: 'iife',
-          entryFileNames: 'src/popup/[name].js',
-          assetFileNames: (assetInfo) => {
-            if (assetInfo.name?.endsWith('.css')) {
-              return 'src/popup/[name][extname]';
-            }
-            return 'assets/[name][extname]';
-          }
+          name: 'StickyNotesPopup',
+          entryFileNames: 'src/popup/popup.js',
+          inlineDynamicImports: true
         }
       }
     }
   });
   
-  // Copy popup.css (Vite doesn't process linked CSS in HTML correctly with this config)
+  // Copy and transform popup.html to use regular script (not module)
+  let popupHtml = readFileSync(resolve(rootDir, 'src/popup/popup.html'), 'utf-8');
+  // Remove type="module" from script tags
+  popupHtml = popupHtml.replace(/<script\s+type="module"\s+/g, '<script ');
+  popupHtml = popupHtml.replace(/<script\s+type='module'\s+/g, '<script ');
+  // If no script tag exists, add one before closing body tag
+  if (!popupHtml.includes('<script')) {
+    popupHtml = popupHtml.replace(
+      '</body>',
+      '  <script src="popup.js"></script>\n</body>'
+    );
+  }
+  writeFileSync(resolve(distDir, 'src/popup/popup.html'), popupHtml);
+  
+  // Copy popup.css
   copyFileSync(
     resolve(rootDir, 'src/popup/popup.css'),
     resolve(distDir, 'src/popup/popup.css')
@@ -288,6 +310,7 @@ async function buildOptions() {
   // Create options directory
   mkdirSync(resolve(distDir, 'src/options'), { recursive: true });
   
+  // Build options.js as IIFE (not using HTML entry to avoid type="module")
   await build({
     ...commonOptions,
     build: {
@@ -295,24 +318,32 @@ async function buildOptions() {
       outDir: distDir,
       emptyOutDir: false,
       rollupOptions: {
-        input: {
-          options: resolve(rootDir, 'src/options/options.html')
-        },
+        input: resolve(rootDir, 'src/options/options.js'),
         output: {
           format: 'iife',
-          entryFileNames: 'src/options/[name].js',
-          assetFileNames: (assetInfo) => {
-            if (assetInfo.name?.endsWith('.css')) {
-              return 'src/options/[name][extname]';
-            }
-            return 'assets/[name][extname]';
-          }
+          name: 'StickyNotesOptions',
+          entryFileNames: 'src/options/options.js',
+          inlineDynamicImports: true
         }
       }
     }
   });
   
-  // Copy options.css (Vite doesn't process linked CSS in HTML correctly with this config)
+  // Copy and transform options.html to use regular script (not module)
+  let optionsHtml = readFileSync(resolve(rootDir, 'src/options/options.html'), 'utf-8');
+  // Remove type="module" from script tags - Chrome extension CSP doesn't allow module imports
+  optionsHtml = optionsHtml.replace(/<script\s+type="module"\s+/g, '<script ');
+  optionsHtml = optionsHtml.replace(/<script\s+type='module'\s+/g, '<script ');
+  // If no script tag exists, add one before closing body tag
+  if (!optionsHtml.includes('<script')) {
+    optionsHtml = optionsHtml.replace(
+      '</body>',
+      '  <script src="options.js"></script>\n</body>'
+    );
+  }
+  writeFileSync(resolve(distDir, 'src/options/options.html'), optionsHtml);
+  
+  // Copy options.css
   copyFileSync(
     resolve(rootDir, 'src/options/options.css'),
     resolve(distDir, 'src/options/options.css')

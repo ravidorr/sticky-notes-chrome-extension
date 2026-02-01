@@ -504,9 +504,10 @@ async function init() {
   
   // Display version from manifest
   displayVersion();
-  
+
   // Check auth state
   const user = await handlers.checkAuthState();
+  
   if (user) {
     showUserSection(user);
   } else {

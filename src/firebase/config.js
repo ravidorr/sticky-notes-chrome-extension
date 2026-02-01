@@ -13,7 +13,12 @@
  */
 
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { 
+  initializeAuth,
+  getAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence
+} from 'firebase/auth';
 import { 
   getFirestore,
   initializeFirestore, 
@@ -104,7 +109,10 @@ export function initializeFirebase(options = {}) {
   const config = options.config || firebaseConfig;
   const deps = options.deps || { 
     initializeApp, 
-    getAuth, 
+    initializeAuth,
+    getAuth,
+    indexedDBLocalPersistence,
+    browserLocalPersistence,
     initializeFirestore, 
     getFirestore, 
     persistentLocalCache, 
@@ -119,13 +127,33 @@ export function initializeFirebase(options = {}) {
   
   if (!app) {
     app = deps.initializeApp(config);
-    auth = deps.getAuth(app);
+    
+    // Use initializeAuth with explicit persistence for faster startup
+    // Service workers use indexedDB only; browser contexts can use both
+    const inServiceWorker = isServiceWorker();
+    try {
+      if (inServiceWorker) {
+        // Service workers: use only indexedDB persistence (no localStorage)
+        auth = deps.initializeAuth(app, {
+          persistence: [deps.indexedDBLocalPersistence]
+        });
+        log.info('Running in service worker - using indexedDB persistence for Auth');
+      } else {
+        // Browser contexts: use both for faster restoration
+        auth = deps.initializeAuth(app, {
+          persistence: [deps.indexedDBLocalPersistence, deps.browserLocalPersistence]
+        });
+      }
+    } catch (error) {
+      // If auth was already initialized, this will throw
+      // Fall back to getting the existing instance
+      log.debug('Auth already initialized, using existing instance');
+      auth = deps.getAuth(app);
+    }
     
     // Initialize Firestore with appropriate cache based on environment
     // Service workers don't have localStorage, so we use memory cache there
     try {
-      const inServiceWorker = isServiceWorker();
-      
       if (inServiceWorker) {
         // Use memory cache for service workers (no localStorage available)
         log.info('Running in service worker - using memory cache for Firestore');

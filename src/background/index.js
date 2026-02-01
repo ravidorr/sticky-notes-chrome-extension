@@ -1,38 +1,41 @@
 /**
  * Background Service Worker
  * Handles authentication, storage, and message passing
+ * 
+ * PERFORMANCE OPTIMIZATION: Uses lazy-loading for Firebase SDK
+ * to minimize cold start time. Firebase is loaded only when needed.
  */
 
-import { 
-  signInWithGoogle, 
-  signOut, 
-  getCurrentUser, 
-  isAuthConfigured 
-} from '../firebase/auth.js';
-import { 
-  createNote, 
-  getNotesForUrl, 
-  updateNote as updateNoteInFirestore, 
-  deleteNote as deleteNoteFromFirestore,
-  shareNote as shareNoteInFirestore,
-  unshareNote as unshareNoteInFirestore,
-  leaveSharedNote as leaveSharedNoteInFirestore,
-  subscribeToNotesForUrl,
-  subscribeToSharedNotes,
-  getSharedNotesForUser
-} from '../firebase/notes.js';
-import {
-  createComment as createCommentInFirestore,
-  getCommentsForNote as getCommentsForNoteFromFirestore,
-  updateComment as updateCommentInFirestore,
-  deleteComment as deleteCommentFromFirestore,
-  subscribeToComments
-} from '../firebase/comments.js';
-import { initializeFirebase, isFirebaseConfigured } from '../firebase/config.js';
+// Lightweight imports only - no Firebase SDK at startup
 import { generateId, isValidEmail } from '../shared/utils.js';
 import { backgroundLogger as log } from '../shared/logger.js';
 import { createHandlers } from './handlers.js';
 import { getUrlChangedMessageFromHistoryUpdate } from './navigation.js';
+
+// Lazy-loading imports for Firebase (no SDK loaded at import time)
+import {
+  isFirebaseConfiguredSync,
+  signInWithGoogleLazy,
+  signOutLazy,
+  getCurrentUserLazy,
+  isAuthConfiguredLazy,
+  createNoteLazy,
+  getNotesForUrlLazy,
+  updateNoteLazy,
+  deleteNoteLazy,
+  shareNoteLazy,
+  unshareNoteLazy,
+  leaveSharedNoteLazy,
+  subscribeToNotesForUrlLazy,
+  subscribeToSharedNotesLazy,
+  getSharedNotesForUserLazy,
+  createCommentLazy,
+  getCommentsForNoteLazy,
+  updateCommentLazy,
+  deleteCommentLazy,
+  subscribeToCommentsLazy,
+  initializeFirebaseLazy
+} from '../firebase/lazy.js';
 
 // Track active subscriptions by tab ID
 const noteSubscriptions = new Map(); // tabId -> { url: string, unsubscribe: Function }
@@ -41,30 +44,31 @@ const commentSubscriptions = new Map(); // `${tabId}-${noteId}` -> unsubscribe F
 // Track global shared notes subscription
 const sharedNotesSubscription = { current: null };
 
-// Create handlers with actual dependencies
+// Create handlers with lazy-loaded dependencies
+// These wrappers ensure Firebase is only loaded when actually used
 const handlers = createHandlers({
-  signInWithGoogle,
-  signOut,
-  getCurrentUser,
-  createNote,
-  getNotesForUrl,
-  updateNoteInFirestore,
-  deleteNoteFromFirestore,
-  shareNoteInFirestore,
-  unshareNoteInFirestore,
-  leaveSharedNoteInFirestore,
-  isFirebaseConfigured,
+  signInWithGoogle: signInWithGoogleLazy,
+  signOut: signOutLazy,
+  getCurrentUser: getCurrentUserLazy,
+  createNote: createNoteLazy,
+  getNotesForUrl: getNotesForUrlLazy,
+  updateNoteInFirestore: updateNoteLazy,
+  deleteNoteFromFirestore: deleteNoteLazy,
+  shareNoteInFirestore: shareNoteLazy,
+  unshareNoteInFirestore: unshareNoteLazy,
+  leaveSharedNoteInFirestore: leaveSharedNoteLazy,
+  isFirebaseConfigured: isFirebaseConfiguredSync,
   // Comment service functions
-  createCommentInFirestore,
-  getCommentsForNoteFromFirestore,
-  updateCommentInFirestore,
-  deleteCommentFromFirestore,
+  createCommentInFirestore: createCommentLazy,
+  getCommentsForNoteFromFirestore: getCommentsForNoteLazy,
+  updateCommentInFirestore: updateCommentLazy,
+  deleteCommentFromFirestore: deleteCommentLazy,
   // Real-time subscription functions
-  subscribeToNotesForUrl,
-  subscribeToComments,
+  subscribeToNotesForUrl: subscribeToNotesForUrlLazy,
+  subscribeToComments: subscribeToCommentsLazy,
   // Global shared notes subscription
-  subscribeToSharedNotes,
-  getSharedNotesForUser,
+  subscribeToSharedNotes: subscribeToSharedNotesLazy,
+  getSharedNotesForUser: getSharedNotesForUserLazy,
   noteSubscriptions,
   commentSubscriptions,
   sharedNotesSubscription,
@@ -83,48 +87,22 @@ const { handleMessage } = handlers;
  * Separated for testability - not called in test environment
  */
 export function bootstrap() {
-  // Initialize Firebase if configured
-  if (isFirebaseConfigured()) {
-    initializeFirebase();
-  }
+  // Firebase is now lazy-loaded - no eager initialization needed
+  // This allows the service worker to start immediately without
+  // waiting for the ~800KB Firebase SDK to be parsed/compiled
 
-  // Create context menu for creating notes
-  // Only show on regular web pages (http/https), not on restricted pages (chrome://, about:, etc.)
-  chrome.contextMenus.create({
-    id: 'create-sticky-note',
-    title: chrome.i18n.getMessage('contextMenuCreateNote') || 'Create Sticky Note Here',
-    contexts: ['page', 'selection', 'image', 'link'],
-    documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
-  }, () => {
-    // Ignore error if menu already exists (e.g., during hot reload)
-    if (chrome.runtime.lastError) {
-      log.debug('Context menu creation:', chrome.runtime.lastError.message);
-    }
+  // Listen for messages from popup and content scripts FIRST
+  // This ensures the extension is responsive immediately
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    handleMessage(message, sender)
+      .then(sendResponse)
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    
+    // Return true to indicate async response
+    return true;
   });
-  
-  // Create context menu for creating page-level notes (not anchored to any element)
-  chrome.contextMenus.create({
-    id: 'create-page-note',
-    title: chrome.i18n.getMessage('contextMenuCreatePageNote') || 'Create Page Note',
-    contexts: ['page'],
-    documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
-  }, () => {
-    if (chrome.runtime.lastError) {
-      log.debug('Page note context menu creation:', chrome.runtime.lastError.message);
-    }
-  });
-  
-  // Create context menu for opening the dashboard
-  chrome.contextMenus.create({
-    id: 'open-dashboard',
-    title: chrome.i18n.getMessage('contextMenuOpenDashboard') || 'Open Notes Dashboard',
-    contexts: ['page'],
-    documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
-  }, () => {
-    if (chrome.runtime.lastError) {
-      log.debug('Dashboard context menu creation:', chrome.runtime.lastError.message);
-    }
-  });
+
+  // Context menus are created in onInstalled (see below) - they persist across sessions
 
   // Handle context menu click
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -191,16 +169,6 @@ export function bootstrap() {
     }
   });
 
-  // Listen for messages from popup and content scripts
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    handleMessage(message, sender)
-      .then(sendResponse)
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    
-    // Return true to indicate async response
-    return true;
-  });
-
   // Listen for tab updates to inject content scripts
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
@@ -250,9 +218,41 @@ export function bootstrap() {
     }
   });
 
-  // Open welcome page on first install
+  // Create context menus on every service worker startup
+  // Context menus can get lost when the extension is disabled/enabled, reloaded, 
+  // or after browser updates, so we recreate them on every startup
+  chrome.contextMenus.removeAll(() => {
+    // Create context menu for creating notes
+    chrome.contextMenus.create({
+      id: 'create-sticky-note',
+      title: chrome.i18n.getMessage('contextMenuCreateNote') || 'Create Sticky Note Here',
+      contexts: ['page', 'selection', 'image', 'link'],
+      documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
+    });
+    
+    // Create context menu for creating page-level notes
+    chrome.contextMenus.create({
+      id: 'create-page-note',
+      title: chrome.i18n.getMessage('contextMenuCreatePageNote') || 'Create Page Note',
+      contexts: ['page'],
+      documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
+    });
+    
+    // Create context menu for opening the dashboard
+    chrome.contextMenus.create({
+      id: 'open-dashboard',
+      title: chrome.i18n.getMessage('contextMenuOpenDashboard') || 'Open Notes Dashboard',
+      contexts: ['page'],
+      documentUrlPatterns: ['http://*/*', 'https://*/*', 'file://*/*']
+    });
+    
+    log.debug('Context menus created');
+  });
+
+  // Handle extension install/update
   chrome.runtime.onInstalled.addListener((details) => {
     if (details.reason === 'install') {
+      // Open welcome page on first install
       chrome.tabs.create({ 
         url: 'https://ravidorr.github.io/sticky-notes-chrome-extension/welcome.html' 
       });
@@ -260,14 +260,25 @@ export function bootstrap() {
     }
   });
 
+  // Set up service worker keep-alive to prevent cold starts
+  // This keeps the service worker warm, reducing popup opening delay
+  chrome.alarms.create('keepAlive', { periodInMinutes: 0.4 }); // Every 24 seconds
+  
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === 'keepAlive') {
+      // Minimal work to keep the service worker alive
+      // This prevents cold start delays when opening popup
+    }
+  });
+
   // Log when service worker starts
   log.info('Sticky Notes background service worker started');
-  log.info('Firebase configured:', isFirebaseConfigured());
-  log.info('Auth configured:', isAuthConfigured());
+  log.info('Firebase configured:', isFirebaseConfiguredSync());
   
   // Initialize shared notes subscription if user is already logged in
-  if (isFirebaseConfigured()) {
-    getCurrentUser().then(user => {
+  // This is done lazily - Firebase will only be loaded when the user data is accessed
+  if (isFirebaseConfiguredSync()) {
+    getCurrentUserLazy().then(user => {
       if (user && user.email) {
         handlers.subscribeToSharedNotesGlobal().then(() => {
           log.info('Initialized shared notes subscription for logged-in user');
