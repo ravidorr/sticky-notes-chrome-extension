@@ -147,14 +147,15 @@ export function bootstrap() {
     }
 
     // Inject content scripts
+    // allFrames: true is required to inject into iframes, matching the old declarative manifest
     try {
       await chrome.scripting.executeScript({
-        target: { tabId },
+        target: { tabId, allFrames: true },
         files: ['src/content/pageContext.js'],
         world: 'MAIN'
       });
       await chrome.scripting.executeScript({
-        target: { tabId },
+        target: { tabId, allFrames: true },
         files: ['src/content/content.js']
       });
       log.debug('Content scripts injected into tab', tabId);

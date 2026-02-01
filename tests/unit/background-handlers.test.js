@@ -2392,7 +2392,7 @@ describe('Background Handlers', () => {
       localThis.handlers = createHandlers(localThis.deps);
     });
 
-    it('should inject content scripts successfully', async () => {
+    it('should inject content scripts successfully with allFrames', async () => {
       localThis.deps.chromeTabs.sendMessage.mockRejectedValue(new Error('No receiver')); // ping fails
       globalThis.chrome.scripting = {
         executeScript: jest.fn().mockResolvedValue([{ result: true }])
@@ -2406,6 +2406,12 @@ describe('Background Handlers', () => {
       expect(result.success).toBe(true);
       expect(result.injected).toBe(true);
       expect(globalThis.chrome.scripting.executeScript).toHaveBeenCalledTimes(2);
+      // Verify allFrames: true is set for iframe support
+      expect(globalThis.chrome.scripting.executeScript).toHaveBeenCalledWith(
+        expect.objectContaining({
+          target: expect.objectContaining({ tabId: 1, allFrames: true })
+        })
+      );
     });
 
     it('should return alreadyInjected when content script responds to ping', async () => {

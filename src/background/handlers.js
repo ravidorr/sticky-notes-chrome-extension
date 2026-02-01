@@ -396,13 +396,14 @@ export function createHandlers(deps = {}) {
       }
 
       // Inject content scripts (permission should already be granted by popup)
+      // allFrames: true is required to inject into iframes, matching the old declarative manifest
       await chrome.scripting.executeScript({
-        target: { tabId },
+        target: { tabId, allFrames: true },
         files: ['src/content/pageContext.js'],
         world: 'MAIN'
       });
       await chrome.scripting.executeScript({
-        target: { tabId },
+        target: { tabId, allFrames: true },
         files: ['src/content/content.js']
       });
       
