@@ -88,6 +88,9 @@ function copyStaticFiles() {
   // Sync version from package.json to manifest
   manifest.version = version;
   
+  // Remove 'key' field - it's used for development but not allowed in Chrome Web Store
+  delete manifest.key;
+  
   // Update OAuth client ID based on build environment and browser
   if (manifest.oauth2) {
     manifest.oauth2.client_id = OAUTH_CLIENTS[targetBrowser][buildEnv];
