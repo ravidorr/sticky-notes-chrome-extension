@@ -5,6 +5,19 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.1] - 2026-02-01
+
+### Fixed
+
+- Website console errors no longer appear in Chrome extension errors page
+  - Errors still appear in the site's DevTools console as expected
+  - Extension still captures errors for bug report feature
+
+### Added
+
+- Tests for permission and content script injection functions
+- Documentation for new permission model in README and manual testing plan
+
 ## [1.20.0] - 2026-02-01
 
 ### Changed
