@@ -537,7 +537,6 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  margin-bottom: 20px;
   text-align: left;
 }
 
@@ -575,6 +574,45 @@ body {
   color: #6b7280;
   line-height: 1.4;
   margin: 0;
+}
+
+/* Clickable feature card (link) */
+.feature-card-link {
+  display: block;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feature-card-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #22c55e;
+}
+
+.feature-card-link:focus {
+  outline: 2px solid #22c55e;
+  outline-offset: 2px;
+}
+
+.feature-card-link:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.feature-card-action {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.feature-card-link:hover .feature-card-action {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
 }
 
 .btn-dashboard {
