@@ -320,6 +320,27 @@ export function createHandlers(deps = {}) {
   }
   
   /**
+   * Get the current user only when Firebase is configured.
+   * Avoids loading the Firebase SDK for local-only usage.
+   * @returns {Promise<Object|null>}
+   */
+  async function getUserIfConfigured() {
+    const firebaseConfigured = isFirebaseConfigured();
+    if (firebaseConfigured === false) {
+      if (chromeStorage?.local?.get) {
+        try {
+          const result = await chromeStorage.local.get(['user']);
+          return result.user || null;
+        } catch (error) {
+          log.warn('Failed to read cached user:', error);
+        }
+      }
+      return null;
+    }
+    return getCurrentUser();
+  }
+
+  /**
    * Handle login
    */
   async function handleLogin() {
@@ -365,7 +386,7 @@ export function createHandlers(deps = {}) {
    */
   async function getUser() {
     try {
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       return { success: true, user };
     } catch (error) {
       return { success: false, error: error.message };
@@ -421,7 +442,7 @@ export function createHandlers(deps = {}) {
    */
   async function getNotes(url) {
     try {
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       log.debug(' getNotes called with URL:', url);
       log.debug(' Current user:', user ? { uid: user.uid, email: user.email } : 'null');
       log.debug(' Firebase configured:', isFirebaseConfigured());
@@ -473,7 +494,7 @@ export function createHandlers(deps = {}) {
    */
   async function saveNote(note) {
     try {
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       
       // Try Firestore first if configured and user is logged in
       if (isFirebaseConfigured() && user) {
@@ -516,7 +537,7 @@ export function createHandlers(deps = {}) {
    */
   async function updateNote(note) {
     try {
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       
       // Try Firestore first if configured and user is logged in
       if (isFirebaseConfigured() && user) {
@@ -558,7 +579,7 @@ export function createHandlers(deps = {}) {
    */
   async function deleteNote(noteId) {
     try {
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       
       // Try Firestore first if configured and user is logged in
       if (isFirebaseConfigured() && user) {
@@ -603,14 +624,14 @@ export function createHandlers(deps = {}) {
    */
   async function shareNote(noteId, email) {
     try {
-      const user = await getCurrentUser();
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('sharingRequiresFirebase') };
+      }
+
+      const user = await getUserIfConfigured();
       
       if (!user) {
         return { success: false, error: t('mustBeLoggedInToShare') };
-      }
-      
-      if (!isFirebaseConfigured()) {
-        return { success: false, error: t('sharingRequiresFirebase') };
       }
       
       // Validate noteId format
@@ -644,14 +665,14 @@ export function createHandlers(deps = {}) {
    */
   async function unshareNote(noteId, email) {
     try {
-      const user = await getCurrentUser();
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('sharingRequiresFirebase') };
+      }
+
+      const user = await getUserIfConfigured();
       
       if (!user) {
         return { success: false, error: t('mustBeLoggedInToShare') };
-      }
-      
-      if (!isFirebaseConfigured()) {
-        return { success: false, error: t('sharingRequiresFirebase') };
       }
       
       // Validate noteId format
@@ -683,14 +704,14 @@ export function createHandlers(deps = {}) {
    */
   async function leaveSharedNote(noteId) {
     try {
-      const user = await getCurrentUser();
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('sharingRequiresFirebase') };
+      }
+
+      const user = await getUserIfConfigured();
       
       if (!user) {
         return { success: false, error: t('mustBeLoggedInToShare') };
-      }
-      
-      if (!isFirebaseConfigured()) {
-        return { success: false, error: t('sharingRequiresFirebase') };
       }
       
       // Validate noteId format
@@ -753,14 +774,14 @@ export function createHandlers(deps = {}) {
    */
   async function addComment(noteId, commentData) {
     try {
-      const user = await getCurrentUser();
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('commentsRequireFirebase') };
+      }
+
+      const user = await getUserIfConfigured();
       
       if (!user) {
         return { success: false, error: t('mustBeLoggedInToComment') };
-      }
-      
-      if (!isFirebaseConfigured()) {
-        return { success: false, error: t('commentsRequireFirebase') };
       }
       
       if (!createCommentInFirestore) {
@@ -785,14 +806,14 @@ export function createHandlers(deps = {}) {
    */
   async function editComment(noteId, commentId, updates) {
     try {
-      const user = await getCurrentUser();
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('commentsRequireFirebase') };
+      }
+
+      const user = await getUserIfConfigured();
       
       if (!user) {
         return { success: false, error: t('mustBeLoggedInToComment') };
-      }
-      
-      if (!isFirebaseConfigured()) {
-        return { success: false, error: t('commentsRequireFirebase') };
       }
       
       if (!updateCommentInFirestore) {
@@ -816,14 +837,14 @@ export function createHandlers(deps = {}) {
    */
   async function deleteCommentHandler(noteId, commentId) {
     try {
-      const user = await getCurrentUser();
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('commentsRequireFirebase') };
+      }
+
+      const user = await getUserIfConfigured();
       
       if (!user) {
         return { success: false, error: t('mustBeLoggedInToComment') };
-      }
-      
-      if (!isFirebaseConfigured()) {
-        return { success: false, error: t('commentsRequireFirebase') };
       }
       
       if (!deleteCommentFromFirestore) {
@@ -846,14 +867,14 @@ export function createHandlers(deps = {}) {
    */
   async function getComments(noteId) {
     try {
-      const user = await getCurrentUser();
+      if (!isFirebaseConfigured()) {
+        return { success: false, error: t('commentsRequireFirebase') };
+      }
+
+      const user = await getUserIfConfigured();
       
       if (!user) {
         return { success: false, error: t('mustBeLoggedInToComment') };
-      }
-      
-      if (!isFirebaseConfigured()) {
-        return { success: false, error: t('commentsRequireFirebase') };
       }
       
       if (!getCommentsForNoteFromFirestore) {
@@ -883,7 +904,7 @@ export function createHandlers(deps = {}) {
         return { success: false, error: 'Tab ID not available' };
       }
       
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       
       if (!user) {
         return { success: false, error: t('mustBeLoggedInForRealtime') };
@@ -993,7 +1014,7 @@ export function createHandlers(deps = {}) {
         return { success: false, error: 'Tab ID not available' };
       }
       
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       
       if (!user) {
         return { success: false, error: t('mustBeLoggedInToComment') };
@@ -1097,7 +1118,7 @@ export function createHandlers(deps = {}) {
    */
   async function getAllNotes() {
     try {
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       
       // TODO: Add Firestore getAllUserNotes when firebase/notes.js supports it
       // For now, use local storage approach
@@ -1128,7 +1149,7 @@ export function createHandlers(deps = {}) {
    */
   async function deleteAllNotes() {
     try {
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       
       // First get all notes to delete
       const { notes } = await getAllNotes();
@@ -1178,7 +1199,7 @@ export function createHandlers(deps = {}) {
    */
   async function getUnreadSharedCount() {
     try {
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       
       if (!user || !user.email) {
         return { success: true, count: 0 };
@@ -1212,7 +1233,7 @@ export function createHandlers(deps = {}) {
    */
   async function getUnreadSharedNotes() {
     try {
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       
       if (!user || !user.email) {
         return { success: true, notes: [] };
@@ -1247,7 +1268,7 @@ export function createHandlers(deps = {}) {
    */
   async function markSharedNoteRead(noteId) {
     try {
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       
       if (!user) {
         return { success: false, error: t('mustBeLoggedInToShare') };
@@ -1313,7 +1334,7 @@ export function createHandlers(deps = {}) {
    */
   async function subscribeToSharedNotesGlobal() {
     try {
-      const user = await getCurrentUser();
+      const user = await getUserIfConfigured();
       
       if (!user || !user.email) {
         return { success: false, error: t('mustBeLoggedInForRealtime') };

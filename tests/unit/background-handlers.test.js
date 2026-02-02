@@ -47,6 +47,8 @@ describe('Background Handlers', () => {
       log: localThis.mockLog,
       chromeStorage: localThis.mockChromeStorage
     };
+
+    localThis.deps.isFirebaseConfigured.mockReturnValue(true);
     
     // Create handlers with mock deps
     localThis.handlers = createHandlers(localThis.deps);
@@ -1807,11 +1809,16 @@ describe('Background Handlers', () => {
     it('should filter notes by current user', async () => {
       localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
       localThis.deps.isFirebaseConfigured.mockReturnValue(false);
-      localThis.mockChromeStorage.local.get.mockResolvedValue({
-        notes: [
-          { id: '1', ownerId: 'user-123', content: 'My note' },
-          { id: '2', ownerId: 'other-user', content: 'Other user note' }
-        ]
+      localThis.mockChromeStorage.local.get.mockImplementation(async (keys) => {
+        if (Array.isArray(keys) && keys.includes('user')) {
+          return { user: localThis.mockUser };
+        }
+        return {
+          notes: [
+            { id: '1', ownerId: 'user-123', content: 'My note' },
+            { id: '2', ownerId: 'other-user', content: 'Other user note' }
+          ]
+        };
       });
       
       const handlers = createHandlers(localThis.deps);
