@@ -370,21 +370,10 @@ export function bootstrap() {
   log.info('Sticky Notes background service worker started');
   log.info('Firebase configured:', isFirebaseConfiguredSync());
   
-  // Initialize shared notes subscription if user is already logged in
-  // This is done lazily - Firebase will only be loaded when the user data is accessed
-  if (isFirebaseConfiguredSync()) {
-    getCurrentUserLazy().then(user => {
-      if (user && user.email) {
-        handlers.subscribeToSharedNotesGlobal().then(() => {
-          log.info('Initialized shared notes subscription for logged-in user');
-        }).catch(error => {
-          log.error('Failed to initialize shared notes subscription:', error);
-        });
-      }
-    }).catch(error => {
-      log.debug('Could not check user state on startup:', error.message);
-    });
-  }
+  // NOTE: We removed eager Firebase initialization at startup.
+  // The previous code called getCurrentUserLazy() which loaded the entire
+  // Firebase SDK (~800KB) during service worker startup.
+  // Shared notes subscription is now initialized on-demand when user interacts.
 }
 
 // Only bootstrap in non-test environment

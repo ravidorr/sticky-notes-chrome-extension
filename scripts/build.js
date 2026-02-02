@@ -233,6 +233,8 @@ async function buildBackground() {
       ...commonOptions.build,
       outDir: distDir,
       emptyOutDir: false,
+      // Disable module preload polyfill - we'll fix window references manually
+      modulePreload: false,
       rollupOptions: {
         input: resolve(rootDir, 'src/background/index.js'),
         output: {
@@ -240,19 +242,47 @@ async function buildBackground() {
           entryFileNames: 'src/background/background.js',
           // Enable code splitting - Firebase will be in separate chunks
           chunkFileNames: 'src/background/[name]-[hash].js',
-          // Separate Firebase into its own chunk for lazy loading
-          manualChunks(id) {
-            if (id.includes('node_modules/firebase')) {
-              return 'firebase-sdk';
-            }
-            if (id.includes('src/firebase/')) {
-              return 'firebase-app';
-            }
-          }
+          // Don't use manualChunks - let Rollup handle chunking naturally
+          // This keeps lazy.js in the main bundle so its dynamic imports
+          // actually work as lazy imports instead of being statically bundled
         }
       }
     }
   });
+  
+  // Post-process: Fix Vite's preload helper for service worker compatibility
+  // Service workers don't have 'window' or 'document', so we need to replace
+  // the entire __vitePreload function with a simple version that just calls import()
+  const backgroundDir = resolve(distDir, 'src/background');
+  const files = readdirSync(backgroundDir).filter(f => f.endsWith('.js'));
+  for (const file of files) {
+    const filePath = resolve(backgroundDir, file);
+    let content = readFileSync(filePath, 'utf-8');
+    let modified = false;
+    
+    // Replace the entire __vitePreload function with a service worker compatible version
+    // The original uses document.* APIs which don't exist in service workers
+    const vitePreloadRegex = /const __vitePreload = function preload\(baseModule, deps, importerUrl\) \{[\s\S]*?^\};$/m;
+    if (vitePreloadRegex.test(content)) {
+      content = content.replace(vitePreloadRegex, 
+        `const __vitePreload = (baseModule) => baseModule();`
+      );
+      modified = true;
+      console.log(`Simplified __vitePreload for service worker in ${file}`);
+    }
+    
+    // Also fix any remaining window references
+    if (content.includes('window.dispatchEvent')) {
+      content = content.replace(/window\.dispatchEvent/g, 'self.dispatchEvent');
+      modified = true;
+      console.log(`Fixed window.dispatchEvent in ${file}`);
+    }
+    
+    if (modified) {
+      writeFileSync(filePath, content);
+    }
+  }
+  
   console.log('Background script built');
 }
 
