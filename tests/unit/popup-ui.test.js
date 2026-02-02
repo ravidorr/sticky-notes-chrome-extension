@@ -43,7 +43,7 @@ describe('src/popup/popup.js', () => {
             <button id="addNoteBtn">Add Note</button>
             <div id="notesList"></div>
             <span id="notesCount">0</span>
-            <div class="action-hint"></div>
+            <div class="action-hint hidden"></div>
             <!-- Tab elements -->
             <button id="thisPageTab" class="popup-tab active" data-tab="this-page">
                 <span>This Page</span>

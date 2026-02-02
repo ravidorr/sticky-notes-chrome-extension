@@ -147,11 +147,15 @@ function displayVersion() {
 function updateAddNoteButtonState(url) {
   if (isRestrictedUrl(url)) {
     addNoteBtn.disabled = true;
+    addNoteBtn.removeAttribute('title');
     if (addPageNoteBtn) {
       addPageNoteBtn.disabled = true;
     }
-    actionHint.textContent = t('restrictedPageHint');
-    actionHint.classList.add('restricted');
+    if (actionHint) {
+      actionHint.textContent = t('restrictedPageHint');
+      actionHint.classList.remove('hidden');
+      actionHint.classList.add('restricted');
+    }
   }
 }
 

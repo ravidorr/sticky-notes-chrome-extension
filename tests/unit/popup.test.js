@@ -56,7 +56,7 @@ describe('Popup Script Logic', () => {
       <button id="addPageNoteBtn"></button>
       <div id="notesList"></div>
       <span id="notesCount"></span>
-      <div class="action-hint"></div>
+      <div class="action-hint hidden"></div>
       <button id="actionsBtn"></button>
       <div id="actionsMenu" class="hidden"></div>
       <button id="toggleVisibilityBtn">
