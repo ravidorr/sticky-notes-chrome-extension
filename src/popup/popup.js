@@ -503,53 +503,59 @@ async function onLogout() {
 async function init() {
   // Initialize i18n for HTML elements
   initializeI18n();
-  
+
   initDOMElements();
-  
+
   // Display version from manifest
   displayVersion();
 
-  // Check auth state
-  const user = await handlers.checkAuthState();
-  
+  // Run all async operations in parallel for faster loading
+  // These operations are independent and can execute concurrently
+  const [user, tabResult, notesResult] = await Promise.all([
+    handlers.checkAuthState(),
+    chrome.tabs.query({ active: true, currentWindow: true }),
+    handlers.loadNotesForCurrentTab()
+  ]);
+
+  // Update UI with auth state
   if (user) {
     showUserSection(user);
   } else {
     showAuthSection();
   }
-  
-  // Get current tab and check if restricted
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  // Check if restricted page
+  const tab = tabResult[0];
   if (tab?.url) {
     updateAddNoteButtonState(tab.url);
   }
-  
-  // Load notes for current tab
-  const notesResult = await handlers.loadNotesForCurrentTab();
+
+  // Update notes UI
   renderNotesList(notesResult.notes);
   notesCount.textContent = notesResult.notes.length;
-  
-  // Update "This Page" tab count badge
   thisPageCount.textContent = notesResult.notes.length.toString();
-  
-  // Update total notes count
-  await updateTotalNotesCount();
-  
-  // Update shared notes count badge
-  await updateSharedNotesCount();
-  
-  // Setup event listeners
+
+  // Setup event listeners early so UI is interactive
   loginBtn.addEventListener('click', onLogin);
   logoutBtn.addEventListener('click', onLogout);
   addNoteBtn.addEventListener('click', () => handlers.handleAddNote());
   addPageNoteBtn.addEventListener('click', () => handlers.handleAddPageNote());
   closeBtn.addEventListener('click', () => window.close());
-  
+
   // Setup tabs
   setupTabs();
-  
+
   // Actions dropdown
   setupActionsDropdown();
+
+  // Update counts in background (non-blocking)
+  // These are less critical and can complete after the main UI is ready
+  Promise.all([
+    updateTotalNotesCount(),
+    updateSharedNotesCount()
+  ]).catch(() => {
+    // Silently ignore errors - counts are non-critical
+  });
 }
 
 /**

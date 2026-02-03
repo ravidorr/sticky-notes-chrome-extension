@@ -312,21 +312,21 @@ function showStatus(message, type) {
 async function init() {
   // Initialize i18n
   initializeI18n();
-  
+
   // Initialize DOM elements
   initDOMElements();
-  
+
   // Display version
   displayVersion();
-  
+
   // Setup event listeners
   setupEventListeners();
-  
-  // Load current preferences
-  await loadPreferences();
-  
-  // Check and display permission status
-  await updatePermissionUI();
+
+  // Load preferences and check permissions in parallel for faster loading
+  await Promise.all([
+    loadPreferences(),
+    updatePermissionUI()
+  ]);
 }
 
 // Initialize when DOM is ready
