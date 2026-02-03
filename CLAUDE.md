@@ -7,6 +7,7 @@ This document provides guidance for AI assistants working with the Sticky Notes 
 **Sticky Notes** is a Chrome extension that allows users to attach persistent sticky notes to specific UI elements on any website. Notes are anchored to DOM elements using CSS selectors and support cloud sync via Firebase.
 
 **Tech Stack:**
+
 - Chrome Extension (Manifest V3)
 - Vanilla JavaScript (ES modules)
 - Firebase (Firestore, Authentication)
@@ -39,7 +40,7 @@ npm run lint:md          # Markdownlint only
 
 ## Codebase Structure
 
-```
+```text
 src/
 ├── background/           # Service worker (ES module with code splitting)
 │   ├── index.js          # Entry point, sets up listeners
@@ -106,13 +107,17 @@ site/                     # Marketing website
 ## Key Architectural Patterns
 
 ### 1. Shadow DOM Isolation
+
 All sticky notes render inside Shadow DOM to prevent style conflicts with host pages:
+
 ```javascript
 const shadow = element.attachShadow({ mode: 'open' });
 ```
 
 ### 2. Firebase Lazy Loading
+
 Firebase SDK is lazy-loaded to improve cold start performance. Always use the lazy wrappers from `src/firebase/lazy.js`:
+
 ```javascript
 // Good - uses lazy loading
 import { createNoteLazy } from '../firebase/lazy.js';
@@ -122,7 +127,9 @@ import { createNote } from '../firebase/notes.js';
 ```
 
 ### 3. Message Passing Architecture
+
 Content scripts communicate with the background service worker via Chrome messaging:
+
 ```javascript
 // Content script sends
 chrome.runtime.sendMessage({ action: 'createNote', data: {...} });
@@ -133,7 +140,9 @@ case 'createNote':
 ```
 
 ### 4. Composite URLs for Iframes
+
 Notes in iframes use composite URLs to associate with the parent page:
+
 ```javascript
 // Format: "tabUrl|frameUrl" for iframes, just "tabUrl" for top frame
 const compositeUrl = createCompositeUrl(tabUrl, frameUrl, isTopFrame);
@@ -142,6 +151,7 @@ const compositeUrl = createCompositeUrl(tabUrl, frameUrl, isTopFrame);
 ## Code Style and Conventions
 
 ### ESLint Rules (Key Points)
+
 - **No emojis in code** - `no-emoji/no-emoji: error`
 - **No em dashes** - Use regular hyphens instead
 - **Strict equality** - Always use `===` and `!==`
@@ -152,6 +162,7 @@ const compositeUrl = createCompositeUrl(tabUrl, frameUrl, isTopFrame);
 - **No trailing commas**
 
 ### Naming Conventions
+
 - **Files**: `camelCase.js` for modules, `PascalCase.js` for classes
 - **Classes**: `PascalCase`
 - **Functions/variables**: `camelCase`
@@ -159,6 +170,7 @@ const compositeUrl = createCompositeUrl(tabUrl, frameUrl, isTopFrame);
 - **Private methods**: Prefix with `_` (e.g., `_internalMethod`)
 
 ### Internationalization (i18n)
+
 All user-facing strings must be translatable:
 
 ```javascript
@@ -175,6 +187,7 @@ Add new strings to all locale files in `public/_locales/*/messages.json`.
 ## Testing Guidelines
 
 ### Unit Tests (Jest)
+
 - Location: `tests/unit/*.test.js`
 - Mock Chrome APIs are in `tests/setup.js`
 - Coverage thresholds: 85% statements, 75% branches, 75% functions
@@ -194,11 +207,13 @@ describe('MyModule', () => {
 ```
 
 ### E2E Tests (Playwright)
+
 - Location: `tests/e2e/*.spec.js`
 - Test fixtures: `tests/fixtures/`
 - Run with: `npm run test:e2e`
 
 ### Running Tests
+
 ```bash
 # Run all unit tests
 npm test
@@ -216,6 +231,7 @@ npm run build:dev && npm run test:e2e
 ## Build System
 
 ### Build Scripts
+
 The custom build script (`scripts/build.js`) runs separate Vite builds:
 
 1. **Content script** - IIFE bundle (no ES modules in content scripts)
@@ -224,7 +240,8 @@ The custom build script (`scripts/build.js`) runs separate Vite builds:
 4. **Options page** - IIFE bundle
 
 ### Build Outputs
-```
+
+```text
 dist/
 ├── chrome/           # Chrome build
 │   ├── manifest.json
@@ -240,7 +257,9 @@ dist/
 ```
 
 ### Version Management
+
 Version is managed in `package.json` and synced to manifests during build:
+
 ```json
 {
   "version": "1.20.3.3"
@@ -256,6 +275,7 @@ Husky runs these checks before each commit:
 3. **Unit tests** - All tests must pass
 
 To bypass (not recommended):
+
 ```bash
 git commit --no-verify -m "message"
 ```
@@ -263,41 +283,50 @@ git commit --no-verify -m "message"
 ## Firebase Integration
 
 ### Setup
+
 1. Copy `.env.example` to `.env`
 2. Fill in Firebase config values
 3. See `docs/FIREBASE_SETUP.md` for detailed instructions
 
 ### Security Rules
+
 Firestore rules are in `firestore.rules`:
+
 - Users can only read/write their own notes
 - Shared notes use email-based access control
 - Comments require note access
 
 ### Cloud Functions
+
 Located in `functions/`:
+
 - Email notifications for shared notes
 - API key generation and validation
 
 ## Common Tasks
 
 ### Adding a New Message Handler
+
 1. Add handler in `src/background/handlers.js`
 2. Add case in switch statement
 3. Send from content script: `chrome.runtime.sendMessage({ action: 'newAction', ... })`
 
 ### Adding a New Component
+
 1. Create in `src/content/components/`
 2. Use Shadow DOM for isolation
 3. Add styles in component or `src/content/app/styles.js`
 4. Write unit tests in `tests/unit/`
 
 ### Adding a New Locale
+
 1. Create `public/_locales/{code}/messages.json`
 2. Copy from `en/messages.json`
 3. Translate all values (keep keys identical)
 4. Rebuild: `npm run build`
 
 ### Adding User Preferences
+
 1. Add to `src/shared/preferences.js`
 2. Update options page UI
 3. Use via `getPreferences()` / `savePreferences()`
@@ -305,13 +334,17 @@ Located in `functions/`:
 ## Debugging
 
 ### Development Build
+
 ```bash
 npm run build:dev:chrome
 ```
+
 Then load `dist/chrome` as unpacked extension.
 
 ### Logging
+
 Use structured loggers:
+
 ```javascript
 import { contentLogger as log } from '../shared/logger.js';
 log.debug('Message', data);
@@ -320,10 +353,12 @@ log.error('Error', error);
 ```
 
 ### Service Worker
+
 - Chrome DevTools > Extensions > Service Worker "Inspect"
 - Check for lazy loading chunk issues
 
 ### Content Script
+
 - Use page's DevTools console
 - Look for `[StickyNotes]` prefixed logs
 
@@ -340,6 +375,7 @@ log.error('Error', error);
 ## CI/CD
 
 GitHub Actions (`.github/workflows/ci.yml`):
+
 - **Lint job** - All linters (JS, CSS, HTML, Markdown)
 - **Test job** - Unit tests on Node 20 and 22
 - **Build job** - Production build + site build

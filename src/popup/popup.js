@@ -719,7 +719,6 @@ function setupActionsDropdown() {
 }
 
 // State for delete old notes modal
-let selectedDays = null;
 let filteredOldNotes = [];
 
 /**
@@ -727,7 +726,6 @@ let filteredOldNotes = [];
  */
 function openDeleteOldNotesModal() {
   // Reset state
-  selectedDays = null;
   filteredOldNotes = [];
   
   // Reset UI
@@ -747,7 +745,6 @@ function openDeleteOldNotesModal() {
  */
 function closeDeleteOldNotesModalFn() {
   deleteOldNotesModal.classList.add('hidden');
-  selectedDays = null;
   filteredOldNotes = [];
 }
 
@@ -756,8 +753,6 @@ function closeDeleteOldNotesModalFn() {
  * @param {number} days - Number of days
  */
 async function previewOldNotes(days) {
-  selectedDays = days;
-  
   // Fetch all notes
   const result = await handlers.getAllNotes();
   if (!result.success) {
@@ -841,9 +836,9 @@ function setupDeleteOldNotesModal() {
       const days = parseInt(btn.dataset.days, 10);
       
       // Update active state and aria-checked
-      agePresetBtns.forEach(b => {
-        b.classList.remove('active');
-        b.setAttribute('aria-checked', 'false');
+      agePresetBtns.forEach(presetBtn => {
+        presetBtn.classList.remove('active');
+        presetBtn.setAttribute('aria-checked', 'false');
       });
       btn.classList.add('active');
       btn.setAttribute('aria-checked', 'true');
@@ -1065,8 +1060,8 @@ function setupReportModal() {
   
   // Scope change - show/hide date range inputs
   reportScopeRadios.forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      if (e.target.value === 'dateRange') {
+    radio.addEventListener('change', (event) => {
+      if (event.target.value === 'dateRange') {
         dateRangeInputs?.classList.remove('hidden');
         // Set default dates (last 30 days)
         const endDate = new Date();
@@ -1105,9 +1100,9 @@ function applyCustomDays() {
   }
   
   // Clear preset selection and aria-checked
-  agePresetBtns.forEach(b => {
-    b.classList.remove('active');
-    b.setAttribute('aria-checked', 'false');
+  agePresetBtns.forEach(presetBtn => {
+    presetBtn.classList.remove('active');
+    presetBtn.setAttribute('aria-checked', 'false');
   });
   
   // Preview notes

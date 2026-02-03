@@ -693,7 +693,7 @@ export class RichEditor {
     // Truncate the plain text and set it back
     // Note: This is a simple approach that preserves the truncation
     // but may lose some formatting at the end
-    const truncatedText = plainText.substring(0, this.maxLength);
+    // (truncatedText value is not used directly; we remove chars from end instead)
     
     // Find how much text to remove from the end
     const charsToRemove = plainText.length - this.maxLength;

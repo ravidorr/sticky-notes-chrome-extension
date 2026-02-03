@@ -93,7 +93,7 @@ export function initializeFirebase(options = {}) {
           persistence: [deps.indexedDBLocalPersistence, deps.browserLocalPersistence]
         });
       }
-    } catch (error) {
+    } catch (_error) {
       // If auth was already initialized, this will throw
       // Fall back to getting the existing instance
       log.debug('Auth already initialized, using existing instance');

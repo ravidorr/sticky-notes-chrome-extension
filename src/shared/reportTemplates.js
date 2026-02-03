@@ -454,7 +454,7 @@ export function getMarkdownTemplate(options) {
 
   // Domain breakdown
   const sortedDomains = Object.entries(stats.byDomain)
-    .sort((a, b) => b[1] - a[1])
+    .sort((domainA, domainB) => domainB[1] - domainA[1])
     .slice(0, 5);
 
   if (sortedDomains.length > 0) {

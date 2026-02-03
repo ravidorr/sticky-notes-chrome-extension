@@ -117,9 +117,9 @@ export class ReportGenerator {
     }
 
     // Sort by creation date (newest first)
-    filtered.sort((a, b) => {
-      const dateA = this.getNoteDate(a);
-      const dateB = this.getNoteDate(b);
+    filtered.sort((noteA, noteB) => {
+      const dateA = this.getNoteDate(noteA);
+      const dateB = this.getNoteDate(noteB);
       if (!dateA && !dateB) return 0;
       if (!dateA) return 1;
       if (!dateB) return -1;
@@ -402,7 +402,7 @@ export class ReportGenerator {
 
     // Domain breakdown (top 5)
     const sortedDomains = Object.entries(stats.byDomain)
-      .sort((a, b) => b[1] - a[1])
+      .sort((domainA, domainB) => domainB[1] - domainA[1])
       .slice(0, 5);
 
     let domainHTML = '<div class="stats-domains"><strong>Top Domains:</strong>';
@@ -460,7 +460,7 @@ export class ReportGenerator {
           filename: `sticky-notes-report-${this.getDateString()}.pdf`,
           mimeType: 'application/pdf'
         };
-      } catch (error) {
+      } catch (_error) {
         // PDF generation failed, fall back to HTML
         // Fall back to HTML
         return {

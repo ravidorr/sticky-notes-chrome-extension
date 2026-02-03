@@ -18,7 +18,6 @@ import {
   signInWithGoogleLazy,
   signOutLazy,
   getCurrentUserLazy,
-  isAuthConfiguredLazy,
   createNoteLazy,
   getNotesForUrlLazy,
   updateNoteLazy,
@@ -33,8 +32,7 @@ import {
   getCommentsForNoteLazy,
   updateCommentLazy,
   deleteCommentLazy,
-  subscribeToCommentsLazy,
-  initializeFirebaseLazy
+  subscribeToCommentsLazy
 } from '../firebase/lazy.js';
 
 // Track active subscriptions by tab ID

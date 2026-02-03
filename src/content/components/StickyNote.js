@@ -1614,7 +1614,7 @@ export class StickyNote {
     });
     
     // Sort by score descending and return the best position
-    scoredPositions.sort((a, b) => b.score - a.score);
+    scoredPositions.sort((posA, posB) => posB.score - posA.score);
     
     return scoredPositions[0].name;
   }

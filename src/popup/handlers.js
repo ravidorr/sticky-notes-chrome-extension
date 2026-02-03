@@ -787,7 +787,7 @@ export function createPopupHandlers(deps = {}) {
           return { success: false, error: result.error };
         }
         const selectedSet = new Set(options.selectedNoteIds);
-        notes = result.notes.filter(n => selectedSet.has(n.id));
+        notes = result.notes.filter(note => selectedSet.has(note.id));
       }
       
       if (!notes || notes.length === 0) {

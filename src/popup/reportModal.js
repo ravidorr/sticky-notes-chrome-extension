@@ -196,8 +196,8 @@ export class ReportModalController {
     
     this.boundHandlers.close = () => this.close();
     this.boundHandlers.generate = () => this.handleGenerate();
-    this.boundHandlers.scopeChange = (e) => this.handleScopeChange(e);
-    this.boundHandlers.keydown = (e) => this.handleKeydown(e);
+    this.boundHandlers.scopeChange = (event) => this.handleScopeChange(event);
+    this.boundHandlers.keydown = (event) => this.handleKeydown(event);
 
     closeBtn?.addEventListener('click', this.boundHandlers.close);
     cancelBtn?.addEventListener('click', this.boundHandlers.close);
@@ -213,25 +213,25 @@ export class ReportModalController {
 
   /**
    * Handle keyboard events
-   * @param {KeyboardEvent} e - Keyboard event
+   * @param {KeyboardEvent} event - Keyboard event
    */
-  handleKeydown(e) {
+  handleKeydown(event) {
     if (!this.isOpen) return;
     
-    if (e.key === 'Escape') {
-      e.preventDefault();
+    if (event.key === 'Escape') {
+      event.preventDefault();
       this.close();
     }
   }
 
   /**
    * Handle scope radio change
-   * @param {Event} e - Change event
+   * @param {Event} event - Change event
    */
-  handleScopeChange(e) {
+  handleScopeChange(event) {
     const dateRangeInputs = this.modal.querySelector('#dateRangeInputs');
     
-    if (e.target.value === REPORT_SCOPES.DATE_RANGE) {
+    if (event.target.value === REPORT_SCOPES.DATE_RANGE) {
       dateRangeInputs?.classList.remove('hidden');
       // Set default dates (last 30 days)
       const endDate = new Date();
