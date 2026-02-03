@@ -244,7 +244,10 @@ async function buildBackground() {
     console.log('Bundle analysis enabled - will generate stats.html');
   }
 
-  // Build as ES module with code splitting for Firebase lazy loading
+  // Build as IIFE to avoid dynamic import() which is forbidden in service workers
+  // See: https://github.com/nicolo-ribaudo/nicolo-ribaudo.github.io/issues/1356
+  // Firebase is still loaded lazily at execution time (the code is bundled but
+  // only compiled/executed when the lazy wrapper functions are actually called)
   await build({
     ...commonOptions,
     plugins,
@@ -252,56 +255,39 @@ async function buildBackground() {
       ...commonOptions.build,
       outDir: distDir,
       emptyOutDir: false,
-      // Disable module preload polyfill - we'll fix window references manually
-      modulePreload: false,
       rollupOptions: {
         input: resolve(rootDir, 'src/background/index.js'),
         output: {
-          format: 'es',
+          format: 'iife',
+          name: 'StickyNotesBackground',
           entryFileNames: 'src/background/background.js',
-          // Enable code splitting - Firebase will be in separate chunks
-          chunkFileNames: 'src/background/[name]-[hash].js',
-          // Don't use manualChunks - let Rollup handle chunking naturally
-          // This keeps lazy.js in the main bundle so its dynamic imports
-          // actually work as lazy imports instead of being statically bundled
+          // Inline all dynamic imports - service workers don't support import()
+          inlineDynamicImports: true
         }
       }
     }
   });
   
-  // Post-process: Fix Vite's preload helper for service worker compatibility
-  // Service workers don't have 'window' or 'document', so we need to replace
-  // the entire __vitePreload function with a simple version that just calls import()
+  // Post-process: Fix any window references (service workers use 'self' instead)
   const backgroundDir = resolve(distDir, 'src/background');
-  const files = readdirSync(backgroundDir).filter(f => f.endsWith('.js'));
+  const files = readdirSync(backgroundDir).filter(file => file.endsWith('.js'));
   for (const file of files) {
     const filePath = resolve(backgroundDir, file);
     let content = readFileSync(filePath, 'utf-8');
     let modified = false;
-    
-    // Replace the entire __vitePreload function with a service worker compatible version
-    // The original uses document.* APIs which don't exist in service workers
-    const vitePreloadRegex = /const __vitePreload = function preload\(baseModule, deps, importerUrl\) \{[\s\S]*?^\};$/m;
-    if (vitePreloadRegex.test(content)) {
-      content = content.replace(vitePreloadRegex, 
-        `const __vitePreload = (baseModule) => baseModule();`
-      );
-      modified = true;
-      console.log(`Simplified __vitePreload for service worker in ${file}`);
-    }
-    
-    // Also fix any remaining window references
+
+    // Fix any window references that might appear from bundled dependencies
     if (content.includes('window.dispatchEvent')) {
       content = content.replace(/window\.dispatchEvent/g, 'self.dispatchEvent');
       modified = true;
       console.log(`Fixed window.dispatchEvent in ${file}`);
     }
-    
+
     if (modified) {
       writeFileSync(filePath, content);
     }
   }
-  
+
   console.log('Background script built');
 }
 

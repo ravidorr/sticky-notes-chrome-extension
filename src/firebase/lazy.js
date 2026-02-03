@@ -1,37 +1,32 @@
 /**
- * Lazy Loading Module for Firebase
+ * Lazy Initialization Module for Firebase
  *
- * Keeps Firebase SDK behind a lazy boundary to avoid eager parsing at startup.
- * All Firebase modules are consolidated into a single chunk to reduce HTTP overhead.
+ * Service workers don't support dynamic import(), so Firebase is bundled
+ * with the background script. However, we still defer Firebase initialization
+ * until it's actually needed to minimize startup overhead.
+ *
+ * The Firebase SDK code is included in the bundle but won't be initialized
+ * until one of the lazy wrapper functions is called.
  */
 
 import { isFirebaseConfigured as isFirebaseConfiguredEnv } from './config-env.js';
 
-// Single consolidated module promise for all Firebase functionality
-let firebaseModulePromise = null;
+// Import Firebase module synchronously (bundled, but not initialized yet)
+import * as firebaseModule from './index.js';
+
+// Track Firebase initialization result
+let firebaseInitResult = null;
 
 /**
- * Load the consolidated Firebase module
- * This loads config, auth, notes, and comments in a single chunk
- * @returns {Promise<Object>} Consolidated Firebase module exports
+ * Get the Firebase module (already loaded, just returns reference)
+ * @returns {Object} Firebase module exports
  */
-function loadFirebaseModule() {
-  if (!firebaseModulePromise) {
-    firebaseModulePromise = import('./index.js');
-  }
-  return firebaseModulePromise;
+function getFirebaseModule() {
+  return firebaseModule;
 }
 
 /**
- * Lazy load Firebase configuration module
- * @returns {Promise<Object>} Config module exports
- */
-export async function getConfigModule() {
-  return loadFirebaseModule();
-}
-
-/**
- * Check if Firebase is configured (lightweight check without loading full SDK)
+ * Check if Firebase is configured (lightweight check without initializing)
  * @returns {boolean}
  */
 export function isFirebaseConfiguredSync() {
@@ -39,39 +34,50 @@ export function isFirebaseConfiguredSync() {
 }
 
 /**
- * Lazy load and initialize Firebase
- * @returns {Promise<Object>} { app, auth, db }
+ * Get the Firebase configuration module
+ * Kept for backwards compatibility - returns the already-loaded module
+ * @returns {Promise<Object>} Firebase module exports
  */
-export async function initializeFirebaseLazy() {
-  const firebase = await loadFirebaseModule();
-  return firebase.initializeFirebase();
+export async function getConfigModule() {
+  return getFirebaseModule();
 }
 
 /**
- * Lazy load Firebase auth module
+ * Initialize Firebase lazily (only when first needed)
+ * @returns {Promise<Object>} { app, auth, db }
+ */
+export async function initializeFirebaseLazy() {
+  if (!firebaseInitResult) {
+    firebaseInitResult = await firebaseModule.initializeFirebase();
+  }
+  return firebaseInitResult;
+}
+
+/**
+ * Get Firebase auth module (initializes Firebase if needed)
  * @returns {Promise<Object>} Auth module exports
  */
 export async function getAuthModule() {
   await initializeFirebaseLazy();
-  return loadFirebaseModule();
+  return getFirebaseModule();
 }
 
 /**
- * Lazy load Firebase notes module
+ * Get Firebase notes module (initializes Firebase if needed)
  * @returns {Promise<Object>} Notes module exports
  */
 export async function getNotesModule() {
   await initializeFirebaseLazy();
-  return loadFirebaseModule();
+  return getFirebaseModule();
 }
 
 /**
- * Lazy load Firebase comments module
+ * Get Firebase comments module (initializes Firebase if needed)
  * @returns {Promise<Object>} Comments module exports
  */
 export async function getCommentsModule() {
   await initializeFirebaseLazy();
-  return loadFirebaseModule();
+  return getFirebaseModule();
 }
 
 // Lazy wrapper functions for common operations
