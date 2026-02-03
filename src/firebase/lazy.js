@@ -1,21 +1,50 @@
 /**
  * Lazy Loading Module for Firebase
  *
- * NOTE: Service workers disallow dynamic import(), so these helpers
- * now rely on static imports while preserving the lazy API surface.
+ * Keeps Firebase SDK behind a lazy boundary to avoid eager parsing at startup.
  */
 
-import * as configModule from './config.js';
-import * as authModule from './auth.js';
-import * as notesModule from './notes.js';
-import * as commentsModule from './comments.js';
+import { isFirebaseConfigured as isFirebaseConfiguredEnv } from './config-env.js';
+
+let configModulePromise = null;
+let authModulePromise = null;
+let notesModulePromise = null;
+let commentsModulePromise = null;
+
+function loadConfigModule() {
+  if (!configModulePromise) {
+    configModulePromise = import('./config.js');
+  }
+  return configModulePromise;
+}
+
+function loadAuthModule() {
+  if (!authModulePromise) {
+    authModulePromise = import('./auth.js');
+  }
+  return authModulePromise;
+}
+
+function loadNotesModule() {
+  if (!notesModulePromise) {
+    notesModulePromise = import('./notes.js');
+  }
+  return notesModulePromise;
+}
+
+function loadCommentsModule() {
+  if (!commentsModulePromise) {
+    commentsModulePromise = import('./comments.js');
+  }
+  return commentsModulePromise;
+}
 
 /**
  * Lazy load Firebase configuration module
  * @returns {Promise<Object>} Config module exports
  */
 export async function getConfigModule() {
-  return configModule;
+  return loadConfigModule();
 }
 
 /**
@@ -23,7 +52,7 @@ export async function getConfigModule() {
  * @returns {boolean}
  */
 export function isFirebaseConfiguredSync() {
-  return configModule.isFirebaseConfigured();
+  return isFirebaseConfiguredEnv();
 }
 
 /**
@@ -41,7 +70,7 @@ export async function initializeFirebaseLazy() {
  */
 export async function getAuthModule() {
   await initializeFirebaseLazy();
-  return authModule;
+  return loadAuthModule();
 }
 
 /**
@@ -50,7 +79,7 @@ export async function getAuthModule() {
  */
 export async function getNotesModule() {
   await initializeFirebaseLazy();
-  return notesModule;
+  return loadNotesModule();
 }
 
 /**
@@ -59,7 +88,7 @@ export async function getNotesModule() {
  */
 export async function getCommentsModule() {
   await initializeFirebaseLazy();
-  return commentsModule;
+  return loadCommentsModule();
 }
 
 // Lazy wrapper functions for common operations
