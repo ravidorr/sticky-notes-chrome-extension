@@ -283,6 +283,14 @@ async function buildBackground() {
       console.log(`Fixed window.dispatchEvent in ${file}`);
     }
 
+    // Fix document.baseURI references from Vite's import.meta polyfill
+    // Service workers don't have 'document', use self.location.href instead
+    if (content.includes('document.baseURI')) {
+      content = content.replace(/document\.baseURI/g, 'self.location.href');
+      modified = true;
+      console.log(`Fixed document.baseURI in ${file}`);
+    }
+
     if (modified) {
       writeFileSync(filePath, content);
     }
