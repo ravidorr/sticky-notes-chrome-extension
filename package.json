@@ -1,6 +1,6 @@
 {
   "name": "sticky-notes-chrome-extension",
-  "version": "1.20.3.4",
+  "version": "1.20.3.5",
   "description": "Element-anchored sticky notes for annotating any website",
   "type": "module",
   "scripts": {
@@ -11,6 +11,7 @@
     "build:dev": "node scripts/build.js --development && node scripts/build.js --browser=edge --development",
     "build:dev:chrome": "node scripts/build.js --development",
     "build:dev:edge": "node scripts/build.js --browser=edge --development",
+    "build:analyze": "node scripts/build.js --analyze",
     "build:site": "node scripts/build-site.js",
     "preview": "vite preview",
     "serve:test": "npx serve tests/fixtures -l 3000",
@@ -65,6 +66,7 @@
     "lint-staged": "^16.2.7",
     "markdownlint-cli2": "^0.20.0",
     "markdownlint-rule-search-replace": "^1.2.0",
+    "rollup-plugin-visualizer": "^6.0.5",
     "serve": "^14.2.4",
     "stylelint": "^16.26.1",
     "stylelint-config-standard": "^39.0.1",

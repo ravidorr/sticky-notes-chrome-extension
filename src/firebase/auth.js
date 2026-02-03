@@ -2,15 +2,26 @@
  * Firebase Authentication Service
  * Handles Google Sign-In using chrome.identity API
  * Supports both Chrome (getAuthToken) and Edge (launchWebAuthFlow)
+ *
+ * NOTE: Firebase Auth SDK imports are lazy-loaded inside functions
+ * to avoid blocking extension startup with SDK parsing.
  */
 
-import { 
-  signInWithCredential, 
-  GoogleAuthProvider,
-  signOut as firebaseSignOut
-} from 'firebase/auth';
 import { auth, isFirebaseConfigured, initializeFirebase } from './config.js';
 import { firestoreLogger as log } from '../shared/logger.js';
+
+/**
+ * Lazy-load Firebase Auth SDK
+ * @returns {Promise<Object>} Firebase Auth SDK functions
+ */
+async function loadAuthSdk() {
+  const authModule = await import('firebase/auth');
+  return {
+    signInWithCredential: authModule.signInWithCredential,
+    GoogleAuthProvider: authModule.GoogleAuthProvider,
+    signOut: authModule.signOut
+  };
+}
 
 /**
  * Detect if running in Edge browser
@@ -136,7 +147,7 @@ async function getOAuthTokenViaWebAuthFlow(deps = {}) {
 export async function signInWithGoogle(deps = {}) {
   const chromeStorage = deps.chromeStorage || chrome.storage;
   const authConfigured = deps.isAuthConfigured !== undefined ? deps.isAuthConfigured : isAuthConfigured(deps);
-  
+
   if (!authConfigured) {
     // Return mock user for local development
     const mockUser = {
@@ -145,42 +156,45 @@ export async function signInWithGoogle(deps = {}) {
       email: 'local@example.com',
       photoURL: null
     };
-    
+
     await chromeStorage.local.set({ user: mockUser });
     return mockUser;
   }
-  
+
   // Initialize Firebase if not already
   const initFn = deps.initializeFirebase || initializeFirebase;
-  initFn();
-  
+  await initFn();
+
+  // Lazy-load Firebase Auth SDK
+  const authSdk = deps.authSdk || await loadAuthSdk();
+
   try {
     // Get OAuth token using chrome.identity
     const getTokenFn = deps.getOAuthToken || getOAuthToken;
     const token = await getTokenFn(deps);
-    
+
     if (!token) {
       throw new Error('Failed to get OAuth token');
     }
-    
+
     // Create credential and sign in to Firebase
-    const GoogleProvider = deps.GoogleAuthProvider || GoogleAuthProvider;
-    const signInFn = deps.signInWithCredential || signInWithCredential;
+    const GoogleProvider = deps.GoogleAuthProvider || authSdk.GoogleAuthProvider;
+    const signInFn = deps.signInWithCredential || authSdk.signInWithCredential;
     const authInstance = deps.auth || auth;
-    
+
     const credential = GoogleProvider.credential(null, token);
     const userCredential = await signInFn(authInstance, credential);
-    
+
     const user = {
       uid: userCredential.user.uid,
       displayName: userCredential.user.displayName,
       email: userCredential.user.email,
       photoURL: userCredential.user.photoURL
     };
-    
+
     // Store user in local storage
     await chromeStorage.local.set({ user });
-    
+
     return user;
   } catch (error) {
     log.error('Sign in error:', error);
@@ -235,20 +249,22 @@ export async function signOut(deps = {}) {
   const chromeStorage = deps.chromeStorage || chrome.storage;
   const authConfigured = deps.isAuthConfigured !== undefined ? deps.isAuthConfigured : isAuthConfigured(deps);
   const authInstance = deps.auth || auth;
-  const signOutFn = deps.firebaseSignOut || firebaseSignOut;
   const revokeTokenFn = deps.revokeOAuthToken || revokeOAuthToken;
-  
+
   try {
     // Sign out from Firebase if configured
     if (authConfigured && authInstance) {
+      // Lazy-load Firebase Auth SDK for signOut
+      const authSdk = deps.authSdk || await loadAuthSdk();
+      const signOutFn = deps.firebaseSignOut || authSdk.signOut;
       await signOutFn(authInstance);
     }
-    
+
     // Revoke OAuth token if using chrome.identity
     if (authConfigured) {
       await revokeTokenFn(deps);
     }
-    
+
     // Clear local storage
     await chromeStorage.local.remove(['user']);
   } catch (error) {

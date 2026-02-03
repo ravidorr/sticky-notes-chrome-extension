@@ -1,12 +1,13 @@
 /**
  * Build script for browser extensions (Chrome, Edge)
  * Runs separate Vite builds for content, background, and popup
- * 
+ *
  * Usage:
  *   npm run build           - Production build for Chrome
  *   npm run build:dev       - Development build for Chrome
  *   npm run build:edge      - Production build for Edge
  *   npm run build:all       - Build for all browsers
+ *   npm run build:analyze   - Build with bundle analysis
  */
 
 import { build } from 'vite';
@@ -40,6 +41,9 @@ const OAUTH_CLIENTS = {
 // Default is production; use --development flag or BUILD_ENV=development for dev builds
 const isDevelopment = process.argv.includes('--development') || process.env.BUILD_ENV === 'development';
 const buildEnv = isDevelopment ? 'development' : 'production';
+
+// Determine if bundle analysis is enabled
+const isAnalyze = process.argv.includes('--analyze');
 
 // Determine target browser from command line args
 // Default is chrome; use --browser=edge for Edge builds
@@ -222,13 +226,28 @@ async function buildPageContext() {
 // Uses code splitting to lazy-load Firebase SDK for faster cold starts
 async function buildBackground() {
   console.log('Building background script...');
-  
+
   // Create directory
   mkdirSync(resolve(distDir, 'src/background'), { recursive: true });
-  
+
+  // Conditionally add visualizer plugin for bundle analysis
+  const plugins = [];
+  if (isAnalyze) {
+    const { visualizer } = await import('rollup-plugin-visualizer');
+    plugins.push(visualizer({
+      filename: resolve(distBaseDir, `${targetBrowser}-stats.html`),
+      open: true,
+      gzipSize: true,
+      brotliSize: true,
+      template: 'treemap'
+    }));
+    console.log('Bundle analysis enabled - will generate stats.html');
+  }
+
   // Build as ES module with code splitting for Firebase lazy loading
   await build({
     ...commonOptions,
+    plugins,
     build: {
       ...commonOptions.build,
       outDir: distDir,

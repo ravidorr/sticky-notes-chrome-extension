@@ -2,41 +2,24 @@
  * Lazy Loading Module for Firebase
  *
  * Keeps Firebase SDK behind a lazy boundary to avoid eager parsing at startup.
+ * All Firebase modules are consolidated into a single chunk to reduce HTTP overhead.
  */
 
 import { isFirebaseConfigured as isFirebaseConfiguredEnv } from './config-env.js';
 
-let configModulePromise = null;
-let authModulePromise = null;
-let notesModulePromise = null;
-let commentsModulePromise = null;
+// Single consolidated module promise for all Firebase functionality
+let firebaseModulePromise = null;
 
-function loadConfigModule() {
-  if (!configModulePromise) {
-    configModulePromise = import('./config.js');
+/**
+ * Load the consolidated Firebase module
+ * This loads config, auth, notes, and comments in a single chunk
+ * @returns {Promise<Object>} Consolidated Firebase module exports
+ */
+function loadFirebaseModule() {
+  if (!firebaseModulePromise) {
+    firebaseModulePromise = import('./index.js');
   }
-  return configModulePromise;
-}
-
-function loadAuthModule() {
-  if (!authModulePromise) {
-    authModulePromise = import('./auth.js');
-  }
-  return authModulePromise;
-}
-
-function loadNotesModule() {
-  if (!notesModulePromise) {
-    notesModulePromise = import('./notes.js');
-  }
-  return notesModulePromise;
-}
-
-function loadCommentsModule() {
-  if (!commentsModulePromise) {
-    commentsModulePromise = import('./comments.js');
-  }
-  return commentsModulePromise;
+  return firebaseModulePromise;
 }
 
 /**
@@ -44,7 +27,7 @@ function loadCommentsModule() {
  * @returns {Promise<Object>} Config module exports
  */
 export async function getConfigModule() {
-  return loadConfigModule();
+  return loadFirebaseModule();
 }
 
 /**
@@ -60,8 +43,8 @@ export function isFirebaseConfiguredSync() {
  * @returns {Promise<Object>} { app, auth, db }
  */
 export async function initializeFirebaseLazy() {
-  const config = await getConfigModule();
-  return config.initializeFirebase();
+  const firebase = await loadFirebaseModule();
+  return firebase.initializeFirebase();
 }
 
 /**
@@ -70,7 +53,7 @@ export async function initializeFirebaseLazy() {
  */
 export async function getAuthModule() {
   await initializeFirebaseLazy();
-  return loadAuthModule();
+  return loadFirebaseModule();
 }
 
 /**
@@ -79,7 +62,7 @@ export async function getAuthModule() {
  */
 export async function getNotesModule() {
   await initializeFirebaseLazy();
-  return loadNotesModule();
+  return loadFirebaseModule();
 }
 
 /**
@@ -88,7 +71,7 @@ export async function getNotesModule() {
  */
 export async function getCommentsModule() {
   await initializeFirebaseLazy();
-  return loadCommentsModule();
+  return loadFirebaseModule();
 }
 
 // Lazy wrapper functions for common operations

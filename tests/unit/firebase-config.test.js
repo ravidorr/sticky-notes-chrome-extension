@@ -117,120 +117,134 @@ describe('Firebase Config', () => {
   });
 
   describe('initializeFirebase', () => {
-    it('should return null values when not configured', () => {
-      const result = initializeFirebase({ config: {} });
+    it('should return null values when not configured', async () => {
+      const result = await initializeFirebase({ config: {} });
       expect(result.app).toBeNull();
       expect(result.auth).toBeNull();
       expect(result.db).toBeNull();
     });
 
-    it('should initialize Firebase when configured', () => {
+    it('should initialize Firebase when configured', async () => {
       localThis.mockApp = { name: 'test-app' };
       localThis.mockAuth = { name: 'test-auth' };
       localThis.mockDb = { name: 'test-db' };
-      
+
       const mockDeps = {
         initializeApp: jest.fn(() => localThis.mockApp),
+        initializeAuth: jest.fn(() => localThis.mockAuth),
         getAuth: jest.fn(() => localThis.mockAuth),
+        indexedDBLocalPersistence: { type: 'indexedDB' },
+        browserLocalPersistence: { type: 'local' },
         initializeFirestore: jest.fn(() => localThis.mockDb),
         getFirestore: jest.fn(() => localThis.mockDb),
         persistentLocalCache: jest.fn(() => ({})),
         persistentSingleTabManager: jest.fn(() => ({})),
         memoryLocalCache: jest.fn(() => ({}))
       };
-      
+
       const config = {
         apiKey: 'real-api-key',
         authDomain: 'project.firebaseapp.com',
         projectId: 'my-project'
       };
-      
-      const result = initializeFirebase({ config, deps: mockDeps });
-      
+
+      const result = await initializeFirebase({ config, deps: mockDeps });
+
       expect(result.app).toBe(localThis.mockApp);
       expect(result.auth).toBe(localThis.mockAuth);
       expect(result.db).toBe(localThis.mockDb);
       expect(mockDeps.initializeApp).toHaveBeenCalledWith(config);
-      expect(mockDeps.getAuth).toHaveBeenCalledWith(localThis.mockApp);
     });
 
-    it('should initialize only once (singleton pattern)', () => {
+    it('should initialize only once (singleton pattern)', async () => {
       const mockDeps = {
         initializeApp: jest.fn(() => ({ name: 'app' })),
+        initializeAuth: jest.fn(() => ({ name: 'auth' })),
         getAuth: jest.fn(() => ({ name: 'auth' })),
+        indexedDBLocalPersistence: { type: 'indexedDB' },
+        browserLocalPersistence: { type: 'local' },
         initializeFirestore: jest.fn(() => ({ name: 'db' })),
         getFirestore: jest.fn(() => ({ name: 'db' })),
         persistentLocalCache: jest.fn(() => ({})),
         persistentSingleTabManager: jest.fn(() => ({})),
         memoryLocalCache: jest.fn(() => ({}))
       };
-      
+
       const config = { apiKey: 'real-api-key' };
-      
+
       // First call
-      initializeFirebase({ config, deps: mockDeps });
+      await initializeFirebase({ config, deps: mockDeps });
       // Second call
-      initializeFirebase({ config, deps: mockDeps });
-      
+      await initializeFirebase({ config, deps: mockDeps });
+
       // Should only initialize once
       expect(mockDeps.initializeApp).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle Firestore initialization error with failed-precondition', () => {
+    it('should handle Firestore initialization error with failed-precondition', async () => {
       const mockError = new Error('Firestore already initialized');
       mockError.code = 'failed-precondition';
-      
+
       const mockDeps = {
         initializeApp: jest.fn(() => ({ name: 'app' })),
+        initializeAuth: jest.fn(() => ({ name: 'auth' })),
         getAuth: jest.fn(() => ({ name: 'auth' })),
+        indexedDBLocalPersistence: { type: 'indexedDB' },
+        browserLocalPersistence: { type: 'local' },
         initializeFirestore: jest.fn(() => { throw mockError; }),
         getFirestore: jest.fn(() => ({ name: 'fallback-db' })),
         persistentLocalCache: jest.fn(() => ({})),
         persistentSingleTabManager: jest.fn(() => ({})),
         memoryLocalCache: jest.fn(() => ({}))
       };
-      
+
       const config = { apiKey: 'real-api-key' };
-      const result = initializeFirebase({ config, deps: mockDeps });
-      
+      const result = await initializeFirebase({ config, deps: mockDeps });
+
       expect(result.db).toEqual({ name: 'fallback-db' });
       expect(mockDeps.getFirestore).toHaveBeenCalled();
     });
 
-    it('should handle Firestore initialization with other errors', () => {
+    it('should handle Firestore initialization with other errors', async () => {
       const mockError = new Error('Some other error');
       mockError.code = 'other-error';
-      
+
       const mockDeps = {
         initializeApp: jest.fn(() => ({ name: 'app' })),
+        initializeAuth: jest.fn(() => ({ name: 'auth' })),
         getAuth: jest.fn(() => ({ name: 'auth' })),
+        indexedDBLocalPersistence: { type: 'indexedDB' },
+        browserLocalPersistence: { type: 'local' },
         initializeFirestore: jest.fn(() => { throw mockError; }),
         getFirestore: jest.fn(() => ({ name: 'fallback-db' })),
         persistentLocalCache: jest.fn(() => ({})),
         persistentSingleTabManager: jest.fn(() => ({})),
         memoryLocalCache: jest.fn(() => ({}))
       };
-      
+
       const config = { apiKey: 'real-api-key' };
-      const result = initializeFirebase({ config, deps: mockDeps });
-      
+      const result = await initializeFirebase({ config, deps: mockDeps });
+
       expect(result.db).toEqual({ name: 'fallback-db' });
     });
 
-    it('should configure persistent cache correctly in non-service-worker context', () => {
+    it('should configure persistent cache correctly in non-service-worker context', async () => {
       const mockDeps = {
         initializeApp: jest.fn(() => ({ name: 'app' })),
+        initializeAuth: jest.fn(() => ({ name: 'auth' })),
         getAuth: jest.fn(() => ({ name: 'auth' })),
+        indexedDBLocalPersistence: { type: 'indexedDB' },
+        browserLocalPersistence: { type: 'local' },
         initializeFirestore: jest.fn(() => ({ name: 'db' })),
         getFirestore: jest.fn(),
         persistentLocalCache: jest.fn((config) => ({ type: 'cache', ...config })),
         persistentSingleTabManager: jest.fn((config) => ({ type: 'tabManager', ...config })),
         memoryLocalCache: jest.fn(() => ({ type: 'memoryCache' }))
       };
-      
+
       const config = { apiKey: 'real-api-key' };
-      initializeFirebase({ config, deps: mockDeps });
-      
+      await initializeFirebase({ config, deps: mockDeps });
+
       expect(mockDeps.persistentSingleTabManager).toHaveBeenCalledWith({
         forceOwnership: false
       });
@@ -239,28 +253,31 @@ describe('Firebase Config', () => {
   });
 
   describe('resetFirebase', () => {
-    it('should reset all Firebase instances', () => {
+    it('should reset all Firebase instances', async () => {
       const mockDeps = {
         initializeApp: jest.fn(() => ({ name: 'app' })),
+        initializeAuth: jest.fn(() => ({ name: 'auth' })),
         getAuth: jest.fn(() => ({ name: 'auth' })),
+        indexedDBLocalPersistence: { type: 'indexedDB' },
+        browserLocalPersistence: { type: 'local' },
         initializeFirestore: jest.fn(() => ({ name: 'db' })),
         getFirestore: jest.fn(),
         persistentLocalCache: jest.fn(() => ({})),
         persistentSingleTabManager: jest.fn(() => ({})),
         memoryLocalCache: jest.fn(() => ({}))
       };
-      
+
       const config = { apiKey: 'real-api-key' };
-      
+
       // Initialize
-      initializeFirebase({ config, deps: mockDeps });
+      await initializeFirebase({ config, deps: mockDeps });
       expect(mockDeps.initializeApp).toHaveBeenCalledTimes(1);
-      
+
       // Reset
       resetFirebase();
-      
+
       // Initialize again - should create new instance
-      initializeFirebase({ config, deps: mockDeps });
+      await initializeFirebase({ config, deps: mockDeps });
       expect(mockDeps.initializeApp).toHaveBeenCalledTimes(2);
     });
   });

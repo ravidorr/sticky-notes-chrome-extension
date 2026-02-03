@@ -1,6 +1,6 @@
 /**
  * Firebase Configuration
- * 
+ *
  * SETUP INSTRUCTIONS:
  * 1. Go to https://console.firebase.google.com/
  * 2. Create a new project (or use existing)
@@ -10,22 +10,11 @@
  * 6. Add your extension ID to the authorized domains in Firebase Console:
  *    - Go to Authentication > Settings > Authorized domains
  *    - Add: chrome-extension://<YOUR_EXTENSION_ID>
+ *
+ * NOTE: Firebase SDK imports are lazy-loaded inside initializeFirebase()
+ * to avoid blocking extension startup with SDK parsing.
  */
 
-import { initializeApp } from 'firebase/app';
-import {
-  initializeAuth,
-  getAuth,
-  indexedDBLocalPersistence,
-  browserLocalPersistence
-} from 'firebase/auth';
-import {
-  getFirestore,
-  initializeFirestore,
-  persistentLocalCache,
-  persistentSingleTabManager,
-  memoryLocalCache
-} from 'firebase/firestore';
 import { firestoreLogger as log } from '../shared/logger.js';
 import { getFirebaseConfig, isConfigValid, isFirebaseConfigured } from './config-env.js';
 
@@ -48,35 +37,27 @@ function isServiceWorker() {
 }
 
 /**
- * Initialize Firebase services
+ * Initialize Firebase services with lazy-loaded SDK
  * @param {Object} options - Optional configuration
  * @param {Object} options.config - Override Firebase config (for testing)
  * @param {Object} options.deps - Override Firebase SDK dependencies (for testing)
- * @returns {Object} Firebase instances { app, auth, db }
+ * @returns {Promise<Object>} Firebase instances { app, auth, db }
  */
-export function initializeFirebase(options = {}) {
+export async function initializeFirebase(options = {}) {
   const config = options.config || firebaseConfig;
-  const deps = options.deps || { 
-    initializeApp, 
-    initializeAuth,
-    getAuth,
-    indexedDBLocalPersistence,
-    browserLocalPersistence,
-    initializeFirestore, 
-    getFirestore, 
-    persistentLocalCache, 
-    persistentSingleTabManager,
-    memoryLocalCache
-  };
-  
+
   if (!isConfigValid(config)) {
     log.warn('Firebase is not configured. Please update src/firebase/config.js with your Firebase project credentials.');
     return { app: null, auth: null, db: null };
   }
-  
+
   if (!app) {
+    // Lazy-load Firebase SDK modules only when needed
+    // This keeps the SDK out of the initial bundle parse
+    const deps = options.deps || await loadFirebaseDeps();
+
     app = deps.initializeApp(config);
-    
+
     // Use initializeAuth with explicit persistence for faster startup
     // Service workers use indexedDB only; browser contexts can use both
     const inServiceWorker = isServiceWorker();
@@ -99,7 +80,7 @@ export function initializeFirebase(options = {}) {
       log.debug('Auth already initialized, using existing instance');
       auth = deps.getAuth(app);
     }
-    
+
     // Initialize Firestore with appropriate cache based on environment
     // Service workers don't have localStorage, so we use memory cache there
     try {
@@ -130,8 +111,34 @@ export function initializeFirebase(options = {}) {
       }
     }
   }
-  
+
   return { app, auth, db };
+}
+
+/**
+ * Lazy-load Firebase SDK dependencies
+ * This keeps the Firebase SDK out of the initial parse/eval
+ * @returns {Promise<Object>} Firebase SDK functions
+ */
+async function loadFirebaseDeps() {
+  const [appModule, authModule, firestoreModule] = await Promise.all([
+    import('firebase/app'),
+    import('firebase/auth'),
+    import('firebase/firestore')
+  ]);
+
+  return {
+    initializeApp: appModule.initializeApp,
+    initializeAuth: authModule.initializeAuth,
+    getAuth: authModule.getAuth,
+    indexedDBLocalPersistence: authModule.indexedDBLocalPersistence,
+    browserLocalPersistence: authModule.browserLocalPersistence,
+    initializeFirestore: firestoreModule.initializeFirestore,
+    getFirestore: firestoreModule.getFirestore,
+    persistentLocalCache: firestoreModule.persistentLocalCache,
+    persistentSingleTabManager: firestoreModule.persistentSingleTabManager,
+    memoryLocalCache: firestoreModule.memoryLocalCache
+  };
 }
 
 /**

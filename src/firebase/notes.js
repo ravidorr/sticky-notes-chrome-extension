@@ -1,44 +1,58 @@
 /**
  * Firebase Notes Service
  * Handles Firestore CRUD operations for notes
+ *
+ * NOTE: Firebase Firestore SDK imports are lazy-loaded inside functions
+ * to avoid blocking extension startup with SDK parsing.
  */
 
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  getDoc, 
-  getDocs, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy,
-  serverTimestamp,
-  onSnapshot
-} from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './config.js';
 import { VALID_THEMES, normalizeUrl, parseCompositeUrl, validateSelectorPattern } from '../shared/utils.js';
 
 const NOTES_COLLECTION = 'notes';
 
+// Cached Firestore SDK to avoid repeated dynamic imports
+let firestoreSdkCache = null;
+
 /**
- * Default Firestore dependencies - can be overridden for testing
+ * Lazy-load Firebase Firestore SDK
+ * @returns {Promise<Object>} Firestore SDK functions
  */
-const defaultFirestoreDeps = {
-  collection,
-  doc,
-  addDoc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-  onSnapshot
-};
+async function loadFirestoreSdk() {
+  if (firestoreSdkCache) {
+    return firestoreSdkCache;
+  }
+  const fs = await import('firebase/firestore');
+  firestoreSdkCache = {
+    collection: fs.collection,
+    doc: fs.doc,
+    addDoc: fs.addDoc,
+    getDoc: fs.getDoc,
+    getDocs: fs.getDocs,
+    updateDoc: fs.updateDoc,
+    deleteDoc: fs.deleteDoc,
+    query: fs.query,
+    where: fs.where,
+    orderBy: fs.orderBy,
+    serverTimestamp: fs.serverTimestamp,
+    onSnapshot: fs.onSnapshot
+  };
+  return firestoreSdkCache;
+}
+
+/**
+ * Get Firestore dependencies - lazy loads if not provided via deps
+ * @param {Object} deps - Optional overrides for testing
+ * @returns {Promise<Object>} Firestore functions merged with deps
+ */
+async function getFirestoreDeps(deps = {}) {
+  // If deps already has Firestore functions, use them (for testing)
+  if (deps.collection) {
+    return deps;
+  }
+  const sdk = await loadFirestoreSdk();
+  return { ...sdk, ...deps };
+}
 
 /**
  * Create a new note in Firestore
@@ -49,7 +63,7 @@ const defaultFirestoreDeps = {
  * @returns {Promise<Object>} Created note with ID
  */
 export async function createNote(noteData, userId, userEmail, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -116,7 +130,7 @@ export async function createNote(noteData, userId, userEmail, deps = {}) {
  * @returns {Promise<Array>} Array of notes
  */
 export async function getNotesForUrl(url, userId, userEmail, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -189,7 +203,7 @@ export async function getNotesForUrl(url, userId, userEmail, deps = {}) {
  * @returns {Promise<void>}
  */
 export async function updateNote(noteId, updates, userId, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -234,7 +248,7 @@ export async function updateNote(noteId, updates, userId, deps = {}) {
  * @returns {Promise<void>}
  */
 export async function deleteNote(noteId, userId, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -269,7 +283,7 @@ export async function deleteNote(noteId, userId, deps = {}) {
  * @returns {Promise<void>}
  */
 export async function shareNote(noteId, shareWithUserId, ownerId, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -339,7 +353,7 @@ export async function shareNote(noteId, shareWithUserId, ownerId, deps = {}) {
  * @returns {Promise<void>}
  */
 export async function unshareNote(noteId, emailToRemove, ownerId, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -401,7 +415,7 @@ export async function unshareNote(noteId, emailToRemove, ownerId, deps = {}) {
  * @returns {Promise<void>}
  */
 export async function leaveSharedNote(noteId, userEmail, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -461,122 +475,138 @@ export async function leaveSharedNote(noteId, userEmail, deps = {}) {
  * @returns {Function} Unsubscribe function
  */
 export function subscribeToNotesForUrl(url, userId, userEmail, onUpdate, onError, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
-  
+
   if (!isConfigured || !dbInstance) {
     onError(new Error('Firebase is not configured'));
     return () => {};
   }
-  
+
   // Validate required parameters
   if (!url || typeof url !== 'string') {
     onError(new Error('Invalid URL'));
     return () => {};
   }
-  
+
   if (!userId || typeof userId !== 'string') {
     onError(new Error('User ID required'));
     return () => {};
   }
-  
+
   if (typeof onUpdate !== 'function') {
     onError(new Error('onUpdate callback required'));
     return () => {};
   }
-  
+
   if (typeof onError !== 'function') {
     // Can't call onError if it's not a function, so just return
     return () => {};
   }
-  
-  // Parse the URL to check if it's a composite URL (for iframe support)
-  const { isTopFrame } = parseCompositeUrl(url);
-  
-  // For top-frame requests, normalize the URL
-  // For iframe requests, use the composite URL as-is (already normalized)
-  const queryUrl = isTopFrame ? normalizeUrl(url) : url;
-  const normalizedEmail = userEmail?.toLowerCase();
-  
-  // Track notes from both queries
-  let ownedNotes = [];
-  let sharedNotes = [];
-  
-  // Helper to merge and dedupe notes
-  const mergeAndNotify = () => {
-    const allNotes = [];
-    const seenIds = new Set(); // Local variable for deduplication
-    
-    ownedNotes.forEach(note => {
-      if (!seenIds.has(note.id)) {
-        seenIds.add(note.id);
-        allNotes.push(note);
-      }
-    });
-    
-    sharedNotes.forEach(note => {
-      if (!seenIds.has(note.id)) {
-        seenIds.add(note.id);
-        allNotes.push({ ...note, isShared: true });
-      }
-    });
-    
-    onUpdate(allNotes);
-  };
-  
-  // Query for owned notes
-  const ownedQuery = firebaseDeps.query(
-    firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
-    firebaseDeps.where('url', '==', queryUrl),
-    firebaseDeps.where('ownerId', '==', userId),
-    firebaseDeps.orderBy('createdAt', 'desc')
-  );
-  
-  // Subscribe to owned notes
-  const unsubOwned = firebaseDeps.onSnapshot(
-    ownedQuery,
-    (snapshot) => {
-      ownedNotes = [];
-      snapshot.forEach(doc => {
-        ownedNotes.push({ id: doc.id, ...doc.data() });
+
+  // Track unsubscribe functions - updated after async setup
+  const unsubscribeRef = { owned: () => {}, shared: () => {} };
+  let isUnsubscribed = false;
+
+  // Async setup for lazy-loaded SDK
+  (async () => {
+    const firebaseDeps = await getFirestoreDeps(deps);
+
+    // Check if already unsubscribed during async load
+    if (isUnsubscribed) return;
+
+    // Parse the URL to check if it's a composite URL (for iframe support)
+    const { isTopFrame } = parseCompositeUrl(url);
+
+    // For top-frame requests, normalize the URL
+    // For iframe requests, use the composite URL as-is (already normalized)
+    const queryUrl = isTopFrame ? normalizeUrl(url) : url;
+    const normalizedEmail = userEmail?.toLowerCase();
+
+    // Track notes from both queries
+    let ownedNotes = [];
+    let sharedNotes = [];
+
+    // Helper to merge and dedupe notes
+    const mergeAndNotify = () => {
+      if (isUnsubscribed) return;
+      const allNotes = [];
+      const seenIds = new Set();
+
+      ownedNotes.forEach(note => {
+        if (!seenIds.has(note.id)) {
+          seenIds.add(note.id);
+          allNotes.push(note);
+        }
       });
-      mergeAndNotify();
-    },
-    (error) => {
-      onError(error);
-    }
-  );
-  
-  // Subscribe to shared notes if email is available
-  let unsubShared = () => {};
-  if (normalizedEmail) {
-    const sharedQuery = firebaseDeps.query(
+
+      sharedNotes.forEach(note => {
+        if (!seenIds.has(note.id)) {
+          seenIds.add(note.id);
+          allNotes.push({ ...note, isShared: true });
+        }
+      });
+
+      onUpdate(allNotes);
+    };
+
+    // Query for owned notes
+    const ownedQuery = firebaseDeps.query(
       firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
       firebaseDeps.where('url', '==', queryUrl),
-      firebaseDeps.where('sharedWith', 'array-contains', normalizedEmail),
+      firebaseDeps.where('ownerId', '==', userId),
       firebaseDeps.orderBy('createdAt', 'desc')
     );
-    
-    unsubShared = firebaseDeps.onSnapshot(
-      sharedQuery,
+
+    // Subscribe to owned notes
+    unsubscribeRef.owned = firebaseDeps.onSnapshot(
+      ownedQuery,
       (snapshot) => {
-        sharedNotes = [];
-        snapshot.forEach(doc => {
-          sharedNotes.push({ id: doc.id, ...doc.data() });
+        if (isUnsubscribed) return;
+        ownedNotes = [];
+        snapshot.forEach(dc => {
+          ownedNotes.push({ id: dc.id, ...dc.data() });
         });
         mergeAndNotify();
       },
       (error) => {
-        onError(error);
+        if (!isUnsubscribed) onError(error);
       }
     );
-  }
-  
+
+    // Subscribe to shared notes if email is available
+    if (normalizedEmail) {
+      const sharedQuery = firebaseDeps.query(
+        firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
+        firebaseDeps.where('url', '==', queryUrl),
+        firebaseDeps.where('sharedWith', 'array-contains', normalizedEmail),
+        firebaseDeps.orderBy('createdAt', 'desc')
+      );
+
+      unsubscribeRef.shared = firebaseDeps.onSnapshot(
+        sharedQuery,
+        (snapshot) => {
+          if (isUnsubscribed) return;
+          sharedNotes = [];
+          snapshot.forEach(dc => {
+            sharedNotes.push({ id: dc.id, ...dc.data() });
+          });
+          mergeAndNotify();
+        },
+        (error) => {
+          if (!isUnsubscribed) onError(error);
+        }
+      );
+    }
+  })().catch(error => {
+    if (!isUnsubscribed) onError(error);
+  });
+
   // Return unsubscribe function that cleans up both listeners
   return () => {
-    unsubOwned();
-    unsubShared();
+    isUnsubscribed = true;
+    unsubscribeRef.owned();
+    unsubscribeRef.shared();
   };
 }
 
@@ -587,7 +617,7 @@ export function subscribeToNotesForUrl(url, userId, userEmail, onUpdate, onError
  * @returns {Promise<Array>} Array of shared notes
  */
 export async function getSharedNotesForUser(userEmail, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -626,50 +656,67 @@ export async function getSharedNotesForUser(userEmail, deps = {}) {
  * @returns {Function} Unsubscribe function
  */
 export function subscribeToSharedNotes(userEmail, onUpdate, onError, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
-  
+
   if (!isConfigured || !dbInstance) {
     onError(new Error('Firebase is not configured'));
     return () => {};
   }
-  
+
   if (!userEmail) {
     onError(new Error('User email required'));
     return () => {};
   }
-  
+
   if (typeof onUpdate !== 'function') {
     onError(new Error('onUpdate callback required'));
     return () => {};
   }
-  
+
   if (typeof onError !== 'function') {
     return () => {};
   }
-  
-  const normalizedEmail = userEmail.toLowerCase();
-  
-  const sharedQuery = firebaseDeps.query(
-    firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
-    firebaseDeps.where('sharedWith', 'array-contains', normalizedEmail),
-    firebaseDeps.orderBy('createdAt', 'desc')
-  );
-  
-  const unsubscribe = firebaseDeps.onSnapshot(
-    sharedQuery,
-    (snapshot) => {
-      const notes = [];
-      snapshot.forEach(doc => {
-        notes.push({ id: doc.id, ...doc.data(), isShared: true });
-      });
-      onUpdate(notes);
-    },
-    (error) => {
-      onError(error);
-    }
-  );
-  
-  return unsubscribe;
+
+  // Track unsubscribe function - updated after async setup
+  const unsubscribeRef = { current: () => {} };
+  let isUnsubscribed = false;
+
+  // Async setup for lazy-loaded SDK
+  (async () => {
+    const firebaseDeps = await getFirestoreDeps(deps);
+
+    // Check if already unsubscribed during async load
+    if (isUnsubscribed) return;
+
+    const normalizedEmail = userEmail.toLowerCase();
+
+    const sharedQuery = firebaseDeps.query(
+      firebaseDeps.collection(dbInstance, NOTES_COLLECTION),
+      firebaseDeps.where('sharedWith', 'array-contains', normalizedEmail),
+      firebaseDeps.orderBy('createdAt', 'desc')
+    );
+
+    unsubscribeRef.current = firebaseDeps.onSnapshot(
+      sharedQuery,
+      (snapshot) => {
+        if (isUnsubscribed) return;
+        const notes = [];
+        snapshot.forEach(dc => {
+          notes.push({ id: dc.id, ...dc.data(), isShared: true });
+        });
+        onUpdate(notes);
+      },
+      (error) => {
+        if (!isUnsubscribed) onError(error);
+      }
+    );
+  })().catch(error => {
+    if (!isUnsubscribed) onError(error);
+  });
+
+  return () => {
+    isUnsubscribed = true;
+    unsubscribeRef.current();
+  };
 }
