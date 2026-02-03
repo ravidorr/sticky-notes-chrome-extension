@@ -830,15 +830,15 @@ describe('Firebase Comments', () => {
     it('should not call onError if unsubscribed before getDoc rejects', async () => {
       const onUpdate = jest.fn();
       const onError = jest.fn();
-      
+
       // Create a promise that we can reject manually
       let rejectGetDoc;
       const getDocPromise = new Promise((resolve, reject) => {
         rejectGetDoc = reject;
       });
-      
+
       localThis.deps.getDoc.mockReturnValue(getDocPromise);
-      
+
       const unsubscribe = subscribeToComments(
         'note-123',
         localThis.mockUser,
@@ -846,16 +846,19 @@ describe('Firebase Comments', () => {
         onError,
         localThis.deps
       );
-      
-      // Unsubscribe BEFORE getDoc rejects
+
+      // Wait for getFirestoreDeps microtask to complete so getDoc is actually awaited
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Unsubscribe WHILE getDoc is pending (but after it's been called)
       unsubscribe();
-      
+
       // Now reject getDoc
       rejectGetDoc(new Error('Network error'));
-      
+
       // Wait for any pending promises
       await new Promise(resolve => setTimeout(resolve, 0));
-      
+
       // onError should NOT have been called because we unsubscribed first
       expect(onError).not.toHaveBeenCalled();
     });

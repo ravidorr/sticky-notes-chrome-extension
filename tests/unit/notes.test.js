@@ -675,15 +675,15 @@ describe('Firebase Notes', () => {
       expect(typeof unsubscribe).toBe('function');
     });
 
-    it('should set up onSnapshot listeners for owned and shared notes', () => {
+    it('should set up onSnapshot listeners for owned and shared notes', async () => {
       const onUpdate = jest.fn();
       const onError = jest.fn();
       const mockUnsubscribe = jest.fn();
-      
+
       localThis.deps.onSnapshot.mockReturnValue(mockUnsubscribe);
       localThis.deps.query.mockReturnValue({ _query: 'mock' });
       localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
-      
+
       const unsubscribe = subscribeToNotesForUrl(
         'https://example.com',
         'user-123',
@@ -692,21 +692,24 @@ describe('Firebase Notes', () => {
         onError,
         localThis.deps
       );
-      
+
+      // Wait for async setup to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       // Should set up two listeners (owned + shared)
       expect(localThis.deps.onSnapshot).toHaveBeenCalledTimes(2);
       expect(typeof unsubscribe).toBe('function');
     });
 
-    it('should only set up one listener when no email provided', () => {
+    it('should only set up one listener when no email provided', async () => {
       const onUpdate = jest.fn();
       const onError = jest.fn();
       const mockUnsubscribe = jest.fn();
-      
+
       localThis.deps.onSnapshot.mockReturnValue(mockUnsubscribe);
       localThis.deps.query.mockReturnValue({ _query: 'mock' });
       localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
-      
+
       subscribeToNotesForUrl(
         'https://example.com',
         'user-123',
@@ -715,23 +718,26 @@ describe('Firebase Notes', () => {
         onError,
         localThis.deps
       );
-      
+
+      // Wait for async setup to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       // Should only set up one listener (owned only)
       expect(localThis.deps.onSnapshot).toHaveBeenCalledTimes(1);
     });
 
-    it('should call onUpdate with merged notes when snapshot fires', () => {
+    it('should call onUpdate with merged notes when snapshot fires', async () => {
       const onUpdate = jest.fn();
       const onError = jest.fn();
       let ownedCallback;
-      
+
       localThis.deps.onSnapshot.mockImplementation((query, successCb) => {
         ownedCallback = successCb;
         return jest.fn();
       });
       localThis.deps.query.mockReturnValue({ _query: 'mock' });
       localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
-      
+
       subscribeToNotesForUrl(
         'https://example.com',
         'user-123',
@@ -740,7 +746,10 @@ describe('Firebase Notes', () => {
         onError,
         localThis.deps
       );
-      
+
+      // Wait for async setup to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       // Simulate snapshot with notes
       const mockSnapshot = {
         forEach: (cb) => {
@@ -749,25 +758,25 @@ describe('Firebase Notes', () => {
         }
       };
       ownedCallback(mockSnapshot);
-      
+
       expect(onUpdate).toHaveBeenCalledWith([
         { id: 'note-1', content: 'Test' },
         { id: 'note-2', content: 'Test 2' }
       ]);
     });
 
-    it('should call onError when snapshot listener errors', () => {
+    it('should call onError when snapshot listener errors', async () => {
       const onUpdate = jest.fn();
       const onError = jest.fn();
       let errorCallback;
-      
+
       localThis.deps.onSnapshot.mockImplementation((query, successCb, errorCb) => {
         errorCallback = errorCb;
         return jest.fn();
       });
       localThis.deps.query.mockReturnValue({ _query: 'mock' });
       localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
-      
+
       subscribeToNotesForUrl(
         'https://example.com',
         'user-123',
@@ -776,20 +785,23 @@ describe('Firebase Notes', () => {
         onError,
         localThis.deps
       );
-      
+
+      // Wait for async setup to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       // Simulate error
       const mockError = new Error('Firestore error');
       errorCallback(mockError);
-      
+
       expect(onError).toHaveBeenCalledWith(mockError);
     });
 
-    it('should unsubscribe from all listeners when unsubscribe is called', () => {
+    it('should unsubscribe from all listeners when unsubscribe is called', async () => {
       const onUpdate = jest.fn();
       const onError = jest.fn();
       const mockUnsubOwned = jest.fn();
       const mockUnsubShared = jest.fn();
-      
+
       let callCount = 0;
       localThis.deps.onSnapshot.mockImplementation(() => {
         callCount++;
@@ -797,7 +809,7 @@ describe('Firebase Notes', () => {
       });
       localThis.deps.query.mockReturnValue({ _query: 'mock' });
       localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
-      
+
       const unsubscribe = subscribeToNotesForUrl(
         'https://example.com',
         'user-123',
@@ -806,19 +818,22 @@ describe('Firebase Notes', () => {
         onError,
         localThis.deps
       );
-      
+
+      // Wait for async setup to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       unsubscribe();
-      
+
       expect(mockUnsubOwned).toHaveBeenCalled();
       expect(mockUnsubShared).toHaveBeenCalled();
     });
 
-    it('should dedupe notes that appear in both owned and shared', () => {
+    it('should dedupe notes that appear in both owned and shared', async () => {
       const onUpdate = jest.fn();
       const onError = jest.fn();
       let ownedCallback, sharedCallback;
       let callCount = 0;
-      
+
       localThis.deps.onSnapshot.mockImplementation((query, successCb) => {
         callCount++;
         if (callCount === 1) {
@@ -830,7 +845,7 @@ describe('Firebase Notes', () => {
       });
       localThis.deps.query.mockReturnValue({ _query: 'mock' });
       localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
-      
+
       subscribeToNotesForUrl(
         'https://example.com',
         'user-123',
@@ -839,14 +854,17 @@ describe('Firebase Notes', () => {
         onError,
         localThis.deps
       );
-      
+
+      // Wait for async setup to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       // Simulate owned snapshot
       ownedCallback({
         forEach: (cb) => {
           cb({ id: 'note-1', data: () => ({ content: 'Owned' }) });
         }
       });
-      
+
       // Simulate shared snapshot with same note ID
       sharedCallback({
         forEach: (cb) => {
@@ -854,7 +872,7 @@ describe('Firebase Notes', () => {
           cb({ id: 'note-2', data: () => ({ content: 'Only shared' }) });
         }
       });
-      
+
       // Should only have 2 notes, not 3
       const lastCall = onUpdate.mock.calls[onUpdate.mock.calls.length - 1][0];
       expect(lastCall).toHaveLength(2);
@@ -1045,45 +1063,51 @@ describe('Firebase Notes', () => {
       expect(onUpdate).not.toHaveBeenCalled();
     });
 
-    it('should set up onSnapshot listener for shared notes', () => {
+    it('should set up onSnapshot listener for shared notes', async () => {
       const onUpdate = jest.fn();
       const onError = jest.fn();
       const mockUnsubscribe = jest.fn();
-      
+
       localThis.deps.onSnapshot.mockReturnValue(mockUnsubscribe);
       localThis.deps.query.mockReturnValue({ _query: 'mock' });
       localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
-      
+
       const unsubscribe = subscribeToSharedNotes(
         'user@example.com',
         onUpdate,
         onError,
         localThis.deps
       );
-      
+
+      // Wait for async setup to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       expect(localThis.deps.onSnapshot).toHaveBeenCalledTimes(1);
       expect(typeof unsubscribe).toBe('function');
     });
 
-    it('should call onUpdate with shared notes when snapshot fires', () => {
+    it('should call onUpdate with shared notes when snapshot fires', async () => {
       const onUpdate = jest.fn();
       const onError = jest.fn();
       let snapshotCallback;
-      
+
       localThis.deps.onSnapshot.mockImplementation((query, successCb) => {
         snapshotCallback = successCb;
         return jest.fn();
       });
       localThis.deps.query.mockReturnValue({ _query: 'mock' });
       localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
-      
+
       subscribeToSharedNotes(
         'user@example.com',
         onUpdate,
         onError,
         localThis.deps
       );
-      
+
+      // Wait for async setup to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       // Simulate snapshot with notes
       const mockSnapshot = {
         forEach: (cb) => {
@@ -1092,75 +1116,84 @@ describe('Firebase Notes', () => {
         }
       };
       snapshotCallback(mockSnapshot);
-      
+
       expect(onUpdate).toHaveBeenCalledWith([
         { id: 'note-1', content: 'Shared 1', isShared: true },
         { id: 'note-2', content: 'Shared 2', isShared: true }
       ]);
     });
 
-    it('should call onError when snapshot listener errors', () => {
+    it('should call onError when snapshot listener errors', async () => {
       const onUpdate = jest.fn();
       const onError = jest.fn();
       let errorCallback;
-      
+
       localThis.deps.onSnapshot.mockImplementation((query, successCb, errorCb) => {
         errorCallback = errorCb;
         return jest.fn();
       });
       localThis.deps.query.mockReturnValue({ _query: 'mock' });
       localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
-      
+
       subscribeToSharedNotes(
         'user@example.com',
         onUpdate,
         onError,
         localThis.deps
       );
-      
+
+      // Wait for async setup to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       // Simulate error
       const mockError = new Error('Firestore error');
       errorCallback(mockError);
-      
+
       expect(onError).toHaveBeenCalledWith(mockError);
     });
 
-    it('should unsubscribe when unsubscribe function is called', () => {
+    it('should unsubscribe when unsubscribe function is called', async () => {
       const onUpdate = jest.fn();
       const onError = jest.fn();
       const mockUnsubscribe = jest.fn();
-      
+
       localThis.deps.onSnapshot.mockReturnValue(mockUnsubscribe);
       localThis.deps.query.mockReturnValue({ _query: 'mock' });
       localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
-      
+
       const unsubscribe = subscribeToSharedNotes(
         'user@example.com',
         onUpdate,
         onError,
         localThis.deps
       );
-      
+
+      // Wait for async setup to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       unsubscribe();
-      
+
       expect(mockUnsubscribe).toHaveBeenCalled();
     });
 
-    it('should lowercase email for query', () => {
+    it('should lowercase email for query', async () => {
       const onUpdate = jest.fn();
       const onError = jest.fn();
-      
+
       localThis.deps.onSnapshot.mockReturnValue(jest.fn());
       localThis.deps.query.mockReturnValue({ _query: 'mock' });
       localThis.deps.collection.mockReturnValue({ _collection: 'mock' });
-      
+
       subscribeToSharedNotes(
         'USER@EXAMPLE.COM',
         onUpdate,
         onError,
         localThis.deps
       );
-      
+
+      // Wait for async setup to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       expect(localThis.deps.where).toHaveBeenCalledWith('sharedWith', 'array-contains', 'user@example.com');
     });
   });

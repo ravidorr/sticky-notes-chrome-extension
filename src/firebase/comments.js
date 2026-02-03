@@ -1,7 +1,7 @@
 /**
  * Firebase Comments Service
  * Handles Firestore CRUD operations for note comments
- * 
+ *
  * Data Model (Firestore: notes/{noteId}/comments/{commentId}):
  * {
  *   id: string,
@@ -14,23 +14,11 @@
  *   updatedAt: Timestamp,
  *   parentId: string | null  // null = top-level, commentId for replies
  * }
+ *
+ * NOTE: Firebase Firestore SDK imports are lazy-loaded inside functions
+ * to avoid blocking extension startup with SDK parsing.
  */
 
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  getDoc, 
-  getDocs, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy,
-  serverTimestamp,
-  writeBatch,
-  onSnapshot
-} from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './config.js';
 import { MAX_COMMENT_LENGTH } from '../shared/utils.js';
 
@@ -40,24 +28,49 @@ const COMMENTS_SUBCOLLECTION = 'comments';
 // Maximum nesting depth for replies (1 = only direct replies to top-level comments)
 const MAX_REPLY_DEPTH = 1;
 
+// Cached Firestore SDK to avoid repeated dynamic imports
+let firestoreSdkCache = null;
+
 /**
- * Default Firestore dependencies - can be overridden for testing
+ * Lazy-load Firebase Firestore SDK
+ * @returns {Promise<Object>} Firestore SDK functions
  */
-const defaultFirestoreDeps = {
-  collection,
-  doc,
-  addDoc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-  writeBatch,
-  onSnapshot
-};
+async function loadFirestoreSdk() {
+  if (firestoreSdkCache) {
+    return firestoreSdkCache;
+  }
+  const fs = await import('firebase/firestore');
+  firestoreSdkCache = {
+    collection: fs.collection,
+    doc: fs.doc,
+    addDoc: fs.addDoc,
+    getDoc: fs.getDoc,
+    getDocs: fs.getDocs,
+    updateDoc: fs.updateDoc,
+    deleteDoc: fs.deleteDoc,
+    query: fs.query,
+    where: fs.where,
+    orderBy: fs.orderBy,
+    serverTimestamp: fs.serverTimestamp,
+    writeBatch: fs.writeBatch,
+    onSnapshot: fs.onSnapshot
+  };
+  return firestoreSdkCache;
+}
+
+/**
+ * Get Firestore dependencies - lazy loads if not provided via deps
+ * @param {Object} deps - Optional overrides for testing
+ * @returns {Promise<Object>} Firestore functions merged with deps
+ */
+async function getFirestoreDeps(deps = {}) {
+  // If deps already has Firestore functions, use them (for testing)
+  if (deps.collection) {
+    return deps;
+  }
+  const sdk = await loadFirestoreSdk();
+  return { ...sdk, ...deps };
+}
 
 /**
  * Validate comment content
@@ -113,7 +126,7 @@ function hasNoteAccess(noteData, userId, userEmail) {
  * @returns {Promise<Object>} Created comment with ID
  */
 export async function createComment(noteId, commentData, user, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -204,7 +217,7 @@ export async function createComment(noteId, commentData, user, deps = {}) {
  * @returns {Promise<Array>} Array of comments sorted by creation date
  */
 export async function getCommentsForNote(noteId, user, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -262,7 +275,7 @@ export async function getCommentsForNote(noteId, user, deps = {}) {
  * @returns {Promise<void>}
  */
 export async function updateComment(noteId, commentId, updates, userId, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -331,7 +344,7 @@ export async function updateComment(noteId, commentId, updates, userId, deps = {
  * @returns {Promise<void>}
  */
 export async function deleteComment(noteId, commentId, userId, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -413,7 +426,7 @@ export async function deleteComment(noteId, commentId, userId, deps = {}) {
  * @returns {Promise<number>} Number of comments
  */
 export async function getCommentCount(noteId, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
+  const firebaseDeps = await getFirestoreDeps(deps);
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
   
@@ -441,105 +454,98 @@ export async function getCommentCount(noteId, deps = {}) {
  * @returns {Function} Unsubscribe function
  */
 export function subscribeToComments(noteId, user, onUpdate, onError, deps = {}) {
-  const firebaseDeps = { ...defaultFirestoreDeps, ...deps };
   const dbInstance = deps.db !== undefined ? deps.db : db;
   const isConfigured = deps.isFirebaseConfigured !== undefined ? deps.isFirebaseConfigured() : isFirebaseConfigured();
-  
+
   if (!isConfigured || !dbInstance) {
     onError(new Error('Firebase is not configured'));
     return () => {};
   }
-  
+
   // Validate note ID
   if (!noteId || typeof noteId !== 'string') {
     onError(new Error('Invalid note ID'));
     return () => {};
   }
-  
+
   // Validate user
   if (!user || !user.uid) {
     onError(new Error('User authentication required'));
     return () => {};
   }
-  
+
   // Use a ref to store the unsubscribe function since it's set asynchronously
   const unsubscribeRef = { current: () => {} };
-  
+
   // Track if unsubscribe was called before listener was set up (race condition prevention)
   let isUnsubscribed = false;
-  
+
   // Debounce timer to prevent rapid updates
   let debounceTimer = null;
   const DEBOUNCE_MS = 100;
-  
-  // First verify user has access to the note
-  const noteRef = firebaseDeps.doc(dbInstance, NOTES_COLLECTION, noteId);
-  
-  // We need to check access once, then set up the listener
-  firebaseDeps.getDoc(noteRef).then(noteSnap => {
+
+  // Async setup for lazy-loaded SDK
+  (async () => {
+    const firebaseDeps = await getFirestoreDeps(deps);
+
+    // Check if already unsubscribed during async load
+    if (isUnsubscribed) return;
+
+    // First verify user has access to the note
+    const noteRef = firebaseDeps.doc(dbInstance, NOTES_COLLECTION, noteId);
+    const noteSnap = await firebaseDeps.getDoc(noteRef);
+
     // Check if unsubscribe was called while waiting for getDoc
-    if (isUnsubscribed) {
-      return; // Don't set up listener if already unsubscribed
-    }
-    
+    if (isUnsubscribed) return;
+
     if (!noteSnap.exists()) {
       onError(new Error('Note not found'));
       return;
     }
-    
+
     const noteData = noteSnap.data();
-    
+
     if (!hasNoteAccess(noteData, user.uid, user.email)) {
       onError(new Error('Permission denied'));
       return;
     }
-    
+
     // User has access, set up the real-time listener
     const commentsQuery = firebaseDeps.query(
       firebaseDeps.collection(dbInstance, NOTES_COLLECTION, noteId, COMMENTS_SUBCOLLECTION),
       firebaseDeps.orderBy('createdAt', 'asc')
     );
-    
+
     // Double-check unsubscribed flag before setting up listener
-    if (isUnsubscribed) {
-      return;
-    }
-    
+    if (isUnsubscribed) return;
+
     unsubscribeRef.current = firebaseDeps.onSnapshot(
       commentsQuery,
       (snapshot) => {
         // Don't process updates if already unsubscribed
-        if (isUnsubscribed) {
-          return;
-        }
+        if (isUnsubscribed) return;
         // Debounce rapid updates
         if (debounceTimer) {
           clearTimeout(debounceTimer);
         }
         debounceTimer = setTimeout(() => {
           // Check again in case unsubscribe was called during debounce
-          if (isUnsubscribed) {
-            return;
-          }
+          if (isUnsubscribed) return;
           const comments = [];
-          snapshot.forEach(doc => {
-            comments.push({ id: doc.id, ...doc.data() });
+          snapshot.forEach(dc => {
+            comments.push({ id: dc.id, ...dc.data() });
           });
           onUpdate(comments);
         }, DEBOUNCE_MS);
       },
       (error) => {
-        if (!isUnsubscribed) {
-          onError(error);
-        }
+        if (!isUnsubscribed) onError(error);
       }
     );
-  }).catch(error => {
-    if (!isUnsubscribed) {
-      onError(error);
-    }
+  })().catch(error => {
+    if (!isUnsubscribed) onError(error);
   });
-  
+
   // Return unsubscribe function that cleans up timer as well
   return () => {
     isUnsubscribed = true; // Set flag to prevent listener setup
