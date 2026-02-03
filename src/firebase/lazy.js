@@ -1,26 +1,20 @@
 /**
  * Lazy Loading Module for Firebase
- * 
- * Uses dynamic import() to load Firebase modules only when needed.
- * This significantly reduces the initial service worker startup time
- * by deferring the ~800KB Firebase SDK load until first use.
+ *
+ * NOTE: Service workers disallow dynamic import(), so these helpers
+ * now rely on static imports while preserving the lazy API surface.
  */
 
-// Cache for loaded modules
-const firebaseModules = null;
-let authModule = null;
-let notesModule = null;
-let commentsModule = null;
-let configModule = null;
+import * as configModule from './config.js';
+import * as authModule from './auth.js';
+import * as notesModule from './notes.js';
+import * as commentsModule from './comments.js';
 
 /**
  * Lazy load Firebase configuration module
  * @returns {Promise<Object>} Config module exports
  */
 export async function getConfigModule() {
-  if (!configModule) {
-    configModule = await import('./config.js');
-  }
   return configModule;
 }
 
@@ -29,12 +23,7 @@ export async function getConfigModule() {
  * @returns {boolean}
  */
 export function isFirebaseConfiguredSync() {
-  // Check environment variables without loading Firebase
-  if (typeof import.meta === 'undefined' || !import.meta.env) {
-    return false;
-  }
-  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
-  return apiKey && !apiKey.includes('your_') && apiKey !== 'YOUR_API_KEY';
+  return configModule.isFirebaseConfigured();
 }
 
 /**
@@ -51,11 +40,7 @@ export async function initializeFirebaseLazy() {
  * @returns {Promise<Object>} Auth module exports
  */
 export async function getAuthModule() {
-  if (!authModule) {
-    // Ensure Firebase is initialized first
-    await initializeFirebaseLazy();
-    authModule = await import('./auth.js');
-  }
+  await initializeFirebaseLazy();
   return authModule;
 }
 
@@ -64,11 +49,7 @@ export async function getAuthModule() {
  * @returns {Promise<Object>} Notes module exports
  */
 export async function getNotesModule() {
-  if (!notesModule) {
-    // Ensure Firebase is initialized first
-    await initializeFirebaseLazy();
-    notesModule = await import('./notes.js');
-  }
+  await initializeFirebaseLazy();
   return notesModule;
 }
 
@@ -77,11 +58,7 @@ export async function getNotesModule() {
  * @returns {Promise<Object>} Comments module exports
  */
 export async function getCommentsModule() {
-  if (!commentsModule) {
-    // Ensure Firebase is initialized first
-    await initializeFirebaseLazy();
-    commentsModule = await import('./comments.js');
-  }
+  await initializeFirebaseLazy();
   return commentsModule;
 }
 
