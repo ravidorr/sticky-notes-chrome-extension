@@ -88,8 +88,10 @@ async function getOAuthTokenViaGetAuthToken(deps = {}) {
   return new Promise((resolve, reject) => {
     chromeIdentity.getAuthToken({ interactive: true }, (token) => {
       if (chromeRuntime.lastError) {
-        console.error('OAuth error:', chromeRuntime.lastError);
-        reject(new Error(chromeRuntime.lastError.message));
+        const err = chromeRuntime.lastError;
+        const message = err?.message || String(err);
+        log.error('OAuth error:', message);
+        reject(new Error(message));
         return;
       }
       resolve(token);
