@@ -9,13 +9,13 @@ import {
   validateSecurityPolicyVersion,
 } from "./validate-security-policy-version.mjs";
 
-const supportedStatus = String.fromCodePoint(0x2713);
+const supportedStatus = 'Yes';
 const policyFor = (version) => `## Supported Versions
 
 | Version | Supported |
 | ------- | --------- |
 | ${version} | ${supportedStatus} |
-| Earlier releases | ✘ |
+| Earlier releases | No |
 `;
 
 test("accepts the exact package version", () => {
