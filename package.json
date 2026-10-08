@@ -106,5 +106,12 @@
       "markdownlint-cli2",
       "node scripts/lint-md-extra.js"
     ]
+  },
+  "allowScripts": {
+    "esbuild@0.27.2": true,
+    "fsevents@2.3.3": true,
+    "fsevents@2.3.2": true,
+    "protobufjs": false,
+    "@firebase/util": false
   }
 }
