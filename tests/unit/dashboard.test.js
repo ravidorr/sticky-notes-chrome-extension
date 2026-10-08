@@ -598,25 +598,20 @@ describe('site/js/dashboard.js', () => {
         });
 
         it('should pre-fill URL from query params', () => {
-            // Mock window.location.search
-            Object.defineProperty(window, 'location', {
-                value: { search: '?url=https://example.com' },
-                writable: true
-            });
+            // window.location is non-configurable in jsdom — use pushState to set search params.
+            window.history.pushState({}, '', '?url=https://example.com');
             
             handleUrlParams(localThis.elements);
             
             expect(localThis.elements.domainSelect.value).toBe('__custom__');
             expect(localThis.elements.urlInput.value).toBe('https://example.com');
             expect(localThis.elements.urlInput.style.display).toBe('block');
+
+            window.history.pushState({}, '', '/');
         });
 
         it('should do nothing when no URL param', () => {
-            Object.defineProperty(window, 'location', {
-                value: { search: '' },
-                writable: true
-            });
-            
+            // Default jsdom URL has no query params — no setup needed.
             handleUrlParams(localThis.elements);
             
             expect(localThis.elements.urlInput.style.display).toBe('none');
