@@ -15,6 +15,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { copyFileSync, mkdirSync, existsSync, rmSync, readdirSync, createWriteStream, readFileSync, writeFileSync } from 'fs';
 import archiver from 'archiver';
+import { createChromeManifestVersion } from './manifest-version.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -83,14 +84,17 @@ function getVersionFromPackageJson() {
 function copyStaticFiles() {
   const publicDir = resolve(rootDir, 'public');
   const version = getVersionFromPackageJson();
+  const manifestVersion = createChromeManifestVersion(version);
   
   // Copy and transform manifest with correct OAuth client ID and version
   const manifestFilename = getManifestFilename(targetBrowser);
   const manifestPath = resolve(publicDir, manifestFilename);
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
   
-  // Sync version from package.json to manifest
-  manifest.version = version;
+  // Chrome manifests accept up to four numeric version components. Preserve
+  // package metadata in version_name while translating it for the manifest.
+  manifest.version = manifestVersion;
+  manifest.version_name = version;
   
   // Remove 'key' field - it's used for development but not allowed in Chrome Web Store
   delete manifest.key;
@@ -106,7 +110,7 @@ function copyStaticFiles() {
     JSON.stringify(manifest, null, 2)
   );
   
-  console.log(`Version synced from package.json: ${version}`);
+  console.log(`Version synced from package.json: ${version} (${manifestVersion} in manifest)`);
   
   // Copy icons
   const iconsDir = resolve(distDir, 'icons');
