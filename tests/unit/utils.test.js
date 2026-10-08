@@ -609,17 +609,15 @@ describe('getPageMetadata', () => {
   const localThis = {};
   
   beforeEach(() => {
-    localThis.originalLocation = global.location;
-    localThis.originalDocument = global.document;
     localThis.originalInnerWidth = global.innerWidth;
     localThis.originalInnerHeight = global.innerHeight;
     
     global.innerWidth = 1920;
     global.innerHeight = 1080;
-    
-    // Mock location
-    delete global.location;
-    global.location = { href: 'https://example.com/page' };
+
+    // window.location is non-configurable in jsdom — use pushState to set a known path.
+    // The origin stays 'http://localhost' but the path becomes '/page'.
+    window.history.pushState({}, '', '/page');
     
     // Mock document.title
     Object.defineProperty(global.document, 'title', {
@@ -629,7 +627,7 @@ describe('getPageMetadata', () => {
   });
   
   afterEach(() => {
-    global.location = localThis.originalLocation;
+    window.history.pushState({}, '', '/');
     global.innerWidth = localThis.originalInnerWidth;
     global.innerHeight = localThis.originalInnerHeight;
   });
@@ -637,7 +635,8 @@ describe('getPageMetadata', () => {
   it('should return page metadata object', () => {
     const result = utils.getPageMetadata();
     
-    expect(result.url).toBe('https://example.com/page');
+    // window.location.href in jsdom is 'http://localhost/page' after pushState above.
+    expect(result.url).toBe(window.location.href);
     expect(result.title).toBe('Test Page');
     expect(result.viewport).toBe('1920x1080');
     expect(result.timestamp).toBeDefined();

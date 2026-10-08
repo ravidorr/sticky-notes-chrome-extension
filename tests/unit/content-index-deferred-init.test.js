@@ -11,19 +11,16 @@ describe('content/index - setupDeferredIframeInit', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Force "iframe" context
-    Object.defineProperty(window, 'top', { value: {}, configurable: true });
-    Object.defineProperty(window, 'self', { value: window, configurable: true });
+    // Force "iframe" context: window.top is non-configurable in jsdom, so we mock
+    // window.self to a different object instead — making window.self !== window.top.
+    Object.defineProperty(window, 'self', { value: {}, configurable: true, writable: true });
 
     // Start tiny
     Object.defineProperty(window, 'innerWidth', { value: 10, configurable: true, writable: true });
     Object.defineProperty(window, 'innerHeight', { value: 10, configurable: true, writable: true });
 
-    // Persistent URL
-    Object.defineProperty(window, 'location', {
-      value: { href: 'https://example.com/iframe' },
-      configurable: true
-    });
+    // window.location.href defaults to 'http://localhost/' which is a persistent URL,
+    // so no need to mock it — jsdom's default satisfies the isPersistentUrl check.
 
     // Capture resize listener
     localThis.resizeCb = null;
