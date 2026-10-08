@@ -1,6 +1,6 @@
 {
   "name": "sticky-notes-chrome-extension",
-  "version": "1.20.3.8",
+  "version": "1.20.3+8",
   "description": "Element-anchored sticky notes for annotating any website",
   "type": "module",
   "scripts": {
@@ -28,7 +28,9 @@
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "test:e2e": "playwright test",
-    "prepare": "husky"
+    "prepare": "husky",
+    "validate:security-policy": "node scripts/validate-security-policy-version.mjs",
+    "test:security-policy": "node --test scripts/validate-security-policy-version.test.mjs"
   },
   "repository": {
     "type": "git",
