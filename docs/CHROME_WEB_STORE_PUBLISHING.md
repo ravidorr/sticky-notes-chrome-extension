@@ -38,9 +38,8 @@ The `Version Bump` workflow (`.github/workflows/version-bump.yml`) fails pull
 requests that do not, and you can run the same check locally with
 `npm run verify:version-bump`. A merge that somehow leaves the version
 unchanged fails the workflow with a clear message instead of being skipped.
-The publish workflow ignores changes that touch only `docs/**` or Markdown
-files, but a pull request that bumps the version also changes `package.json`,
-so it is not ignored and it publishes.
+Because every pull request bumps the version, every merge publishes a new
+store version, documentation-only changes included.
 
 ## Required repository variables
 
@@ -51,7 +50,7 @@ Set these under Settings, Secrets and variables, Actions, Variables:
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | Full provider resource name, `projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<provider>` |
 | `GCP_SERVICE_ACCOUNT` | Service account email, `<name>@<project>.iam.gserviceaccount.com` |
 | `CWS_EXTENSION_ID` | The extension ID from the Chrome Web Store developer dashboard |
-| `CWS_PUBLISHER_ID` | The publisher ID shown in the dashboard account settings |
+| `CWS_PUBLISHER_ID` | The publisher ID, the first ID in the developer dashboard URL |
 
 ## Google Cloud setup
 
@@ -66,9 +65,14 @@ Set these under Settings, Secrets and variables, Actions, Variables:
 
 ## Chrome Web Store setup
 
-1. In the developer dashboard, add the service account email as a trusted
-   publisher account for the extension's publisher.
+1. In the [developer dashboard](https://chrome.google.com/webstore/devconsole),
+   open Settings and check the Service account section. A publisher can have
+   only one service account. If one is set, reuse it: add a provider for this
+   repository to its Workload Identity pool and bind this repository to that
+   service account, instead of replacing it. Otherwise enter the new service
+   account email there.
 2. Copy the extension ID and publisher ID into the repository variables above.
+   The publisher ID is the first ID in the dashboard URL.
 
 ## Troubleshooting
 
