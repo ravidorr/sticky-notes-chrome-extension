@@ -30,7 +30,7 @@ concurrency group serializes submissions. API error bodies are printed in the
 workflow logs.
 
 Every pull request must bump the version in `package.json` (and keep
-`package-lock.json` in sync, for example with `npm version <next> --no-git-tag-version`).
+`package-lock.json` and the supported version in `SECURITY.md` in sync).
 The `Version Bump` workflow (`.github/workflows/version-bump.yml`) fails pull
 requests that do not, and you can run the same check locally with
 `npm run verify:version-bump`. A merge that somehow leaves the version unchanged fails the workflow with a clear
