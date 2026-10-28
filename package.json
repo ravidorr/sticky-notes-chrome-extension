@@ -4,7 +4,7 @@
     "url": "https://github.com/sponsors/ravidorr"
   },
   "name": "sticky-notes-chrome-extension",
-  "version": "1.20.3+8",
+  "version": "1.20.3+9",
   "description": "Element-anchored sticky notes for annotating any website",
   "type": "module",
   "scripts": {
@@ -33,6 +33,7 @@
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "test:e2e": "playwright test",
+    "verify:version-bump": "node scripts/validate-version-bump.mjs origin/main",
     "prepare": "husky",
     "validate:security-policy": "node scripts/validate-security-policy-version.mjs",
     "test:security-policy": "node --test scripts/validate-security-policy-version.test.mjs"
