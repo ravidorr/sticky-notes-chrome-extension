@@ -171,6 +171,10 @@ To skip hooks (not recommended):
 git commit --no-verify -m "your message"
 ```
 
+## Releasing
+
+Merging a pull request into `main` submits the Chrome build to the Chrome Web Store automatically. See [docs/CHROME_WEB_STORE_PUBLISHING.md](docs/CHROME_WEB_STORE_PUBLISHING.md) for the required Google Cloud setup and repository variables.
+
 ## Firebase Setup (Optional)
 
 To enable cloud sync and sharing features, see [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md) for detailed instructions.
