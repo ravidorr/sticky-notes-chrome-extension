@@ -26,16 +26,21 @@ are closed without merging do nothing, and the regular CI workflow is unchanged.
    (`publishType: DEFAULT_PUBLISH`, `skipReview: false`, `blockOnWarnings: true`).
 
 The job has only `contents: read` and `id-token: write` permissions. A
-concurrency group serializes submissions. API error bodies are printed in the
-workflow logs.
+concurrency group serializes submissions. If several merges queue up while a
+run is in progress, GitHub keeps only the newest pending run. This is
+intended: the last run builds the latest `main`, which includes the earlier
+changes and the highest version. API error bodies are printed in the workflow
+logs.
 
 Every pull request must bump the version in `package.json` (and keep
 `package-lock.json` and the supported version in `SECURITY.md` in sync).
 The `Version Bump` workflow (`.github/workflows/version-bump.yml`) fails pull
 requests that do not, and you can run the same check locally with
-`npm run verify:version-bump`. A merge that somehow leaves the version unchanged fails the workflow with a clear
-message instead of being skipped. Pull requests that only change `docs/**` or
-Markdown files do not start the workflow.
+`npm run verify:version-bump`. A merge that somehow leaves the version
+unchanged fails the workflow with a clear message instead of being skipped.
+The publish workflow ignores changes that touch only `docs/**` or Markdown
+files, but a pull request that bumps the version also changes `package.json`,
+so it is not ignored and it publishes.
 
 ## Required repository variables
 

@@ -12,6 +12,10 @@ permissions:
   contents: read
   id-token: write
 
+# Runs never overlap. GitHub keeps only the newest pending run, so when several
+# merges queue up the older pending runs are dropped. That is intended: the last
+# run builds the latest main, which contains every earlier change and the
+# highest version, and each upload would cancel the previous pending submission.
 concurrency:
   group: chrome-web-store-publish
   cancel-in-progress: false
