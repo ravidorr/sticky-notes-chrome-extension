@@ -1,7 +1,8 @@
 /**
- * Sticky Notes API - Firebase Cloud Functions
+ * Sticky Notes - Firebase Cloud Functions
  * 
- * REST API for creating and managing sticky notes
+ * The REST API for creating and managing sticky notes, and the Firestore
+ * triggers that queue and deliver share-notification emails
  */
 
 import { onRequest } from 'firebase-functions/v2/https';
@@ -10,8 +11,8 @@ import { defineSecret, defineString } from 'firebase-functions/params';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import express from 'express';
 import cors from 'cors';
-import { writeShareNotificationEmail } from './lib/email.js';
-import { handleMailCreated } from './lib/mailSender.js';
+import { defineMailTrigger } from './lib/mailTrigger.js';
+import { handleNoteShared } from './lib/noteSharing.js';
 
 // Import routes
 import notesRouter from './routes/notes.js';
@@ -128,72 +129,20 @@ export const api = onRequest(
 /**
  * Firestore trigger that detects when notes are shared and queues
  * share-notification emails in the 'mail' collection for newly added
- * recipients (delivered by sendMail).
+ * recipients (delivered by sendMail). It has no retry policy: a failed mail
+ * write is logged and dropped.
  */
 export const onNoteShared = onDocumentUpdated(
   {
     document: 'notes/{noteId}',
     region: 'us-central1'
   },
-  async (event) => {
-    const before = event.data.before.data();
-    const after = event.data.after.data();
-    
-    // Get the sharedWith arrays (default to empty if not present)
-    const oldSharedWith = before.sharedWith || [];
-    const newSharedWith = after.sharedWith || [];
-    
-    // Find newly added email addresses
-    const newlyShared = newSharedWith.filter(email => !oldSharedWith.includes(email));
-    
-    // If no new shares, nothing to do
-    if (newlyShared.length === 0) {
-      return null;
-    }
-    
-    const noteId = event.params.noteId;
-    
-    // Send notification email for each newly shared user
-    const emailPromises = newlyShared.map(email => 
-      writeShareNotificationEmail(email, after, noteId)
-        .catch(error => {
-          console.error(`Failed to send share notification to ${email}:`, error);
-          // Don't throw - we don't want one failed email to block others
-        })
-    );
-    
-    await Promise.all(emailPromises);
-    
-    console.log(`Queued share notifications for ${newlyShared.length} user(s) on note ${noteId}`);
-    return null;
-  }
+  (event) => handleNoteShared(event)
 );
-
-const smtpPassword = defineSecret('SMTP_PASSWORD');
-const smtpUser = defineString('SMTP_USER');
-const mailFrom = defineString('MAIL_FROM');
 
 /**
- * Firestore trigger that delivers each document created in 'mail' over SMTP
- * and records the result in its `delivery` field.
- *
- * Requires the params SMTP_USER and MAIL_FROM and the secret SMTP_PASSWORD.
- * Permanent failures are recorded on the document and not retried. Transient
- * SMTP failures make the invocation throw so the platform retries it, up to a
- * bounded number of attempts (see lib/mailSender.js).
+ * Firestore trigger that delivers each document created in 'mail' over SMTP.
+ * See lib/mailTrigger.js for the options and params, and lib/mailSender.js for
+ * the retry and delivery behavior.
  */
-export const sendMail = onDocumentCreated(
-  {
-    document: 'mail/{mailId}',
-    region: 'us-central1',
-    secrets: [smtpPassword],
-    // Keep below the claim lease in lib/mailSender.js
-    timeoutSeconds: 60,
-    retry: true
-  },
-  (event) => handleMailCreated(event, {
-    user: smtpUser.value(),
-    password: smtpPassword.value(),
-    from: mailFrom.value()
-  })
-);
+export const sendMail = defineMailTrigger({ onDocumentCreated, defineSecret, defineString });

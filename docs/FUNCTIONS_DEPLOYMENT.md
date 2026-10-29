@@ -27,8 +27,8 @@ checklist below first.
 5. Deploy any event function that uses `retry: true` by hand once, with
    `firebase deploy --only functions`. A non-interactive deploy can refuse
    to enable a retry policy for the first time unless it is forced, and forcing
-   it would also delete functions that are missing from the code. `sendMail` is
-   the only such function today.
+   it would also delete functions that are missing from the code. `sendMail`
+   (options in `functions/lib/mailTrigger.js`) is the only such function today.
 6. Merge. The first run is the real test of the setup.
 
 ## How it works
