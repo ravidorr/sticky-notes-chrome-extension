@@ -1,0 +1,60 @@
+name: Deploy Firebase Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - 'firebase.json'
+      - '.github/workflows/deploy-functions.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+# Deploys never overlap. GitHub keeps only the newest pending run, and the
+# newest run deploys the latest main, so dropping older pending runs is fine.
+concurrency:
+  group: firebase-functions-deploy
+  cancel-in-progress: false
+
+env:
+  FIREBASE_PROJECT: sticky-notes-chrome-extension
+  FIREBASE_TOOLS_VERSION: 15.34.2
+
+jobs:
+  deploy:
+    name: Deploy functions
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - name: Install function dependencies
+        working-directory: functions
+        run: npm ci
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.FIREBASE_DEPLOY_SERVICE_ACCOUNT }}
+      - name: Write function parameters
+        env:
+          SMTP_USER: ${{ vars.SMTP_USER }}
+          MAIL_FROM: ${{ vars.MAIL_FROM }}
+        run: |
+          set -euo pipefail
+          : "${SMTP_USER:?Set the SMTP_USER repository variable}"
+          : "${MAIL_FROM:?Set the MAIL_FROM repository variable}"
+          printf 'SMTP_USER=%s\nMAIL_FROM=%s\n' "${SMTP_USER}" "${MAIL_FROM}" \
+            > "functions/.env.${FIREBASE_PROJECT}"
+      - name: Deploy functions
+        run: >
+          npx --yes "firebase-tools@${FIREBASE_TOOLS_VERSION}" deploy
+          --only functions
+          --project "${FIREBASE_PROJECT}"
+          --non-interactive
