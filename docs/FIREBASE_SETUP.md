@@ -309,7 +309,10 @@ ID is:
 https://inhfieegmndamdggkoahplhomjbdjjhk.chromiumapp.org/
 ```
 
-One-time step for the repository owner in Google Cloud:
+One-time step for the repository owner in Google Cloud. Do it before rebuilding
+an existing unpacked Edge copy with this change (before merging it, to be safe):
+until the redirect URI is registered, Edge development sign-in fails with
+`redirect_uri_mismatch`.
 
 1. Open the [Credentials page](https://console.cloud.google.com/apis/credentials?project=sticky-notes-chrome-extension)
    of the `sticky-notes-chrome-extension` project.
