@@ -288,7 +288,8 @@ export async function writeShareNotificationEmail(recipientEmail, noteData, note
   // The templates call string methods on these fields, so a wrong type would
   // throw the same TypeError on every attempt
   for (const field of ['content', 'url']) {
-    if (noteData[field] != null && typeof noteData[field] !== 'string') {
+    const value = noteData[field];
+    if (value !== undefined && value !== null && typeof value !== 'string') {
       throw new MailValidationError(`Note ${field} must be a string`);
     }
   }
