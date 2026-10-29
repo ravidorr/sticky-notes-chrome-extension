@@ -71,9 +71,37 @@ jobs:
           submission_state="$(jq -r '.submittedItemRevisionStatus.state // empty' item-status.json)"
           case "${submission_state}" in
             PENDING_REVIEW|STAGED)
-              curl --fail-with-body --silent --show-error --request POST \
-                --header "Authorization: Bearer ${ACCESS_TOKEN}" \
-                "https://chromewebstore.googleapis.com/v2/${item_name}:cancelSubmission"
+              # The store limits how often a publisher can cancel a submission and
+              # answers 429 when the limit is reached. Wait and try again a few
+              # times, then fail with the way out instead of a bare API error.
+              cancelled=false
+              delay=30
+              for attempt in 1 2 3 4 5; do
+                http_code="$(curl --silent --show-error --request POST \
+                  --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  --output cancel-response.json --write-out '%{http_code}' \
+                  "https://chromewebstore.googleapis.com/v2/${item_name}:cancelSubmission")"
+                if [ "${http_code}" -ge 200 ] && [ "${http_code}" -lt 300 ]; then
+                  cancelled=true
+                  break
+                fi
+                if [ "${http_code}" != "429" ]; then
+                  echo "Chrome Web Store cancelSubmission failed with HTTP ${http_code}:"
+                  cat cancel-response.json
+                  exit 1
+                fi
+                if [ "${attempt}" -lt 5 ]; then
+                  echo "Chrome Web Store cancel limit reached (HTTP 429), attempt ${attempt} of 5. Retrying in ${delay}s."
+                  sleep "${delay}"
+                  delay=$((delay * 2))
+                fi
+              done
+              if [ "${cancelled}" != "true" ]; then
+                echo "::error::The Chrome Web Store keeps refusing to cancel the pending submission (HTTP 429, request limit reached for this publisher). The new version was not submitted."
+                echo "Cancel the pending submission by hand in the Chrome Web Store developer dashboard, or wait for the limit to reset, then re-run this workflow."
+                cat cancel-response.json
+                exit 1
+              fi
               ;;
             ""|PUBLISHED|PUBLISHED_TO_TESTERS|REJECTED|CANCELLED)
               ;;
