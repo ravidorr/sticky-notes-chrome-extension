@@ -358,6 +358,18 @@ describe('mailSender', () => {
       }
     );
 
+    it.each(['ECONNREFUSED', 'ECONNRESET'])(
+      'should treat a system error nodemailer reports as ESOCKET with originalCode %s as transient',
+      (originalCode) => {
+        // nodemailer replaces the system code with ESOCKET and keeps it in originalCode
+        expect(isTransientError({ code: 'EOTHER', originalCode })).toBe(true);
+      }
+    );
+
+    it('should not treat an unrelated originalCode as transient', () => {
+      expect(isTransientError({ code: 'EAUTH', originalCode: 'EACCES' })).toBe(false);
+    });
+
     it('should treat 4xx SMTP replies as transient', () => {
       expect(isTransientError({ responseCode: 421 })).toBe(true);
       expect(isTransientError({ responseCode: 452 })).toBe(true);
