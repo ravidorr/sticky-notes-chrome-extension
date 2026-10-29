@@ -166,7 +166,7 @@ service cloud.firestore {
       }
     }
     
-    // Mail collection - used by Firebase Trigger Email extension
+    // Mail collection - used by the sendMail Cloud Function
     // Only Cloud Functions (Admin SDK) can write to this collection
     match /mail/{mailId} {
       allow read, write: if false;
@@ -177,7 +177,7 @@ service cloud.firestore {
 
 > **Important:** The `sharedWith` array stores **email addresses** (not user IDs), so we use `request.auth.token.email` for the sharing check.
 >
-> **Note:** The `mail` collection is used by the Firebase Trigger Email extension for sending share notifications. It is only accessible by Cloud Functions using the Admin SDK.
+> **Note:** The `mail` collection is used by the sendMail Cloud Function for sending share notifications. It is only accessible by Cloud Functions using the Admin SDK.
 
 3. Click **"Publish"**
 
@@ -434,48 +434,45 @@ To add a comment:
 
 ## Email Notifications for Shared Notes (Optional)
 
-When you share a note with someone, you can automatically send them an email notification. This requires installing the Firebase Trigger Email extension.
+When you share a note with someone, an email notification is sent automatically. The `onNoteShared` function queues a document in the `mail` collection and the `sendMail` Cloud Function (`functions/lib/mailSender.js`) delivers it over SMTP. This replaces the Firebase Trigger Email extension, which is being decommissioned on March 31, 2027.
 
-### Install Firebase Trigger Email Extension
+### Configure the Mail Function
 
-1. Go to [Firebase Console](https://console.firebase.google.com/) and select your project
-2. Navigate to **Extensions** in the left sidebar
-3. Click **"Explore Extensions"** or **"Install Extension"**
-4. Search for **"Trigger Email"** (by Firebase)
-5. Click **"Install"**
+1. Set the SMTP password as a secret (for Gmail, use an [app password](https://myaccount.google.com/apppasswords)):
 
-### Configure the Extension
+   ```bash
+   firebase functions:secrets:set SMTP_PASSWORD
+   ```
 
-During installation, you'll be prompted to configure:
+2. Create `functions/.env.sticky-notes-chrome-extension` (not committed) with:
 
-1. **SMTP Connection URI** or **SendGrid/Mailgun API Key**
-   - For SendGrid: `smtps://apikey:YOUR_SENDGRID_API_KEY@smtp.sendgrid.net:465`
-   - For Gmail SMTP: `smtps://your-email@gmail.com:your-app-password@smtp.gmail.com:465`
-   - For Mailgun: Use the Mailgun API key option
+   ```text
+   SMTP_USER=your-email@gmail.com
+   MAIL_FROM=your-email@gmail.com
+   ```
 
-2. **Email Documents Collection**: Set to `mail` (default)
+3. Deploy:
 
-3. **Default From Address**: Set your sender email (e.g., `noreply@your-domain.com`)
-   - Must be a verified sender in your email service
+   ```bash
+   firebase deploy --only functions
+   ```
 
-4. **Default Reply-To Address**: Optional, set if you want replies to go to a different address
-
-5. **Users Collection**: Leave empty (not needed for this use case)
+The function uses `smtp.gmail.com:465`. To use another provider, change `SMTP_HOST` and `SMTP_PORT` in `functions/lib/mailSender.js`.
 
 ### Configuration Checklist for Email Notifications
 
 | Item | Location | Status |
 |------|----------|--------|
-| Trigger Email extension installed | Firebase Console > Extensions | [] |
-| SMTP/API credentials configured | Extension configuration | [] |
-| Sender email verified | Email service provider | [] |
+| `SMTP_PASSWORD` secret set | `firebase functions:secrets:set` | [] |
+| `SMTP_USER` and `MAIL_FROM` set | `functions/.env.<project>` | [] |
+| `sendMail` function deployed | `firebase deploy --only functions` | [] |
 | `mail` collection rules deployed | `firestore.rules` | [] |
 
 ### Testing Email Notifications
 
 1. Share a note with a valid email address
 2. Check the Firebase Console > Firestore > `mail` collection for queued emails
-3. The extension processes emails automatically and updates document status
+3. The `sendMail` function processes emails automatically and records the result in the document's `delivery` field
 4. Check the recipient's inbox (and spam folder)
 
 ### Troubleshooting Email Notifications

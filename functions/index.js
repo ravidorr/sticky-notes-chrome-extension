@@ -5,11 +5,13 @@
  */
 
 import { onRequest } from 'firebase-functions/v2/https';
-import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
+import { onDocumentUpdated, onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { defineSecret, defineString } from 'firebase-functions/params';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import express from 'express';
 import cors from 'cors';
 import { writeShareNotificationEmail } from './lib/email.js';
+import { deliverMail } from './lib/mailSender.js';
 
 // Import routes
 import notesRouter from './routes/notes.js';
@@ -162,6 +164,34 @@ export const onNoteShared = onDocumentUpdated(
     await Promise.all(emailPromises);
     
     console.log(`Sent share notifications to ${newlyShared.length} user(s) for note ${noteId}`);
+    return null;
+  }
+);
+
+const smtpPassword = defineSecret('SMTP_PASSWORD');
+const smtpUser = defineString('SMTP_USER');
+const mailFrom = defineString('MAIL_FROM');
+
+/**
+ * Firestore trigger that sends emails queued in the 'mail' collection.
+ * Replaces the Firebase Trigger Email extension.
+ */
+export const sendMail = onDocumentCreated(
+  {
+    document: 'mail/{mailId}',
+    region: 'us-central1',
+    secrets: [smtpPassword]
+  },
+  async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) {
+      return null;
+    }
+    await deliverMail(snapshot.ref, snapshot.data(), {
+      user: smtpUser.value(),
+      password: smtpPassword.value(),
+      from: mailFrom.value()
+    });
     return null;
   }
 );
