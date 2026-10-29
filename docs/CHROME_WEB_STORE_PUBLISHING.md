@@ -8,6 +8,9 @@ changes. Changes to documentation, CI, tests, the website or the Cloud
 Functions never submit a release. Pull requests that are closed without
 merging do nothing, and the regular CI workflow is unchanged.
 
+The Edge build has its own workflow, described in
+[EDGE_ADDONS_PUBLISHING.md](EDGE_ADDONS_PUBLISHING.md).
+
 ## How it works
 
 1. Checks out the merged code, runs `npm ci`, then `npm run build:chrome`.
@@ -67,7 +70,9 @@ Extension code is:
 - the files in `public/` that `scripts/build.js` copies into the package:
   `manifest.json`, `icons/icon16.png`, `icon32.png`, `icon48.png`,
   `icon128.png` and `_locales/`. Other files there, such as
-  `manifest.edge.json` (Edge only) and `icons/icon16.svg`, never ship
+  `icons/icon16.svg`, never ship in the Chrome package. `manifest.edge.json`
+  ships in the Edge package only and is not counted, so a change to it alone is
+  not released (see [Edge Add-ons publishing](EDGE_ADDONS_PUBLISHING.md))
 - the build configuration: `scripts/build.js`, `scripts/manifest-build.mjs`,
   `scripts/manifest-key.mjs` and
   `scripts/manifest-version.mjs`

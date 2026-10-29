@@ -1,15 +1,22 @@
 /**
  * Pre-flight check for the Edge Add-ons workflow.
  *
- * Decides whether a merge needs a new Edge submission. The Edge Add-ons API does
- * not report the published version cheaply, so the decision uses the repository
- * instead: the version in package.json changes together with the extension code
- * (see scripts/validate-version-bump.mjs), so a merged pull request that changed
- * the version released a new one. Versions are compared as Chrome manifest
- * versions (1.2.3+8 is 1.2.3.8), the same way the build writes them.
+ * Decides whether a merge needs a new Edge submission. Chrome compares the build
+ * with what the store has; the Edge Add-ons API does not report the published
+ * version, so the decision uses the repository instead: the version in
+ * package.json changes together with the extension code (see
+ * scripts/validate-version-bump.mjs), so a merge commit whose package.json
+ * version differs from its first parent released a new one. Versions are
+ * compared as Chrome manifest versions (1.2.3+8 is 1.2.3.8), the same way the
+ * build writes them.
  *
- * The workflow also skips, successfully, when the Edge credentials are not
- * configured yet, so a merge never fails before the owner sets them up.
+ * The first parent is the previous tip of main for a squash or rebase-free merge
+ * and for a merge commit alike, unlike the pull request base, which can be stale.
+ *
+ * Missing Edge credentials never fail a merge that has nothing to release. When
+ * none are configured and a release was due, the run stays green but says loudly
+ * that the version was NOT submitted. A half configured setup, or a manual run
+ * without credentials, fails.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -21,16 +28,18 @@ import { createChromeManifestVersion } from './manifest-version.mjs';
 
 export const REQUIRED_SETTINGS = ['EDGE_CLIENT_ID', 'EDGE_API_KEY', 'EDGE_PRODUCT_ID'];
 
-export function readPackageVersion(packageJson) {
+export class GateError extends Error {}
+
+export function readPackageVersion(packageJson, label = 'package.json') {
   let version;
   try {
     ({ version } = JSON.parse(packageJson));
   } catch {
-    throw new Error('package.json is not valid JSON.');
+    throw new GateError(`${label} is not valid JSON.`);
   }
 
   if (typeof version !== 'string' || version.length === 0) {
-    throw new Error('package.json must contain a non-empty version.');
+    throw new GateError(`${label} must contain a non-empty version.`);
   }
 
   return version;
@@ -44,95 +53,165 @@ export function findMissingSettings(settings) {
   return REQUIRED_SETTINGS.filter((name) => !settings[name]);
 }
 
+function toManifestVersion(version, side) {
+  try {
+    return createChromeManifestVersion(version);
+  } catch (error) {
+    throw new GateError(`The ${side} version is not usable: ${error.message}`);
+  }
+}
+
 /**
  * @param {Object} input
- * @param {string|undefined} input.baseVersion - package.json version at the pull request base
+ * @param {string|undefined} input.baseVersion - package.json version at the first parent
  * @param {string} input.headVersion - package.json version at the merge commit
  * @param {boolean} [input.forced] - Submit whatever the versions are (manual run)
- * @returns {{submit: boolean, reason: string}}
- * @throws {Error} When a version cannot be converted to a manifest version
+ * @returns {{submit: boolean, version: string, change: 'new'|'same'|'down', reason: string}}
+ * @throws {GateError} When a version cannot be converted to a manifest version
  */
 export function decideEdgeSubmission({ baseVersion, headVersion, forced = false }) {
-  const headManifest = createChromeManifestVersion(headVersion);
+  const version = toManifestVersion(headVersion, 'head');
 
   if (forced) {
-    return { submit: true, reason: `Manual run: submitting version ${headManifest} whatever the base version is.` };
+    return {
+      submit: true,
+      version,
+      change: 'new',
+      reason: `Manual run: submitting version ${version} whatever the earlier version was.`
+    };
   }
 
   if (baseVersion === undefined) {
-    return { submit: true, reason: `No base version to compare with, so version ${headManifest} is treated as new.` };
+    throw new GateError('No earlier version to compare with.');
   }
 
-  const baseManifest = createChromeManifestVersion(baseVersion);
-  const difference = compareManifestVersions(headManifest, baseManifest);
+  const base = toManifestVersion(baseVersion, 'base');
+  const difference = compareManifestVersions(version, base);
 
   if (difference === 0) {
     return {
       submit: false,
-      reason: `Version ${headManifest} did not change in this merge, so the extension code did not change. ` +
-        'Nothing is submitted to Edge Add-ons.'
+      version,
+      change: 'same',
+      reason: `Version ${version} did not change in this merge, so no new release is needed.`
     };
   }
 
   if (difference < 0) {
     return {
       submit: false,
-      reason: `Version went down from ${baseManifest} to ${headManifest}. Edge Add-ons rejects a lower version, so nothing is submitted.`
+      version,
+      change: 'down',
+      reason: `Version went down from ${base} to ${version}. Edge would be expected to reject a lower version, so nothing is submitted.`
     };
   }
 
-  return { submit: true, reason: `Version changed from ${baseManifest} to ${headManifest}.` };
+  return { submit: true, version, change: 'new', reason: `Version changed from ${base} to ${version}.` };
 }
 
-function readPackageJsonAt(sha) {
-  return execFileSync('git', ['show', `${sha}:package.json`], { encoding: 'utf8' });
+function readPackageJsonAt(rev) {
+  return execFileSync('git', ['show', `${rev}:package.json`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
-// The workflow log and run summary get the reason; the notice is what the owner sees on the run page
-function reportToGithub({ submit, reason, notice }) {
-  if (process.env.GITHUB_OUTPUT) {
-    appendFileSync(process.env.GITHUB_OUTPUT, `submit=${submit}\n`);
-  }
-
-  if (process.env.GITHUB_STEP_SUMMARY) {
-    appendFileSync(
-      process.env.GITHUB_STEP_SUMMARY,
-      `${submit ? 'Submitting to' : 'Not submitting to'} Edge Add-ons: ${reason}\n`
+function readSide(read, rev, side) {
+  let text;
+  try {
+    text = read(rev);
+  } catch (error) {
+    throw new GateError(
+      `Cannot read package.json at the ${side} commit (${rev}): ${String(error.stderr ?? error.message).trim()} ` +
+      'The workflow checks out the full history (fetch-depth: 0); a shallow checkout has no parent commit.'
     );
   }
-
-  process.stdout.write(`${notice ? '::notice::' : ''}${submit ? 'Submitting' : 'Skipping submission'}: ${reason}\n`);
+  return readPackageVersion(text, `package.json at the ${side} commit (${rev})`);
 }
 
+/**
+ * Decides what the workflow does.
+ *
+ * @returns {{submit: boolean, status: string, reason: string, level: 'warning'|null}}
+ * @throws {GateError} When the run has to fail
+ */
 export function runCheck(env = process.env, readPackageJson = readPackageJsonAt) {
-  const missing = findMissingSettings(env);
-
-  if (missing.length > 0) {
-    return {
-      submit: false,
-      notice: true,
-      reason: `Edge publishing is skipped: ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not configured. ` +
-        'Set the secrets and the variable described in docs/EDGE_ADDONS_PUBLISHING.md to turn it on.'
-    };
-  }
-
   const headSha = env.HEAD_SHA;
   if (!headSha) {
-    throw new Error('HEAD_SHA is required.');
+    throw new GateError('HEAD_SHA is required: the merge commit of the pull request has not been computed.');
   }
 
   const forced = env.EVENT_NAME === 'workflow_dispatch';
-  const headVersion = readPackageVersion(readPackageJson(headSha));
-  const baseVersion = forced || !env.BASE_SHA ? undefined : readPackageVersion(readPackageJson(env.BASE_SHA));
+  const headVersion = readSide(readPackageJson, headSha, 'head');
+  const baseVersion = forced ? undefined : readSide(readPackageJson, `${headSha}^1`, 'base');
+  const decision = decideEdgeSubmission({ baseVersion, headVersion, forced });
 
-  return decideEdgeSubmission({ baseVersion, headVersion, forced });
+  const missing = findMissingSettings(env);
+  const someConfigured = missing.length < REQUIRED_SETTINGS.length;
+
+  if (missing.length > 0 && (forced || someConfigured)) {
+    throw new GateError(
+      `${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not configured, but ` +
+      `${forced ? 'a manual run needs all three' : 'the others are set, so the setup is incomplete'}. ` +
+      'See docs/EDGE_ADDONS_PUBLISHING.md.'
+    );
+  }
+
+  if (missing.length > 0) {
+    // Nothing is configured: a merge without a release says nothing, one with a release warns
+    if (decision.change === 'new') {
+      return {
+        submit: false,
+        level: 'warning',
+        status: 'SKIPPED (credentials missing)',
+        reason: `Version ${decision.version} was NOT submitted: ${missing.join(', ')} are not configured ` +
+          '(on a pull request from a fork the secrets are never available). ' +
+          'Set them as described in docs/EDGE_ADDONS_PUBLISHING.md, then start a run with Run workflow on main.'
+      };
+    }
+  }
+
+  return decisionResult(decision);
+}
+
+function decisionResult(decision) {
+  if (decision.submit) {
+    return { submit: true, level: null, status: 'SUBMITTING', reason: decision.reason };
+  }
+
+  if (decision.change === 'down') {
+    return { submit: false, level: 'warning', status: 'SKIPPED (version went DOWN)', reason: decision.reason };
+  }
+
+  return { submit: false, level: null, status: 'SKIPPED (no release)', reason: decision.reason };
+}
+
+// Workflow commands are one line: escape what would end or change one
+function escapeAnnotation(text) {
+  return String(text).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+}
+
+function writeSummary(line) {
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`);
+  }
 }
 
 function runCli() {
   try {
-    reportToGithub(runCheck());
+    const result = runCheck();
+
+    if (process.env.GITHUB_OUTPUT) {
+      appendFileSync(process.env.GITHUB_OUTPUT, `submit=${result.submit}\n`);
+    }
+
+    writeSummary(`Edge Add-ons: ${result.status}. ${result.reason}`);
+    process.stdout.write(
+      result.level === 'warning'
+        ? `::warning::${escapeAnnotation(`Edge Add-ons ${result.status}: ${result.reason}`)}\n`
+        : `${result.status}: ${result.reason}\n`
+    );
   } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    writeSummary(`Edge Add-ons: FAILED. ${message}`);
+    console.error(`::error::${escapeAnnotation(message)}`);
     process.exit(1);
   }
 }

@@ -12,7 +12,9 @@ const EXTENSION_DIRECTORIES = ['src/'];
 
 // What copyStaticFiles() in scripts/build.js copies out of public/: the Chrome
 // manifest, the four PNG icons and the locales. Vite's own copying of public/ is
-// disabled, so any other file there (the Edge manifest, SVG icons) never ships.
+// disabled, so any other file there (SVG icons) never ships in the Chrome package.
+// The Edge manifest ships in the Edge package only and is not counted here, so a
+// change to it alone is not released (see docs/EDGE_ADDONS_PUBLISHING.md).
 const PACKAGED_PUBLIC_FILE = /^public\/(manifest\.json|icons\/icon(16|32|48|128)\.png|_locales\/.+)$/;
 
 // Files that decide what gets built, even though they are not packaged. The

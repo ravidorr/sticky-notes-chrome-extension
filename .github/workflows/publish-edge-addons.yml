@@ -12,22 +12,19 @@ permissions:
 # Runs never overlap. GitHub keeps only the newest pending run, so when several
 # merges queue up the older pending runs are dropped. A dropped run can leave a
 # version unsubmitted when the newer run's own pull request did not change the
-# version; start this workflow by hand (Run workflow) to submit the current
-# version of main.
-#
-# Every merge runs this workflow, but only a merge that changed the version in
-# package.json is submitted. The version changes together with the extension code
-# (see scripts/validate-version-bump.mjs). Without the Edge credentials the run
-# succeeds and says that publishing is skipped.
+# version; start a new run with Run workflow on main to submit the current
+# version.
 concurrency:
   group: edge-addons-publish
   cancel-in-progress: false
 
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
+    # A manual run is only allowed from main, so it never submits another branch
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
     name: Publish Edge Add-ons release
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,6 +35,14 @@ jobs:
         with:
           node-version: '20'
           cache: npm
+      # Every merge runs this workflow, but only a merge that changed the version
+      # in package.json is submitted. The version changes together with the
+      # extension code (see scripts/validate-version-bump.mjs). Chrome compares the
+      # build with the versions the store reports; the Edge API does not report
+      # the published version, so Edge compares the merge commit with its first
+      # parent. Without the Edge credentials a merge with nothing to release is
+      # silent, and one with a release finishes green with a warning that the
+      # version was NOT submitted.
       - name: Check whether Edge needs this version
         id: gate
         env:
@@ -45,7 +50,6 @@ jobs:
           EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
           EDGE_PRODUCT_ID: ${{ vars.EDGE_PRODUCT_ID }}
           EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
         run: node scripts/check-edge-addons-version.mjs
       - if: steps.gate.outputs.submit == 'true'
@@ -59,6 +63,6 @@ jobs:
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
           EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
           EDGE_PRODUCT_ID: ${{ vars.EDGE_PRODUCT_ID }}
+          EVENT_NAME: ${{ github.event_name }}
           PACKAGE_PATH: dist/edge.zip
-          PUBLISH_NOTES: Automated release from GitHub Actions, commit ${{ github.event.pull_request.merge_commit_sha || github.sha }}.
         run: node scripts/publish-edge-addons.mjs
