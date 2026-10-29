@@ -30,14 +30,17 @@ const SMTP_HOST = 'smtp.gmail.com';
 const SMTP_PORT = 465;
 
 // Transport timeouts stay well below the function timeout so a stalled
-// connection reaches the error path instead of being killed mid-send.
+// connection normally reaches the error path instead of being killed mid-send.
+// socketTimeout is an idle timeout, so a session that keeps making slow
+// progress can still run longer.
 const CONNECTION_TIMEOUT_MS = 10000;
 const GREETING_TIMEOUT_MS = 10000;
 const SOCKET_TIMEOUT_MS = 20000;
 
 export const MAX_ATTEMPTS = 5;
 
-// Must be longer than the sendMail function timeout (60s) plus margin.
+// Must be longer than the sendMail Cloud Function timeout (MAIL_TRIGGER_OPTIONS
+// in mailTrigger.js, currently 60s) plus margin.
 export const LEASE_MS = 3 * 60 * 1000;
 
 const TRANSIENT_ERROR_CODES = new Set([

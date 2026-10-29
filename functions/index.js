@@ -1,7 +1,8 @@
 /**
- * Sticky Notes API - Firebase Cloud Functions
+ * Sticky Notes - Firebase Cloud Functions
  * 
- * REST API for creating and managing sticky notes
+ * The REST API for creating and managing sticky notes, and the Firestore
+ * triggers that queue and deliver share-notification emails
  */
 
 import { onRequest } from 'firebase-functions/v2/https';
@@ -128,7 +129,8 @@ export const api = onRequest(
 /**
  * Firestore trigger that detects when notes are shared and queues
  * share-notification emails in the 'mail' collection for newly added
- * recipients (delivered by sendMail).
+ * recipients (delivered by sendMail). It has no retry policy: a failed mail
+ * write is logged and dropped.
  */
 export const onNoteShared = onDocumentUpdated(
   {
@@ -140,6 +142,7 @@ export const onNoteShared = onDocumentUpdated(
 
 /**
  * Firestore trigger that delivers each document created in 'mail' over SMTP.
- * See lib/mailTrigger.js for the options, params and retry behavior.
+ * See lib/mailTrigger.js for the options and params, and lib/mailSender.js for
+ * the retry and delivery behavior.
  */
 export const sendMail = defineMailTrigger({ onDocumentCreated, defineSecret, defineString });

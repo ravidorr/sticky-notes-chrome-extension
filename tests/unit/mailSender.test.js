@@ -22,6 +22,7 @@ const {
   MAX_ATTEMPTS,
   LEASE_MS
 } = await import('../../functions/lib/mailSender.js');
+const { MAIL_TRIGGER_OPTIONS } = await import('../../functions/lib/mailTrigger.js');
 
 describe('mailSender', () => {
   const localThis = {};
@@ -339,6 +340,13 @@ describe('mailSender', () => {
         socketTimeout: 20000,
         auth: { user: 'me@example.com', pass: 'pw' }
       });
+    });
+  });
+
+  describe('lease', () => {
+    it('should outlast the sendMail function timeout, or a live invocation could be reclaimed', () => {
+      // timeoutSeconds is in seconds and LEASE_MS in milliseconds
+      expect(MAIL_TRIGGER_OPTIONS.timeoutSeconds * 1000).toBeLessThan(LEASE_MS);
     });
   });
 

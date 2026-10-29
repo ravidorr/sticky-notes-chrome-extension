@@ -9,11 +9,8 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
 const handleMailCreated = jest.fn();
 
-jest.unstable_mockModule('firebase-admin/firestore', () => ({
-  getFirestore: jest.fn(),
-  FieldValue: { serverTimestamp: jest.fn() }
-}));
-
+// The Jest config maps relative .js specifiers, which breaks mocking one by its
+// relative path. The absolute path resolves to the module mailTrigger.js imports.
 const mailSenderPath = new URL('../../functions/lib/mailSender.js', import.meta.url).pathname;
 jest.unstable_mockModule(mailSenderPath, () => ({ handleMailCreated }));
 
