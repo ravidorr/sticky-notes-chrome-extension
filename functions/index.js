@@ -5,11 +5,13 @@
  */
 
 import { onRequest } from 'firebase-functions/v2/https';
-import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
+import { onDocumentUpdated, onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { defineSecret, defineString } from 'firebase-functions/params';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import express from 'express';
 import cors from 'cors';
 import { writeShareNotificationEmail } from './lib/email.js';
+import { handleMailCreated } from './lib/mailSender.js';
 
 // Import routes
 import notesRouter from './routes/notes.js';
@@ -124,8 +126,9 @@ export const api = onRequest(
 );
 
 /**
- * Firestore trigger that detects when notes are shared
- * and sends email notifications to newly added recipients.
+ * Firestore trigger that detects when notes are shared and queues
+ * share-notification emails in the 'mail' collection for newly added
+ * recipients (delivered by sendMail).
  */
 export const onNoteShared = onDocumentUpdated(
   {
@@ -161,7 +164,36 @@ export const onNoteShared = onDocumentUpdated(
     
     await Promise.all(emailPromises);
     
-    console.log(`Sent share notifications to ${newlyShared.length} user(s) for note ${noteId}`);
+    console.log(`Queued share notifications for ${newlyShared.length} user(s) on note ${noteId}`);
     return null;
   }
+);
+
+const smtpPassword = defineSecret('SMTP_PASSWORD');
+const smtpUser = defineString('SMTP_USER');
+const mailFrom = defineString('MAIL_FROM');
+
+/**
+ * Firestore trigger that delivers each document created in 'mail' over SMTP
+ * and records the result in its `delivery` field.
+ *
+ * Requires the params SMTP_USER and MAIL_FROM and the secret SMTP_PASSWORD.
+ * Permanent failures are recorded on the document and not retried. Transient
+ * SMTP failures make the invocation throw so the platform retries it, up to a
+ * bounded number of attempts (see lib/mailSender.js).
+ */
+export const sendMail = onDocumentCreated(
+  {
+    document: 'mail/{mailId}',
+    region: 'us-central1',
+    secrets: [smtpPassword],
+    // Keep below the claim lease in lib/mailSender.js
+    timeoutSeconds: 60,
+    retry: true
+  },
+  (event) => handleMailCreated(event, {
+    user: smtpUser.value(),
+    password: smtpPassword.value(),
+    from: mailFrom.value()
+  })
 );

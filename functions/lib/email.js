@@ -1,13 +1,13 @@
 /**
- * Email utilities for sending notifications via Firebase Trigger Email Extension.
+ * Email utilities for sending notifications via the 'sendMail' Cloud Function.
  * 
  * This module writes documents to the 'mail' collection in Firestore,
- * which are then processed by the Firebase Trigger Email extension.
+ * which are then delivered by the sendMail function (see mailSender.js).
  */
 
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
-// Collection name that the Firebase Trigger Email extension watches
+// Collection name that the sendMail function watches
 const MAIL_COLLECTION = 'mail';
 
 // Maximum length for note content preview in emails
@@ -232,7 +232,7 @@ If you did not expect this email, you can safely ignore it.`;
 
 /**
  * Writes a share notification email to the mail collection.
- * The Firebase Trigger Email extension will process this and send the email.
+ * The sendMail function will process this and send the email.
  * 
  * @param {string} recipientEmail - Email address of the recipient
  * @param {Object} noteData - The note data from Firestore
@@ -272,7 +272,7 @@ export async function writeShareNotificationEmail(recipientEmail, noteData, note
   const html = generateHtmlTemplate(templateParams);
   const text = generateTextTemplate(templateParams);
   
-  // Create the mail document for Firebase Trigger Email extension
+  // Create the mail document for the sendMail function
   const mailDoc = {
     to: recipientEmail,
     message: {

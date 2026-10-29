@@ -71,7 +71,7 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid;
     }
     
-    // Mail collection - used by Firebase Trigger Email extension
+    // Mail collection - delivered by the sendMail Cloud Function
     // Only Cloud Functions (Admin SDK) can write to this collection
     // Regular users should not have direct access
     match /mail/{mailId} {
