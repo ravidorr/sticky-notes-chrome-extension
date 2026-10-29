@@ -68,7 +68,8 @@ Extension code is:
   `manifest.json`, `icons/icon16.png`, `icon32.png`, `icon48.png`,
   `icon128.png` and `_locales/`. Other files there, such as
   `manifest.edge.json` (Edge only) and `icons/icon16.svg`, never ship
-- the build configuration: `scripts/build.js`, `scripts/manifest-key.mjs` and
+- the build configuration: `scripts/build.js`, `scripts/manifest-build.mjs`,
+  `scripts/manifest-key.mjs` and
   `scripts/manifest-version.mjs`
   (`vite.config.js` is not included: the build runs Vite with `configFile: false`)
 - dependency changes in `package.json` (`dependencies`, `devDependencies`,

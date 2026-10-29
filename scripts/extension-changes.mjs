@@ -19,6 +19,7 @@ const PACKAGED_PUBLIC_FILE = /^public\/(manifest\.json|icons\/icon(16|32|48|128)
 // build runs Vite with configFile: false, so vite.config.js is not one of them.
 const EXTENSION_BUILD_FILES = [
   'scripts/build.js',
+  'scripts/manifest-build.mjs',
   'scripts/manifest-key.mjs',
   'scripts/manifest-version.mjs'
 ];
