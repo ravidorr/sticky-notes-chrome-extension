@@ -7,18 +7,20 @@
  * the Cloud Functions are never shipped in the extension.
  */
 
-// Directories whose files are packaged into the extension
-const EXTENSION_DIRECTORIES = ['src/', 'public/'];
+// Source that is bundled into the extension
+const EXTENSION_DIRECTORIES = ['src/'];
 
-// Files that decide what gets built, even though they are not packaged
+// What copyStaticFiles() in scripts/build.js copies out of public/: the Chrome
+// manifest, the four PNG icons and the locales. Vite's own copying of public/ is
+// disabled, so any other file there (the Edge manifest, SVG icons) never ships.
+const PACKAGED_PUBLIC_FILE = /^public\/(manifest\.json|icons\/icon(16|32|48|128)\.png|_locales\/.+)$/;
+
+// Files that decide what gets built, even though they are not packaged. The
+// build runs Vite with configFile: false, so vite.config.js is not one of them.
 const EXTENSION_BUILD_FILES = [
-  'vite.config.js',
   'scripts/build.js',
   'scripts/manifest-version.mjs'
 ];
-
-// Inside the directories above, but not part of the Chrome package
-const NOT_EXTENSION_FILES = ['public/manifest.edge.json'];
 const TEST_FILE = /\.(test|spec)\.[cm]?js$/;
 
 // package.json fields that change what is bundled or how it is built
@@ -35,11 +37,12 @@ const MAX_LISTED_FILES = 5;
 export function isExtensionFile(filePath) {
   const normalized = filePath.replace(/\\/g, '/');
 
-  if (NOT_EXTENSION_FILES.includes(normalized) || TEST_FILE.test(normalized)) {
+  if (TEST_FILE.test(normalized)) {
     return false;
   }
 
   return EXTENSION_BUILD_FILES.includes(normalized) ||
+    PACKAGED_PUBLIC_FILE.test(normalized) ||
     EXTENSION_DIRECTORIES.some((directory) => normalized.startsWith(directory));
 }
 

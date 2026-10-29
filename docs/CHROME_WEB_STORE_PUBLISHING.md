@@ -57,10 +57,12 @@ enforces both directions on every pull request:
 Extension code is:
 
 - `src/`, except test files
-- `public/` (the manifest, locales and icons), except `public/manifest.edge.json`,
-  which only ships in the Edge package
-- the build configuration: `vite.config.js`, `scripts/build.js` and
-  `scripts/manifest-version.mjs`
+- the files in `public/` that `scripts/build.js` copies into the package:
+  `manifest.json`, `icons/icon16.png`, `icon32.png`, `icon48.png`,
+  `icon128.png` and `_locales/`. Other files there, such as
+  `manifest.edge.json` (Edge only) and `icons/icon16.svg`, never ship
+- the build configuration: `scripts/build.js` and `scripts/manifest-version.mjs`
+  (`vite.config.js` is not included: the build runs Vite with `configFile: false`)
 - dependency changes in `package.json` (`dependencies`, `devDependencies`,
   `optionalDependencies`, `peerDependencies`, `overrides`) or in
   `package-lock.json`, beyond the version of the package itself

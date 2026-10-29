@@ -23,15 +23,26 @@ describe('isExtensionFile', () => {
       'src/popup/popup.html',
       'public/manifest.json',
       'public/_locales/en/messages.json',
-      'public/icons/icon-128.png'
+      'public/icons/icon128.png',
+      'public/icons/icon16.png'
     ]) {
       assert.equal(isExtensionFile(file), true, file);
     }
   });
 
   it('counts the files that decide what gets built', () => {
-    for (const file of ['vite.config.js', 'scripts/build.js', 'scripts/manifest-version.mjs']) {
+    for (const file of ['scripts/build.js', 'scripts/manifest-version.mjs']) {
       assert.equal(isExtensionFile(file), true, file);
+    }
+  });
+
+  it('does not count vite.config.js, which the build ignores (configFile: false)', () => {
+    assert.equal(isExtensionFile('vite.config.js'), false);
+  });
+
+  it('does not count files in public/ that the build does not copy', () => {
+    for (const file of ['public/icons/icon16.svg', 'public/icons/icon64.png', 'public/README.md']) {
+      assert.equal(isExtensionFile(file), false, file);
     }
   });
 
