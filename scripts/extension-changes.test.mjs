@@ -31,7 +31,7 @@ describe('isExtensionFile', () => {
   });
 
   it('counts the files that decide what gets built', () => {
-    for (const file of ['scripts/build.js', 'scripts/manifest-key.mjs', 'scripts/manifest-version.mjs']) {
+    for (const file of ['scripts/build.js', 'scripts/manifest-build.mjs', 'scripts/manifest-key.mjs', 'scripts/manifest-version.mjs']) {
       assert.equal(isExtensionFile(file), true, file);
     }
   });

@@ -136,7 +136,7 @@ A Chrome extension OAuth client only works for the extension ID registered with
 it. The Chrome development build keeps the manifest `key`, so an unpacked copy
 always gets the same ID, `inhfieegmndamdggkoahplhomjbdjjhk`, from any folder and
 on any machine. The development client (`OAUTH_CLIENTS.chrome.development` in
-`scripts/build.js`) is registered for that ID, so sign-in works without creating
+`scripts/manifest-build.mjs`) is registered for that ID, so sign-in works without creating
 your own client. The production build removes the `key`, because the Chrome Web
 Store assigns the ID.
 
@@ -144,16 +144,27 @@ If you fork the project, generate your own key, put it in `public/manifest.json`
 register a Chrome Extension OAuth client for the ID it produces (see
 [Step 8](docs/FIREBASE_SETUP.md#step-8-set-up-google-cloud-oauth-for-chrome-identity)
 of the Firebase setup guide), set that client as
-`OAUTH_CLIENTS.chrome.development`, and update `DEVELOPMENT_EXTENSION_ID` in
+`OAUTH_CLIENTS.chrome.development` (in `scripts/manifest-build.mjs`), and update `DEVELOPMENT_EXTENSION_ID` in
 `scripts/manifest-key.mjs` to the new ID, which `scripts/manifest-key.test.mjs`
 checks against the key.
 
+For Edge, also create a Web application OAuth client in your own Google Cloud project,
+set it as `OAUTH_CLIENTS.edge.development` (and `production` if they share it) in
+`scripts/manifest-build.mjs`, put the same key in `public/manifest.edge.json`, and
+register `https://<your-extension-id>.chromiumapp.org/` on that client. See
+[Step 8.5](docs/FIREBASE_SETUP.md#85-edge-development-builds-web-application-client).
+
 Edge works differently. Its development and production builds share one Web
-application client (`OAUTH_CLIENTS.edge` in `scripts/build.js`) that signs in
-through `launchWebAuthFlow`. Its authorized redirect URL contains the extension
-ID (typically `https://<extension-id>.chromiumapp.org/`). The Edge build still
-drops the manifest `key`, so an unpacked Edge copy keeps a folder-derived ID and
-that redirect URL has to be registered for it.
+application client (`OAUTH_CLIENTS.edge` in `scripts/manifest-build.mjs`) that signs in
+through `launchWebAuthFlow`, whose authorized redirect URL contains the extension
+ID (`https://<extension-id>.chromiumapp.org/`). The Edge development build
+(`npm run build:dev:edge`) keeps the same manifest `key` as the Chrome development
+build, so an unpacked Edge copy also gets the ID `inhfieegmndamdggkoahplhomjbdjjhk`
+from any folder or machine, and the redirect URL
+`https://inhfieegmndamdggkoahplhomjbdjjhk.chromiumapp.org/` only has to be
+registered once on that client. The production Edge build drops the key. See
+[Step 8.5](docs/FIREBASE_SETUP.md#85-edge-development-builds-web-application-client)
+of the Firebase setup guide for the Google Cloud step and how to verify sign-in.
 
 After you rebuild, reload the extension in `chrome://extensions/` and refresh
 any open pages. A page that was open before the reload still runs the old

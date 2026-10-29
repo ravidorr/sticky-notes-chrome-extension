@@ -81,7 +81,7 @@ The extension uses environment variables for sensitive config (recommended for p
    ```
 
    The OAuth client ID is not read from `.env`. The build sets it from
-   `scripts/build.js` (see Step 9).
+   `scripts/manifest-build.mjs` (see Step 9).
 
 > **Note:** The `.env` file is gitignored. Only `.env.example` (with placeholder values) should be committed.
 
@@ -287,16 +287,89 @@ loaded from. Register the OAuth client for that ID. Compute it from the key
 If you use your own key, the ID changes, and the OAuth client has to be updated
 to match. Production builds drop the `key`, so the Web Store assigns that ID.
 
+### 8.5: Edge Development Builds (Web Application Client)
+
+Edge cannot use `getAuthToken`, so it signs in with `chrome.identity.launchWebAuthFlow`
+against the Web application OAuth client in `OAUTH_CLIENTS.edge` (`scripts/manifest-build.mjs`).
+That client only accepts redirect URIs that are registered on it, and the redirect
+URL contains the extension ID.
+
+The Edge development build (`npm run build:dev:edge`) keeps the same manifest `key`
+as the Chrome development build (it is also in `public/manifest.edge.json`), so an
+unpacked Edge copy has the ID `inhfieegmndamdggkoahplhomjbdjjhk` from any folder or
+machine. Edge is Chromium based and derives the ID from the key the same way as
+Chrome; `scripts/manifest-key.test.mjs` checks the key against that ID. The
+production Edge build drops the key, and Edge Add-ons assigns the ID.
+
+`chrome.identity.getRedirectURL()` in a Chromium browser returns
+`https://<extension-id>.chromiumapp.org/`, so the redirect URL for the development
+ID is:
+
+```text
+https://inhfieegmndamdggkoahplhomjbdjjhk.chromiumapp.org/
+```
+
+One-time step for the repository owner in Google Cloud. Do it before rebuilding
+an existing unpacked Edge copy with this change (before merging it, to be safe):
+until the redirect URI is registered, Edge development sign-in fails with
+`redirect_uri_mismatch`.
+
+1. Open the [Credentials page](https://console.cloud.google.com/apis/credentials?project=sticky-notes-chrome-extension)
+   of the `sticky-notes-chrome-extension` project.
+2. Open the Web application OAuth client whose ID is in `OAUTH_CLIENTS.edge`
+   (`413613230006-mu05ttk6b7kvu3j88fp514rkqmghrmiq`).
+3. Under **Authorized redirect URIs**, add the URL above, exactly, with the
+   trailing slash, and save. Changes can take a few minutes to apply.
+
+To verify in an unpacked Edge build:
+
+1. `npm run build:dev:edge`
+2. Open `edge://extensions/`, enable **Developer mode**, **Load unpacked**, select `dist/edge`.
+3. Check that the ID shown is `inhfieegmndamdggkoahplhomjbdjjhk`.
+4. In the extension's service worker console, run
+   `chrome.identity.getRedirectURL()` and check it matches the URL above.
+5. Sign in from the popup. A `redirect_uri_mismatch` error from Google means the
+   URL printed in step 4 is not registered on the client.
+
+An unpacked Edge copy that was loaded before this change gets the new ID after you
+rebuild and reload it. The redirect URI that was registered for its old,
+folder-derived ID can then be removed from the OAuth client, and data saved
+locally under the old ID does not appear under the new one.
+
+#### If you fork this project
+
+The Web application client in `OAUTH_CLIENTS.edge` belongs to the upstream Google
+Cloud project, so you cannot register redirect URIs on it. Use your own:
+
+1. In the Google Cloud project you chose in Step 1, create an OAuth client of type
+   **Web application** on the
+   [Credentials page](https://console.cloud.google.com/apis/credentials).
+2. Put its client ID into `OAUTH_CLIENTS.edge.development` in
+   `scripts/manifest-build.mjs`, and into `OAUTH_CLIENTS.edge.production` if the two
+   share one client, as they do today.
+3. Generate your own key and put the same value in the `key` of both
+   `public/manifest.json` and `public/manifest.edge.json`. The two have to stay
+   identical, which `scripts/manifest-key.test.mjs` checks.
+4. Update `DEVELOPMENT_EXTENSION_ID` in `scripts/manifest-key.mjs` to the ID your key
+   produces (`extensionIdFromKey` computes it). The redirect URL constant there
+   follows from it. Update the ID and redirect URL in the README and this guide,
+   which the same test checks, and the client ID in `scripts/manifest-build.test.mjs`.
+5. Register `https://<your-extension-id>.chromiumapp.org/` as an authorized redirect
+   URI on your Web application client, and verify as described above.
+
+The published (Edge Add-ons) build has a different, store-assigned ID, so its
+redirect URL has to be registered as well, separately.
+
 ---
 
 ## Step 9: Set the OAuth Client ID in the Build
 
 The build sets the OAuth client ID itself, from `OAUTH_CLIENTS` in
-`scripts/build.js`. It overwrites `oauth2.client_id` in `public/manifest.json`
+`scripts/manifest-build.mjs`. It overwrites `oauth2.client_id` in `public/manifest.json`
 and the `VITE_OAUTH_CLIENT_ID` value from `.env` on every build, so editing
 those two has no effect.
 
-Open `scripts/build.js` and set the `development` entry for Chrome:
+Open `scripts/manifest-build.mjs` and set the `development` entry for Chrome:
 
 ```js
 const OAUTH_CLIENTS = {
@@ -396,7 +469,7 @@ This usually means **Firestore indexes are missing**:
 | Item | Location | Status |
 |------|----------|--------|
 | Firebase config | `.env` file | [] |
-| OAuth client ID | `scripts/build.js` (`OAUTH_CLIENTS`) | [] |
+| OAuth client ID | `scripts/manifest-build.mjs` (`OAUTH_CLIENTS`) | [] |
 | Extension ID in Google Cloud | OAuth credentials | [] |
 | Extension domain in Firebase Auth | Authorized domains | [] |
 | Firestore security rules (notes + comments) | Firebase Console | [] |
