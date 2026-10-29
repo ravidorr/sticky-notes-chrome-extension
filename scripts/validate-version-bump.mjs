@@ -11,7 +11,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
+import { isEntryPoint } from './is-entry-point.mjs';
 import { createChromeManifestVersion } from './manifest-version.mjs';
 
 const VERSION_PARTS = 4;
@@ -70,6 +70,8 @@ export function validateVersionBump({ basePackage, currentPackage, currentPackag
 
   if (!currentVersion || !toParts(currentVersion)) {
     problems.push(`package.json version "${currentVersion}" is not a valid Chrome extension version.`);
+  } else if (!baseVersion) {
+    problems.push('The base package.json has no readable version, so the bump cannot be checked.');
   } else if (!isVersionBumped(baseVersion, currentVersion)) {
     problems.push(
       `package.json version ${currentVersion} must be higher than the base version ${baseVersion}. ` +
@@ -85,7 +87,18 @@ export function validateVersionBump({ basePackage, currentPackage, currentPackag
 }
 
 function readGitFile(revision, filePath) {
-  return execFileSync('git', ['show', `${revision}:${filePath}`], { encoding: 'utf8' });
+  try {
+    return execFileSync('git', ['show', `${revision}:${filePath}`], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+  } catch (error) {
+    const detail = error.stderr?.toString().trim() || error.message;
+    throw new Error(
+      `Cannot read ${filePath} at ${revision}: ${detail}. ` +
+      'Fetch the base branch with its history, for example with fetch-depth: 0.'
+    );
+  }
 }
 
 function runCli() {
@@ -96,11 +109,17 @@ function runCli() {
     process.exit(1);
   }
 
-  const result = validateVersionBump({
-    basePackage: readGitFile(baseRevision, 'package.json'),
-    currentPackage: readFileSync('package.json', 'utf8'),
-    currentPackageLock: readFileSync('package-lock.json', 'utf8')
-  });
+  let result;
+  try {
+    result = validateVersionBump({
+      basePackage: readGitFile(baseRevision, 'package.json'),
+      currentPackage: readFileSync('package.json', 'utf8'),
+      currentPackageLock: readFileSync('package-lock.json', 'utf8')
+    });
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
 
   if (!result.valid) {
     console.error('Version bump validation failed:');
@@ -111,6 +130,6 @@ function runCli() {
   process.stdout.write(`Version bumped: ${result.baseVersion} -> ${result.currentVersion}\n`);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isEntryPoint(import.meta.url)) {
   runCli();
 }

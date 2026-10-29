@@ -27,6 +27,7 @@ npm run dev              # Build + watch mode
 npm test                 # Run unit tests
 npm run test:watch       # Unit tests in watch mode
 npm run test:coverage    # Unit tests with coverage
+npm run test:scripts     # Node tests for scripts/*.test.mjs (release and CI validators)
 npm run test:e2e         # Playwright E2E tests
 
 # Linting
@@ -100,7 +101,7 @@ tests/
 └── e2e/                  # Playwright E2E tests (*.spec.js)
 
 functions/                # Firebase Cloud Functions
-scripts/                  # Build and utility scripts
+scripts/                  # Build and utility scripts, and the CI validators with their tests
 site/                     # Marketing website
 ```
 
@@ -272,7 +273,7 @@ Husky runs these checks before each commit:
 
 1. **Changelog check** - Required for major/minor version bumps
 2. **lint-staged** - ESLint, Stylelint, HTMLHint, Markdownlint
-3. **Unit tests** - All tests must pass
+3. **Unit tests** - All Jest tests must pass (the script tests, `npm run test:scripts`, run in CI only)
 
 To bypass (not recommended):
 

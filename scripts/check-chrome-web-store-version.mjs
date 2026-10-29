@@ -8,7 +8,7 @@
 
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
+import { isEntryPoint } from './is-entry-point.mjs';
 
 const API_BASE_URL = 'https://chromewebstore.googleapis.com/v2';
 const DEFAULT_MANIFEST_PATH = 'dist/chrome/manifest.json';
@@ -108,6 +108,6 @@ function runCli() {
     });
 }
 
-export const cliExecutionPromise = process.argv[1] === fileURLToPath(import.meta.url)
+export const cliExecutionPromise = isEntryPoint(import.meta.url)
   ? runCli()
   : undefined;
