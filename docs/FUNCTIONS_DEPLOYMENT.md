@@ -10,10 +10,7 @@ docs do not deploy.
 
 Because the workflow file itself is in the path filter, merging a pull request
 that adds or edits it also deploys. A new setup should finish the first-run
-checklist below first. A setup that already deploys needs only the
-`functions-production` environment to exist, and the steps in
-[Moving from the repository-wide binding](#moving-from-the-repository-wide-binding),
-before it merges a change that adds the environment to the job.
+checklist below first.
 
 ## First-run checklist
 
@@ -165,6 +162,10 @@ two are enforced outside the repository's files:
 
 The provider itself still trusts the whole repository, which the Chrome Web
 Store publisher relies on. Only the deploy service account is scoped further.
+Keep it that way: the deploy service account must have only the
+environment-scoped binding. A repository-wide `principalSet://.../attribute.repository/...`
+binding on it would let any workflow in the repository deploy, so remove one if
+you find it.
 The subject-scoped binding works because the provider maps `google.subject` to
 `assertion.sub`. Check the mapping with:
 
@@ -186,28 +187,6 @@ gh api -X POST repos/ravidorr/sticky-notes-chrome-extension/environments/functio
 {"name":"main","type":"branch"}
 JSON
 ```
-
-### Moving from the repository-wide binding
-
-This is a one-time migration. Delete this section once the old binding is
-removed.
-
-An older setup bound the service account to every workflow in the repository
-(`principalSet://.../attribute.repository/ravidorr/sticky-notes-chrome-extension`).
-Switch in this order, so the deploy keeps working throughout:
-
-1. Add the environment-scoped binding from the setup commands above. Keep the
-   old binding for now.
-2. Merge the change that adds `environment: functions-production` to the job.
-   The deploy then authenticates with the environment subject, which either
-   binding accepts.
-3. After one successful deploy, remove the old binding:
-
-   ```bash
-   gcloud iam service-accounts remove-iam-policy-binding "$SA" \
-     --role roles/iam.workloadIdentityUser --project "$PROJECT" \
-     --member "principalSet://iam.googleapis.com/projects/624640566757/locations/global/workloadIdentityPools/github-actions/attribute.repository/ravidorr/sticky-notes-chrome-extension"
-   ```
 
 ## Behavior to know about
 
