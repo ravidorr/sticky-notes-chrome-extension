@@ -35,6 +35,25 @@ jobs:
       - name: Lint Markdown
         run: npm run lint:md
 
+      - name: Validate functions lockfile
+        run: |
+          npm run test:functions-lockfile
+          npm run validate:functions-lockfile
+
+      - name: Setup Node.js for functions
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # Follows engines.node, as deploy-functions.yml does
+          node-version-file: functions/package.json
+
+      - name: Verify functions lockfile installs cleanly
+        # npm ci fails when the lockfile, including transitive packages, is out of sync;
+        # engine-strict makes it fail on a Node version that functions/ does not support
+        working-directory: functions
+        env:
+          npm_config_engine_strict: 'true'
+        run: npm ci --ignore-scripts
+
   test:
     name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest

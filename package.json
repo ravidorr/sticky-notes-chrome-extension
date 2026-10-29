@@ -20,8 +20,8 @@
     "preview": "vite preview",
     "serve:test": "npx serve tests/fixtures -l 3000",
     "lint": "npm run lint:js && npm run lint:css && npm run lint:html && npm run lint:md",
-    "lint:js": "eslint src/",
-    "lint:js:fix": "eslint src/ --fix",
+    "lint:js": "eslint src/ scripts/validate-functions-lockfile.mjs scripts/validate-functions-lockfile.test.mjs",
+    "lint:js:fix": "eslint src/ scripts/validate-functions-lockfile.mjs scripts/validate-functions-lockfile.test.mjs --fix",
     "lint:css": "stylelint \"site/**/*.css\" \"src/**/*.css\"",
     "lint:css:fix": "stylelint \"site/**/*.css\" \"src/**/*.css\" --fix",
     "lint:html": "htmlhint --rulesdir ./scripts/htmlhint-rules \"site/templates/*.html\" \"site/partials/*.html\" \"src/**/*.html\" \"public/**/*.html\"",
@@ -36,7 +36,9 @@
     "verify:version-bump": "node scripts/validate-version-bump.mjs origin/main",
     "prepare": "husky",
     "validate:security-policy": "node scripts/validate-security-policy-version.mjs",
-    "test:security-policy": "node --test scripts/validate-security-policy-version.test.mjs"
+    "test:security-policy": "node --test scripts/validate-security-policy-version.test.mjs",
+    "validate:functions-lockfile": "node scripts/validate-functions-lockfile.mjs",
+    "test:functions-lockfile": "node --test scripts/validate-functions-lockfile.test.mjs"
   },
   "repository": {
     "type": "git",
@@ -86,6 +88,9 @@
   },
   "lint-staged": {
     "src/**/*.js": [
+      "eslint --fix"
+    ],
+    "scripts/validate-functions-lockfile*.mjs": [
       "eslint --fix"
     ],
     "site/**/*.js": [
