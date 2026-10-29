@@ -150,10 +150,15 @@ checks against the key.
 
 Edge works differently. Its development and production builds share one Web
 application client (`OAUTH_CLIENTS.edge` in `scripts/build.js`) that signs in
-through `launchWebAuthFlow`. Its authorized redirect URL contains the extension
-ID (typically `https://<extension-id>.chromiumapp.org/`). The Edge build still
-drops the manifest `key`, so an unpacked Edge copy keeps a folder-derived ID and
-that redirect URL has to be registered for it.
+through `launchWebAuthFlow`, whose authorized redirect URL contains the extension
+ID (`https://<extension-id>.chromiumapp.org/`). The Edge development build
+(`npm run build:dev:edge`) keeps the same manifest `key` as the Chrome development
+build, so an unpacked Edge copy also gets the ID `inhfieegmndamdggkoahplhomjbdjjhk`
+from any folder or machine, and the redirect URL
+`https://inhfieegmndamdggkoahplhomjbdjjhk.chromiumapp.org/` only has to be
+registered once on that client. The production Edge build drops the key. See
+[Step 8.5](docs/FIREBASE_SETUP.md#85-edge-development-builds-web-application-client)
+of the Firebase setup guide for the Google Cloud step and how to verify sign-in.
 
 After you rebuild, reload the extension in `chrome://extensions/` and refresh
 any open pages. A page that was open before the reload still runs the old

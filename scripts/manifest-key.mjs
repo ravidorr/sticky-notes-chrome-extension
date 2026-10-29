@@ -1,15 +1,16 @@
 /**
  * Decides whether a build keeps the manifest `key`.
  *
- * The key fixes the extension ID. The Chrome development build keeps it, so an
- * unpacked copy always gets the same ID (see DEVELOPMENT_EXTENSION_ID) and the
- * development OAuth client, which is registered for that ID, works from any
- * folder or machine. Production builds drop it, because the Chrome Web Store
- * assigns the ID and does not accept a key. Edge never keeps the key here: its
- * web client is registered by redirect URL (https://<extension-id>.chromiumapp.org/),
- * so an unpacked Edge build still has a folder-derived ID and that redirect has to
- * be registered for it. Keeping the key for Edge too would fix that, but it is not
- * done yet.
+ * The key fixes the extension ID. Development builds of both browsers keep it,
+ * so an unpacked copy always gets the same ID (see DEVELOPMENT_EXTENSION_ID) from
+ * any folder or machine. Chrome's development OAuth client is registered for that
+ * ID. Edge signs in with launchWebAuthFlow against a Web application client, which
+ * is registered by redirect URL (see DEVELOPMENT_EDGE_REDIRECT_URL), so a stable ID
+ * means that redirect only has to be registered once. Edge uses the same key as
+ * Chrome because both are Chromium and derive the ID from the key the same way; the
+ * two browsers never share a profile, so the same ID does not collide.
+ * Production builds drop the key, because the Chrome Web Store and Edge Add-ons
+ * assign the ID and do not accept a key.
  */
 
 import { createHash } from 'node:crypto';
@@ -18,8 +19,13 @@ import { createHash } from 'node:crypto';
 // client in scripts/build.js is registered for this ID.
 export const DEVELOPMENT_EXTENSION_ID = 'inhfieegmndamdggkoahplhomjbdjjhk';
 
+// What chrome.identity.getRedirectURL() returns for that ID in a Chromium browser
+// (https://<extension-id>.chromiumapp.org/). Register it as an authorized redirect
+// URI on the Edge Web application OAuth client.
+export const DEVELOPMENT_EDGE_REDIRECT_URL = `https://${DEVELOPMENT_EXTENSION_ID}.chromiumapp.org/`;
+
 export function keepsManifestKey(browser, buildEnv) {
-  return browser === 'chrome' && buildEnv === 'development';
+  return (browser === 'chrome' || browser === 'edge') && buildEnv === 'development';
 }
 
 /**

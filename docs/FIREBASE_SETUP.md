@@ -287,6 +287,50 @@ loaded from. Register the OAuth client for that ID. Compute it from the key
 If you use your own key, the ID changes, and the OAuth client has to be updated
 to match. Production builds drop the `key`, so the Web Store assigns that ID.
 
+### 8.5: Edge Development Builds (Web Application Client)
+
+Edge cannot use `getAuthToken`, so it signs in with `chrome.identity.launchWebAuthFlow`
+against the Web application OAuth client in `OAUTH_CLIENTS.edge` (`scripts/build.js`).
+That client only accepts redirect URIs that are registered on it, and the redirect
+URL contains the extension ID.
+
+The Edge development build (`npm run build:dev:edge`) keeps the same manifest `key`
+as the Chrome development build (it is also in `public/manifest.edge.json`), so an
+unpacked Edge copy has the ID `inhfieegmndamdggkoahplhomjbdjjhk` from any folder or
+machine. Edge is Chromium based and derives the ID from the key the same way as
+Chrome; `scripts/manifest-key.test.mjs` checks the key against that ID. The
+production Edge build drops the key, and Edge Add-ons assigns the ID.
+
+`chrome.identity.getRedirectURL()` in a Chromium browser returns
+`https://<extension-id>.chromiumapp.org/`, so the redirect URL for the development
+ID is:
+
+```text
+https://inhfieegmndamdggkoahplhomjbdjjhk.chromiumapp.org/
+```
+
+One-time step for the repository owner in Google Cloud:
+
+1. Open the [Credentials page](https://console.cloud.google.com/apis/credentials?project=sticky-notes-chrome-extension)
+   of the `sticky-notes-chrome-extension` project.
+2. Open the Web application OAuth client whose ID is in `OAUTH_CLIENTS.edge`
+   (`413613230006-mu05ttk6b7kvu3j88fp514rkqmghrmiq`).
+3. Under **Authorized redirect URIs**, add the URL above, exactly, with the
+   trailing slash, and save. Changes can take a few minutes to apply.
+
+To verify in an unpacked Edge build:
+
+1. `npm run build:dev:edge`
+2. Open `edge://extensions/`, enable **Developer mode**, **Load unpacked**, select `dist/edge`.
+3. Check that the ID shown is `inhfieegmndamdggkoahplhomjbdjjhk`.
+4. In the extension's service worker console, run
+   `chrome.identity.getRedirectURL()` and check it matches the URL above.
+5. Sign in from the popup. A `redirect_uri_mismatch` error from Google means the
+   URL printed in step 4 is not registered on the client.
+
+The published (Edge Add-ons) build has a different, store-assigned ID, so its
+redirect URL has to be registered as well, separately.
+
 ---
 
 ## Step 9: Set the OAuth Client ID in the Build

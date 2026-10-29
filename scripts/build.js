@@ -98,8 +98,8 @@ function copyStaticFiles() {
   manifest.version = manifestVersion;
   manifest.version_name = version;
   
-  // The 'key' field fixes the extension ID. Only Chrome development builds keep it;
-  // the Chrome Web Store does not allow it in a package.
+  // The 'key' field fixes the extension ID. Only development builds keep it;
+  // neither the Chrome Web Store nor Edge Add-ons allows it in a package.
   if (!keepsManifestKey(targetBrowser, buildEnv)) {
     delete manifest.key;
   }

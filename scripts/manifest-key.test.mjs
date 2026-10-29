@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
+  DEVELOPMENT_EDGE_REDIRECT_URL,
   DEVELOPMENT_EXTENSION_ID,
   extensionIdFromKey,
   keepsManifestKey
@@ -11,11 +12,15 @@ const chromeManifest = JSON.parse(
   readFileSync(new URL('../public/manifest.json', import.meta.url), 'utf8')
 );
 
+const edgeManifest = JSON.parse(
+  readFileSync(new URL('../public/manifest.edge.json', import.meta.url), 'utf8')
+);
+
 describe('keepsManifestKey', () => {
-  it('keeps the key only in Chrome development builds', () => {
+  it('keeps the key only in development builds', () => {
     assert.equal(keepsManifestKey('chrome', 'development'), true);
     assert.equal(keepsManifestKey('chrome', 'production'), false);
-    assert.equal(keepsManifestKey('edge', 'development'), false);
+    assert.equal(keepsManifestKey('edge', 'development'), true);
     assert.equal(keepsManifestKey('edge', 'production'), false);
   });
 });
@@ -27,5 +32,22 @@ describe('extensionIdFromKey', () => {
 
   it('gives the committed manifest key the development extension ID', () => {
     assert.equal(extensionIdFromKey(chromeManifest.key), DEVELOPMENT_EXTENSION_ID);
+  });
+});
+
+describe('Edge development extension ID', () => {
+  it('uses the same key in the Edge manifest as in the Chrome manifest', () => {
+    assert.equal(edgeManifest.key, chromeManifest.key);
+  });
+
+  it('gives the Edge manifest key the development extension ID', () => {
+    assert.equal(extensionIdFromKey(edgeManifest.key), DEVELOPMENT_EXTENSION_ID);
+  });
+
+  it('names the redirect URL that Edge sign-in uses', () => {
+    assert.equal(
+      DEVELOPMENT_EDGE_REDIRECT_URL,
+      'https://inhfieegmndamdggkoahplhomjbdjjhk.chromiumapp.org/'
+    );
   });
 });
