@@ -15,7 +15,7 @@ jest.unstable_mockModule('firebase-admin/firestore', () => ({
 }));
 
 // Import after mocking
-const { writeShareNotificationEmail, _testHelpers } = await import('../../functions/lib/email.js');
+const { writeShareNotificationEmail, MailValidationError, _testHelpers } = await import('../../functions/lib/email.js');
 const {
   extractDomain,
   truncateContent,
@@ -217,6 +217,112 @@ describe('Email Module', () => {
       expect(result).toBe('mail-doc-123');
       expect(localThis.mockDb.collection).toHaveBeenCalledWith(MAIL_COLLECTION);
       expect(localThis.mockCollection.add).toHaveBeenCalledTimes(1);
+    });
+
+    it('should create the document under a given mail ID so a retry does not queue a second email', async () => {
+      const create = jest.fn().mockResolvedValue({});
+      const doc = jest.fn().mockReturnValue({ create });
+      localThis.mockCollection.doc = doc;
+
+      const result = await writeShareNotificationEmail(
+        localThis.recipientEmail,
+        localThis.noteData,
+        localThis.noteId,
+        { ...localThis.deps, mailId: 'stable-id' }
+      );
+
+      expect(result).toBe('stable-id');
+      expect(doc).toHaveBeenCalledWith('stable-id');
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ to: localThis.recipientEmail }));
+      expect(localThis.mockCollection.add).not.toHaveBeenCalled();
+    });
+
+    it('should treat an already existing mail document as queued', async () => {
+      for (const code of [6, 'already-exists']) {
+        const create = jest.fn().mockRejectedValue(Object.assign(new Error('exists'), { code }));
+        localThis.mockCollection.doc = jest.fn().mockReturnValue({ create });
+
+        await expect(writeShareNotificationEmail(
+          localThis.recipientEmail,
+          localThis.noteData,
+          localThis.noteId,
+          { ...localThis.deps, mailId: 'stable-id' }
+        )).resolves.toBe('stable-id');
+      }
+    });
+
+    it('should write the same document structure under a given mail ID', async () => {
+      const create = jest.fn().mockResolvedValue({});
+      localThis.mockCollection.doc = jest.fn().mockReturnValue({ create });
+
+      await writeShareNotificationEmail(
+        localThis.recipientEmail,
+        localThis.noteData,
+        localThis.noteId,
+        { ...localThis.deps, mailId: 'stable-id' }
+      );
+
+      const doc = create.mock.calls[0][0];
+      expect(doc.to).toBe(localThis.recipientEmail);
+      expect(doc.message.subject).toContain('shared a note with you');
+      expect(doc.message.html).toBeDefined();
+      expect(doc.message.text).toBeDefined();
+      expect(doc.metadata).toEqual(expect.objectContaining({
+        type: 'share_notification',
+        noteId: localThis.noteId,
+        recipientEmail: localThis.recipientEmail
+      }));
+    });
+
+    it('should rethrow every error other than an existing document, and never fall back to add()', async () => {
+      for (const error of [
+        Object.assign(new Error('down'), { code: 14 }),
+        Object.assign(new Error('denied'), { code: 7 }),
+        Object.assign(new Error('denied'), { code: 'permission-denied' }),
+        Object.assign(new Error('odd'), { code: '6' }),
+        new Error('no code')
+      ]) {
+        const create = jest.fn().mockRejectedValue(error);
+        localThis.mockCollection.doc = jest.fn().mockReturnValue({ create });
+
+        await expect(writeShareNotificationEmail(
+          localThis.recipientEmail,
+          localThis.noteData,
+          localThis.noteId,
+          { ...localThis.deps, mailId: 'stable-id' }
+        )).rejects.toBe(error);
+      }
+      expect(localThis.mockCollection.add).not.toHaveBeenCalled();
+    });
+
+    it('should reject note fields of the wrong type as permanent, not as a TypeError', async () => {
+      for (const noteData of [
+        { ...localThis.noteData, ownerEmail: 42 },
+        { ...localThis.noteData, ownerEmail: { email: 'x' } },
+        { ...localThis.noteData, content: 123 },
+        { ...localThis.noteData, url: ['https://example.com'] }
+      ]) {
+        await expect(writeShareNotificationEmail(
+          localThis.recipientEmail, noteData, localThis.noteId, localThis.deps
+        )).rejects.toBeInstanceOf(MailValidationError);
+      }
+      expect(localThis.mockCollection.add).not.toHaveBeenCalled();
+    });
+
+    it('should accept a note without content or url', async () => {
+      await expect(writeShareNotificationEmail(
+        localThis.recipientEmail, { ownerEmail: 'owner@example.com' }, localThis.noteId, localThis.deps
+      )).resolves.toBe('mail-doc-123');
+    });
+
+    it('should reject input that can never produce an email with a MailValidationError', async () => {
+      await expect(writeShareNotificationEmail('', localThis.noteData, localThis.noteId, localThis.deps))
+        .rejects.toBeInstanceOf(MailValidationError);
+      await expect(writeShareNotificationEmail(localThis.recipientEmail, null, localThis.noteId, localThis.deps))
+        .rejects.toBeInstanceOf(MailValidationError);
+      await expect(writeShareNotificationEmail(
+        localThis.recipientEmail, { content: 'x' }, localThis.noteId, localThis.deps
+      )).rejects.toBeInstanceOf(MailValidationError);
     });
 
     it('should create mail document with correct structure', async () => {

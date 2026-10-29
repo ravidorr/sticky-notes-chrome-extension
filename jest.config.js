@@ -3,8 +3,11 @@ export default {
   testEnvironment: 'jsdom',
   moduleFileExtensions: ['js', 'mjs'],
   testMatch: ['**/tests/unit/**/*.test.js'],
+  // Claude Code keeps session worktrees under .claude/worktrees; they are copies of this repo
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/'],
   transform: {},
   moduleNameMapper: {
+    '^firebase-admin/firestore$': '<rootDir>/tests/mocks/firebaseAdminFirestore.js',
     '^(\\.{1,2}/.*)\\.js$': '$1'
   },
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],

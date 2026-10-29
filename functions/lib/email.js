@@ -231,6 +231,23 @@ If you did not expect this email, you can safely ignore it.`;
 }
 
 /**
+ * Thrown when the input can never produce an email (no recipient, no note data,
+ * no owner address). Retrying it would fail the same way, so it is the one kind
+ * of write failure the trigger does not retry.
+ */
+export class MailValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'MailValidationError';
+  }
+}
+
+// Firestore reports a duplicate create as gRPC status 6, or the string 'already-exists'
+function isAlreadyExistsError(error) {
+  return error?.code === 6 || error?.code === 'already-exists';
+}
+
+/**
  * Writes a share notification email to the mail collection.
  * The sendMail function will process this and send the email.
  * 
@@ -240,23 +257,41 @@ If you did not expect this email, you can safely ignore it.`;
  * @param {string} noteData.url - URL where note is attached
  * @param {string} noteData.ownerEmail - Email of note owner
  * @param {string} noteId - The note's document ID
- * @param {Object} deps - Optional dependencies for testing
- * @returns {Promise<string>} The document ID of the created mail document
+ * @param {Object} deps - Optional overrides
+ * @param {Object} [deps.db] - Firestore instance (for testing)
+ * @param {Function} [deps.serverTimestamp] - Timestamp factory (for testing)
+ * @param {string} [deps.mailId] - Deterministic mail document ID. When set, the
+ *   document is created only if it does not exist yet, so retries are safe.
+ *   An existing document is treated as already queued by an earlier attempt;
+ *   delivering it, and recovering a failed delivery, is the job of sendMail.
+ * @returns {Promise<string>} The ID of the mail document, newly created or
+ *   already queued by an earlier attempt
+ * @throws {MailValidationError} When the input can never produce an email
+ * @throws {Error} Any Firestore error other than an already existing document
  */
 export async function writeShareNotificationEmail(recipientEmail, noteData, noteId, deps = {}) {
   const db = deps.db || getFirestore();
   
   // Validate inputs
   if (!recipientEmail || typeof recipientEmail !== 'string') {
-    throw new Error('Recipient email is required');
+    throw new MailValidationError('Recipient email is required');
   }
   
   if (!noteData || typeof noteData !== 'object') {
-    throw new Error('Note data is required');
+    throw new MailValidationError('Note data is required');
   }
   
-  if (!noteData.ownerEmail) {
-    throw new Error('Owner email is required in note data');
+  if (!noteData.ownerEmail || typeof noteData.ownerEmail !== 'string') {
+    throw new MailValidationError('Owner email is required in note data');
+  }
+
+  // The templates call string methods on these fields, so a wrong type would
+  // throw the same TypeError on every attempt
+  for (const field of ['content', 'url']) {
+    const value = noteData[field];
+    if (value !== undefined && value !== null && typeof value !== 'string') {
+      throw new MailValidationError(`Note ${field} must be a string`);
+    }
   }
   
   const ownerEmail = noteData.ownerEmail;
@@ -267,10 +302,17 @@ export async function writeShareNotificationEmail(recipientEmail, noteData, note
   // Generate email subject
   const subject = `${ownerEmail} shared a note with you on ${domain}`;
   
-  // Generate email body templates
+  // Generate email body templates. Any failure here comes from the note data, not
+  // from Firestore, so retrying cannot help.
   const templateParams = { ownerEmail, noteContent, noteUrl, domain };
-  const html = generateHtmlTemplate(templateParams);
-  const text = generateTextTemplate(templateParams);
+  let html;
+  let text;
+  try {
+    html = generateHtmlTemplate(templateParams);
+    text = generateTextTemplate(templateParams);
+  } catch (error) {
+    throw new MailValidationError(`Could not build the share email: ${error.message}`);
+  }
   
   // Create the mail document for the sendMail function
   const mailDoc = {
@@ -290,6 +332,20 @@ export async function writeShareNotificationEmail(recipientEmail, noteData, note
     }
   };
   
+  // With a deterministic ID the write is idempotent: a retried trigger finds the
+  // document already there and does not queue a second email.
+  if (deps.mailId) {
+    try {
+      await db.collection(MAIL_COLLECTION).doc(deps.mailId).create(mailDoc);
+    } catch (error) {
+      if (!isAlreadyExistsError(error)) throw error;
+      console.log(`Share notification email for ${recipientEmail} was already queued, mail doc: ${deps.mailId}`);
+      return deps.mailId;
+    }
+    console.log(`Created share notification email for ${recipientEmail}, mail doc: ${deps.mailId}`);
+    return deps.mailId;
+  }
+
   // Write to the mail collection
   const mailRef = await db.collection(MAIL_COLLECTION).add(mailDoc);
   
