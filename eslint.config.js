@@ -83,7 +83,7 @@ export default [
   },
   {
     // Node.js configuration files
-    files: ['*.config.js', 'scripts/**/*.js'],
+    files: ['*.config.js', 'scripts/**/*.js', 'scripts/**/*.mjs'],
     languageOptions: {
       globals: {
         ...globals.node
