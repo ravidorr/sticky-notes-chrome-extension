@@ -226,6 +226,8 @@ git commit --no-verify -m "your message"
 
 Merging a pull request into `main` submits the Chrome build to the Chrome Web Store automatically, but only when the extension code changed. A pull request that changes the extension bumps the version, and one that does not leaves it alone, so documentation, CI, test, website and Cloud Functions changes never submit a release. See [docs/CHROME_WEB_STORE_PUBLISHING.md](docs/CHROME_WEB_STORE_PUBLISHING.md) for what counts as extension code, the version rules, and the required Google Cloud setup and repository variables.
 
+Every push to `main` that changes the version also submits the Edge build to Microsoft Edge Add-ons, once the Edge Publish API credentials are configured. Until then that step is skipped with a warning and the push is unaffected. See [docs/EDGE_ADDONS_PUBLISHING.md](docs/EDGE_ADDONS_PUBLISHING.md) for the one-time setup.
+
 ## Firebase Setup (Optional)
 
 To enable cloud sync and sharing features, see [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md) for detailed instructions.
