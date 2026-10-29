@@ -477,6 +477,8 @@ The function records its progress in the `delivery` field of each `mail` documen
 | `SUCCESS` | The email was accepted by the SMTP server (see `delivery.info`). |
 | `ERROR` | A permanent failure or the attempts ran out. See `delivery.error` and `delivery.code`. |
 
+Duplicate trigger deliveries never send twice. If the function dies, or a send times out, after the SMTP server accepted the message but before `SUCCESS` is recorded, the retry can send the same email again.
+
 ### Configuration Checklist for Email Notifications
 
 | Item | Location | Status |

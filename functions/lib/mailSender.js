@@ -17,6 +17,11 @@
  * - Transient SMTP failures are recorded as RETRY and the trigger rethrows so
  *   the platform retries, up to MAX_ATTEMPTS. Permanent failures are recorded
  *   as ERROR and not retried.
+ *
+ * Guarantee: duplicate trigger deliveries never send twice. Across crashes it
+ * is at-least-once: if an invocation dies, or a send times out, after the SMTP
+ * server accepted the message but before SUCCESS is recorded, the reclaim or
+ * retry can send the same email again. That is the cost of never losing one.
  */
 
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
