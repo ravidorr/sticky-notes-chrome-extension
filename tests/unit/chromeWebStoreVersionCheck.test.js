@@ -9,10 +9,13 @@ import { join } from 'node:path';
 
 const check = await import('../../scripts/check-chrome-web-store-version.mjs');
 
-const statusWith = (...versions) => ({
-  publishedItemRevisionStatus: {
-    distributionChannels: versions.map((crxVersion) => ({ crxVersion }))
-  }
+const channelsFor = (versions) => ({ distributionChannels: versions.map((crxVersion) => ({ crxVersion })) });
+
+const statusWith = (...versions) => ({ publishedItemRevisionStatus: channelsFor(versions) });
+
+const statusIn = (published, submitted) => ({
+  publishedItemRevisionStatus: channelsFor(published),
+  submittedItemRevisionStatus: channelsFor(submitted)
 });
 
 describe('readVersionFromManifest', () => {
@@ -52,23 +55,56 @@ describe('readPublishedCrxVersions', () => {
   });
 });
 
-describe('assertVersionNotPublished', () => {
-  it('should throw a clear error when the version is already published', () => {
-    expect(() => check.assertVersionNotPublished('1.0.0', statusWith('0.9.0', '1.0.0')))
-      .toThrow('already serves version 1.0.0 (published: 0.9.0, 1.0.0)');
+describe('readSubmittedCrxVersions', () => {
+  it('should return the versions of the revision that was submitted', () => {
+    expect(check.readSubmittedCrxVersions(statusIn(['1.0.0'], ['1.1.0']))).toEqual(['1.1.0']);
   });
 
-  it('should tell the user to bump the version', () => {
-    expect(() => check.assertVersionNotPublished('1.0.0', statusWith('1.0.0')))
-      .toThrow('Bump the version in package.json');
+  it('should return an empty list when nothing is in review', () => {
+    expect(check.readSubmittedCrxVersions(statusWith('1.0.0'))).toEqual([]);
+    expect(check.readSubmittedCrxVersions(undefined)).toEqual([]);
+  });
+});
+
+describe('compareManifestVersions', () => {
+  it('should compare numerically', () => {
+    expect(check.compareManifestVersions('1.20.10', '1.20.9')).toBeGreaterThan(0);
+    expect(check.compareManifestVersions('1.20.9', '1.20.10')).toBeLessThan(0);
+    expect(check.compareManifestVersions('1.20', '1.20.0')).toBe(0);
+  });
+});
+
+describe('decideSubmission', () => {
+  it('should submit a version the store does not have', () => {
+    expect(check.decideSubmission('1.1.0', statusWith('1.0.0'))).toEqual({
+      submit: true,
+      reason: 'Version 1.1.0 is new (published: 1.0.0; in review: none).'
+    });
   });
 
-  it('should return the published versions when the version is new', () => {
-    expect(check.assertVersionNotPublished('1.1.0', statusWith('1.0.0'))).toEqual(['1.0.0']);
+  it('should submit the first version when the store has none', () => {
+    expect(check.decideSubmission('1.0.0', {}).submit).toBe(true);
   });
 
-  it('should pass when the store has no published version', () => {
-    expect(check.assertVersionNotPublished('1.0.0', {})).toEqual([]);
+  it('should skip a version that is already published', () => {
+    const decision = check.decideSubmission('1.0.0', statusWith('0.9.0', '1.0.0'));
+
+    expect(decision.submit).toBe(false);
+    expect(decision.reason).toContain('already has version 1.0.0 (published: 0.9.0, 1.0.0; in review: none)');
+  });
+
+  it('should skip a version that is still in review', () => {
+    const decision = check.decideSubmission('1.1.0', statusIn(['1.0.0'], ['1.1.0']));
+
+    expect(decision.submit).toBe(false);
+    expect(decision.reason).toContain('in review: 1.1.0');
+  });
+
+  it('should throw when the store has a higher version, published or in review', () => {
+    expect(() => check.decideSubmission('1.0.0', statusWith('1.1.0')))
+      .toThrow('already has a higher version (1.1.0) than 1.0.0');
+    expect(() => check.decideSubmission('1.0.0', statusIn(['1.0.0'], ['1.1.0'])))
+      .toThrow('already has a higher version (1.1.0) than 1.0.0');
   });
 });
 
@@ -123,22 +159,38 @@ describe('runChromeWebStoreVersionCheck', () => {
     });
   };
 
-  it('should reject when the version is already published', async () => {
-    await expect(run('1.0.0', statusWith('1.0.0'))).rejects.toThrow('already serves version 1.0.0');
+  it('should skip without failing when the version is already published', async () => {
+    const result = await run('1.0.0', statusWith('1.0.0'));
+
+    expect(result.submit).toBe(false);
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining('Skipping submission: Chrome Web Store already has version 1.0.0'));
+  });
+
+  it('should skip when the version is already in review', async () => {
+    const result = await run('1.1.0', statusIn(['1.0.0'], ['1.1.0']));
+
+    expect(result.submit).toBe(false);
+  });
+
+  it('should reject when the store has a higher version', async () => {
+    await expect(run('1.0.0', statusWith('1.1.0'))).rejects.toThrow('already has a higher version (1.1.0)');
   });
 
   it('should resolve and log for a new version', async () => {
     await expect(run('1.1.0', statusWith('1.0.0'))).resolves.toEqual({
       packageVersion: '1.1.0',
-      publishedCrxVersions: ['1.0.0']
+      publishedCrxVersions: ['1.0.0'],
+      submittedCrxVersions: [],
+      submit: true,
+      reason: 'Version 1.1.0 is new (published: 1.0.0; in review: none).'
     });
-    expect(stdoutSpy).toHaveBeenCalledWith('Publishing 1.1.0 (store has: 1.0.0).\n');
+    expect(stdoutSpy).toHaveBeenCalledWith('Submitting: Version 1.1.0 is new (published: 1.0.0; in review: none).\n');
   });
 
   it('should report when the store has no published version', async () => {
     await run('1.0.0', {});
 
-    expect(stdoutSpy).toHaveBeenCalledWith('Publishing 1.0.0 (store has: none).\n');
+    expect(stdoutSpy).toHaveBeenCalledWith('Submitting: Version 1.0.0 is new (published: none; in review: none).\n');
   });
 
   it('should reject when the manifest has no version', async () => {

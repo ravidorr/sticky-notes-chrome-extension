@@ -209,7 +209,7 @@ git commit --no-verify -m "your message"
 
 ## Releasing
 
-Merging a pull request into `main` submits the Chrome build to the Chrome Web Store automatically. See [docs/CHROME_WEB_STORE_PUBLISHING.md](docs/CHROME_WEB_STORE_PUBLISHING.md) for the required Google Cloud setup and repository variables.
+Merging a pull request into `main` submits the Chrome build to the Chrome Web Store automatically, but only when the extension code changed. A pull request that changes the extension bumps the version, and one that does not leaves it alone, so documentation, CI, test, website and Cloud Functions changes never submit a release. See [docs/CHROME_WEB_STORE_PUBLISHING.md](docs/CHROME_WEB_STORE_PUBLISHING.md) for what counts as extension code, the version rules, and the required Google Cloud setup and repository variables.
 
 ## Firebase Setup (Optional)
 
