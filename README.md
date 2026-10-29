@@ -111,9 +111,13 @@ sticky-notes-chrome-extension/
 # Install dependencies
 npm install
 
-# Build the extension
-npm run build
+# Build the extension for local testing
+npm run build:dev:chrome
 ```
+
+`npm run build` builds the production package for both Chrome and Edge. Use
+`npm run build:dev:chrome` (or `npm run build:dev:edge`) when you load the
+extension locally.
 
 ### Load in Chrome
 
@@ -121,6 +125,15 @@ npm run build
 2. Enable "Developer mode" (toggle in top right)
 3. Click "Load unpacked"
 4. Select the `dist/chrome` folder
+
+Use the development build to sign in locally. The production build
+(`npm run build`) uses the Chrome Web Store OAuth client, which is tied to the
+published extension's ID, so a locally loaded copy fails to sign in with
+`bad client id`. The development build uses the development OAuth client.
+
+After you rebuild, reload the extension in `chrome://extensions/` and refresh
+any open pages. A page that was open before the reload still runs the old
+content script and fails with "Extension context invalidated".
 
 ### Development Commands
 
