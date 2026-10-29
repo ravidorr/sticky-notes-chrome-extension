@@ -11,7 +11,7 @@ const sources = { chrome: readManifest('manifest.json'), edge: readManifest('man
 
 // What the owner registers the redirect URI on (docs/FIREBASE_SETUP.md, Step 8.5)
 const EDGE_WEB_CLIENT = '413613230006-mu05ttk6b7kvu3j88fp514rkqmghrmiq.apps.googleusercontent.com';
-const EDGE_PRODUCTION_WEB_CLIENT = '413613230006-hd5340hlkdvg0ebgvmgd587a5fdsggn6.apps.googleusercontent.com';
+const EDGE_PRODUCTION_WEB_CLIENT = '413613230006-vo9qq87ol2tm4c249q1foq5ph5ujtf7l.apps.googleusercontent.com';
 
 describe('buildManifest', () => {
   for (const browser of ['chrome', 'edge']) {

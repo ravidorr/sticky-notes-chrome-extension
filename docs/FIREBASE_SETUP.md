@@ -359,8 +359,8 @@ Cloud project, so you cannot register redirect URIs on it. Use your own:
 
 The published (Edge Add-ons) build has a different, store-assigned ID, so its
 redirect URL has to be registered as well, separately. It uses its own Web
-application client, `OAUTH_CLIENTS.edge.production` (`sticky-notes-edge-extension`,
-`413613230006-hd5340hlkdvg0ebgvmgd587a5fdsggn6`). Register the store ID's redirect URL
+application client, `OAUTH_CLIENTS.edge.production` (`sticky-notes-edge-extension-prod`,
+`413613230006-vo9qq87ol2tm4c249q1foq5ph5ujtf7l`). Register the store ID's redirect URL
 on that client, not on the development one.
 
 ---
