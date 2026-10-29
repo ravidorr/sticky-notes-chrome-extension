@@ -295,6 +295,26 @@ describe('Email Module', () => {
       expect(localThis.mockCollection.add).not.toHaveBeenCalled();
     });
 
+    it('should reject note fields of the wrong type as permanent, not as a TypeError', async () => {
+      for (const noteData of [
+        { ...localThis.noteData, ownerEmail: 42 },
+        { ...localThis.noteData, ownerEmail: { email: 'x' } },
+        { ...localThis.noteData, content: 123 },
+        { ...localThis.noteData, url: ['https://example.com'] }
+      ]) {
+        await expect(writeShareNotificationEmail(
+          localThis.recipientEmail, noteData, localThis.noteId, localThis.deps
+        )).rejects.toBeInstanceOf(MailValidationError);
+      }
+      expect(localThis.mockCollection.add).not.toHaveBeenCalled();
+    });
+
+    it('should accept a note without content or url', async () => {
+      await expect(writeShareNotificationEmail(
+        localThis.recipientEmail, { ownerEmail: 'owner@example.com' }, localThis.noteId, localThis.deps
+      )).resolves.toBe('mail-doc-123');
+    });
+
     it('should reject input that can never produce an email with a MailValidationError', async () => {
       await expect(writeShareNotificationEmail('', localThis.noteData, localThis.noteId, localThis.deps))
         .rejects.toBeInstanceOf(MailValidationError);

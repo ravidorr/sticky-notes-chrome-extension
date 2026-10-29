@@ -281,8 +281,16 @@ export async function writeShareNotificationEmail(recipientEmail, noteData, note
     throw new MailValidationError('Note data is required');
   }
   
-  if (!noteData.ownerEmail) {
+  if (!noteData.ownerEmail || typeof noteData.ownerEmail !== 'string') {
     throw new MailValidationError('Owner email is required in note data');
+  }
+
+  // The templates call string methods on these fields, so a wrong type would
+  // throw the same TypeError on every attempt
+  for (const field of ['content', 'url']) {
+    if (noteData[field] != null && typeof noteData[field] !== 'string') {
+      throw new MailValidationError(`Note ${field} must be a string`);
+    }
   }
   
   const ownerEmail = noteData.ownerEmail;
@@ -293,10 +301,17 @@ export async function writeShareNotificationEmail(recipientEmail, noteData, note
   // Generate email subject
   const subject = `${ownerEmail} shared a note with you on ${domain}`;
   
-  // Generate email body templates
+  // Generate email body templates. Any failure here comes from the note data, not
+  // from Firestore, so retrying cannot help.
   const templateParams = { ownerEmail, noteContent, noteUrl, domain };
-  const html = generateHtmlTemplate(templateParams);
-  const text = generateTextTemplate(templateParams);
+  let html;
+  let text;
+  try {
+    html = generateHtmlTemplate(templateParams);
+    text = generateTextTemplate(templateParams);
+  } catch (error) {
+    throw new MailValidationError(`Could not build the share email: ${error.message}`);
+  }
   
   // Create the mail document for the sendMail function
   const mailDoc = {
