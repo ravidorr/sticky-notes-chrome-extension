@@ -166,8 +166,9 @@ service cloud.firestore {
       }
     }
     
-    // Mail collection - used by the sendMail Cloud Function
+    // Mail collection - delivered by the sendMail Cloud Function
     // Only Cloud Functions (Admin SDK) can write to this collection
+    // Regular users should not have direct access
     match /mail/{mailId} {
       allow read, write: if false;
     }
@@ -434,7 +435,9 @@ To add a comment:
 
 ## Email Notifications for Shared Notes (Optional)
 
-When you share a note with someone, an email notification is sent automatically. The `onNoteShared` function queues a document in the `mail` collection and the `sendMail` Cloud Function (`functions/lib/mailSender.js`) delivers it over SMTP. This replaces the Firebase Trigger Email extension, which is being decommissioned on March 31, 2027.
+When you share a note with someone, an email notification is sent automatically. The `onNoteShared` function queues a document in the `mail` collection and the `sendMail` Cloud Function (`functions/lib/mailSender.js`) delivers it over SMTP. This replaces the Firebase Trigger Email extension.
+
+Only documents created after `sendMail` is deployed are processed. If you are migrating from the extension, uninstall it right after deploying, or each share sends two emails.
 
 ### Configure the Mail Function
 
@@ -444,12 +447,16 @@ When you share a note with someone, an email notification is sent automatically.
    firebase functions:secrets:set SMTP_PASSWORD
    ```
 
-2. Create `functions/.env.sticky-notes-chrome-extension` (not committed) with:
+   This needs the Secret Manager API and the Blaze plan. The secret is bound to the function at deploy time, which is what lets it read the value.
+
+2. Create `functions/.env.<your-project-id>` (or `functions/.env.<alias>` if you use a `.firebaserc` alias). It is not committed. For this project the ID is `sticky-notes-chrome-extension`:
 
    ```text
    SMTP_USER=your-email@gmail.com
    MAIL_FROM=your-email@gmail.com
    ```
+
+   With Gmail, `MAIL_FROM` must be the authenticated account or a configured "Send mail as" alias, otherwise Gmail rewrites the From address. If the file is missing, `firebase deploy` prompts for these values, and a non-interactive deploy such as CI fails.
 
 3. Deploy:
 
@@ -457,14 +464,25 @@ When you share a note with someone, an email notification is sent automatically.
    firebase deploy --only functions
    ```
 
-The function uses `smtp.gmail.com:465`. To use another provider, change `SMTP_HOST` and `SMTP_PORT` in `functions/lib/mailSender.js`.
+The function uses `smtp.gmail.com:465` with implicit TLS. To use another provider, edit `SMTP_HOST`, `SMTP_PORT` and the `secure` flag in `functions/lib/mailSender.js`. Only implicit-TLS endpoints (port 465) work as written.
+
+### How Delivery Works
+
+The function records its progress in the `delivery` field of each `mail` document:
+
+| `delivery.state` | Meaning |
+|------------------|---------|
+| `PROCESSING` | An invocation is sending the email. A claim older than 3 minutes is treated as abandoned and reclaimed. |
+| `RETRY` | A temporary failure (network error or a 4xx SMTP reply). The function retries, up to 5 attempts. |
+| `SUCCESS` | The email was accepted by the SMTP server (see `delivery.info`). |
+| `ERROR` | A permanent failure or the attempts ran out. See `delivery.error` and `delivery.code`. |
 
 ### Configuration Checklist for Email Notifications
 
 | Item | Location | Status |
 |------|----------|--------|
 | `SMTP_PASSWORD` secret set | `firebase functions:secrets:set` | [] |
-| `SMTP_USER` and `MAIL_FROM` set | `functions/.env.<project>` | [] |
+| `SMTP_USER` and `MAIL_FROM` set | `functions/.env.<your-project-id>` | [] |
 | `sendMail` function deployed | `firebase deploy --only functions` | [] |
 | `mail` collection rules deployed | `firestore.rules` | [] |
 
@@ -479,18 +497,19 @@ The function uses `smtp.gmail.com:465`. To use another provider, change `SMTP_HO
 
 **Emails not sending:**
 
-- Check the `mail` collection in Firestore for error status on documents
-- Verify SMTP credentials are correct
-- Ensure sender email is verified with your email provider
+- Check `delivery.state` and `delivery.error` on the document in the `mail` collection
+- `SMTP is not configured` means `SMTP_USER`, `SMTP_PASSWORD` or `MAIL_FROM` is unset
+- `EAUTH` or `Invalid login` means the app password or `SMTP_USER` is wrong
+- Check the `sendMail` logs with `firebase functions:log --only sendMail`
+
+**`sendMail` not running:**
+
+- Confirm the function is deployed in Firebase Console > Functions
+- Confirm the `SMTP_PASSWORD` secret has a version (`firebase functions:secrets:get SMTP_PASSWORD`)
+- Documents created before the function was deployed are never processed
 
 **Emails going to spam:**
 
 - Use a custom domain instead of gmail.com for sending
 - Set up SPF, DKIM, and DMARC records for your domain
 - Avoid spam trigger words in email content
-
-**Extension not processing:**
-
-- Check Firebase Functions logs for errors
-- Ensure the extension has proper permissions
-- Verify the `mail` collection name matches your configuration
