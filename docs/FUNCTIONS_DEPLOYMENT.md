@@ -80,15 +80,22 @@ gcloud secrets add-iam-policy-binding SMTP_PASSWORD \
   --project "$PROJECT"
 ```
 
-Then allow this repository to impersonate the service account through the
-Workload Identity pool already used for publishing. Replace `<pool>` with the
-pool name:
+The Workload Identity pool is shared with Chrome Web Store publishing. It lives
+in the `shortcuts-for-messages` Google Cloud project (number `624640566757`,
+pool `github-actions`, provider `sticky-notes`), not in this Firebase project.
+A pool can impersonate a service account in another project, so the deploy
+service account stays here and only needs this binding. The provider is already
+restricted to this repository and maps `attribute.repository`:
 
 ```bash
 gcloud iam service-accounts add-iam-policy-binding "$SA" \
   --role roles/iam.workloadIdentityUser --project "$PROJECT" \
-  --member "principalSet://iam.googleapis.com/projects/413613230006/locations/global/workloadIdentityPools/<pool>/attribute.repository/ravidorr/sticky-notes-chrome-extension"
+  --member "principalSet://iam.googleapis.com/projects/624640566757/locations/global/workloadIdentityPools/github-actions/attribute.repository/ravidorr/sticky-notes-chrome-extension"
 ```
+
+If `gcloud` has a different active account or default project, add
+`--account` and `--project` to every command so nothing runs against the wrong
+project.
 
 The role list is a starting point. Google may ask for more or fewer
 permissions as the Firebase CLI changes, so read the first run's error, which
