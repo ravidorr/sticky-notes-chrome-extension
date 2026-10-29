@@ -5,8 +5,11 @@
  * unpacked copy always gets the same ID (see DEVELOPMENT_EXTENSION_ID) and the
  * development OAuth client, which is registered for that ID, works from any
  * folder or machine. Production builds drop it, because the Chrome Web Store
- * assigns the ID and does not accept a key. Edge signs in through a web
- * redirect that does not depend on a fixed ID, so it never keeps the key.
+ * assigns the ID and does not accept a key. Edge never keeps the key here: its
+ * web client is registered by redirect URL (https://<extension-id>.chromiumapp.org/),
+ * so an unpacked Edge build still has a folder-derived ID and that redirect has to
+ * be registered for it. Keeping the key for Edge too would fix that, but it is not
+ * done yet.
  */
 
 import { createHash } from 'node:crypto';

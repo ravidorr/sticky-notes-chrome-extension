@@ -143,14 +143,17 @@ Store assigns the ID.
 If you fork the project, generate your own key, put it in `public/manifest.json`,
 register a Chrome Extension OAuth client for the ID it produces (see
 [Step 8](docs/FIREBASE_SETUP.md#step-8-set-up-google-cloud-oauth-for-chrome-identity)
-of the Firebase setup guide), and set that client as
-`OAUTH_CLIENTS.chrome.development`.
+of the Firebase setup guide), set that client as
+`OAUTH_CLIENTS.chrome.development`, and update `DEVELOPMENT_EXTENSION_ID` in
+`scripts/manifest-key.mjs` to the new ID, which `scripts/manifest-key.test.mjs`
+checks against the key.
 
 Edge works differently. Its development and production builds share one Web
 application client (`OAUTH_CLIENTS.edge` in `scripts/build.js`) that signs in
 through `launchWebAuthFlow`. Its authorized redirect URL contains the extension
-ID (typically `https://<extension-id>.chromiumapp.org/`), so it depends on the
-folder in the same way.
+ID (typically `https://<extension-id>.chromiumapp.org/`). The Edge build still
+drops the manifest `key`, so an unpacked Edge copy keeps a folder-derived ID and
+that redirect URL has to be registered for it.
 
 After you rebuild, reload the extension in `chrome://extensions/` and refresh
 any open pages. A page that was open before the reload still runs the old
