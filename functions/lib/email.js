@@ -230,6 +230,11 @@ This email was sent because someone shared a sticky note with you using the Stic
 If you did not expect this email, you can safely ignore it.`;
 }
 
+// Firestore reports a duplicate create as gRPC code 6 or 'already-exists'
+function isAlreadyExistsError(error) {
+  return error?.code === 6 || error?.code === 'already-exists';
+}
+
 /**
  * Writes a share notification email to the mail collection.
  * The sendMail function will process this and send the email.
@@ -241,6 +246,8 @@ If you did not expect this email, you can safely ignore it.`;
  * @param {string} noteData.ownerEmail - Email of note owner
  * @param {string} noteId - The note's document ID
  * @param {Object} deps - Optional dependencies for testing
+ * @param {string} [deps.mailId] - Deterministic mail document ID. When set, the
+ *   document is created only if it does not exist yet, so retries are safe.
  * @returns {Promise<string>} The document ID of the created mail document
  */
 export async function writeShareNotificationEmail(recipientEmail, noteData, noteId, deps = {}) {
@@ -290,6 +297,20 @@ export async function writeShareNotificationEmail(recipientEmail, noteData, note
     }
   };
   
+  // With a deterministic ID the write is idempotent: a retried trigger finds the
+  // document already there and does not queue a second email.
+  if (deps.mailId) {
+    try {
+      await db.collection(MAIL_COLLECTION).doc(deps.mailId).create(mailDoc);
+    } catch (error) {
+      if (!isAlreadyExistsError(error)) throw error;
+      console.log(`Share notification email for ${recipientEmail} was already queued, mail doc: ${deps.mailId}`);
+      return deps.mailId;
+    }
+    console.log(`Created share notification email for ${recipientEmail}, mail doc: ${deps.mailId}`);
+    return deps.mailId;
+  }
+
   // Write to the mail collection
   const mailRef = await db.collection(MAIL_COLLECTION).add(mailDoc);
   

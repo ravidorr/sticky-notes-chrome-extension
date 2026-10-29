@@ -14,7 +14,7 @@ jest.unstable_mockModule('firebase-admin/firestore', () => ({
   FieldValue: { serverTimestamp: jest.fn(() => ({ _type: 'serverTimestamp' })) }
 }));
 
-const { findNewlyShared, handleNoteShared } = await import('../../functions/lib/noteSharing.js');
+const { findNewlyShared, handleNoteShared, isTransientWriteError, mailIdFor } = await import('../../functions/lib/noteSharing.js');
 
 describe('noteSharing', () => {
   const localThis = {};
@@ -25,12 +25,13 @@ describe('noteSharing', () => {
     jest.spyOn(console, 'log').mockImplementation(() => {});
     getFirestore.mockReset();
     localThis.writeEmail = jest.fn().mockResolvedValue('mail-doc');
-    localThis.event = (before, after) => ({
+    localThis.event = (before, after, id) => ({
+      id,
       params: { noteId: 'note-1' },
       data: { before: { data: () => before }, after: { data: () => after } }
     });
-    localThis.handle = (before, after) => handleNoteShared(
-      localThis.event(before, after),
+    localThis.handle = (before, after, id) => handleNoteShared(
+      localThis.event(before, after, id),
       { writeShareNotificationEmail: localThis.writeEmail }
     );
   });
@@ -91,8 +92,8 @@ describe('noteSharing', () => {
 
       expect(result).toBeNull();
       expect(localThis.writeEmail).toHaveBeenCalledTimes(2);
-      expect(localThis.writeEmail).toHaveBeenCalledWith('a@example.com', after, 'note-1');
-      expect(localThis.writeEmail).toHaveBeenCalledWith('b@example.com', after, 'note-1');
+      expect(localThis.writeEmail).toHaveBeenCalledWith('a@example.com', after, 'note-1', {});
+      expect(localThis.writeEmail).toHaveBeenCalledWith('b@example.com', after, 'note-1', {});
       expect(console.log).toHaveBeenCalledWith('Queued share notifications for 2 of 2 user(s) on note note-1');
     });
 
@@ -158,6 +159,52 @@ describe('noteSharing', () => {
 
       expect(localThis.writeEmail).toHaveBeenCalledTimes(2);
       expect(console.log).toHaveBeenCalledWith('Queued share notifications for 1 of 2 user(s) on note note-1');
+    });
+
+    it('should give each recipient a stable mail ID derived from the event', async () => {
+      const after = { sharedWith: ['a@example.com', 'b@example.com'] };
+
+      await localThis.handle({ sharedWith: [] }, after, 'evt-1');
+      await localThis.handle({ sharedWith: [] }, after, 'evt-1');
+
+      const ids = localThis.writeEmail.mock.calls.map((call) => call[3].mailId);
+      expect(ids[0]).toBe(mailIdFor('evt-1', 'a@example.com'));
+      expect(ids[0]).toBe(ids[2]);
+      expect(ids[1]).toBe(ids[3]);
+      expect(ids[0]).not.toBe(ids[1]);
+    });
+
+    it('should use a different mail ID when the same address is shared again in a later event', () => {
+      expect(mailIdFor('evt-1', 'a@example.com')).not.toBe(mailIdFor('evt-2', 'a@example.com'));
+    });
+
+    it('should try every recipient, then throw so the platform retries, after a temporary failure', async () => {
+      const unavailable = Object.assign(new Error('unavailable'), { code: 14 });
+      localThis.writeEmail
+        .mockRejectedValueOnce(unavailable)
+        .mockResolvedValueOnce('mail-doc');
+
+      await expect(localThis.handle({ sharedWith: [] }, { sharedWith: ['a@example.com', 'b@example.com'] }, 'evt-1'))
+        .rejects.toThrow('1 failed temporarily, retrying');
+
+      expect(localThis.writeEmail).toHaveBeenCalledTimes(2);
+      expect(console.log).toHaveBeenCalledWith('Queued share notifications for 1 of 2 user(s) on note note-1');
+    });
+
+    it('should not retry a permanent failure', async () => {
+      localThis.writeEmail.mockRejectedValue(new Error('Owner email is required in note data'));
+
+      await expect(localThis.handle({ sharedWith: [] }, { sharedWith: ['a@example.com'] }, 'evt-1'))
+        .resolves.toBeNull();
+    });
+
+    it('should recognize temporary Firestore errors by numeric and string code', () => {
+      for (const code of [4, 8, 10, 13, 14, 'unavailable', 'deadline-exceeded', 'aborted']) {
+        expect(isTransientWriteError({ code })).toBe(true);
+      }
+      for (const error of [new Error('plain'), { code: 7 }, { code: 'permission-denied' }, undefined, null]) {
+        expect(isTransientWriteError(error)).toBe(false);
+      }
     });
 
     it('should warn and do nothing when the event has no data', async () => {

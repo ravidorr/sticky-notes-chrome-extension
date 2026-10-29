@@ -129,13 +129,14 @@ export const api = onRequest(
 /**
  * Firestore trigger that detects when notes are shared and queues
  * share-notification emails in the 'mail' collection for newly added
- * recipients (delivered by sendMail). It has no retry policy: a failed mail
- * write is logged and dropped.
+ * recipients (delivered by sendMail). Mail documents have deterministic IDs and
+ * the trigger retries temporary write failures, so no email is lost or doubled.
  */
 export const onNoteShared = onDocumentUpdated(
   {
     document: 'notes/{noteId}',
-    region: 'us-central1'
+    region: 'us-central1',
+    retry: true
   },
   (event) => handleNoteShared(event)
 );

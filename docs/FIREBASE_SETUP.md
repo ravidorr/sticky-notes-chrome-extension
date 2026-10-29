@@ -440,6 +440,8 @@ To add a comment:
 
 When you share a note with someone, an email notification is sent automatically. The `onNoteShared` function queues a document in the `mail` collection and the `sendMail` Cloud Function (`functions/lib/mailSender.js`) delivers it over SMTP. This replaces the Firebase Trigger Email extension.
 
+Queuing is safe to retry. Each mail document gets a deterministic ID built from the trigger event and the recipient, so a retried event never queues the same email twice. If writing a mail document fails for a temporary reason (for example Firestore is briefly unavailable), `onNoteShared` tries every recipient, then fails so the platform retries the event, and only the recipients that are still missing are queued. Permanent failures, such as a note without an owner email, are logged and not retried.
+
 Only documents created after `sendMail` is deployed are processed. If you are migrating from the extension, uninstall it right after deploying, or each share sends two emails.
 
 ### Configure the Mail Function

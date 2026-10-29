@@ -219,6 +219,50 @@ describe('Email Module', () => {
       expect(localThis.mockCollection.add).toHaveBeenCalledTimes(1);
     });
 
+    it('should create the document under a given mail ID so a retry does not queue a second email', async () => {
+      const create = jest.fn().mockResolvedValue({});
+      const doc = jest.fn().mockReturnValue({ create });
+      localThis.mockCollection.doc = doc;
+
+      const result = await writeShareNotificationEmail(
+        localThis.recipientEmail,
+        localThis.noteData,
+        localThis.noteId,
+        { ...localThis.deps, mailId: 'stable-id' }
+      );
+
+      expect(result).toBe('stable-id');
+      expect(doc).toHaveBeenCalledWith('stable-id');
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ to: localThis.recipientEmail }));
+      expect(localThis.mockCollection.add).not.toHaveBeenCalled();
+    });
+
+    it('should treat an already existing mail document as queued', async () => {
+      for (const code of [6, 'already-exists']) {
+        const create = jest.fn().mockRejectedValue(Object.assign(new Error('exists'), { code }));
+        localThis.mockCollection.doc = jest.fn().mockReturnValue({ create });
+
+        await expect(writeShareNotificationEmail(
+          localThis.recipientEmail,
+          localThis.noteData,
+          localThis.noteId,
+          { ...localThis.deps, mailId: 'stable-id' }
+        )).resolves.toBe('stable-id');
+      }
+    });
+
+    it('should rethrow any other error from the idempotent write', async () => {
+      const create = jest.fn().mockRejectedValue(Object.assign(new Error('down'), { code: 14 }));
+      localThis.mockCollection.doc = jest.fn().mockReturnValue({ create });
+
+      await expect(writeShareNotificationEmail(
+        localThis.recipientEmail,
+        localThis.noteData,
+        localThis.noteId,
+        { ...localThis.deps, mailId: 'stable-id' }
+      )).rejects.toThrow('down');
+    });
+
     it('should create mail document with correct structure', async () => {
       await writeShareNotificationEmail(
         localThis.recipientEmail,

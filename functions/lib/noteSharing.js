@@ -2,7 +2,38 @@
  * Share detection and handling for the onNoteShared trigger.
  */
 
+import { createHash } from 'node:crypto';
 import { writeShareNotificationEmail } from './email.js';
+
+// Firestore errors worth retrying, as gRPC codes and as their string names
+const TRANSIENT_CODES = new Set([
+  4, 8, 10, 13, 14,
+  'deadline-exceeded', 'resource-exhausted', 'aborted', 'internal', 'unavailable'
+]);
+
+/**
+ * Tells a temporary Firestore failure from a permanent one. Only temporary
+ * failures are retried; an invalid note would fail the same way every time.
+ *
+ * @param {Error & {code?: number|string}} error - Write error
+ * @returns {boolean} True when a retry could succeed
+ */
+export function isTransientWriteError(error) {
+  return TRANSIENT_CODES.has(error?.code);
+}
+
+/**
+ * Builds the mail document ID for one recipient of one trigger event. The event
+ * ID is the same on every retry of an event and different for the next share,
+ * so a retry never queues a second email but sharing again still emails.
+ *
+ * @param {string} eventId - Trigger event ID
+ * @param {string} email - Recipient address
+ * @returns {string} Stable document ID
+ */
+export function mailIdFor(eventId, email) {
+  return createHash('sha256').update(`${eventId}:${email}`).digest('hex');
+}
 
 function sharedWithOf(note) {
   return Array.isArray(note?.sharedWith) ? note.sharedWith : [];
@@ -23,9 +54,11 @@ export function findNewlyShared(before, after) {
 
 /**
  * Handler for note updates: queues a share-notification email for each newly
- * added recipient. A failed write is logged and skipped. It is not retried
- * (onNoteShared has no retry policy) and it does not block the other
- * recipients.
+ * added recipient. Each mail document has a deterministic ID, so the trigger can
+ * be retried safely. A failed write does not block the other recipients. When a
+ * write failed for a temporary reason the handler throws after all recipients
+ * were tried, and the platform retries the event (only the failed recipients are
+ * queued again). Permanent failures are logged and skipped.
  *
  * @param {Object} event - Firestore document-updated event
  * @param {Object} deps - Optional dependencies for testing
@@ -50,18 +83,27 @@ export async function handleNoteShared(event, deps = {}) {
 
   const noteId = event.params.noteId;
 
-  // Each write is isolated, because a thrown error would be dropped by the
-  // platform and would also abort the remaining recipients. The async wrapper
-  // turns a synchronous throw from the writer into a rejection.
+  // Each write is isolated, because a thrown error would abort the remaining
+  // recipients. The async wrapper turns a synchronous throw from the writer into
+  // a rejection. Without an event ID the write is not idempotent.
   const results = await Promise.allSettled(
-    newlyShared.map(async (email) => writeEmail(email, after, noteId))
+    newlyShared.map(async (email) => writeEmail(
+      email,
+      after,
+      noteId,
+      event.id ? { mailId: mailIdFor(event.id, email) } : {}
+    ))
   );
 
   let queued = 0;
+  let transientFailures = 0;
   results.forEach((result, index) => {
     if (result.status === 'fulfilled') {
       queued += 1;
       return;
+    }
+    if (isTransientWriteError(result.reason)) {
+      transientFailures += 1;
     }
     console.error(
       `Failed to queue share notification for ${newlyShared[index]} on note ${noteId}:`,
@@ -69,6 +111,11 @@ export async function handleNoteShared(event, deps = {}) {
     );
   });
 
-  console.log(`Queued share notifications for ${queued} of ${newlyShared.length} user(s) on note ${noteId}`);
+  const summary = `Queued share notifications for ${queued} of ${newlyShared.length} user(s) on note ${noteId}`;
+  console.log(summary);
+
+  if (transientFailures > 0) {
+    throw new Error(`${summary}; ${transientFailures} failed temporarily, retrying`);
+  }
   return null;
 }
