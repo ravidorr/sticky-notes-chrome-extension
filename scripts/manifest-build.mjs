@@ -18,8 +18,10 @@ export const OAUTH_CLIENTS = {
     production: '413613230006-ukaectcb0rd3gq1jjnthc0kd4444ccg3.apps.googleusercontent.com'
   },
   edge: {
+    // sticky-notes-edge-extension-dev: the redirect URI of the development ID is registered on it
     development: '413613230006-mu05ttk6b7kvu3j88fp514rkqmghrmiq.apps.googleusercontent.com',
-    production: '413613230006-mu05ttk6b7kvu3j88fp514rkqmghrmiq.apps.googleusercontent.com' // TODO: Create separate production client
+    // sticky-notes-edge-extension: the redirect URI of the Edge Add-ons store ID is registered on it
+    production: '413613230006-hd5340hlkdvg0ebgvmgd587a5fdsggn6.apps.googleusercontent.com'
   }
 };
 

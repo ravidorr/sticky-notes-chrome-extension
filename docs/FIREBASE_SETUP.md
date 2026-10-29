@@ -316,8 +316,8 @@ until the redirect URI is registered, Edge development sign-in fails with
 
 1. Open the [Credentials page](https://console.cloud.google.com/apis/credentials?project=sticky-notes-chrome-extension)
    of the `sticky-notes-chrome-extension` project.
-2. Open the Web application OAuth client whose ID is in `OAUTH_CLIENTS.edge`
-   (`413613230006-mu05ttk6b7kvu3j88fp514rkqmghrmiq`).
+2. Open the Web application OAuth client whose ID is in `OAUTH_CLIENTS.edge.development`
+   (`sticky-notes-edge-extension-dev`, `413613230006-mu05ttk6b7kvu3j88fp514rkqmghrmiq`).
 3. Under **Authorized redirect URIs**, add the URL above, exactly, with the
    trailing slash, and save. Changes can take a few minutes to apply.
 
@@ -358,7 +358,10 @@ Cloud project, so you cannot register redirect URIs on it. Use your own:
    URI on your Web application client, and verify as described above.
 
 The published (Edge Add-ons) build has a different, store-assigned ID, so its
-redirect URL has to be registered as well, separately.
+redirect URL has to be registered as well, separately. It uses its own Web
+application client, `OAUTH_CLIENTS.edge.production` (`sticky-notes-edge-extension`,
+`413613230006-hd5340hlkdvg0ebgvmgd587a5fdsggn6`). Register the store ID's redirect URL
+on that client, not on the development one.
 
 ---
 
