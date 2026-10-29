@@ -9,8 +9,11 @@
  * means that redirect only has to be registered once. Edge uses the same key as
  * Chrome because both are Chromium and derive the ID from the key the same way; the
  * two browsers never share a profile, so the same ID does not collide.
- * Production builds drop the key, because the Chrome Web Store and Edge Add-ons
- * assign the ID and do not accept a key.
+ * Production builds drop the key, because the stores assign the ID of a published
+ * extension.
+ *
+ * The key is in both public/manifest.json and public/manifest.edge.json. The two
+ * are kept identical, which scripts/manifest-key.test.mjs checks.
  */
 
 import { createHash } from 'node:crypto';

@@ -136,7 +136,7 @@ A Chrome extension OAuth client only works for the extension ID registered with
 it. The Chrome development build keeps the manifest `key`, so an unpacked copy
 always gets the same ID, `inhfieegmndamdggkoahplhomjbdjjhk`, from any folder and
 on any machine. The development client (`OAUTH_CLIENTS.chrome.development` in
-`scripts/build.js`) is registered for that ID, so sign-in works without creating
+`scripts/manifest-build.mjs`) is registered for that ID, so sign-in works without creating
 your own client. The production build removes the `key`, because the Chrome Web
 Store assigns the ID.
 
@@ -149,7 +149,7 @@ of the Firebase setup guide), set that client as
 checks against the key.
 
 Edge works differently. Its development and production builds share one Web
-application client (`OAUTH_CLIENTS.edge` in `scripts/build.js`) that signs in
+application client (`OAUTH_CLIENTS.edge` in `scripts/manifest-build.mjs`) that signs in
 through `launchWebAuthFlow`, whose authorized redirect URL contains the extension
 ID (`https://<extension-id>.chromiumapp.org/`). The Edge development build
 (`npm run build:dev:edge`) keeps the same manifest `key` as the Chrome development

@@ -51,3 +51,21 @@ describe('Edge development extension ID', () => {
     );
   });
 });
+
+describe('keepsManifestKey with unknown input', () => {
+  it('drops the key for an unknown browser or environment', () => {
+    assert.equal(keepsManifestKey('firefox', 'development'), false);
+    assert.equal(keepsManifestKey('edge', 'staging'), false);
+    assert.equal(keepsManifestKey('chrome', undefined), false);
+  });
+});
+
+describe('documented extension ID and redirect URL', () => {
+  for (const file of ['README.md', 'docs/FIREBASE_SETUP.md']) {
+    it(`${file} names the development extension ID and the Edge redirect URL`, () => {
+      const text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+      assert.ok(text.includes(DEVELOPMENT_EXTENSION_ID), `${file} must contain ${DEVELOPMENT_EXTENSION_ID}`);
+      assert.ok(text.includes(DEVELOPMENT_EDGE_REDIRECT_URL), `${file} must contain ${DEVELOPMENT_EDGE_REDIRECT_URL}`);
+    });
+  }
+});

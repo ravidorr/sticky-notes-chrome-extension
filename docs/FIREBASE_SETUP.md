@@ -81,7 +81,7 @@ The extension uses environment variables for sensitive config (recommended for p
    ```
 
    The OAuth client ID is not read from `.env`. The build sets it from
-   `scripts/build.js` (see Step 9).
+   `scripts/manifest-build.mjs` (see Step 9).
 
 > **Note:** The `.env` file is gitignored. Only `.env.example` (with placeholder values) should be committed.
 
@@ -290,7 +290,7 @@ to match. Production builds drop the `key`, so the Web Store assigns that ID.
 ### 8.5: Edge Development Builds (Web Application Client)
 
 Edge cannot use `getAuthToken`, so it signs in with `chrome.identity.launchWebAuthFlow`
-against the Web application OAuth client in `OAUTH_CLIENTS.edge` (`scripts/build.js`).
+against the Web application OAuth client in `OAUTH_CLIENTS.edge` (`scripts/manifest-build.mjs`).
 That client only accepts redirect URIs that are registered on it, and the redirect
 URL contains the extension ID.
 
@@ -328,6 +328,11 @@ To verify in an unpacked Edge build:
 5. Sign in from the popup. A `redirect_uri_mismatch` error from Google means the
    URL printed in step 4 is not registered on the client.
 
+An unpacked Edge copy that was loaded before this change gets the new ID after you
+rebuild and reload it. The redirect URI that was registered for its old,
+folder-derived ID can then be removed from the OAuth client, and data saved
+locally under the old ID does not appear under the new one.
+
 The published (Edge Add-ons) build has a different, store-assigned ID, so its
 redirect URL has to be registered as well, separately.
 
@@ -336,11 +341,11 @@ redirect URL has to be registered as well, separately.
 ## Step 9: Set the OAuth Client ID in the Build
 
 The build sets the OAuth client ID itself, from `OAUTH_CLIENTS` in
-`scripts/build.js`. It overwrites `oauth2.client_id` in `public/manifest.json`
+`scripts/manifest-build.mjs`. It overwrites `oauth2.client_id` in `public/manifest.json`
 and the `VITE_OAUTH_CLIENT_ID` value from `.env` on every build, so editing
 those two has no effect.
 
-Open `scripts/build.js` and set the `development` entry for Chrome:
+Open `scripts/manifest-build.mjs` and set the `development` entry for Chrome:
 
 ```js
 const OAUTH_CLIENTS = {
@@ -440,7 +445,7 @@ This usually means **Firestore indexes are missing**:
 | Item | Location | Status |
 |------|----------|--------|
 | Firebase config | `.env` file | [] |
-| OAuth client ID | `scripts/build.js` (`OAUTH_CLIENTS`) | [] |
+| OAuth client ID | `scripts/manifest-build.mjs` (`OAUTH_CLIENTS`) | [] |
 | Extension ID in Google Cloud | OAuth credentials | [] |
 | Extension domain in Firebase Auth | Authorized domains | [] |
 | Firestore security rules (notes + comments) | Firebase Console | [] |

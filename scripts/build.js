@@ -4,7 +4,7 @@
  *
  * Usage:
  *   npm run build           - Production build for Chrome
- *   npm run build:dev       - Development build for Chrome
+ *   npm run build:dev       - Development build for Chrome and Edge
  *   npm run build:edge      - Production build for Edge
  *   npm run build:all       - Build for all browsers
  *   npm run build:analyze   - Build with bundle analysis
@@ -16,7 +16,7 @@ import { fileURLToPath } from 'url';
 import { copyFileSync, mkdirSync, existsSync, rmSync, readdirSync, createWriteStream, readFileSync, writeFileSync } from 'fs';
 import archiver from 'archiver';
 import { createChromeManifestVersion } from './manifest-version.mjs';
-import { keepsManifestKey } from './manifest-key.mjs';
+import { OAUTH_CLIENTS, buildManifest } from './manifest-build.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,21 +24,6 @@ const rootDir = resolve(__dirname, '..');
 
 // Supported browsers
 const SUPPORTED_BROWSERS = ['chrome', 'edge'];
-
-// OAuth client IDs for different environments and browsers
-// Chrome uses "Chrome Extension" type OAuth clients (for getAuthToken)
-// Edge uses "Web application" type OAuth clients (for launchWebAuthFlow)
-const OAUTH_CLIENTS = {
-  chrome: {
-    // Registered for the fixed ID that the manifest key gives (see manifest-key.mjs)
-    development: '413613230006-d23no6q0u4nak0s9rqfqqh5lagcs9t19.apps.googleusercontent.com',
-    production: '413613230006-ukaectcb0rd3gq1jjnthc0kd4444ccg3.apps.googleusercontent.com'
-  },
-  edge: {
-    development: '413613230006-mu05ttk6b7kvu3j88fp514rkqmghrmiq.apps.googleusercontent.com',
-    production: '413613230006-mu05ttk6b7kvu3j88fp514rkqmghrmiq.apps.googleusercontent.com' // TODO: Create separate production client
-  }
-};
 
 // Determine build environment from command line args or env var
 // Default is production; use --development flag or BUILD_ENV=development for dev builds
@@ -91,23 +76,11 @@ function copyStaticFiles() {
   // Copy and transform manifest with correct OAuth client ID and version
   const manifestFilename = getManifestFilename(targetBrowser);
   const manifestPath = resolve(publicDir, manifestFilename);
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
-  
-  // Chrome manifests accept up to four numeric version components. Preserve
-  // package metadata in version_name while translating it for the manifest.
-  manifest.version = manifestVersion;
-  manifest.version_name = version;
-  
-  // The 'key' field fixes the extension ID. Only development builds keep it;
-  // neither the Chrome Web Store nor Edge Add-ons allows it in a package.
-  if (!keepsManifestKey(targetBrowser, buildEnv)) {
-    delete manifest.key;
-  }
-  
-  // Update OAuth client ID based on build environment and browser
-  if (manifest.oauth2) {
-    manifest.oauth2.client_id = OAUTH_CLIENTS[targetBrowser][buildEnv];
-  }
+  const manifest = buildManifest(JSON.parse(readFileSync(manifestPath, 'utf-8')), {
+    browser: targetBrowser,
+    buildEnv,
+    version
+  });
   
   // Always output as manifest.json regardless of source filename
   writeFileSync(
