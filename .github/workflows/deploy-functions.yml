@@ -32,6 +32,11 @@ jobs:
     name: Deploy functions
     # Never deploy a feature branch to production, even from a manual run
     if: github.ref == 'refs/heads/main'
+    # The environment only allows main, and it puts the environment name in the
+    # OIDC subject, which the Google Cloud binding for the deploy service
+    # account is scoped to. A workflow on any other branch cannot get a token
+    # with this subject.
+    environment: functions-production
     runs-on: ubuntu-latest
 
     steps:

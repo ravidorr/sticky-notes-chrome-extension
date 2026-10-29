@@ -13,7 +13,8 @@ below before merging that pull request.
 
 ## First-run checklist
 
-1. Create the deploy service account and its bindings (Google Cloud setup).
+1. Create the `functions-production` GitHub environment (Who can deploy), then
+   the deploy service account and its bindings (Google Cloud setup).
 2. Make sure the secret exists and has a version:
    `firebase functions:secrets:set SMTP_PASSWORD` (for Gmail, use an
    [app password](https://myaccount.google.com/apppasswords)).
@@ -87,6 +88,9 @@ SA=firebase-deploy@${PROJECT}.iam.gserviceaccount.com
 # 413613230006 is this project's number. The v2 functions run as its default
 # compute service account, which the deploy has to act as.
 RUNTIME_SA=413613230006-compute@developer.gserviceaccount.com
+# The Firebase CLI also checks that it can act as the App Engine default
+# service account, even though the functions do not run as it.
+APPENGINE_SA=${PROJECT}@appspot.gserviceaccount.com
 
 gcloud services enable iamcredentials.googleapis.com \
   cloudresourcemanager.googleapis.com --project "$PROJECT"
@@ -102,23 +106,27 @@ for role in roles/cloudfunctions.admin roles/run.admin \
     --member "serviceAccount:${SA}" --role "$role" --condition=None
 done
 
-gcloud iam service-accounts add-iam-policy-binding "$RUNTIME_SA" \
-  --member "serviceAccount:${SA}" --role roles/iam.serviceAccountUser \
-  --project "$PROJECT"
+for target in "$RUNTIME_SA" "$APPENGINE_SA"; do
+  gcloud iam service-accounts add-iam-policy-binding "$target" \
+    --member "serviceAccount:${SA}" --role roles/iam.serviceAccountUser \
+    --project "$PROJECT"
+done
 
 # Let the deploy bind the SMTP secret to the function
 gcloud secrets add-iam-policy-binding SMTP_PASSWORD \
   --member "serviceAccount:${SA}" --role roles/secretmanager.admin \
   --project "$PROJECT"
 
-# Let this repository impersonate the deploy service account. The pool is in
+# Let the deploy job impersonate the deploy service account. The pool is in
 # the shortcuts-for-messages project (number 624640566757, pool
 # github-actions, provider sticky-notes), shared with Chrome Web Store
 # publishing. A pool can impersonate a service account in another project.
-# The provider is restricted to this repository and maps attribute.repository.
+# The binding is scoped to the functions-production environment, which only
+# allows main (see Who can deploy). It relies on the provider mapping
+# google.subject to assertion.sub.
 gcloud iam service-accounts add-iam-policy-binding "$SA" \
   --role roles/iam.workloadIdentityUser --project "$PROJECT" \
-  --member "principalSet://iam.googleapis.com/projects/624640566757/locations/global/workloadIdentityPools/github-actions/attribute.repository/ravidorr/sticky-notes-chrome-extension"
+  --member "principal://iam.googleapis.com/projects/624640566757/locations/global/workloadIdentityPools/github-actions/subject/repo:ravidorr/sticky-notes-chrome-extension:environment:functions-production"
 ```
 
 If `gcloud` has a different active account or default project, add
@@ -131,45 +139,52 @@ and trim the roles after a successful deploy.
 
 ## Who can deploy
 
-The provider and the binding above trust the whole repository, not only
-`main`. The job's branch condition stops the deploy workflow from running for
-other branches, but any workflow file on any pushed branch that requests
-`id-token: write` could still impersonate the deploy service account. Fork pull
-requests do not receive an OIDC token, so the exposure is anyone or anything
-with push access to this repository. The Chrome Web Store publisher shares the
-same pool and has the same property.
+The deploy identity is tied to `main` in three layers:
 
-To tie the deploy identity to `main`, use a GitHub environment:
+1. The job runs only for `main` (`if: github.ref == 'refs/heads/main'`).
+2. The job uses the `functions-production` GitHub environment, which has a
+   deployment branch rule that allows only `main`. GitHub refuses to start a
+   job for this environment from any other branch.
+3. The service account's `workloadIdentityUser` binding is scoped to that
+   environment's OIDC subject,
+   `repo:ravidorr/sticky-notes-chrome-extension:environment:functions-production`.
+   A workflow on another branch cannot get a token with that subject, even if it
+   requests `id-token: write`.
 
-1. Create an environment with a deployment branch rule that allows only
-   `main`:
+The provider itself still trusts the whole repository, which the Chrome Web
+Store publisher relies on. Only the deploy service account is scoped further.
+
+Create the environment once:
+
+```bash
+gh api -X PUT repos/ravidorr/sticky-notes-chrome-extension/environments/functions-production \
+  --input - <<'JSON'
+{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+JSON
+gh api -X POST repos/ravidorr/sticky-notes-chrome-extension/environments/functions-production/deployment-branch-policies \
+  --input - <<'JSON'
+{"name":"main","type":"branch"}
+JSON
+```
+
+### Moving from the repository-wide binding
+
+An older setup bound the service account to every workflow in the repository
+(`principalSet://.../attribute.repository/ravidorr/sticky-notes-chrome-extension`).
+Switch in this order, so the deploy keeps working throughout:
+
+1. Add the environment-scoped binding from the setup commands above. Keep the
+   old binding for now.
+2. Merge the change that adds `environment: functions-production` to the job.
+   The deploy then authenticates with the environment subject, which either
+   binding accepts.
+3. After one successful deploy, remove the old binding:
 
    ```bash
-   gh api -X PUT repos/ravidorr/sticky-notes-chrome-extension/environments/functions-production \
-     --input - <<'JSON'
-   {"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
-   JSON
-   gh api -X POST repos/ravidorr/sticky-notes-chrome-extension/environments/functions-production/deployment-branch-policies \
-     --input - <<'JSON'
-   {"name":"main","type":"branch"}
-   JSON
-   ```
-
-2. Add `environment: functions-production` to the job in the workflow.
-3. Bind the service account to that environment's subject, and then remove
-   the repository-wide binding from the previous section:
-
-   ```bash
-   gcloud iam service-accounts add-iam-policy-binding "$SA" \
-     --role roles/iam.workloadIdentityUser --project "$PROJECT" \
-     --member "principal://iam.googleapis.com/projects/624640566757/locations/global/workloadIdentityPools/github-actions/subject/repo:ravidorr/sticky-notes-chrome-extension:environment:functions-production"
    gcloud iam service-accounts remove-iam-policy-binding "$SA" \
      --role roles/iam.workloadIdentityUser --project "$PROJECT" \
      --member "principalSet://iam.googleapis.com/projects/624640566757/locations/global/workloadIdentityPools/github-actions/attribute.repository/ravidorr/sticky-notes-chrome-extension"
    ```
-
-   This relies on the provider mapping `google.subject` to `assertion.sub`,
-   which it does today.
 
 ## Behavior to know about
 
@@ -196,12 +211,17 @@ To tie the deploy identity to `main`, use a GitHub environment:
 
 ## Troubleshooting
 
-- A permission error naming a permission: grant the service account a role that
-  contains it, then re-run the workflow from the Actions tab.
+- `iam.serviceAccounts.ActAs` on a service account: grant the deploy service
+  account `roles/iam.serviceAccountUser` on that service account, as in the
+  setup commands. The CLI checks both the compute and the App Engine default
+  service account.
+- Any other permission error naming a permission: grant the service account a
+  role that contains it, then re-run the workflow from the Actions tab.
 - The "Write function parameters" step fails: set the missing repository
   variable above, or remove a `#` or newline from its value.
 - The `auth` step fails: check `GCP_WORKLOAD_IDENTITY_PROVIDER`,
-  `FIREBASE_DEPLOY_SERVICE_ACCOUNT` and the `workloadIdentityUser` binding.
+  `FIREBASE_DEPLOY_SERVICE_ACCOUNT` and the `workloadIdentityUser` binding,
+  which must match the `functions-production` environment subject.
 - The deploy stops and asks to delete functions that are missing from the
   code: delete them by hand, as described above.
 - The deploy fails on the `SMTP_PASSWORD` secret: confirm it has a version with
