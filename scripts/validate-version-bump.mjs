@@ -1,7 +1,11 @@
 /**
- * Requires every pull request to bump the package version.
+ * Requires the package version to move together with the extension code.
  *
  * Usage: node scripts/validate-version-bump.mjs <base-revision>
+ *
+ * A pull request that changes extension code (see extension-changes.mjs) must
+ * bump the version. A pull request that does not must leave it alone, because
+ * every new version is submitted to the Chrome Web Store.
  *
  * Versions are compared as Chrome manifest versions (for example
  * `1.20.3+8` is `1.20.3.8`), so a bump of the build number counts.
@@ -12,6 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
 import { isEntryPoint } from './is-entry-point.mjs';
+import { describeExtensionChange } from './extension-changes.mjs';
 import { createChromeManifestVersion } from './manifest-version.mjs';
 
 const VERSION_PARTS = 4;
@@ -63,7 +68,22 @@ export function packageLockVersionMatches(packageVersion, packageLockJson) {
   }
 }
 
-export function validateVersionBump({ basePackage, currentPackage, currentPackageLock }) {
+/**
+ * @param {Object} input
+ * @param {string} input.basePackage - package.json at the base revision
+ * @param {string} input.currentPackage - package.json of the pull request
+ * @param {string} input.currentPackageLock - package-lock.json of the pull request
+ * @param {{changed: boolean, reasons: string[]}} [input.extension] - Whether the pull
+ *   request changes extension code. Without it every change counts, which is the
+ *   old rule that every pull request must bump the version.
+ * @returns {{valid: boolean, problems: string[], baseVersion?: string, currentVersion?: string}} Result
+ */
+export function validateVersionBump({
+  basePackage,
+  currentPackage,
+  currentPackageLock,
+  extension = { changed: true, reasons: [] }
+}) {
   const baseVersion = readVersion(basePackage);
   const currentVersion = readVersion(currentPackage);
   const problems = [];
@@ -72,10 +92,21 @@ export function validateVersionBump({ basePackage, currentPackage, currentPackag
     problems.push(`package.json version "${currentVersion}" is not a valid Chrome extension version.`);
   } else if (!baseVersion) {
     problems.push('The base package.json has no readable version, so the bump cannot be checked.');
-  } else if (!isVersionBumped(baseVersion, currentVersion)) {
+  } else if (extension.changed) {
+    if (!isVersionBumped(baseVersion, currentVersion)) {
+      const why = extension.reasons.length > 0
+        ? `This pull request changes extension code (${extension.reasons.join('; ')}), so it must bump the version.`
+        : 'Every pull request must bump the version.';
+      problems.push(
+        `package.json version ${currentVersion} must be higher than the base version ${baseVersion}. ${why}`
+      );
+    }
+  } else if (currentVersion !== baseVersion) {
     problems.push(
-      `package.json version ${currentVersion} must be higher than the base version ${baseVersion}. ` +
-      'Every pull request must bump the version.'
+      `package.json version changed from ${baseVersion} to ${currentVersion}, but this pull request ` +
+      'does not change extension code, so it must not bump the version. ' +
+      `Restore ${baseVersion} in package.json, in both places in package-lock.json, and in SECURITY.md. ` +
+      'A version bump submits a new release to the Chrome Web Store.'
     );
   }
 
@@ -84,6 +115,10 @@ export function validateVersionBump({ basePackage, currentPackage, currentPackag
   }
 
   return { valid: problems.length === 0, problems, baseVersion, currentVersion };
+}
+
+function git(args) {
+  return execFileSync('git', args, { encoding: 'utf8' });
 }
 
 function readGitFile(revision, filePath) {
@@ -109,12 +144,29 @@ function runCli() {
     process.exit(1);
   }
 
+  let extension;
   let result;
   try {
+    // The files and dependencies the pull request changed are measured from the
+    // merge base, so changes that landed on the base branch later do not count.
+    // The version is compared with the base tip, because it must be higher than
+    // what the base branch has now.
+    const mergeBase = git(['merge-base', baseRevision, 'HEAD']).trim();
+    const currentPackage = readFileSync('package.json', 'utf8');
+    const currentPackageLock = readFileSync('package-lock.json', 'utf8');
+    extension = describeExtensionChange({
+      changedFiles: git(['diff', '--name-only', '--no-renames', `${baseRevision}...HEAD`]).split('\n').filter(Boolean),
+      basePackage: readGitFile(mergeBase, 'package.json'),
+      currentPackage,
+      basePackageLock: readGitFile(mergeBase, 'package-lock.json'),
+      currentPackageLock
+    });
+
     result = validateVersionBump({
       basePackage: readGitFile(baseRevision, 'package.json'),
-      currentPackage: readFileSync('package.json', 'utf8'),
-      currentPackageLock: readFileSync('package-lock.json', 'utf8')
+      currentPackage,
+      currentPackageLock,
+      extension
     });
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
@@ -127,7 +179,13 @@ function runCli() {
     process.exit(1);
   }
 
-  process.stdout.write(`Version bumped: ${result.baseVersion} -> ${result.currentVersion}\n`);
+  if (extension.changed) {
+    process.stdout.write(
+      `Version bumped: ${result.baseVersion} -> ${result.currentVersion} (${extension.reasons.join('; ')})\n`
+    );
+  } else {
+    process.stdout.write(`Version unchanged at ${result.currentVersion}: no extension code changed.\n`);
+  }
 }
 
 if (isEntryPoint(import.meta.url)) {

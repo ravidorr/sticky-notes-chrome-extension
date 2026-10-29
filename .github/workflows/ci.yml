@@ -76,6 +76,9 @@ jobs:
       - name: Test release scripts
         run: npm run test:scripts
 
+      - name: Test the version gate and the store submission check
+        run: npm run test:version-gate
+
       - name: Run tests with coverage
         run: npm run test:coverage
 

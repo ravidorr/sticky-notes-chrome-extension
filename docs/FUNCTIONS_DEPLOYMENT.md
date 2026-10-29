@@ -202,10 +202,10 @@ JSON
 - Keep three Node settings in line when upgrading the runtime: `runtime` in
   `firebase.json`, `engines.node` in `functions/package.json`, and the Node
   versions that the CI jobs use. The deploy job follows `engines.node`.
-- Every pull request bumps the version, and the Chrome Web Store workflow
-  publishes on every merge, as described in
-  [Chrome Web Store Publishing](CHROME_WEB_STORE_PUBLISHING.md). A change under
-  `functions/` therefore also submits a new store version.
+- A change under `functions/` does not bump the version or submit a Chrome Web
+  Store release, because the functions are not part of the extension. Only
+  changes to the extension code do, as described in
+  [Chrome Web Store Publishing](CHROME_WEB_STORE_PUBLISHING.md).
 - After a deploy, the Artifact Registry repository for the functions needs a
   cleanup policy, and the CLI can fail the run after deploying without one. This project already
   has one. If it is ever missing, run

@@ -1,12 +1,16 @@
 /**
  * Pre-flight check for the Chrome Web Store workflow.
  *
- * Fails when the version in the built manifest is already published. The
- * store rejects an unchanged version, so failing here gives a clear message
- * before the workflow cancels a pending submission.
+ * Decides whether the built version needs a new submission. The version only
+ * changes together with the extension code, so a version the store already has
+ * means there is nothing to release and the workflow skips the submission. A
+ * version that is still in review counts as submitted, so a merge that lands
+ * while the previous release is being reviewed does not submit it again. A
+ * version lower than one the store has fails the check, because the store
+ * would reject it.
  */
 
-import { readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import process from 'node:process';
 import { isEntryPoint } from './is-entry-point.mjs';
 
@@ -22,8 +26,8 @@ export function readVersionFromManifest(manifestJson) {
   }
 }
 
-export function readPublishedCrxVersions(fetchStatus) {
-  const channels = fetchStatus?.publishedItemRevisionStatus?.distributionChannels;
+function readCrxVersions(revisionStatus) {
+  const channels = revisionStatus?.distributionChannels;
 
   if (!Array.isArray(channels)) {
     return [];
@@ -41,18 +45,67 @@ export function readPublishedCrxVersions(fetchStatus) {
   return versions;
 }
 
-export function assertVersionNotPublished(packageVersion, fetchStatus) {
-  const publishedCrxVersions = readPublishedCrxVersions(fetchStatus);
+export function readPublishedCrxVersions(fetchStatus) {
+  return readCrxVersions(fetchStatus?.publishedItemRevisionStatus);
+}
 
-  if (publishedCrxVersions.includes(packageVersion)) {
+// The revision that was submitted and may still be in review
+export function readSubmittedCrxVersions(fetchStatus) {
+  return readCrxVersions(fetchStatus?.submittedItemRevisionStatus);
+}
+
+/**
+ * Compares two dotted numeric versions, such as Chrome manifest versions.
+ *
+ * @returns {number} Negative when first is lower, positive when first is higher, 0 when equal
+ */
+export function compareManifestVersions(first, second) {
+  const left = first.split('.').map(Number);
+  const right = second.split('.').map(Number);
+  const length = Math.max(left.length, right.length);
+
+  for (let i = 0; i < length; i += 1) {
+    const difference = (left[i] ?? 0) - (right[i] ?? 0);
+    if (difference !== 0) {
+      return difference;
+    }
+  }
+
+  return 0;
+}
+
+/**
+ * @param {string} manifestVersion - Version of the built manifest
+ * @param {Object} fetchStatus - Response of the store's fetchStatus call
+ * @returns {{submit: boolean, reason: string}} Whether a new submission is needed
+ * @throws {Error} When the store already has a higher version
+ */
+export function decideSubmission(manifestVersion, fetchStatus) {
+  const published = readPublishedCrxVersions(fetchStatus);
+  const submitted = readSubmittedCrxVersions(fetchStatus);
+  const known = [...new Set([...published, ...submitted])];
+  const summary = `published: ${published.join(', ') || 'none'}; in review: ${submitted.join(', ') || 'none'}`;
+
+  // Checked first, so a build that is behind the store fails even when its own
+  // version is one the store has
+  const higher = known.filter((version) => compareManifestVersions(version, manifestVersion) > 0);
+
+  if (higher.length > 0) {
     throw new Error(
-      `Chrome Web Store already serves version ${packageVersion} ` +
-      `(published: ${publishedCrxVersions.join(', ')}). ` +
-      'Bump the version in package.json before merging; the store rejects an unchanged version.'
+      `Chrome Web Store already has a higher version (${higher.join(', ')}) than ${manifestVersion} ` +
+      `(${summary}). The store rejects a lower version, so check that package.json was not lowered.`
     );
   }
 
-  return publishedCrxVersions;
+  if (known.includes(manifestVersion)) {
+    return {
+      submit: false,
+      reason: `Chrome Web Store already has version ${manifestVersion} (${summary}). ` +
+        'The extension code has not changed since that release, so nothing is submitted.'
+    };
+  }
+
+  return { submit: true, reason: `Version ${manifestVersion} is new (${summary}).` };
 }
 
 export async function fetchChromeWebStoreStatus({ accessToken, publisherId, extensionId }) {
@@ -82,12 +135,30 @@ export async function runChromeWebStoreVersionCheck({
   }
 
   const fetchStatus = await fetchChromeWebStoreStatus({ accessToken, publisherId, extensionId });
-  const publishedCrxVersions = assertVersionNotPublished(packageVersion, fetchStatus);
-  const published = publishedCrxVersions.length > 0 ? publishedCrxVersions.join(', ') : 'none';
+  const decision = decideSubmission(packageVersion, fetchStatus);
 
-  process.stdout.write(`Publishing ${packageVersion} (store has: ${published}).\n`);
+  process.stdout.write(`${decision.submit ? 'Submitting' : 'Skipping submission'}: ${decision.reason}\n`);
 
-  return { packageVersion, publishedCrxVersions };
+  return {
+    packageVersion,
+    publishedCrxVersions: readPublishedCrxVersions(fetchStatus),
+    submittedCrxVersions: readSubmittedCrxVersions(fetchStatus),
+    ...decision
+  };
+}
+
+// Tell the workflow whether to continue, and leave a note in the run summary
+function reportToGithub({ submit, reason }) {
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(process.env.GITHUB_OUTPUT, `submit=${submit}\n`);
+  }
+
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    appendFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      `${submit ? 'Submitting to' : 'Not submitting to'} the Chrome Web Store: ${reason}\n`
+    );
+  }
 }
 
 function runCli() {
@@ -102,6 +173,7 @@ function runCli() {
   }
 
   return runChromeWebStoreVersionCheck({ accessToken, publisherId, extensionId, manifestPath })
+    .then(reportToGithub)
     .catch((error) => {
       console.error(error instanceof Error ? error.message : String(error));
       process.exit(1);

@@ -13,6 +13,11 @@ permissions:
 # merges queue up the older pending runs are dropped. That is intended: the last
 # run builds the latest main, which contains every earlier change and the
 # highest version, and each upload would cancel the previous pending submission.
+#
+# Every merge runs this workflow, but only a new version is submitted. The
+# version changes together with the extension code (see
+# scripts/validate-version-bump.mjs), so a merge that leaves the extension alone
+# finds its version already in the store, or in review, and submits nothing.
 concurrency:
   group: chrome-web-store-publish
   cancel-in-progress: false
@@ -39,13 +44,15 @@ jobs:
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
           token_format: access_token
           access_token_scopes: https://www.googleapis.com/auth/chromewebstore
-      - name: Fail if the store already has this version
+      - name: Check whether the store needs this version
+        id: version-check
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
           PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
         run: node scripts/check-chrome-web-store-version.mjs
       - name: Supersede active Chrome Web Store submission
+        if: steps.version-check.outputs.submit == 'true'
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
@@ -77,6 +84,7 @@ jobs:
               ;;
           esac
       - name: Upload package
+        if: steps.version-check.outputs.submit == 'true'
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
@@ -125,6 +133,7 @@ jobs:
           echo "Chrome Web Store upload did not finish within five minutes."
           exit 1
       - name: Submit release for review and publication
+        if: steps.version-check.outputs.submit == 'true'
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
