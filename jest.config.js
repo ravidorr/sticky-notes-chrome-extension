@@ -11,7 +11,10 @@ export default {
   collectCoverageFrom: [
     'src/**/*.js',
     'site/**/*.js',
+    'functions/lib/email.js',
     'functions/lib/mailSender.js',
+    'functions/lib/mailTrigger.js',
+    'functions/lib/noteSharing.js',
     '!src/**/*.test.js',
     '!site/**/*.test.js',
     '!src/background/index.js',
