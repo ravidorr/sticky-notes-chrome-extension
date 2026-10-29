@@ -40,6 +40,11 @@ jobs:
           npm run test:functions-lockfile
           npm run validate:functions-lockfile
 
+      - name: Verify functions lockfile installs cleanly
+        # npm ci fails when the lockfile, including transitive packages, is out of sync
+        working-directory: functions
+        run: npm ci --ignore-scripts
+
   test:
     name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
