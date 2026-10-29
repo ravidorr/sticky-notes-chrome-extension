@@ -85,7 +85,9 @@ export async function createTransport({ user, password }, nodemailerLib) {
  */
 export function isTransientError(error) {
   if (!error) return false;
-  if (TRANSIENT_ERROR_CODES.has(error.code)) return true;
+  // nodemailer reports a system error such as a refused connection as ESOCKET
+  // and keeps the system code (ECONNREFUSED, ECONNRESET, ...) in originalCode
+  if (TRANSIENT_ERROR_CODES.has(error.code) || TRANSIENT_ERROR_CODES.has(error.originalCode)) return true;
   return typeof error.responseCode === 'number' &&
     error.responseCode >= 400 && error.responseCode < 500;
 }
