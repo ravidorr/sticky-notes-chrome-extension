@@ -133,17 +133,18 @@ with `bad client id`. The development build uses the development OAuth client
 instead.
 
 A Chrome extension OAuth client only works for the extension ID registered with
-it. The build removes the manifest `key`, so Chrome derives an unpacked
-extension's ID from the folder it is loaded from, and the development client
-works only for the folder it was registered for. Expect to need your own client
-unless you load the extension from that same folder: load the development build,
-copy the ID shown in `chrome://extensions/`, create a Chrome Extension OAuth
-client with that ID as the Item ID (see
+it. The Chrome development build keeps the manifest `key`, so an unpacked copy
+always gets the same ID, `inhfieegmndamdggkoahplhomjbdjjhk`, from any folder and
+on any machine. The development client (`OAUTH_CLIENTS.chrome.development` in
+`scripts/build.js`) is registered for that ID, so sign-in works without creating
+your own client. The production build removes the `key`, because the Chrome Web
+Store assigns the ID.
+
+If you fork the project, generate your own key, put it in `public/manifest.json`,
+register a Chrome Extension OAuth client for the ID it produces (see
 [Step 8](docs/FIREBASE_SETUP.md#step-8-set-up-google-cloud-oauth-for-chrome-identity)
-of the Firebase setup guide), and set the new client ID as
-`OAUTH_CLIENTS.chrome.development` in `scripts/build.js`. Moving or renaming the
-folder, or loading it on another machine, changes the ID, so the client has to
-be updated again.
+of the Firebase setup guide), and set that client as
+`OAUTH_CLIENTS.chrome.development`.
 
 Edge works differently. Its development and production builds share one Web
 application client (`OAUTH_CLIENTS.edge` in `scripts/build.js`) that signs in
