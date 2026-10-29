@@ -118,7 +118,15 @@ export function validateVersionBump({
 }
 
 function git(args) {
-  return execFileSync('git', args, { encoding: 'utf8' });
+  try {
+    return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (error) {
+    const detail = error.stderr?.toString().trim() || error.message;
+    throw new Error(
+      `git ${args.join(' ')} failed: ${detail}. ` +
+      'Fetch the base branch with its history, for example with fetch-depth: 0.'
+    );
+  }
 }
 
 function readGitFile(revision, filePath) {

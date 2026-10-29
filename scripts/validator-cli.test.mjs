@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { after, before, describe, it } from 'node:test';
@@ -137,6 +137,12 @@ describe('validate-version-bump.mjs as a command', () => {
     writeVersion('1.0.0');
     git('add', 'package.json', 'package-lock.json');
     git('commit', '-q', '-m', 'base');
+    // The branch changes extension code, so it needs a version bump
+    git('checkout', '-q', '-b', 'feature');
+    mkdirSync(join(repo, 'src'));
+    writeFileSync(join(repo, 'src', 'change.js'), 'export const changed = true;\n');
+    git('add', 'src/change.js');
+    git('commit', '-q', '-m', 'change extension code');
     linked = tryLink(bumpScript, join(repo, 'linked-bump.mjs'));
   });
 
@@ -175,7 +181,8 @@ describe('validate-version-bump.mjs as a command', () => {
     const result = run([bumpScript, 'no-such-revision'], { cwd: repo });
 
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /Cannot read package\.json at no-such-revision/);
+    assert.match(result.stderr, /no-such-revision/);
+    assert.match(result.stderr, /Fetch the base branch with its history/);
     assert.doesNotMatch(result.stderr, /at execFileSync/);
   });
 
