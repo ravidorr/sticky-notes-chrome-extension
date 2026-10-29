@@ -47,6 +47,19 @@ test("rejects a firebase.json runtime that disagrees with engines.node", () => {
   assert.match(result.errors[0], /nodejs22/);
 });
 
+test("rejects a missing engines.node even when the lockfile matches", () => {
+  const result = validateFunctionsLockfile(pkg({ engines: undefined }), lock({ engines: undefined }), firebase());
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /engines\.node must be a bare major version/);
+});
+
+test("rejects an engines.node range that cannot map to a firebase runtime", () => {
+  const result = validateFunctionsLockfile(pkg({ engines: { node: ">=22" } }), lock({ engines: { node: ">=22" } }), firebase());
+  assert.equal(result.valid, false);
+  assert.match(result.errors[0], /bare major version/);
+});
+
 test("rejects a lockfile without a root entry", () => {
   const result = validateFunctionsLockfile(pkg(), JSON.stringify({ packages: {} }), firebase());
   assert.equal(result.valid, false);

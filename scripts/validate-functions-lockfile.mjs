@@ -41,11 +41,20 @@ export function validateFunctionsLockfile(packageJson, lockfile, firebaseJson) {
     }
   }
 
-  const expectedRuntime = pkg.engines?.node ? `nodejs${pkg.engines.node}` : null;
-  const runtime = firebase.functions?.runtime;
+  const engineNode = pkg.engines?.node;
 
-  if (expectedRuntime && runtime !== expectedRuntime) {
-    errors.push(`firebase.json functions.runtime is ${runtime}, but engines.node requires ${expectedRuntime}.`);
+  if (typeof engineNode !== "string" || !/^\d+$/.test(engineNode)) {
+    errors.push(
+      `functions/package.json engines.node must be a bare major version such as "22", got ${JSON.stringify(engineNode)}. ` +
+        "deploy-functions.yml and firebase.json functions.runtime both derive from it.",
+    );
+  } else {
+    const expectedRuntime = `nodejs${engineNode}`;
+    const runtime = firebase.functions?.runtime;
+
+    if (runtime !== expectedRuntime) {
+      errors.push(`firebase.json functions.runtime is ${runtime}, but engines.node requires ${expectedRuntime}.`);
+    }
   }
 
   return errors.length > 0 ? { valid: false, errors } : { valid: true };
