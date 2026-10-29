@@ -271,19 +271,21 @@ Chrome extensions use `chrome.identity` API which requires OAuth 2.0 credentials
 
 ### 8.4: Find Your Extension ID
 
-The ID of an unpacked extension comes from the folder it is loaded from, so load
-the extension first:
+Chrome development builds keep the `key` in `public/manifest.json`, so the
+unpacked extension always has the same ID, whatever folder or machine it is
+loaded from. Register the OAuth client for that ID. Compute it from the key
+(`extensionIdFromKey` in `scripts/manifest-key.mjs`, checked by
+`scripts/manifest-key.test.mjs`), or load the extension and copy it:
 
 1. Build it: `npm run build:dev:chrome`
 2. Open Chrome and go to `chrome://extensions/`
 3. Enable **Developer mode** (toggle in top right)
 4. Click **Load unpacked** and select the `dist/chrome` folder
 5. Find "Element-Anchored Sticky Notes"
-6. Copy the **ID** (e.g., `abcdefghijklmnopqrstuvwxyz123456`)
+6. Copy the **ID**. With the project's key it is `inhfieegmndamdggkoahplhomjbdjjhk`
 
-Keep loading the extension from the same folder. Moving or renaming it, or
-loading it on another machine, changes the ID, and the OAuth client has to be
-updated to match.
+If you use your own key, the ID changes, and the OAuth client has to be updated
+to match. Production builds drop the `key`, so the Web Store assigns that ID.
 
 ---
 

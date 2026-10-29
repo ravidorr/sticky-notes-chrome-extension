@@ -16,6 +16,7 @@ import { fileURLToPath } from 'url';
 import { copyFileSync, mkdirSync, existsSync, rmSync, readdirSync, createWriteStream, readFileSync, writeFileSync } from 'fs';
 import archiver from 'archiver';
 import { createChromeManifestVersion } from './manifest-version.mjs';
+import { keepsManifestKey } from './manifest-key.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,7 +30,8 @@ const SUPPORTED_BROWSERS = ['chrome', 'edge'];
 // Edge uses "Web application" type OAuth clients (for launchWebAuthFlow)
 const OAUTH_CLIENTS = {
   chrome: {
-    development: '413613230006-c8044e50sohrq813h1ejfjdojfcsfa2n.apps.googleusercontent.com',
+    // Registered for the fixed ID that the manifest key gives (see manifest-key.mjs)
+    development: '413613230006-d23no6q0u4nak0s9rqfqqh5lagcs9t19.apps.googleusercontent.com',
     production: '413613230006-ukaectcb0rd3gq1jjnthc0kd4444ccg3.apps.googleusercontent.com'
   },
   edge: {
@@ -96,8 +98,11 @@ function copyStaticFiles() {
   manifest.version = manifestVersion;
   manifest.version_name = version;
   
-  // Remove 'key' field - it's used for development but not allowed in Chrome Web Store
-  delete manifest.key;
+  // The 'key' field fixes the extension ID. Only Chrome development builds keep it;
+  // the Chrome Web Store does not allow it in a package.
+  if (!keepsManifestKey(targetBrowser, buildEnv)) {
+    delete manifest.key;
+  }
   
   // Update OAuth client ID based on build environment and browser
   if (manifest.oauth2) {
