@@ -4,7 +4,7 @@
     "url": "https://github.com/sponsors/ravidorr"
   },
   "name": "sticky-notes-chrome-extension",
-  "version": "1.20.12",
+  "version": "1.20.13",
   "description": "Element-anchored sticky notes for annotating any website",
   "type": "module",
   "scripts": {
@@ -20,8 +20,8 @@
     "preview": "vite preview",
     "serve:test": "npx serve tests/fixtures -l 3000",
     "lint": "npm run lint:js && npm run lint:css && npm run lint:html && npm run lint:md",
-    "lint:js": "eslint src/ scripts/validate-functions-lockfile.mjs scripts/validate-functions-lockfile.test.mjs",
-    "lint:js:fix": "eslint src/ scripts/validate-functions-lockfile.mjs scripts/validate-functions-lockfile.test.mjs --fix",
+    "lint:js": "eslint src/ scripts/*.mjs",
+    "lint:js:fix": "eslint src/ scripts/*.mjs --fix",
     "lint:css": "stylelint \"site/**/*.css\" \"src/**/*.css\"",
     "lint:css:fix": "stylelint \"site/**/*.css\" \"src/**/*.css\" --fix",
     "lint:html": "htmlhint --rulesdir ./scripts/htmlhint-rules \"site/templates/*.html\" \"site/partials/*.html\" \"src/**/*.html\" \"public/**/*.html\"",
@@ -29,6 +29,7 @@
     "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#**/node_modules\"",
     "lint:fix": "npm run lint:js:fix && npm run lint:css:fix && npm run lint:md:fix",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:scripts": "node --test scripts/*.test.mjs",
     "test:manifest-version": "node --test scripts/manifest-version.test.mjs",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
@@ -90,7 +91,7 @@
     "src/**/*.js": [
       "eslint --fix"
     ],
-    "scripts/validate-functions-lockfile*.mjs": [
+    "scripts/*.mjs": [
       "eslint --fix"
     ],
     "site/**/*.js": [

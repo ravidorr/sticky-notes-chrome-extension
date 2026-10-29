@@ -73,8 +73,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate manifest version conversion
-        run: npm run test:manifest-version
+      - name: Test release scripts
+        run: npm run test:scripts
 
       - name: Run tests with coverage
         run: npm run test:coverage

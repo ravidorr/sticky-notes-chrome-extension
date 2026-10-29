@@ -1,5 +1,5 @@
-import { readFileSync, realpathSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { isEntryPoint } from './is-entry-point.mjs';
 
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
 const FUNCTIONS_SOURCE = 'functions';
@@ -111,16 +111,7 @@ export function validateFunctionsLockfileFiles(
   return validateFunctionsLockfile(...texts);
 }
 
-// Compare real paths so running through a symlink or wrapper still executes the check
-function isEntryPoint() {
-  try {
-    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-  } catch {
-    return false;
-  }
-}
-
-if (isEntryPoint()) {
+if (isEntryPoint(import.meta.url)) {
   const result = validateFunctionsLockfileFiles(...process.argv.slice(2));
 
   if (!result.valid) {

@@ -16,7 +16,7 @@ export function createChromeManifestVersion(packageVersion) {
     || !coreComponents.every(isChromeVersionComponent)
   ) {
     throw new Error(
-      `Cannot convert package version "${packageVersion}" to a Chrome manifest version.`,
+      `Cannot convert package version "${packageVersion}" to a Chrome manifest version.`
     );
   }
 
@@ -26,7 +26,7 @@ export function createChromeManifestVersion(packageVersion) {
 
   if (!isChromeVersionComponent(buildMetadata)) {
     throw new Error(
-      `Package version "${packageVersion}" must use one numeric build-metadata component for Chrome builds.`,
+      `Package version "${packageVersion}" must use one numeric build-metadata component for Chrome builds.`
     );
   }
 

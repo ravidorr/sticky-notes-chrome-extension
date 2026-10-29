@@ -11,7 +11,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
+import { isEntryPoint } from './is-entry-point.mjs';
 import { createChromeManifestVersion } from './manifest-version.mjs';
 
 const VERSION_PARTS = 4;
@@ -111,6 +111,6 @@ function runCli() {
   process.stdout.write(`Version bumped: ${result.baseVersion} -> ${result.currentVersion}\n`);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isEntryPoint(import.meta.url)) {
   runCli();
 }

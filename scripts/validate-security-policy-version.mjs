@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { readFileSync } from 'node:fs';
+import { isEntryPoint } from './is-entry-point.mjs';
 
 const SUPPORTED_STATUS = 'Yes';
 const STABLE_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
@@ -10,7 +10,7 @@ const VERSION_ROW = /^\|\s*([0-9]+\.[0-9]+\.[0-9]+(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Z
 export function readStablePackageVersion(packageJson) {
   try {
     const { version } = JSON.parse(packageJson);
-    return typeof version === "string" && STABLE_VERSION.test(version) ? version : null;
+    return typeof version === 'string' && STABLE_VERSION.test(version) ? version : null;
   } catch {
     return null;
   }
@@ -20,14 +20,14 @@ export function validateSecurityPolicyVersion(packageJson, securityPolicy) {
   const version = readStablePackageVersion(packageJson);
 
   if (!version) {
-    return { valid: false, error: "package.json must contain an exact stable SemVer version." };
+    return { valid: false, error: 'package.json must contain an exact stable SemVer version.' };
   }
 
   const section = SUPPORTED_VERSIONS_SECTION.exec(securityPolicy);
   const table = section && SUPPORTED_VERSIONS_TABLE.exec(section.groups.content);
 
   if (!table) {
-    return { valid: false, error: "SECURITY.md is missing a supported-versions table." };
+    return { valid: false, error: 'SECURITY.md is missing a supported-versions table.' };
   }
 
   const rows = [...table.groups.rows.matchAll(VERSION_ROW)];
@@ -40,7 +40,7 @@ export function validateSecurityPolicyVersion(packageJson, securityPolicy) {
   if (matchingRow) {
     return {
       valid: false,
-      error: `SECURITY.md declares ${version} as unsupported. Mark the package version as supported.`,
+      error: `SECURITY.md declares ${version} as unsupported. Mark the package version as supported.`
     };
   }
 
@@ -49,21 +49,21 @@ export function validateSecurityPolicyVersion(packageJson, securityPolicy) {
   if (supportedVersion) {
     return {
       valid: false,
-      error: `SECURITY.md supports ${supportedVersion}, but package.json declares ${version}. Update SECURITY.md.`,
+      error: `SECURITY.md supports ${supportedVersion}, but package.json declares ${version}. Update SECURITY.md.`
     };
   }
 
-  return { valid: false, error: "SECURITY.md has no enabled supported-version row." };
+  return { valid: false, error: 'SECURITY.md has no enabled supported-version row.' };
 }
 
 export function validateSecurityPolicyFiles(
-  packageJsonPath = "package.json",
-  securityPolicyPath = "SECURITY.md",
+  packageJsonPath = 'package.json',
+  securityPolicyPath = 'SECURITY.md'
 ) {
   try {
     return validateSecurityPolicyVersion(
-      readFileSync(packageJsonPath, "utf8"),
-      readFileSync(securityPolicyPath, "utf8"),
+      readFileSync(packageJsonPath, 'utf8'),
+      readFileSync(securityPolicyPath, 'utf8')
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -71,7 +71,7 @@ export function validateSecurityPolicyFiles(
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isEntryPoint(import.meta.url)) {
   const result = validateSecurityPolicyFiles(...process.argv.slice(2));
 
   if (!result.valid) {
