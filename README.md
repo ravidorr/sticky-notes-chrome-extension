@@ -176,6 +176,9 @@ npm run test:watch
 # Run unit tests with coverage
 npm test -- --coverage
 
+# Run the Node tests for the release and CI scripts (scripts/*.test.mjs)
+npm run test:scripts
+
 # Run E2E tests
 npm run test:e2e
 ```
@@ -196,7 +199,7 @@ The project enforces minimum coverage thresholds (configured in `jest.config.js`
 This project uses Husky and lint-staged to ensure code quality before commits:
 
 - **Lint**: ESLint runs on staged files and auto-fixes issues
-- **Tests**: All unit tests must pass
+- **Tests**: All Jest unit tests must pass (the script tests, `npm run test:scripts`, run in CI only)
 
 To skip hooks (not recommended):
 

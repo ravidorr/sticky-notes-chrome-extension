@@ -92,6 +92,17 @@ describe('validateVersionBump', () => {
     assert.equal(result.problems.length, 2);
   });
 
+  it('says so when the base package.json has no readable version', () => {
+    const result = validateVersionBump({
+      basePackage: 'not json',
+      currentPackage: pkg('1.20.4'),
+      currentPackageLock: lock('1.20.4')
+    });
+
+    assert.equal(result.valid, false);
+    assert.match(result.problems[0], /base package\.json has no readable version/);
+  });
+
   it('fails a version that is not valid for a Chrome extension', () => {
     const result = validate('1.20.3', 'bad', lock('bad'));
 
