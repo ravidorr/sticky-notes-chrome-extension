@@ -28,6 +28,13 @@ merging do nothing, and the regular CI workflow is unchanged.
 4. Cancels the previous submission if its state is `PENDING_REVIEW` or `STAGED`.
    Other known states (`PUBLISHED`, `PUBLISHED_TO_TESTERS`, `REJECTED`,
    `CANCELLED`) pass through. Any other state fails the run.
+   The store limits how often a publisher can cancel a submission and answers
+   HTTP 429 when the limit is reached. The step waits 30, 60, 120 and 240 seconds
+   between up to five attempts. If it still gets 429, the run fails with a message
+   and nothing is submitted. Cancel the pending submission by hand in the
+   [developer dashboard](https://chrome.google.com/webstore/devconsole), or wait
+   for the limit to reset, then re-run the workflow. A later merge also retries a
+   version the store does not have yet.
 5. Uploads `dist/chrome.zip` and polls until processing finishes (up to five
    minutes).
 6. Submits the upload with default publishing and review enabled
