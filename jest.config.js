@@ -11,6 +11,7 @@ export default {
   collectCoverageFrom: [
     'src/**/*.js',
     'site/**/*.js',
+    'functions/lib/mailSender.js',
     '!src/**/*.test.js',
     '!site/**/*.test.js',
     '!src/background/index.js',
