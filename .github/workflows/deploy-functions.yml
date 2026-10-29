@@ -15,24 +15,34 @@ permissions:
 
 # Deploys never overlap. GitHub keeps only the newest pending run, and the
 # newest run deploys the latest main, so dropping older pending runs is fine.
+# The job only runs for main (see the job condition), so a manual run started
+# from another branch cannot replace a pending deploy of main.
 concurrency:
   group: firebase-functions-deploy
   cancel-in-progress: false
 
 env:
   FIREBASE_PROJECT: sticky-notes-chrome-extension
+  # Pinned for reproducible deploys. To bump, change this version and read the
+  # firebase-tools release notes for deploy behavior changes first.
   FIREBASE_TOOLS_VERSION: 15.34.2
 
 jobs:
   deploy:
     name: Deploy functions
+    # Never deploy a feature branch to production, even from a manual run
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '20'
+          # Follows engines.node, so it stays in line with the functions runtime
+          # (firebase.json "runtime" must be changed together with it)
+          node-version-file: functions/package.json
           cache: npm
           cache-dependency-path: functions/package-lock.json
       - name: Install function dependencies
@@ -50,6 +60,16 @@ jobs:
           set -euo pipefail
           : "${SMTP_USER:?Set the SMTP_USER repository variable}"
           : "${MAIL_FROM:?Set the MAIL_FROM repository variable}"
+          # The values go into a dotenv file, where # starts a comment and a
+          # newline would add a key
+          for value in "${SMTP_USER}" "${MAIL_FROM}"; do
+            case "${value}" in
+              *'#'*|*$'\n'*)
+                echo "SMTP_USER and MAIL_FROM must not contain # or newlines"
+                exit 1
+                ;;
+            esac
+          done
           printf 'SMTP_USER=%s\nMAIL_FROM=%s\n' "${SMTP_USER}" "${MAIL_FROM}" \
             > "functions/.env.${FIREBASE_PROJECT}"
       - name: Deploy functions

@@ -464,7 +464,9 @@ Only documents created after `sendMail` is deployed are processed. If you are mi
    firebase deploy --only functions
    ```
 
-   Merges to `main` that change `functions/` also deploy automatically. See
+   Merges to `main` that change `functions/` or `firebase.json` also deploy
+   automatically. A local deploy can drift from `main`, because the next such
+   merge overwrites it. See
    [Firebase Functions Deployment](FUNCTIONS_DEPLOYMENT.md).
 
 The function uses `smtp.gmail.com:465` with implicit TLS. To use another provider, edit `SMTP_HOST`, `SMTP_PORT` and the `secure` flag in `functions/lib/mailSender.js`. Only implicit-TLS endpoints (port 465) work as written.
