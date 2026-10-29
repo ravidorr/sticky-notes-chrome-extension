@@ -129,7 +129,18 @@ extension locally.
 Use the development build to sign in locally. The production build
 (`npm run build`) uses the Chrome Web Store OAuth client, which is tied to the
 published extension's ID, so a locally loaded copy fails to sign in with
-`bad client id`. The development build uses the development OAuth client.
+`bad client id`. The development build uses the development OAuth client
+instead.
+
+A Chrome extension OAuth client only works for the extension ID registered with
+it. The build removes the manifest `key`, so Chrome derives an unpacked
+extension's ID from the folder it is loaded from, and the development client
+works only for the folder it was registered for. If sign-in still fails with
+`bad client id` from another folder or machine, register your own client: create
+a Chrome Extension OAuth client for your extension ID (see
+[Step 8](docs/FIREBASE_SETUP.md#step-8-set-up-google-cloud-oauth-for-chrome-identity)
+of the Firebase setup guide) and set it as `OAUTH_CLIENTS.chrome.development` in
+`scripts/build.js`.
 
 After you rebuild, reload the extension in `chrome://extensions/` and refresh
 any open pages. A page that was open before the reload still runs the old
