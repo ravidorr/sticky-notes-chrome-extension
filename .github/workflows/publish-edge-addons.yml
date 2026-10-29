@@ -1,0 +1,64 @@
+name: Publish Edge Add-ons
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Runs never overlap. GitHub keeps only the newest pending run, so when several
+# merges queue up the older pending runs are dropped. A dropped run can leave a
+# version unsubmitted when the newer run's own pull request did not change the
+# version; start this workflow by hand (Run workflow) to submit the current
+# version of main.
+#
+# Every merge runs this workflow, but only a merge that changed the version in
+# package.json is submitted. The version changes together with the extension code
+# (see scripts/validate-version-bump.mjs). Without the Edge credentials the run
+# succeeds and says that publishing is skipped.
+concurrency:
+  group: edge-addons-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
+    name: Publish Edge Add-ons release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Check whether Edge needs this version
+        id: gate
+        env:
+          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+          EDGE_PRODUCT_ID: ${{ vars.EDGE_PRODUCT_ID }}
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+        run: node scripts/check-edge-addons-version.mjs
+      - if: steps.gate.outputs.submit == 'true'
+        run: npm ci
+      - name: Build and package Edge extension
+        if: steps.gate.outputs.submit == 'true'
+        run: npm run build:edge
+      - name: Upload to Edge Add-ons and publish
+        if: steps.gate.outputs.submit == 'true'
+        env:
+          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+          EDGE_PRODUCT_ID: ${{ vars.EDGE_PRODUCT_ID }}
+          PACKAGE_PATH: dist/edge.zip
+          PUBLISH_NOTES: Automated release from GitHub Actions, commit ${{ github.event.pull_request.merge_commit_sha || github.sha }}.
+        run: node scripts/publish-edge-addons.mjs

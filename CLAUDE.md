@@ -386,5 +386,7 @@ GitHub Actions (`.github/workflows/ci.yml`):
 - `README.md` - User-facing documentation
 - `docs/API.md` - MCP Server API documentation
 - `docs/FIREBASE_SETUP.md` - Firebase configuration guide
+- `docs/CHROME_WEB_STORE_PUBLISHING.md` - Automatic Chrome Web Store submissions
+- `docs/EDGE_ADDONS_PUBLISHING.md` - Automatic Edge Add-ons submissions and the credentials to set up
 - `docs/ROADMAP.md` - Development roadmap
 - `.cursor/rules/i18n.mdc` - Detailed i18n guidelines
