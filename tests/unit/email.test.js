@@ -15,7 +15,7 @@ jest.unstable_mockModule('firebase-admin/firestore', () => ({
 }));
 
 // Import after mocking
-const { writeShareNotificationEmail, _testHelpers } = await import('../../functions/lib/email.js');
+const { writeShareNotificationEmail, MailValidationError, _testHelpers } = await import('../../functions/lib/email.js');
 const {
   extractDomain,
   truncateContent,
@@ -251,16 +251,58 @@ describe('Email Module', () => {
       }
     });
 
-    it('should rethrow any other error from the idempotent write', async () => {
-      const create = jest.fn().mockRejectedValue(Object.assign(new Error('down'), { code: 14 }));
+    it('should write the same document structure under a given mail ID', async () => {
+      const create = jest.fn().mockResolvedValue({});
       localThis.mockCollection.doc = jest.fn().mockReturnValue({ create });
 
-      await expect(writeShareNotificationEmail(
+      await writeShareNotificationEmail(
         localThis.recipientEmail,
         localThis.noteData,
         localThis.noteId,
         { ...localThis.deps, mailId: 'stable-id' }
-      )).rejects.toThrow('down');
+      );
+
+      const doc = create.mock.calls[0][0];
+      expect(doc.to).toBe(localThis.recipientEmail);
+      expect(doc.message.subject).toContain('shared a note with you');
+      expect(doc.message.html).toBeDefined();
+      expect(doc.message.text).toBeDefined();
+      expect(doc.metadata).toEqual(expect.objectContaining({
+        type: 'share_notification',
+        noteId: localThis.noteId,
+        recipientEmail: localThis.recipientEmail
+      }));
+    });
+
+    it('should rethrow every error other than an existing document, and never fall back to add()', async () => {
+      for (const error of [
+        Object.assign(new Error('down'), { code: 14 }),
+        Object.assign(new Error('denied'), { code: 7 }),
+        Object.assign(new Error('denied'), { code: 'permission-denied' }),
+        Object.assign(new Error('odd'), { code: '6' }),
+        new Error('no code')
+      ]) {
+        const create = jest.fn().mockRejectedValue(error);
+        localThis.mockCollection.doc = jest.fn().mockReturnValue({ create });
+
+        await expect(writeShareNotificationEmail(
+          localThis.recipientEmail,
+          localThis.noteData,
+          localThis.noteId,
+          { ...localThis.deps, mailId: 'stable-id' }
+        )).rejects.toBe(error);
+      }
+      expect(localThis.mockCollection.add).not.toHaveBeenCalled();
+    });
+
+    it('should reject input that can never produce an email with a MailValidationError', async () => {
+      await expect(writeShareNotificationEmail('', localThis.noteData, localThis.noteId, localThis.deps))
+        .rejects.toBeInstanceOf(MailValidationError);
+      await expect(writeShareNotificationEmail(localThis.recipientEmail, null, localThis.noteId, localThis.deps))
+        .rejects.toBeInstanceOf(MailValidationError);
+      await expect(writeShareNotificationEmail(
+        localThis.recipientEmail, { content: 'x' }, localThis.noteId, localThis.deps
+      )).rejects.toBeInstanceOf(MailValidationError);
     });
 
     it('should create mail document with correct structure', async () => {

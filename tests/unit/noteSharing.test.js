@@ -14,7 +14,9 @@ jest.unstable_mockModule('firebase-admin/firestore', () => ({
   FieldValue: { serverTimestamp: jest.fn(() => ({ _type: 'serverTimestamp' })) }
 }));
 
-const { findNewlyShared, handleNoteShared, isTransientWriteError, mailIdFor } = await import('../../functions/lib/noteSharing.js');
+const { findNewlyShared, handleNoteShared, isRetryableWriteError, mailIdFor, MAX_RETRY_AGE_MS } =
+  await import('../../functions/lib/noteSharing.js');
+const { MailValidationError } = await import('../../functions/lib/email.js');
 
 describe('noteSharing', () => {
   const localThis = {};
@@ -25,14 +27,19 @@ describe('noteSharing', () => {
     jest.spyOn(console, 'log').mockImplementation(() => {});
     getFirestore.mockReset();
     localThis.writeEmail = jest.fn().mockResolvedValue('mail-doc');
-    localThis.event = (before, after, id) => ({
+    localThis.event = (before, after, id, time) => ({
       id,
+      time,
       params: { noteId: 'note-1' },
       data: { before: { data: () => before }, after: { data: () => after } }
     });
-    localThis.handle = (before, after, id) => handleNoteShared(
-      localThis.event(before, after, id),
-      { writeShareNotificationEmail: localThis.writeEmail }
+    localThis.now = Date.parse('2026-10-29T12:00:00.000Z');
+    localThis.freshTime = '2026-10-29T11:59:00.000Z';
+    localThis.staleTime = new Date(localThis.now - MAX_RETRY_AGE_MS - 60000).toISOString();
+    localThis.unavailable = Object.assign(new Error('unavailable'), { code: 14 });
+    localThis.handle = (before, after, id, time) => handleNoteShared(
+      localThis.event(before, after, id, time),
+      { writeShareNotificationEmail: localThis.writeEmail, now: () => localThis.now }
     );
   });
 
@@ -133,7 +140,7 @@ describe('noteSharing', () => {
 
       expect(localThis.writeEmail).toHaveBeenCalledTimes(2);
       expect(console.error).toHaveBeenCalledWith(
-        'Failed to queue share notification for a@example.com on note note-1:',
+        'Failed to queue share notification for a@example.com on note note-1 (retryable, code none):',
         expect.any(Error)
       );
       expect(console.log).toHaveBeenCalledWith('Queued share notifications for 1 of 2 user(s) on note note-1');
@@ -145,7 +152,8 @@ describe('noteSharing', () => {
       await expect(localThis.handle({ sharedWith: [] }, { sharedWith: ['a@example.com', 'b@example.com'] }))
         .resolves.toBeNull();
 
-      expect(console.error).toHaveBeenCalledTimes(2);
+      // Two failed writes, plus one error that the event has no id
+      expect(console.error).toHaveBeenCalledTimes(3);
       expect(console.log).toHaveBeenCalledWith('Queued share notifications for 0 of 2 user(s) on note note-1');
     });
 
@@ -167,51 +175,164 @@ describe('noteSharing', () => {
       await localThis.handle({ sharedWith: [] }, after, 'evt-1');
       await localThis.handle({ sharedWith: [] }, after, 'evt-1');
 
+      const byEmail = (email) => localThis.writeEmail.mock.calls
+        .filter((call) => call[0] === email)
+        .map((call) => call[3].mailId);
+      expect(byEmail('a@example.com')).toEqual([mailIdFor('evt-1', 'a@example.com'), mailIdFor('evt-1', 'a@example.com')]);
+      expect(byEmail('b@example.com')[0]).toBe(mailIdFor('evt-1', 'b@example.com'));
+      expect(mailIdFor('evt-1', 'a@example.com')).not.toBe(mailIdFor('evt-1', 'b@example.com'));
+    });
+
+    it('should use a different mail ID when the same address is shared again in a later event', async () => {
+      const after = { sharedWith: ['a@example.com'] };
+
+      await localThis.handle({ sharedWith: [] }, after, 'evt-1');
+      await localThis.handle({ sharedWith: [] }, after, 'evt-2');
+
       const ids = localThis.writeEmail.mock.calls.map((call) => call[3].mailId);
-      expect(ids[0]).toBe(mailIdFor('evt-1', 'a@example.com'));
-      expect(ids[0]).toBe(ids[2]);
-      expect(ids[1]).toBe(ids[3]);
       expect(ids[0]).not.toBe(ids[1]);
     });
 
-    it('should use a different mail ID when the same address is shared again in a later event', () => {
-      expect(mailIdFor('evt-1', 'a@example.com')).not.toBe(mailIdFor('evt-2', 'a@example.com'));
+    it('should make mail IDs 64 character hex digests that do not collide when the separator moves', () => {
+      expect(mailIdFor('evt-1', 'a@example.com')).toMatch(/^[0-9a-f]{64}$/);
+      expect(mailIdFor('a:b', 'c')).not.toBe(mailIdFor('a', 'b:c'));
     });
 
-    it('should try every recipient, then throw so the platform retries, after a temporary failure', async () => {
-      const unavailable = Object.assign(new Error('unavailable'), { code: 14 });
+    it('should pass the event ID through the real writer so the mail document is created by ID', async () => {
+      const create = jest.fn().mockResolvedValue({});
+      const doc = jest.fn(() => ({ create }));
+      const add = jest.fn();
+      getFirestore.mockReturnValue({ collection: jest.fn(() => ({ doc, add })) });
+      const after = { sharedWith: ['a@example.com'], ownerEmail: 'owner@example.com', content: 'Hi', url: 'https://example.com/p' };
+
+      await expect(handleNoteShared(localThis.event({ sharedWith: [] }, after, 'evt-1', localThis.freshTime)))
+        .resolves.toBeNull();
+
+      expect(doc).toHaveBeenCalledWith(mailIdFor('evt-1', 'a@example.com'));
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(add).not.toHaveBeenCalled();
+    });
+
+    it('should skip recipients that an earlier attempt already queued when the event is retried', async () => {
+      const create = jest.fn()
+        .mockRejectedValueOnce(Object.assign(new Error('exists'), { code: 6 }))
+        .mockResolvedValueOnce({});
+      getFirestore.mockReturnValue({ collection: jest.fn(() => ({ doc: jest.fn(() => ({ create })), add: jest.fn() })) });
+      const after = { sharedWith: ['a@example.com', 'b@example.com'], ownerEmail: 'owner@example.com', content: 'Hi', url: 'https://example.com/p' };
+
+      await expect(handleNoteShared(localThis.event({ sharedWith: [] }, after, 'evt-1', localThis.freshTime)))
+        .resolves.toBeNull();
+
+      expect(console.log).toHaveBeenCalledWith('Queued share notifications for 2 of 2 user(s) on note note-1');
+    });
+
+    it('should try every recipient, then throw so the platform retries, after a retryable failure', async () => {
       localThis.writeEmail
-        .mockRejectedValueOnce(unavailable)
+        .mockRejectedValueOnce(localThis.unavailable)
         .mockResolvedValueOnce('mail-doc');
 
-      await expect(localThis.handle({ sharedWith: [] }, { sharedWith: ['a@example.com', 'b@example.com'] }, 'evt-1'))
-        .rejects.toThrow('1 failed temporarily, retrying');
+      const error = await localThis.handle(
+        { sharedWith: [] },
+        { sharedWith: ['a@example.com', 'b@example.com'] },
+        'evt-1',
+        localThis.freshTime
+      ).catch((caught) => caught);
 
+      expect(error).toBeInstanceOf(AggregateError);
+      expect(error.message).toBe('onNoteShared: mail writes failed, retrying');
+      expect(error.errors).toEqual([localThis.unavailable]);
       expect(localThis.writeEmail).toHaveBeenCalledTimes(2);
       expect(console.log).toHaveBeenCalledWith('Queued share notifications for 1 of 2 user(s) on note note-1');
     });
 
-    it('should not retry a permanent failure', async () => {
-      localThis.writeEmail.mockRejectedValue(new Error('Owner email is required in note data'));
+    it('should retry when the event has no time, because its age is unknown', async () => {
+      localThis.writeEmail.mockRejectedValue(localThis.unavailable);
 
       await expect(localThis.handle({ sharedWith: [] }, { sharedWith: ['a@example.com'] }, 'evt-1'))
+        .rejects.toBeInstanceOf(AggregateError);
+    });
+
+    it('should still throw for a mix of a permanent and a retryable failure, and report only the retryable one', async () => {
+      localThis.writeEmail
+        .mockRejectedValueOnce(new MailValidationError('Owner email is required in note data'))
+        .mockRejectedValueOnce(localThis.unavailable)
+        .mockResolvedValueOnce('mail-doc');
+
+      const error = await localThis.handle(
+        { sharedWith: [] },
+        { sharedWith: ['a@example.com', 'b@example.com', 'c@example.com'] },
+        'evt-1',
+        localThis.freshTime
+      ).catch((caught) => caught);
+
+      expect(error.errors).toEqual([localThis.unavailable]);
+      expect(localThis.writeEmail).toHaveBeenCalledTimes(3);
+      expect(console.log).toHaveBeenCalledWith('Queued share notifications for 1 of 3 user(s) on note note-1');
+    });
+
+    it('should not retry a permanent failure, and should say it was dropped', async () => {
+      localThis.writeEmail.mockRejectedValue(new MailValidationError('Owner email is required in note data'));
+
+      await expect(localThis.handle({ sharedWith: [] }, { sharedWith: ['a@example.com'] }, 'evt-1', localThis.freshTime))
         .resolves.toBeNull();
+
+      expect(console.error).toHaveBeenCalledWith(
+        'Failed to queue share notification for a@example.com on note note-1 (permanent, dropped, code none):',
+        expect.any(MailValidationError)
+      );
     });
 
-    it('should recognize temporary Firestore errors by numeric and string code', () => {
-      for (const code of [4, 8, 10, 13, 14, 'unavailable', 'deadline-exceeded', 'aborted']) {
-        expect(isTransientWriteError({ code })).toBe(true);
+    it('should give up with an error log, not a throw, once the event is too old', async () => {
+      localThis.writeEmail.mockRejectedValue(localThis.unavailable);
+
+      await expect(localThis.handle({ sharedWith: [] }, { sharedWith: ['a@example.com'] }, 'evt-1', localThis.staleTime))
+        .resolves.toBeNull();
+
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('giving up on 1 share email(s) for note note-1'));
+    });
+
+    it('should still retry just inside the age limit', async () => {
+      localThis.writeEmail.mockRejectedValue(localThis.unavailable);
+      const justInside = new Date(localThis.now - MAX_RETRY_AGE_MS + 60000).toISOString();
+
+      await expect(localThis.handle({ sharedWith: [] }, { sharedWith: ['a@example.com'] }, 'evt-1', justInside))
+        .rejects.toBeInstanceOf(AggregateError);
+    });
+
+    it('should log an error and not throw when the event has no id, because a retry could duplicate emails', async () => {
+      localThis.writeEmail.mockRejectedValue(localThis.unavailable);
+
+      await expect(localThis.handle({ sharedWith: [] }, { sharedWith: ['a@example.com'] }, undefined, localThis.freshTime))
+        .resolves.toBeNull();
+
+      expect(localThis.writeEmail).toHaveBeenCalledWith('a@example.com', expect.anything(), 'note-1', {});
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('has no id'));
+    });
+
+    it('should treat only invalid input as permanent, and retry everything else', () => {
+      for (const error of [
+        localThis.unavailable,
+        new Error('plain'),
+        { code: 'ECONNRESET' },
+        { code: 2 },
+        { code: 7 },
+        { code: 'permission-denied' },
+        { code: 5 },
+        undefined,
+        null
+      ]) {
+        expect(isRetryableWriteError(error)).toBe(true);
       }
-      for (const error of [new Error('plain'), { code: 7 }, { code: 'permission-denied' }, undefined, null]) {
-        expect(isTransientWriteError(error)).toBe(false);
+      for (const error of [new MailValidationError('x'), { code: 3 }, { code: 'invalid-argument' }]) {
+        expect(isRetryableWriteError(error)).toBe(false);
       }
     });
 
-    it('should warn and do nothing when the event has no data', async () => {
+    it('should log an error and do nothing when the event has no data', async () => {
       await expect(handleNoteShared({ params: { noteId: 'note-1' } }, { writeShareNotificationEmail: localThis.writeEmail }))
         .resolves.toBeNull();
 
-      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('carried no document data'));
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('carried no document data'));
       expect(localThis.writeEmail).not.toHaveBeenCalled();
     });
 

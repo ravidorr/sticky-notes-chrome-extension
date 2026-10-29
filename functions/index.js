@@ -130,7 +130,9 @@ export const api = onRequest(
  * Firestore trigger that detects when notes are shared and queues
  * share-notification emails in the 'mail' collection for newly added
  * recipients (delivered by sendMail). Mail documents have deterministic IDs and
- * the trigger retries temporary write failures, so no email is lost or doubled.
+ * the trigger retries failed writes, so a temporary Firestore error neither
+ * loses nor duplicates a queued email. Retries stop after two hours, and input
+ * that can never produce an email is logged and skipped.
  */
 export const onNoteShared = onDocumentUpdated(
   {

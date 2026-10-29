@@ -230,7 +230,19 @@ This email was sent because someone shared a sticky note with you using the Stic
 If you did not expect this email, you can safely ignore it.`;
 }
 
-// Firestore reports a duplicate create as gRPC code 6 or 'already-exists'
+/**
+ * Thrown when the input can never produce an email (no recipient, no note data,
+ * no owner address). Retrying it would fail the same way, so it is the one kind
+ * of write failure the trigger does not retry.
+ */
+export class MailValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'MailValidationError';
+  }
+}
+
+// Firestore reports a duplicate create as gRPC status 6, or the string 'already-exists'
 function isAlreadyExistsError(error) {
   return error?.code === 6 || error?.code === 'already-exists';
 }
@@ -245,25 +257,32 @@ function isAlreadyExistsError(error) {
  * @param {string} noteData.url - URL where note is attached
  * @param {string} noteData.ownerEmail - Email of note owner
  * @param {string} noteId - The note's document ID
- * @param {Object} deps - Optional dependencies for testing
+ * @param {Object} deps - Optional overrides
+ * @param {Object} [deps.db] - Firestore instance (for testing)
+ * @param {Function} [deps.serverTimestamp] - Timestamp factory (for testing)
  * @param {string} [deps.mailId] - Deterministic mail document ID. When set, the
  *   document is created only if it does not exist yet, so retries are safe.
- * @returns {Promise<string>} The document ID of the created mail document
+ *   An existing document is treated as already queued by an earlier attempt;
+ *   delivering it, and recovering a failed delivery, is the job of sendMail.
+ * @returns {Promise<string>} The ID of the mail document, newly created or
+ *   already queued by an earlier attempt
+ * @throws {MailValidationError} When the input can never produce an email
+ * @throws {Error} Any Firestore error other than an already existing document
  */
 export async function writeShareNotificationEmail(recipientEmail, noteData, noteId, deps = {}) {
   const db = deps.db || getFirestore();
   
   // Validate inputs
   if (!recipientEmail || typeof recipientEmail !== 'string') {
-    throw new Error('Recipient email is required');
+    throw new MailValidationError('Recipient email is required');
   }
   
   if (!noteData || typeof noteData !== 'object') {
-    throw new Error('Note data is required');
+    throw new MailValidationError('Note data is required');
   }
   
   if (!noteData.ownerEmail) {
-    throw new Error('Owner email is required in note data');
+    throw new MailValidationError('Owner email is required in note data');
   }
   
   const ownerEmail = noteData.ownerEmail;
