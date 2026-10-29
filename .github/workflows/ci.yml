@@ -35,6 +35,11 @@ jobs:
       - name: Lint Markdown
         run: npm run lint:md
 
+      - name: Validate functions lockfile
+        run: |
+          npm run test:functions-lockfile
+          npm run validate:functions-lockfile
+
   test:
     name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
