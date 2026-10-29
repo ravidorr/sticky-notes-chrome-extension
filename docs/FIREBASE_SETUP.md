@@ -333,6 +333,27 @@ rebuild and reload it. The redirect URI that was registered for its old,
 folder-derived ID can then be removed from the OAuth client, and data saved
 locally under the old ID does not appear under the new one.
 
+#### If you fork this project
+
+The Web application client in `OAUTH_CLIENTS.edge` belongs to the upstream Google
+Cloud project, so you cannot register redirect URIs on it. Use your own:
+
+1. In the Google Cloud project you chose in Step 1, create an OAuth client of type
+   **Web application** on the
+   [Credentials page](https://console.cloud.google.com/apis/credentials).
+2. Put its client ID into `OAUTH_CLIENTS.edge.development` in
+   `scripts/manifest-build.mjs`, and into `OAUTH_CLIENTS.edge.production` if the two
+   share one client, as they do today.
+3. Generate your own key and put the same value in the `key` of both
+   `public/manifest.json` and `public/manifest.edge.json`. The two have to stay
+   identical, which `scripts/manifest-key.test.mjs` checks.
+4. Update `DEVELOPMENT_EXTENSION_ID` in `scripts/manifest-key.mjs` to the ID your key
+   produces (`extensionIdFromKey` computes it). The redirect URL constant there
+   follows from it. Update the ID and redirect URL in the README and this guide,
+   which the same test checks, and the client ID in `scripts/manifest-build.test.mjs`.
+5. Register `https://<your-extension-id>.chromiumapp.org/` as an authorized redirect
+   URI on your Web application client, and verify as described above.
+
 The published (Edge Add-ons) build has a different, store-assigned ID, so its
 redirect URL has to be registered as well, separately.
 

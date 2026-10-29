@@ -144,9 +144,15 @@ If you fork the project, generate your own key, put it in `public/manifest.json`
 register a Chrome Extension OAuth client for the ID it produces (see
 [Step 8](docs/FIREBASE_SETUP.md#step-8-set-up-google-cloud-oauth-for-chrome-identity)
 of the Firebase setup guide), set that client as
-`OAUTH_CLIENTS.chrome.development`, and update `DEVELOPMENT_EXTENSION_ID` in
+`OAUTH_CLIENTS.chrome.development` (in `scripts/manifest-build.mjs`), and update `DEVELOPMENT_EXTENSION_ID` in
 `scripts/manifest-key.mjs` to the new ID, which `scripts/manifest-key.test.mjs`
 checks against the key.
+
+For Edge, also create a Web application OAuth client in your own Google Cloud project,
+set it as `OAUTH_CLIENTS.edge.development` (and `production` if they share it) in
+`scripts/manifest-build.mjs`, put the same key in `public/manifest.edge.json`, and
+register `https://<your-extension-id>.chromiumapp.org/` on that client. See
+[Step 8.5](docs/FIREBASE_SETUP.md#85-edge-development-builds-web-application-client).
 
 Edge works differently. Its development and production builds share one Web
 application client (`OAUTH_CLIENTS.edge` in `scripts/manifest-build.mjs`) that signs in
