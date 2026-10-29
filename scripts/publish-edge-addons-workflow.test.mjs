@@ -17,16 +17,16 @@ const laterSteps = steps.slice(steps.indexOf(gateStep) + 1);
 const envNames = (script) => [...script.matchAll(/process\.env\.([A-Z_]+)/g)].map((match) => match[1]);
 
 describe('publish-edge-addons workflow', () => {
-  it('runs on closed pull requests to main and on manual dispatch', () => {
-    assert.match(workflow, /^ {2}pull_request:\n {4}types: \[closed\]\n {4}branches: \[main\]/m);
+  it('runs on pushes to main and on manual dispatch, not on pull requests', () => {
+    assert.match(workflow, /^ {2}push:\n {4}branches: \[main\]/m);
     assert.match(workflow, /^ {2}workflow_dispatch:/m);
+    assert.doesNotMatch(workflow, /pull_request/);
   });
 
-  it('only runs a manual dispatch from main, and a merged pull request into main', () => {
+  it('only runs a push, or a manual dispatch from main', () => {
     const condition = workflow.match(/^ {4}if: (.+)$/m)[1];
+    assert.match(condition, /github\.event_name == 'push'/);
     assert.match(condition, /github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/);
-    assert.match(condition, /github\.event\.pull_request\.merged == true/);
-    assert.match(condition, /github\.event\.pull_request\.base\.ref == 'main'/);
   });
 
   it('has a job timeout and does not overlap runs', () => {
@@ -34,9 +34,11 @@ describe('publish-edge-addons workflow', () => {
     assert.match(workflow, /group: edge-addons-publish\n {2}cancel-in-progress: false/);
   });
 
-  it('checks out the merge commit with full history', () => {
-    assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.merge_commit_sha \|\| github\.sha \}\}/);
+  it('checks out the pushed commit with full history, and gives the gate the push range', () => {
+    assert.doesNotMatch(workflow, /^ {10}ref:/m);
     assert.match(workflow, /fetch-depth: 0/);
+    assert.match(gateStep, /BASE_SHA: \$\{\{ github\.event\.before \}\}/);
+    assert.match(gateStep, /HEAD_SHA: \$\{\{ github\.sha \}\}/);
   });
 
   it('has a gate step and every later step depends on its output', () => {
@@ -63,7 +65,7 @@ describe('publish-edge-addons workflow', () => {
     const publishStep = stepNamed('scripts/publish-edge-addons.mjs');
 
     // Names the gate reads through its REQUIRED_SETTINGS list, plus its own
-    const gateNames = ['EDGE_CLIENT_ID', 'EDGE_API_KEY', 'EDGE_PRODUCT_ID', 'EVENT_NAME', 'HEAD_SHA'];
+    const gateNames = ['EDGE_CLIENT_ID', 'EDGE_API_KEY', 'EDGE_PRODUCT_ID', 'EVENT_NAME', 'BASE_SHA', 'HEAD_SHA'];
     for (const name of gateNames) {
       assert.match(gateStep, new RegExp(`${name}: `), `gate step sets ${name}`);
     }

@@ -120,7 +120,7 @@ describe('runCheck', () => {
     assert.equal(result.status, 'SKIPPED (credentials missing)');
     assert.match(result.reason, /Version 1\.20\.16 was NOT submitted/);
     assert.match(result.reason, /EDGE_CLIENT_ID, EDGE_API_KEY, EDGE_PRODUCT_ID are not configured/);
-    assert.match(result.reason, /fork/);
+    assert.doesNotMatch(result.reason, /fork/);
     assert.doesNotMatch(result.reason, /Edge publishing is skipped/);
   });
 
@@ -161,7 +161,21 @@ describe('runCheck', () => {
     assert.throws(() => runCheck({ ...allSettings }, () => '{}'), /HEAD_SHA is required/);
   });
 
-  it('treats an unknown event like a merge', () => {
+  it('uses BASE_SHA, the commit before the push, when it is set', () => {
+    const read = (rev) => JSON.stringify({ version: { before: '1.0.0', after: '1.0.2' }[rev] });
+    const env = { ...allSettings, EVENT_NAME: 'push', HEAD_SHA: 'after', BASE_SHA: 'before' };
+    assert.equal(runCheck(env, read).submit, true);
+    assert.equal(runCheck({ ...env, HEAD_SHA: 'before' }, read).submit, false);
+  });
+
+  it('falls back to the first parent for an empty or all zero BASE_SHA', () => {
+    for (const BASE_SHA of ['', '0000000000000000000000000000000000000000', undefined]) {
+      const result = check('1.20.16', '1.20.15', { EVENT_NAME: 'push', BASE_SHA });
+      assert.equal(result.submit, true, `BASE_SHA ${BASE_SHA}`);
+    }
+  });
+
+  it('treats an unknown event like a push', () => {
     assert.equal(check('1.20.16', '1.20.15', { EVENT_NAME: 'push' }).submit, true);
     assert.equal(check('1.20.16', '1.20.16', { EVENT_NAME: '' }).submit, false);
   });
@@ -234,7 +248,7 @@ describe('check-edge-addons-version.mjs as a command', () => {
 
   const env = (head, extra = {}) => ({ ...allSettings, EVENT_NAME: 'pull_request', HEAD_SHA: head, ...extra });
 
-  it('writes exactly submit=false for a squash commit without a bump, even if the PR was opened on an older base', () => {
+  it('writes exactly submit=false for a squash commit without a bump', () => {
     const result = run(env(shas.noBump));
     assert.equal(result.status, 0);
     assert.equal(result.output, 'submit=false\n');
@@ -247,6 +261,33 @@ describe('check-edge-addons-version.mjs as a command', () => {
     assert.equal(result.status, 0);
     assert.equal(result.output, 'submit=true\n');
     assert.match(result.stdout, /1\.0\.1 to 1\.0\.2/);
+  });
+
+  it('compares a push with the commit before it, whatever its parent is', () => {
+    // Two commits in one push: C (no bump) and D (bump)
+    const multi = run(env(shas.bump, { EVENT_NAME: 'push', BASE_SHA: shas.b }));
+    assert.equal(multi.output, 'submit=true\n');
+    assert.match(multi.stdout, /1\.0\.1 to 1\.0\.2/);
+
+    // The same two commits, pushed one by one: only the bump submits
+    assert.equal(run(env(shas.noBump, { EVENT_NAME: 'push', BASE_SHA: shas.b })).output, 'submit=false\n');
+    assert.equal(run(env(shas.bump, { EVENT_NAME: 'push', BASE_SHA: shas.noBump })).output, 'submit=true\n');
+
+    // A push that moves main past a bump that was already pushed
+    assert.equal(run(env(shas.merge, { EVENT_NAME: 'push', BASE_SHA: shas.bump })).output, 'submit=true\n');
+    assert.equal(run(env(shas.bump, { EVENT_NAME: 'push', BASE_SHA: shas.bump })).output, 'submit=false\n');
+  });
+
+  it('falls back to the first parent when the push has no usable before', () => {
+    const zero = '0000000000000000000000000000000000000000';
+    assert.equal(run(env(shas.bump, { EVENT_NAME: 'push', BASE_SHA: zero })).output, 'submit=true\n');
+    assert.equal(run(env(shas.noBump, { EVENT_NAME: 'push', BASE_SHA: '' })).output, 'submit=false\n');
+  });
+
+  it('fails for a before commit that does not exist', () => {
+    const result = run(env(shas.bump, { EVENT_NAME: 'push', BASE_SHA: 'f'.repeat(40) }));
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Cannot read package.json at the base commit/);
   });
 
   it('compares a --no-ff merge commit with its first parent', () => {
@@ -263,12 +304,13 @@ describe('check-edge-addons-version.mjs as a command', () => {
     assert.match(result.stdout, /^::warning::/);
   });
 
-  it('warns that a due release was not submitted when no credentials are set', () => {
+  it('warns that a due release was not submitted when no credentials are set, without fork wording', () => {
     const result = run(env(shas.bump, { EDGE_CLIENT_ID: '', EDGE_API_KEY: '', EDGE_PRODUCT_ID: '' }));
     assert.equal(result.status, 0);
     assert.equal(result.output, 'submit=false\n');
     assert.match(result.stdout, /^::warning::Edge Add-ons SKIPPED \(credentials missing\): Version 1\.0\.2 was NOT submitted/);
     assert.match(result.summary, /SKIPPED \(credentials missing\)/);
+    assert.doesNotMatch(result.stdout, /fork/);
   });
 
   it('is quiet without credentials when nothing is due', () => {

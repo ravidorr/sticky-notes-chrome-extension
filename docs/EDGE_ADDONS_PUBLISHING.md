@@ -1,12 +1,14 @@
 # Edge Add-ons Publishing
 
-Every pull request merged into `main` runs
-`.github/workflows/publish-edge-addons.yml`. When the merge changed the version
-in `package.json`, it builds the Edge package and submits it to Microsoft Edge
+Every push to `main` (which is what a merged pull request is) runs
+`.github/workflows/publish-edge-addons.yml`. It runs in the trusted context of
+`main`, which always has the repository secrets, so merges of pull requests from
+forks and external contributors work the same as any other. When the push changed
+the version in `package.json`, it builds the Edge package and submits it to Microsoft Edge
 Add-ons for review through the
 [Microsoft Edge Add-ons Publish API](https://learn.microsoft.com/en-us/microsoft-edge/extensions/update/api/using-addons-api).
-A merge that does not change the version, a pull request closed without
-merging, and a run before the credentials exist submit nothing and do not fail
+A push that does not change the version, and a run before the credentials exist,
+submit nothing and do not fail
 the run, unless the version cannot be read. The Chrome Web Store flow is
 described in [CHROME_WEB_STORE_PUBLISHING.md](CHROME_WEB_STORE_PUBLISHING.md).
 
@@ -95,30 +97,33 @@ ones.
 
 ## How it works
 
-1. Checks out the merge commit with full history and sets up Node 20.
+1. Checks out the pushed commit with full history and sets up Node 20.
 2. Runs `scripts/check-edge-addons-version.mjs`, which decides whether to
    submit. Chrome compares its build with the versions the store reports. The
-   Edge API does not report the published version, so Edge compares the merge
-   commit with its first parent:
-   - It compares the `package.json` version at the merge commit with the one at
-     `<merge commit>^1`, as Chrome manifest versions (so `1.2.3+8` is `1.2.3.8`,
-     the way `scripts/manifest-version.mjs` writes them). The version changes
-     together with the extension code, so an unchanged version means nothing to
-     release. A higher version is submitted. A lower version is not submitted and
-     gives a warning. Squash merges and merge commits are supported. The first
-     parent is the previous tip of `main`, unlike the pull request base, which
-     can be stale.
+   Edge API does not report the published version, so Edge compares `package.json`
+   before and after the push:
+   - It compares the `package.json` version at the pushed commit (`github.sha`)
+     with the one at the commit before the push (`github.event.before`, the exact
+     previous tip of `main`), as Chrome manifest versions (so `1.2.3+8` is
+     `1.2.3.8`, the way `scripts/manifest-version.mjs` writes them). The version
+     changes together with the extension code, so an unchanged version means
+     nothing to release. A higher version is submitted. A lower version is not
+     submitted and gives a warning. A push can hold several commits; comparing the
+     two tips is right for that too. If `before` is empty or all zeros, the first
+     parent of the pushed commit is used. Squash merges, rebase merges and merge
+     commits are all supported.
    - A manual run (**Run workflow**, allowed from `main` only) skips the
      comparison and submits the version on `main`.
    - Every outcome is written to the run summary with a status word:
      `SUBMITTED`, `SKIPPED (no release)`, `SKIPPED (credentials missing)`,
      `SKIPPED (version went DOWN)` or `FAILED`.
-   - If none of the three settings is set, the run stays green. When the merge
+   - If none of the three settings is set, the run stays green. When the push
      changed the version, it adds a warning saying that version was **not**
-     submitted, which you can see on the run page. A merge without a version
-     change says nothing. A pull request from a fork never has the secrets.
+     submitted, which you can see on the run page. A push without a version
+     change says nothing.
    - If only some settings are set, or a manual run lacks one, the run fails and
-     names them.
+     names them. A push always has the secrets, so a partial set is a
+     misconfiguration.
 3. Runs `npm ci` and `npm run build:edge`, which produces `dist/edge.zip`.
 4. Runs `scripts/publish-edge-addons.mjs`. It first checks that
    `dist/edge/manifest.json` has the version of `package.json`, then:
@@ -130,7 +135,7 @@ ones.
    - Requests carry `Authorization: ApiKey <key>` and `X-ClientID: <id>`. The
      values are never printed.
 5. A concurrency group serializes runs. GitHub keeps only the newest pending run,
-   so if several merges queue up, an older pending run is dropped.
+   so if several pushes queue up, an older pending run is dropped.
 
 The publish notes are sent as JSON (`{"notes": "..."}`). Microsoft's pages
 contradict themselves here (JSON in one place, plain text in another). If the
@@ -161,7 +166,7 @@ first publish fails with HTTP 400, try plain text in `scripts/publish-edge-addon
   the Partner Center draft. Wait for the review to finish (or cancel it), then
   start a new run with **Run workflow** on `main`.
 - Failures are written to the run summary and to an error annotation. GitHub
-  only emails the person who started the run or merged the pull request. Alerting
+  only emails the person who pushed or started the run. Alerting
   anyone else is a known limitation and is not built.
 
 ## What does not submit
@@ -172,14 +177,13 @@ first publish fails with HTTP 400, try plain text in `scripts/publish-edge-addon
   request, so the change ships with the next extension-code change. To ship it
   sooner, extend `scripts/extension-changes.mjs` to count
   `public/manifest.edge.json`.
-- Merges that are dropped by the concurrency group. If the newer run's own pull
-  request did not bump the version, the version of the dropped run is not
-  submitted. Start a new run with **Run workflow** on `main`.
+- Pushes that are dropped by the concurrency group. If the newer push did not
+  change the version, the version of the dropped run is not submitted. Start a new run with **Run workflow** on `main`.
 
 ## First run
 
 1. Complete the setup above.
-2. Merge a pull request that bumps the version, or open the **Actions** tab, pick
+2. Push a version bump to `main` by merging a pull request, or open the **Actions** tab, pick
    **Publish Edge Add-ons** and click **Run workflow** on `main`.
 3. Open the run and read the logs of **Upload to Edge Add-ons and publish**.
    You should see the upload accepted, the upload succeeded, the publish accepted
@@ -194,7 +198,7 @@ ID or a path ending in it).
 
 ## Troubleshooting
 
-Do not use **Re-run** on an old run: it replays the old merge commit. Start a new
+Do not use **Re-run** on an old run: it replays the old push. Start a new
 run with **Run workflow** on `main` instead.
 
 | Symptom | Cause and fix |

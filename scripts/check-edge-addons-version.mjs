@@ -5,13 +5,15 @@
  * with what the store has; the Edge Add-ons API does not report the published
  * version, so the decision uses the repository instead: the version in
  * package.json changes together with the extension code (see
- * scripts/validate-version-bump.mjs), so a merge commit whose package.json
- * version differs from its first parent released a new one. Versions are
- * compared as Chrome manifest versions (1.2.3+8 is 1.2.3.8), the same way the
- * build writes them.
+ * scripts/validate-version-bump.mjs), so a push to main whose package.json
+ * version differs from the version before the push released a new one. Versions
+ * are compared as Chrome manifest versions (1.2.3+8 is 1.2.3.8), the same way
+ * the build writes them.
  *
- * The first parent is the previous tip of main for a squash or rebase-free merge
- * and for a merge commit alike, unlike the pull request base, which can be stale.
+ * The version before the push is BASE_SHA (the push event's "before", the exact
+ * previous tip of main). A push can hold several commits; comparing the two tips
+ * is right for that too. Without a usable BASE_SHA (empty, or all zeros as for a
+ * new branch) the first parent of HEAD_SHA is used.
  *
  * Missing Edge credentials never fail a merge that has nothing to release. When
  * none are configured and a release was due, the run stays green but says loudly
@@ -63,8 +65,8 @@ function toManifestVersion(version, side) {
 
 /**
  * @param {Object} input
- * @param {string|undefined} input.baseVersion - package.json version at the first parent
- * @param {string} input.headVersion - package.json version at the merge commit
+ * @param {string|undefined} input.baseVersion - package.json version before the push
+ * @param {string} input.headVersion - package.json version after the push
  * @param {boolean} [input.forced] - Submit whatever the versions are (manual run)
  * @returns {{submit: boolean, version: string, change: 'new'|'same'|'down', reason: string}}
  * @throws {GateError} When a version cannot be converted to a manifest version
@@ -135,12 +137,13 @@ function readSide(read, rev, side) {
 export function runCheck(env = process.env, readPackageJson = readPackageJsonAt) {
   const headSha = env.HEAD_SHA;
   if (!headSha) {
-    throw new GateError('HEAD_SHA is required: the merge commit of the pull request has not been computed.');
+    throw new GateError('HEAD_SHA is required: the commit that was pushed to main.');
   }
 
   const forced = env.EVENT_NAME === 'workflow_dispatch';
   const headVersion = readSide(readPackageJson, headSha, 'head');
-  const baseVersion = forced ? undefined : readSide(readPackageJson, `${headSha}^1`, 'base');
+  const baseRev = /^0*$/.test(env.BASE_SHA ?? '') ? `${headSha}^1` : env.BASE_SHA;
+  const baseVersion = forced ? undefined : readSide(readPackageJson, baseRev, 'base');
   const decision = decideEdgeSubmission({ baseVersion, headVersion, forced });
 
   const missing = findMissingSettings(env);
@@ -161,8 +164,7 @@ export function runCheck(env = process.env, readPackageJson = readPackageJsonAt)
         submit: false,
         level: 'warning',
         status: 'SKIPPED (credentials missing)',
-        reason: `Version ${decision.version} was NOT submitted: ${missing.join(', ')} are not configured ` +
-          '(on a pull request from a fork the secrets are never available). ' +
+        reason: `Version ${decision.version} was NOT submitted: ${missing.join(', ')} are not configured. ` +
           'Set them as described in docs/EDGE_ADDONS_PUBLISHING.md, then start a run with Run workflow on main.'
       };
     }

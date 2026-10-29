@@ -1,19 +1,19 @@
 name: Publish Edge Add-ons
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Runs never overlap. GitHub keeps only the newest pending run, so when several
-# merges queue up the older pending runs are dropped. A dropped run can leave a
-# version unsubmitted when the newer run's own pull request did not change the
-# version; start a new run with Run workflow on main to submit the current
-# version.
+# Runs after every push to main, a trusted context that always has the secrets,
+# also for merges of pull requests from forks. Runs never overlap. GitHub keeps
+# only the newest pending run, so when several pushes queue up the older pending
+# runs are dropped. A dropped run can leave a version unsubmitted when the newer
+# push did not change the version; start a new run with Run workflow on main to
+# submit the current version.
 concurrency:
   group: edge-addons-publish
   cancel-in-progress: false
@@ -21,7 +21,7 @@ concurrency:
 jobs:
   publish:
     # A manual run is only allowed from main, so it never submits another branch
-    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     name: Publish Edge Add-ons release
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -29,18 +29,17 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '20'
           cache: npm
-      # Every merge runs this workflow, but only a merge that changed the version
+      # Every push runs this workflow, but only a push that changed the version
       # in package.json is submitted. The version changes together with the
       # extension code (see scripts/validate-version-bump.mjs). Chrome compares the
       # build with the versions the store reports; the Edge API does not report
-      # the published version, so Edge compares the merge commit with its first
-      # parent. Without the Edge credentials a merge with nothing to release is
+      # the published version, so Edge compares package.json before and after
+      # the push. Without the Edge credentials a push with nothing to release is
       # silent, and one with a release finishes green with a warning that the
       # version was NOT submitted.
       - name: Check whether Edge needs this version
@@ -50,7 +49,8 @@ jobs:
           EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
           EDGE_PRODUCT_ID: ${{ vars.EDGE_PRODUCT_ID }}
           EVENT_NAME: ${{ github.event_name }}
-          HEAD_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
         run: node scripts/check-edge-addons-version.mjs
       - if: steps.gate.outputs.submit == 'true'
         run: npm ci
