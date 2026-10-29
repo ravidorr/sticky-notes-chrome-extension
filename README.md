@@ -111,16 +111,49 @@ sticky-notes-chrome-extension/
 # Install dependencies
 npm install
 
-# Build the extension
-npm run build
+# Build the extension for local testing
+npm run build:dev:chrome
 ```
+
+`npm run build` builds the production package for both Chrome and Edge. Use
+`npm run build:dev:chrome` (or `npm run build:dev:edge`) when you load the
+extension locally.
 
 ### Load in Chrome
 
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable "Developer mode" (toggle in top right)
 3. Click "Load unpacked"
-4. Select the `dist/chrome` folder
+4. Select the `dist/chrome` folder (build it first with `npm run build:dev:chrome`)
+
+Use the development build to sign in locally. The production build
+(`npm run build`) uses the Chrome Web Store OAuth client, which is tied to the
+published extension's ID, so a locally loaded copy typically fails to sign in
+with `bad client id`. The development build uses the development OAuth client
+instead.
+
+A Chrome extension OAuth client only works for the extension ID registered with
+it. The build removes the manifest `key`, so Chrome derives an unpacked
+extension's ID from the folder it is loaded from, and the development client
+works only for the folder it was registered for. Expect to need your own client
+unless you load the extension from that same folder: load the development build,
+copy the ID shown in `chrome://extensions/`, create a Chrome Extension OAuth
+client with that ID as the Item ID (see
+[Step 8](docs/FIREBASE_SETUP.md#step-8-set-up-google-cloud-oauth-for-chrome-identity)
+of the Firebase setup guide), and set the new client ID as
+`OAUTH_CLIENTS.chrome.development` in `scripts/build.js`. Moving or renaming the
+folder, or loading it on another machine, changes the ID, so the client has to
+be updated again.
+
+Edge works differently. Its development and production builds share one Web
+application client (`OAUTH_CLIENTS.edge` in `scripts/build.js`) that signs in
+through `launchWebAuthFlow`. Its authorized redirect URL contains the extension
+ID (typically `https://<extension-id>.chromiumapp.org/`), so it depends on the
+folder in the same way.
+
+After you rebuild, reload the extension in `chrome://extensions/` and refresh
+any open pages. A page that was open before the reload still runs the old
+content script and fails with "Extension context invalidated".
 
 ### Development Commands
 
@@ -240,7 +273,7 @@ The extension automatically detects and uses your browser's language. Currently 
 1. Create a new folder: `public/_locales/{lang_code}/`
 2. Copy `messages.json` from the `en` folder
 3. Translate all message values (keep keys the same)
-4. Rebuild: `npm run build`
+4. Rebuild: `npm run build:dev:chrome`
 
 See `.cursor/rules/i18n.mdc` for detailed i18n guidelines.
 

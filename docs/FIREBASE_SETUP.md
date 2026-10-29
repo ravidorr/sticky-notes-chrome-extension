@@ -78,8 +78,10 @@ The extension uses environment variables for sensitive config (recommended for p
    VITE_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
    VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
    VITE_FIREBASE_APP_ID=1:123456789:web:abc123
-   VITE_OAUTH_CLIENT_ID=YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com
    ```
+
+   The OAuth client ID is not read from `.env`. The build sets it from
+   `scripts/build.js` (see Step 9).
 
 > **Note:** The `.env` file is gitignored. Only `.env.example` (with placeholder values) should be committed.
 
@@ -269,40 +271,42 @@ Chrome extensions use `chrome.identity` API which requires OAuth 2.0 credentials
 
 ### 8.4: Find Your Extension ID
 
-1. Open Chrome and go to `chrome://extensions/`
-2. Enable **Developer mode** (toggle in top right)
-3. Find "Element-Anchored Sticky Notes"
-4. Copy the **ID** (e.g., `abcdefghijklmnopqrstuvwxyz123456`)
+The ID of an unpacked extension comes from the folder it is loaded from, so load
+the extension first:
+
+1. Build it: `npm run build:dev:chrome`
+2. Open Chrome and go to `chrome://extensions/`
+3. Enable **Developer mode** (toggle in top right)
+4. Click **Load unpacked** and select the `dist/chrome` folder
+5. Find "Element-Anchored Sticky Notes"
+6. Copy the **ID** (e.g., `abcdefghijklmnopqrstuvwxyz123456`)
+
+Keep loading the extension from the same folder. Moving or renaming it, or
+loading it on another machine, changes the ID, and the OAuth client has to be
+updated to match.
 
 ---
 
-## Step 9: Update OAuth Client ID in Code
+## Step 9: Set the OAuth Client ID in the Build
 
-### 9.1: Update manifest.json
+The build sets the OAuth client ID itself, from `OAUTH_CLIENTS` in
+`scripts/build.js`. It overwrites `oauth2.client_id` in `public/manifest.json`
+and the `VITE_OAUTH_CLIENT_ID` value from `.env` on every build, so editing
+those two has no effect.
 
-Open `public/manifest.json` and update the `oauth2` section:
+Open `scripts/build.js` and set the `development` entry for Chrome:
 
-```json
-{
-  "oauth2": {
-    "client_id": "123456789-abc123.apps.googleusercontent.com",
-    "scopes": [
-      "https://www.googleapis.com/auth/userinfo.email",
-      "https://www.googleapis.com/auth/userinfo.profile"
-    ]
-  }
-}
+```js
+const OAUTH_CLIENTS = {
+  chrome: {
+    development: '123456789-abc123.apps.googleusercontent.com',
+    // production: the Chrome Web Store client, do not change
+  },
+  // ...
+};
 ```
 
-> **Note:** The OAuth client ID in `manifest.json` is safe to commit - it's tied to your specific extension ID.
-
-### 9.2: Update .env
-
-Add the OAuth client ID to your `.env` file:
-
-```env
-VITE_OAUTH_CLIENT_ID=123456789-abc123.apps.googleusercontent.com
-```
+> **Note:** The OAuth client ID is safe to commit - it's tied to your specific extension ID.
 
 ---
 
@@ -322,7 +326,7 @@ VITE_OAUTH_CLIENT_ID=123456789-abc123.apps.googleusercontent.com
 1. Rebuild the extension:
 
    ```bash
-   npm run build
+   npm run build:dev:chrome
    ```
 
 2. Reload the extension in Chrome:
@@ -390,8 +394,7 @@ This usually means **Firestore indexes are missing**:
 | Item | Location | Status |
 |------|----------|--------|
 | Firebase config | `.env` file | [] |
-| OAuth client ID | `.env` file | [] |
-| OAuth client ID | `public/manifest.json` | [] |
+| OAuth client ID | `scripts/build.js` (`OAUTH_CLIENTS`) | [] |
 | Extension ID in Google Cloud | OAuth credentials | [] |
 | Extension domain in Firebase Auth | Authorized domains | [] |
 | Firestore security rules (notes + comments) | Firebase Console | [] |
