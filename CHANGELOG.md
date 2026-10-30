@@ -5,6 +5,269 @@ All notable changes to the Element-Anchored Sticky Notes Chrome Extension are do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Every commit must update this file (the pre-commit hook enforces it). Changes that do not
+bump the version, such as documentation, CI or Cloud Functions work, go under
+"Unreleased" and move under the next version heading when the version is bumped.
+The entries for 1.20.3 to 1.20.18 follow the same rule: a change merged without a version
+bump is listed under the next version bump after it.
+
+## [Unreleased]
+
+### Changed
+
+- The pre-commit hook now requires a CHANGELOG.md update on every commit, not only on
+  major or minor version bumps
+
+### Added
+
+- Tests for the changelog check in `scripts/check-changelog.test.mjs`, and tests that run
+  it as a command in `scripts/validator-cli.test.mjs`
+
+### Documentation
+
+- Backfilled this changelog for versions 1.20.3 to 1.20.18 from the git history
+- The README lists the changelog check and how to amend a commit that already updated
+  the changelog
+
+## [1.20.18] - 2026-10-29
+
+### Added
+
+- New versions are published to Edge Add-ons automatically after merges to main, and
+  the workflow skips visibly instead of publishing twice
+
+### Changed
+
+- The Edge production build uses its own OAuth client (`sticky-notes-edge-extension`)
+  instead of sharing the development Web application client
+
+## [1.20.17] - 2026-10-29
+
+### Added
+
+- The Edge development build has a stable extension ID, so local sign-in keeps working
+  between rebuilds; the Edge OAuth setup for forks is documented
+
+## [1.20.16] - 2026-10-29
+
+### Changed
+
+- Cloud Functions use `firebase-admin` 14, which clears the remaining moderate audit
+  findings
+- The Chrome Web Store cancel step retries when the API rate limit is hit
+- The remaining GitHub Actions are pinned to commit SHAs
+
+### Removed
+
+- The unused root `firebase-admin` dev dependency; unit tests use the Jest stub and the
+  Cloud Functions carry their own copy
+
+## [1.20.15] - 2026-10-29
+
+### Added
+
+- The Chrome development build has a stable extension ID, so local sign-in keeps working
+  between rebuilds
+
+### Fixed
+
+- The Jest worktree ignore is tighter, and the Firestore test stub's fallback is now
+  distinguishable from real behavior
+
+## [1.20.14] - 2026-10-29
+
+### Changed
+
+- Upgraded `firebase` to 12.19.0
+- A Chrome Web Store release is submitted only when the extension code changes, and a
+  version bump is required only for such changes
+- The security policy version workflow actions are pinned to commit SHAs
+
+### Security
+
+- Cleared two dev-only npm audit findings
+
+### Fixed
+
+- Failed share emails are retried without sending duplicates; retries are bounded and
+  malformed note fields are treated as permanent failures
+
+### Removed
+
+- The unused manual test tracking spreadsheet
+
+## [1.20.13] - 2026-10-29
+
+### Fixed
+
+- The entry-point check in the release scripts compares real paths, so a script started
+  through a symlink or wrapper no longer exits without validating anything
+
+### Changed
+
+- Every script under `scripts/` is linted and the merge gates are tested
+
+## [1.20.12] - 2026-10-29
+
+### Security
+
+- Fixed npm audit findings in the Cloud Functions dependencies, including four critical
+  ones
+- Upgraded `nodemailer` from 7 to 10.3.0 to fix its SMTP command injection advisories
+
+## [1.20.11] - 2026-10-29
+
+### Changed
+
+- The `sendMail` trigger and the share-detection handler moved out of
+  `functions/index.js` into testable modules, with tests of the real code
+
+## [1.20.10] - 2026-10-29
+
+### Documentation
+
+- The README explains how to build and load the development build for local sign-in,
+  and why the production build cannot sign in locally
+
+## [1.20.9] - 2026-10-29
+
+### Documentation
+
+- Removed the finished one-time binding migration from the functions deployment guide
+
+## [1.20.8] - 2026-10-29
+
+### Security
+
+- The Cloud Functions deploy identity is scoped to a main-only GitHub environment, so a
+  workflow on another branch cannot impersonate it
+
+## [1.20.7] - 2026-10-29
+
+### Added
+
+- CI validates the functions lockfile and Node runtime against `functions/package.json`
+  and runs `npm ci` in `functions/`
+
+## [1.20.6] - 2026-10-29
+
+### Changed
+
+- Cloud Functions run on Node.js 22 with `firebase-functions` 7.4, ahead of the Node.js
+  20 decommission on 2026-10-30
+
+## [1.20.5] - 2026-10-29
+
+### Added
+
+- Firebase Functions deploy automatically after merges to main that change `functions/`
+  or `firebase.json`, authenticated with Workload Identity Federation
+
+## [1.20.4] - 2026-10-29
+
+### Changed
+
+- Share notification emails are sent by a self-managed `sendMail` Cloud Function
+  (Gmail SMTP through `nodemailer`) instead of the Trigger Email extension, because
+  Firebase Extensions is decommissioned on 2027-03-31
+
+## [1.20.3+10] - 2026-10-28
+
+### Changed
+
+- CI uses `actions/checkout` v7.0.1 and `actions/setup-node` v7.1.0, off Node 20
+
+## [1.20.3+9] - 2026-10-28
+
+### Added
+
+- Publishing to the Chrome Web Store after merges to main, with a version pre-check
+- A pull request check that requires a version bump
+- A security policy in `SECURITY.md` and a CI check that its supported version matches
+  `package.json`
+- README status badges
+
+### Security
+
+- Remediated npm audit findings
+
+## [1.20.3+8] - 2026-10-08
+
+### Changed
+
+- The version is valid SemVer (`1.20.3+8` is Chrome version `1.20.3.8`)
+
+### Added
+
+- GitHub Sponsors funding metadata
+
+## [1.20.3.8] - 2026-02-21
+
+### Fixed
+
+- OAuth errors are logged with their message instead of `[object Object]`
+
+## [1.20.3.7] - 2026-02-03
+
+### Fixed
+
+- `document.baseURI` references are fixed in the service worker build
+
+### Added
+
+- A Chrome extension best practices skill for AI assistants
+
+## [1.20.3.6] - 2026-02-03
+
+### Fixed
+
+- The service worker is built as an IIFE instead of ES modules
+
+## [1.20.3.5] - 2026-02-03
+
+### Changed
+
+- Smaller bundle: the Firebase SDK is lazy-loaded, and the build reports a bundle
+  analysis
+
+## [1.20.3.4] - 2026-02-03
+
+### Fixed
+
+- All lint warnings across the codebase
+
+### Changed
+
+- The popup and options page initialize with parallel async operations
+
+### Added
+
+- CLAUDE.md with guidelines for AI assistants
+
+## [1.20.3.3] - 2026-02-03
+
+### Changed
+
+- The service worker no longer loads the Firebase SDK (about 800KB) at startup; Firebase
+  loads on demand and background handlers avoid eager user fetches
+
+### Fixed
+
+- Firebase lazy loading and dynamic imports work in the service worker, and the Firebase
+  lazy boundary is restored so the SDK is not parsed eagerly
+
+## [1.20.3] - 2026-02-02
+
+### Changed
+
+- The Open Dashboard button is part of the "Your Dashboard" feature card on the options
+  page, and the whole card is clickable
+- The add note hint is a tooltip on the Add Note button, which saves popup space
+
+### Fixed
+
+- The build removes the manifest `key` field, which the Chrome Web Store rejects
+
 ## [1.20.2] - 2026-02-01
 
 ### Fixed

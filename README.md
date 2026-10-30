@@ -213,6 +213,7 @@ The project enforces minimum coverage thresholds (configured in `jest.config.js`
 
 This project uses Husky and lint-staged to ensure code quality before commits:
 
+- **Changelog**: every commit must stage `CHANGELOG.md`; changes that do not bump the version go under "Unreleased". When amending a commit that already updated it, stage `CHANGELOG.md` again (a small edit is enough)
 - **Lint**: ESLint runs on staged files and auto-fixes issues
 - **Tests**: All Jest unit tests must pass (the script tests, `npm run test:scripts`, run in CI only)
 

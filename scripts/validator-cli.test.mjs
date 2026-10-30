@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
-import { after, before, describe, it } from 'node:test';
+import { after, before, beforeEach, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 // These tests start the real scripts as commands. The functions they export are
@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const securityScript = join(scriptsDir, 'validate-security-policy-version.mjs');
 const bumpScript = join(scriptsDir, 'validate-version-bump.mjs');
+const changelogScript = join(scriptsDir, 'check-changelog.mjs');
 
 function run(args, options = {}) {
   const result = spawnSync(process.execPath, args, { encoding: 'utf8', ...options });
@@ -199,5 +200,124 @@ describe('validate-version-bump.mjs as a command', () => {
     assert.equal(passing.status, 0);
     assert.match(passing.stdout, /Version bumped/);
     assert.equal(failing.status, 1);
+  });
+});
+
+describe('check-changelog.mjs as a command', () => {
+  let repo;
+  let linked;
+
+  // Started from a git hook, git sets GIT_DIR and GIT_INDEX_FILE, which would
+  // point these commands at the real repository instead of the temporary one
+  const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')));
+
+  function git(...args) {
+    const result = spawnSync('git', args, { cwd: repo, encoding: 'utf8', env });
+    assert.equal(result.status, 0, result.stderr);
+  }
+
+  function runCheck(script = changelogScript, cwd = repo) {
+    return run([script], { cwd, env });
+  }
+
+  before(() => {
+    repo = realpathSync(mkdtempSync(join(tmpdir(), 'check-changelog-cli-')));
+    git('init', '-q');
+    git('config', 'user.email', 'test@example.com');
+    git('config', 'user.name', 'Test');
+    git('config', 'commit.gpgsign', 'false');
+    mkdirSync(join(repo, 'src'));
+    writeFileSync(join(repo, 'src', 'a.js'), 'export const a = 1;\n');
+    writeFileSync(join(repo, 'CHANGELOG.md'), '# Changelog\n');
+    git('add', '.');
+    git('commit', '-q', '-m', 'base');
+    linked = tryLink(changelogScript, join(tmpdir(), `linked-check-changelog-${process.pid}.mjs`));
+  });
+
+  beforeEach(() => {
+    git('reset', '-q', '--hard');
+  });
+
+  after(() => {
+    if (linked) {
+      rmSync(linked, { force: true });
+    }
+    if (repo) {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  function changeCode() {
+    writeFileSync(join(repo, 'src', 'a.js'), 'export const a = 2;\n');
+  }
+
+  function changeChangelog() {
+    writeFileSync(join(repo, 'CHANGELOG.md'), '# Changelog\n\n- A change\n');
+  }
+
+  it('fails with the fix and exit code 1 when the changelog is not staged', () => {
+    changeCode();
+    git('add', 'src/a.js');
+
+    const result = runCheck();
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /CHANGELOG UPDATE REQUIRED/);
+    assert.match(result.stderr, /git add CHANGELOG\.md/);
+    assert.equal(result.stdout, '');
+  });
+
+  it('exits 0 without output when the changelog is staged with the change', () => {
+    changeCode();
+    changeChangelog();
+    git('add', 'src/a.js', 'CHANGELOG.md');
+
+    const result = runCheck();
+
+    assert.equal(result.status, 0);
+    assert.equal(result.stderr, '');
+    assert.equal(result.stdout, '');
+  });
+
+  it('exits 0 when nothing is staged', () => {
+    assert.equal(runCheck().status, 0);
+  });
+
+  it('reads the staged files, not the working tree', () => {
+    changeCode();
+    changeChangelog();
+    git('add', 'src/a.js');
+
+    assert.equal(runCheck().status, 1);
+  });
+
+  it('still runs its checks through a symlink', (t) => {
+    if (!linked) {
+      return t.skip('symlinks are not available here');
+    }
+
+    changeCode();
+    git('add', 'src/a.js');
+    const failing = runCheck(linked);
+    changeChangelog();
+    git('add', 'CHANGELOG.md');
+    const passing = runCheck(linked);
+
+    assert.equal(failing.status, 1);
+    assert.equal(passing.status, 0);
+  });
+
+  it('still runs its checks from a relative path', () => {
+    const relativeScript = relative(repo, changelogScript);
+
+    changeCode();
+    git('add', 'src/a.js');
+    const failing = runCheck(relativeScript);
+    changeChangelog();
+    git('add', 'CHANGELOG.md');
+    const passing = runCheck(relativeScript);
+
+    assert.equal(failing.status, 1);
+    assert.equal(passing.status, 0);
   });
 });
