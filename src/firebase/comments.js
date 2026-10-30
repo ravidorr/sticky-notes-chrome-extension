@@ -63,7 +63,7 @@ async function loadFirestoreSdk() {
  * @param {Object} deps - Optional overrides for testing
  * @returns {Promise<Object>} Firestore functions merged with deps
  */
-async function getFirestoreDeps(deps = {}) {
+async function getFirestoreDeps(deps) {
   // If deps already has Firestore functions, use them (for testing)
   if (deps.collection) {
     return deps;

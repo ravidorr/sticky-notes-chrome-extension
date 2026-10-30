@@ -30,7 +30,11 @@ import {
     // Browser Detection
     STORE_URLS,
     getBrowserType,
-    updateInstallButtons
+    updateInstallButtons,
+    // FAQ, CSS loading, main
+    initFAQ,
+    loadFullStylesheet,
+    init
 } from '../../site/js/scripts.js';
 
 describe('site/scripts.js', () => {
@@ -1305,6 +1309,467 @@ describe('site/scripts.js', () => {
                 document.body.innerHTML = '<div>No buttons here</div>';
                 expect(() => updateInstallButtons()).not.toThrow();
             });
+        });
+    });
+    // ============================================
+    // Coverage: missing browser globals and edge cases
+    // ============================================
+
+    describe('missing browser globals', () => {
+        const withoutGlobal = (name, fn) => {
+            const original = Object.getOwnPropertyDescriptor(globalThis, name);
+            Object.defineProperty(globalThis, name, { value: undefined, configurable: true, writable: true });
+            try {
+                return fn();
+            } finally {
+                if (original) {
+                    Object.defineProperty(globalThis, name, original);
+                } else {
+                    delete globalThis[name];
+                }
+            }
+        };
+
+        it('getPreferredTheme should skip localStorage when it is undefined', () => {
+            window.matchMedia = jest.fn().mockReturnValue({ matches: false });
+
+            const result = withoutGlobal('localStorage', () => getPreferredTheme());
+
+            expect(result).toBe('light');
+            delete window.matchMedia;
+        });
+
+        it('getPreferredTheme should skip system preference when window is undefined', () => {
+            const result = withoutGlobal('window', () => getPreferredTheme());
+
+            expect(result).toBe('light');
+        });
+
+        it('getPreferredTheme should return light when the system does not prefer dark', () => {
+            window.matchMedia = jest.fn().mockReturnValue({ matches: false });
+
+            expect(getPreferredTheme()).toBe('light');
+            delete window.matchMedia;
+        });
+
+        it('getPreferredTheme should return light when matchMedia is unavailable', () => {
+            delete window.matchMedia;
+
+            expect(getPreferredTheme()).toBe('light');
+        });
+
+        it('applyTheme should do nothing when document is undefined', () => {
+            expect(() => withoutGlobal('document', () => applyTheme('dark'))).not.toThrow();
+        });
+
+        it('saveTheme should do nothing when localStorage is undefined', () => {
+            expect(() => withoutGlobal('localStorage', () => saveTheme('dark'))).not.toThrow();
+        });
+
+        it('getCurrentTheme should return light when document is undefined', () => {
+            const result = withoutGlobal('document', () => getCurrentTheme());
+
+            expect(result).toBe('light');
+        });
+
+        it('getBrowserType should default to chrome when navigator is undefined', () => {
+            const result = withoutGlobal('navigator', () => getBrowserType());
+
+            expect(result).toBe('chrome');
+        });
+    });
+
+    describe('initTheme system preference changes', () => {
+        beforeEach(() => {
+            localThis.mediaListeners = [];
+            localThis.mediaQuery = {
+                matches: false,
+                addEventListener: jest.fn((evt, handler) => localThis.mediaListeners.push(handler)),
+                removeEventListener: jest.fn()
+            };
+            window.matchMedia = jest.fn().mockReturnValue(localThis.mediaQuery);
+        });
+
+        afterEach(() => {
+            delete window.matchMedia;
+        });
+
+        it('should switch to dark on system change when no preference is stored', () => {
+            initTheme([]);
+
+            localThis.mediaListeners[0]({ matches: true });
+
+            expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+        });
+
+        it('should switch to light on system change when no preference is stored', () => {
+            initTheme([]);
+
+            localThis.mediaListeners[0]({ matches: false });
+
+            expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+        });
+
+        it('should ignore system change when a preference is stored', () => {
+            initTheme([]);
+            localStorage.setItem(THEME_STORAGE_KEY, 'light');
+            document.documentElement.setAttribute('data-theme', 'light');
+
+            localThis.mediaListeners[0]({ matches: true });
+
+            expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+        });
+
+        it('should remove the media listener on cleanup', () => {
+            const cleanup = initTheme([]);
+
+            cleanup();
+
+            expect(localThis.mediaQuery.removeEventListener).toHaveBeenCalledWith('change', localThis.mediaListeners[0]);
+        });
+
+        it('should skip removing the media listener when matchMedia disappears', () => {
+            const cleanup = initTheme([]);
+            delete window.matchMedia;
+
+            expect(() => cleanup()).not.toThrow();
+            expect(localThis.mediaQuery.removeEventListener).not.toHaveBeenCalled();
+        });
+
+        it('should not register a media listener when matchMedia is unavailable', () => {
+            delete window.matchMedia;
+
+            expect(() => initTheme([])()).not.toThrow();
+        });
+    });
+
+    describe('initActiveNavIndicator href without hash', () => {
+        it('should use an empty section id for links whose href has no hash', async () => {
+            document.body.innerHTML = `
+                <section id="features"></section>
+                <a class="nav-link" href="#features">Features</a>
+            `;
+            const link = document.querySelector('.nav-link');
+            const cleanup = initActiveNavIndicator();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            link.setAttribute('href', '/other');
+
+            window.dispatchEvent(new Event('scroll'));
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            // Empty section id matches the empty current section
+            expect(link.classList.contains('active')).toBe(true);
+            cleanup();
+        });
+
+        it('should recache section positions after a debounced resize', () => {
+            jest.useFakeTimers();
+            document.body.innerHTML = `
+                <section id="features"></section>
+                <a class="nav-link" href="#features">Features</a>
+            `;
+            const section = document.querySelector('section');
+            const cleanup = initActiveNavIndicator();
+            Object.defineProperty(section, 'offsetTop', { value: 500, configurable: true });
+
+            window.dispatchEvent(new Event('resize'));
+            window.dispatchEvent(new Event('resize'));
+            jest.advanceTimersByTime(200);
+
+            expect(() => cleanup()).not.toThrow();
+        });
+    });
+
+    describe('initSmoothScroll missing target', () => {
+        it('should not prevent default when the target does not exist', () => {
+            document.body.innerHTML = '<a href="#missing">Go</a>';
+            const cleanup = initSmoothScroll();
+            const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+
+            document.querySelector('a').dispatchEvent(event);
+
+            expect(event.defaultPrevented).toBe(false);
+            cleanup();
+        });
+    });
+
+    describe('createNote edge cases', () => {
+        it('should delete a note without an onDelete callback', () => {
+            const parent = document.createElement('div');
+            document.body.appendChild(parent);
+            const state = { notes: new Set() };
+
+            const note = createNote(parent, 'x1', state);
+            note.querySelector('.note-close').click();
+
+            expect(state.notes.has('x1')).toBe(false);
+            expect(parent.querySelector('.sticky-note')).toBeNull();
+        });
+
+        it('should not throw when the note has no textarea', () => {
+            const parent = document.createElement('div');
+            document.body.appendChild(parent);
+            const original = Element.prototype.querySelector;
+            const spy = jest.spyOn(Element.prototype, 'querySelector').mockImplementation(function (selector) {
+                if (selector === 'textarea') return null;
+                return original.call(this, selector);
+            });
+
+            try {
+                expect(() => createNote(parent, 'x2', { notes: new Set() })).not.toThrow();
+            } finally {
+                spy.mockRestore();
+            }
+        });
+    });
+
+    describe('initDemo extra paths', () => {
+        const demoHtml = `
+            <button id="demo-activate-btn"></button>
+            <span id="demo-btn-text"></span>
+            <div id="demo-canvas">
+                <div class="demo-target" data-id="1">Target 1</div>
+            </div>
+            <div id="demo-empty-state" class="hidden"></div>
+        `;
+
+        beforeEach(() => {
+            demoState.activeMode = false;
+            demoState.notes.clear();
+        });
+
+        it('should show the empty state again after the last note is deleted', () => {
+            document.body.innerHTML = demoHtml;
+            initDemo();
+            document.getElementById('demo-activate-btn').click();
+            document.querySelector('.demo-target').click();
+
+            document.querySelector('.note-close').click();
+
+            expect(document.getElementById('demo-empty-state').classList.contains('hidden')).toBe(false);
+        });
+
+        it('should keep the empty state hidden when selection mode is active during delete', () => {
+            document.body.innerHTML = demoHtml;
+            initDemo();
+            document.getElementById('demo-activate-btn').click();
+            document.querySelector('.demo-target').click();
+            document.getElementById('demo-activate-btn').click();
+            document.getElementById('demo-empty-state').classList.add('hidden');
+
+            document.querySelector('.note-close').click();
+
+            expect(document.getElementById('demo-empty-state').classList.contains('hidden')).toBe(true);
+        });
+
+        it('should not fail when the empty state element is missing', () => {
+            document.body.innerHTML = demoHtml.replace('<div id="demo-empty-state" class="hidden"></div>', '');
+            initDemo();
+            document.getElementById('demo-activate-btn').click();
+            document.querySelector('.demo-target').click();
+
+            expect(() => document.querySelector('.note-close').click()).not.toThrow();
+        });
+
+        it('should remove listeners on cleanup', () => {
+            document.body.innerHTML = demoHtml;
+            const control = initDemo();
+
+            control.cleanup();
+            document.getElementById('demo-activate-btn').click();
+
+            expect(demoState.activeMode).toBe(false);
+        });
+    });
+
+    describe('getBrowserType extra paths', () => {
+        const setNavigator = (props) => {
+            Object.keys(props).forEach((key) => {
+                Object.defineProperty(navigator, key, { value: props[key], configurable: true });
+            });
+        };
+
+        afterEach(() => {
+            delete navigator.userAgentData;
+            delete navigator.userAgent;
+        });
+
+        it('should fall back to the user agent when brands are not Chrome or Edge', () => {
+            setNavigator({
+                userAgentData: { brands: [{ brand: 'Other' }] },
+                userAgent: 'Mozilla/5.0 Chrome/120.0'
+            });
+
+            expect(getBrowserType()).toBe('chrome');
+        });
+
+        it('should default to chrome when there is no user agent string', () => {
+            setNavigator({ userAgentData: undefined, userAgent: '' });
+
+            expect(getBrowserType()).toBe('chrome');
+        });
+    });
+
+    describe('updateInstallButtons without text span', () => {
+        it('should update the href of buttons that have no btn-text span', () => {
+            document.body.innerHTML = '<a href="#" data-install-btn class="btn"></a>';
+
+            updateInstallButtons();
+
+            expect(document.querySelector('a').href).toContain('chrome.google.com');
+        });
+    });
+
+    describe('loadFullStylesheet', () => {
+        beforeEach(() => {
+            document.head.innerHTML = '';
+        });
+
+        it('should do nothing when there is no preload link', () => {
+            loadFullStylesheet();
+
+            expect(document.head.querySelector('link[rel="stylesheet"]')).toBeNull();
+        });
+
+        it('should do nothing when the stylesheet is already loaded', () => {
+            document.head.innerHTML = `
+                <link rel="preload" href="/css/styles.bundled.css" as="style">
+                <link rel="stylesheet" href="/css/styles.bundled.css">
+            `;
+
+            loadFullStylesheet();
+
+            expect(document.head.querySelectorAll('link[rel="stylesheet"]')).toHaveLength(1);
+        });
+
+        it('should add the stylesheet when only the preload exists', () => {
+            document.head.innerHTML = '<link rel="preload" href="/css/styles.bundled.css" as="style">';
+
+            loadFullStylesheet();
+
+            const link = document.head.querySelector('link[rel="stylesheet"]');
+            expect(link).not.toBeNull();
+            expect(link.href).toContain('styles.bundled.css');
+        });
+    });
+
+    describe('initFAQ', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div class="faq-list">
+                    <button class="faq-question" aria-expanded="false" aria-controls="a1">Q1</button>
+                    <div id="a1" hidden>A1</div>
+                    <button class="faq-question" aria-expanded="false" aria-controls="missing">Q2</button>
+                </div>
+            `;
+        });
+
+        it('should return a no-op cleanup when the container is missing', () => {
+            const cleanup = initFAQ('.nope');
+
+            expect(() => cleanup()).not.toThrow();
+        });
+
+        it('should expand and collapse an answer on click', () => {
+            initFAQ();
+            const question = document.querySelector('.faq-question');
+            const answer = document.getElementById('a1');
+
+            question.click();
+            expect(question.getAttribute('aria-expanded')).toBe('true');
+            expect(answer.hasAttribute('hidden')).toBe(false);
+
+            question.click();
+            expect(question.getAttribute('aria-expanded')).toBe('false');
+            expect(answer.hasAttribute('hidden')).toBe(true);
+        });
+
+        it('should ignore questions whose answer is missing', () => {
+            initFAQ();
+            const question = document.querySelectorAll('.faq-question')[1];
+
+            question.click();
+
+            expect(question.getAttribute('aria-expanded')).toBe('false');
+        });
+
+        it('should toggle on Enter and Space but not other keys', () => {
+            initFAQ();
+            const question = document.querySelector('.faq-question');
+
+            question.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+            expect(question.getAttribute('aria-expanded')).toBe('true');
+
+            question.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
+            expect(question.getAttribute('aria-expanded')).toBe('false');
+
+            question.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }));
+            expect(question.getAttribute('aria-expanded')).toBe('false');
+        });
+
+        it('should remove listeners on cleanup', () => {
+            const cleanup = initFAQ();
+            const question = document.querySelector('.faq-question');
+
+            cleanup();
+            question.click();
+
+            expect(question.getAttribute('aria-expanded')).toBe('false');
+        });
+    });
+
+    describe('init', () => {
+        beforeEach(() => {
+            document.head.innerHTML = '';
+            document.body.innerHTML = `
+                <nav id="navbar"></nav>
+                <button id="mobile-menu-btn"></button>
+                <div id="mobile-menu" class="hidden"></div>
+            `;
+        });
+
+        it('should initialize all features and return a cleanup function', () => {
+            const result = init();
+
+            expect(typeof result.cleanup).toBe('function');
+            expect(result.demoControl).toBeDefined();
+            expect(() => result.cleanup()).not.toThrow();
+        });
+
+    });
+
+    describe('auto-initialization on module load', () => {
+        afterEach(() => {
+            delete document.readyState;
+            jest.restoreAllMocks();
+        });
+
+        it('should defer init until DOMContentLoaded while the document is loading', async () => {
+            Object.defineProperty(document, 'readyState', { value: 'loading', configurable: true });
+            const addSpy = jest.spyOn(document, 'addEventListener');
+
+            await import('../../site/js/scripts.js?loading');
+
+            expect(addSpy).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
+        });
+
+        it('should run init immediately when the document is ready', async () => {
+            document.body.innerHTML = '<nav id="navbar"></nav>';
+
+            await import('../../site/js/scripts.js?ready');
+
+            expect(document.documentElement.getAttribute('data-theme')).not.toBeNull();
+        });
+
+        it('should skip auto-init when document is undefined', async () => {
+            const original = Object.getOwnPropertyDescriptor(globalThis, 'document');
+            Object.defineProperty(globalThis, 'document', { value: undefined, configurable: true, writable: true });
+
+            try {
+                await expect(import('../../site/js/scripts.js?nodocument')).resolves.toBeDefined();
+            } finally {
+                Object.defineProperty(globalThis, 'document', original);
+            }
         });
     });
 });

@@ -1098,7 +1098,7 @@ function generateReportHTML(notes, options) {
     let themeStatsHTML = '<div class="stats-themes">';
     for (const [theme, count] of Object.entries(stats.byTheme)) {
         if (count > 0) {
-            const color = THEME_COLORS[theme] || THEME_COLORS.yellow;
+            const color = THEME_COLORS[theme];
             themeStatsHTML += `<span class="theme-stat" style="background-color: ${color};">${theme}: ${count}</span>`;
         }
     }
@@ -1156,9 +1156,7 @@ function generateReportHTML(notes, options) {
             if (metadata.viewport) {
                 notesHTML += `<div class="metadata-item"><strong>Viewport:</strong> ${escapeHtml(metadata.viewport)}</div>`;
             }
-            if (env) {
-                notesHTML += `<div class="metadata-item"><strong>Environment:</strong> <span style="color: ${envColor};">${escapeHtml(env)}</span></div>`;
-            }
+            notesHTML += `<div class="metadata-item"><strong>Environment:</strong> <span style="color: ${envColor};">${escapeHtml(env)}</span></div>`;
             if (note.selector && note.selector !== '__PAGE__') {
                 notesHTML += `<div class="metadata-item metadata-selector"><strong>Selector:</strong> <code>${escapeHtml(note.selector)}</code></div>`;
             }

@@ -191,7 +191,7 @@ Add new strings to all locale files in `public/_locales/*/messages.json`.
 
 - Location: `tests/unit/*.test.js`
 - Mock Chrome APIs are in `tests/setup.js`
-- Coverage thresholds: 85% statements, 75% branches, 75% functions
+- Coverage thresholds: 100% statements, branches, functions and lines
 
 ```javascript
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';

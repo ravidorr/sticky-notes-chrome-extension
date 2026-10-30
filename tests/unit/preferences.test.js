@@ -405,3 +405,60 @@ describe('resetPreferences', () => {
     expect(result.error).toBeDefined();
   });
 });
+
+describe('default chrome.storage fallback and invalid values', () => {
+  it('should use global chrome.storage when no deps are passed to getPreferences', async () => {
+    const { getPreferences, DEFAULT_PREFERENCES } = await import('../../src/shared/preferences.js');
+
+    const result = await getPreferences();
+
+    expect(result).toEqual(DEFAULT_PREFERENCES);
+  });
+
+  it('should use global chrome.storage when no deps are passed to setPreferences', async () => {
+    const { setPreferences } = await import('../../src/shared/preferences.js');
+    const setSpy = jest.spyOn(chrome.storage.sync, 'set');
+
+    const result = await setPreferences({ defaultTheme: 'pink' });
+
+    expect(result.success).toBe(true);
+    expect(result.preferences.defaultTheme).toBe('pink');
+    expect(setSpy).toHaveBeenCalledWith({ preferences: result.preferences });
+    setSpy.mockRestore();
+  });
+
+  it('should use global chrome.storage when no deps are passed to resetPreferences', async () => {
+    const { resetPreferences, DEFAULT_PREFERENCES } = await import('../../src/shared/preferences.js');
+    const setSpy = jest.spyOn(chrome.storage.sync, 'set');
+
+    const result = await resetPreferences();
+
+    expect(result).toEqual({ success: true, preferences: DEFAULT_PREFERENCES });
+    expect(setSpy).toHaveBeenCalledWith({ preferences: DEFAULT_PREFERENCES });
+    setSpy.mockRestore();
+  });
+
+  it('should ignore an invalid fontSize in setPreferences', async () => {
+    const { setPreferences, DEFAULT_PREFERENCES } = await import('../../src/shared/preferences.js');
+
+    const result = await setPreferences(
+      { fontSize: 'gigantic' },
+      { chromeStorage: localThis.mockChromeStorage }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.preferences.fontSize).toBe(DEFAULT_PREFERENCES.fontSize);
+  });
+
+  it('should ignore a non-boolean notesVisibleByDefault in setPreferences', async () => {
+    const { setPreferences, DEFAULT_PREFERENCES } = await import('../../src/shared/preferences.js');
+
+    const result = await setPreferences(
+      { notesVisibleByDefault: 'yes' },
+      { chromeStorage: localThis.mockChromeStorage }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.preferences.notesVisibleByDefault).toBe(DEFAULT_PREFERENCES.notesVisibleByDefault);
+  });
+});

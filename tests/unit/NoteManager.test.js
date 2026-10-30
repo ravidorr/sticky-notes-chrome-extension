@@ -3,6 +3,7 @@
  */
 
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { PAGE_LEVEL_SELECTOR } from '../../src/shared/utils.js';
 
 let NoteManager;
 let StickyNote;
@@ -2728,6 +2729,465 @@ describe('NoteManager', () => {
       
       // Should not throw - if it throws, Jest will fail the test
       await manager.handleVisibilityChange('note-789', true);
+    });
+  });
+
+  describe('coverage - error handling in both context-invalidated states', () => {
+    const cases = [
+      ['updateOrphanedBadge', (mgr) => mgr.updateOrphanedBadge()],
+      ['loadNotes', (mgr) => mgr.loadNotes(jest.fn())],
+      ['markSharedNoteAsRead', (mgr) => mgr.markSharedNoteAsRead('n1')],
+      ['handleNoteSave', (mgr) => mgr.handleNoteSave('n1', 'x')],
+      ['handleThemeChange', (mgr) => mgr.handleThemeChange('n1', 'blue')],
+      ['handlePositionChange', (mgr) => mgr.handlePositionChange('n1', { anchor: 'top-left' })],
+      ['handleVisibilityChange', (mgr) => mgr.handleVisibilityChange('n1', true)],
+      ['handleNoteDelete', (mgr) => mgr.handleNoteDelete('n1')],
+      ['handleReanchor', (mgr) => mgr.handleReanchor('n1', document.getElementById('anchor-element'))],
+      ['handleElementSelect', (mgr) => mgr.handleElementSelect(document.getElementById('anchor-element'))],
+      ['createNoteAtElement', (mgr) => mgr.createNoteAtElement(document.getElementById('anchor-element'), '#anchor-element')],
+      ['createPageLevelNote', (mgr) => mgr.createPageLevelNote()],
+      ['handleOrphanedNoteDelete', (mgr) => mgr.handleOrphanedNoteDelete('n1')]
+    ];
+
+    it.each(cases)('%s handles sendMessage rejection when context is invalidated', async (_name, run) => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('boom'));
+      localThis.isContextInvalidatedError.mockReturnValue(true);
+      const manager = new NoteManager(localThis);
+
+      await expect(run(manager)).resolves.not.toThrow();
+      expect(localThis.isContextInvalidatedError).toHaveBeenCalled();
+    });
+
+    it.each(cases)('%s handles sendMessage rejection when context is valid', async (_name, run) => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('boom'));
+      localThis.isContextInvalidatedError.mockReturnValue(false);
+      const manager = new NoteManager(localThis);
+
+      await expect(run(manager)).resolves.not.toThrow();
+      expect(localThis.isContextInvalidatedError).toHaveBeenCalled();
+    });
+
+    const commentCases = [
+      ['handleAddComment', (mgr) => mgr.handleAddComment('n1', { content: 'x' })],
+      ['handleEditComment', (mgr) => mgr.handleEditComment('n1', 'c1', { content: 'x' })],
+      ['handleDeleteComment', (mgr) => mgr.handleDeleteComment('n1', 'c1')],
+      ['handleLoadComments', (mgr) => mgr.handleLoadComments('n1')]
+    ];
+
+    it.each(commentCases)('%s rethrows when context is invalidated', async (_name, run) => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('boom'));
+      localThis.isContextInvalidatedError.mockReturnValue(true);
+      const manager = new NoteManager(localThis);
+
+      await expect(run(manager)).rejects.toThrow('boom');
+    });
+
+    it.each(commentCases)('%s rethrows when context is valid', async (_name, run) => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockRejectedValue(new Error('boom'));
+      localThis.isContextInvalidatedError.mockReturnValue(false);
+      const manager = new NoteManager(localThis);
+
+      await expect(run(manager)).rejects.toThrow('boom');
+    });
+
+    it.each(commentCases)('%s uses the server error message on failure', async (_name, run) => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({ success: false, error: 'server says no' });
+      const manager = new NoteManager(localThis);
+
+      await expect(run(manager)).rejects.toThrow('server says no');
+    });
+
+    it.each(commentCases)('%s uses a default message when failure has no error', async (_name, run) => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({ success: false });
+      const manager = new NoteManager(localThis);
+
+      await expect(run(manager)).rejects.toThrow();
+    });
+
+    it('handleEditComment, handleDeleteComment and handleLoadComments return values on success', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+
+      localThis.sendMessage.mockResolvedValue({ success: true, comments: [{ id: 'c1' }] });
+      await expect(manager.handleEditComment('n1', 'c1', {})).resolves.toBe(true);
+      await expect(manager.handleDeleteComment('n1', 'c1')).resolves.toEqual(true);
+      await expect(manager.handleLoadComments('n1')).resolves.toEqual([{ id: 'c1' }]);
+
+      localThis.sendMessage.mockResolvedValue({ success: true });
+      await expect(manager.handleLoadComments('n1')).resolves.toEqual([]);
+    });
+  });
+
+  describe('coverage - note callbacks wired from createNoteFromData', () => {
+    const exerciseCallbacks = async (manager, note, id, deleteMethod = 'handleNoteDelete') => {
+      const spies = {
+        save: jest.spyOn(manager, 'handleNoteSave').mockResolvedValue(),
+        theme: jest.spyOn(manager, 'handleThemeChange').mockResolvedValue(),
+        position: jest.spyOn(manager, 'handlePositionChange').mockResolvedValue(),
+        del: jest.spyOn(manager, deleteMethod).mockResolvedValue(),
+        visibility: jest.spyOn(manager, 'handleVisibilityChange').mockResolvedValue(),
+        add: jest.spyOn(manager, 'handleAddComment').mockResolvedValue({}),
+        edit: jest.spyOn(manager, 'handleEditComment').mockResolvedValue(true),
+        remove: jest.spyOn(manager, 'handleDeleteComment').mockResolvedValue(true),
+        load: jest.spyOn(manager, 'handleLoadComments').mockResolvedValue([])
+      };
+
+      note.onSave('text');
+      note.onThemeChange('blue');
+      note.onPositionChange({ anchor: 'top-left' });
+      note.onDelete();
+      note.onVisibilityChange(true);
+      await note.onAddComment(id, { content: 'x' });
+      await note.onEditComment(id, 'c1', { content: 'y' });
+      await note.onDeleteComment(id, 'c1');
+      await note.onLoadComments(id);
+      note.onCommentsOpened(id);
+      note.onCommentsClosed(id);
+
+      expect(spies.save).toHaveBeenCalledWith(id, 'text');
+      expect(spies.theme).toHaveBeenCalledWith(id, 'blue');
+      expect(spies.position).toHaveBeenCalledWith(id, { anchor: 'top-left' });
+      expect(spies.del).toHaveBeenCalledWith(id);
+      expect(spies.visibility).toHaveBeenCalledWith(id, true);
+      expect(spies.add).toHaveBeenCalledWith(id, { content: 'x' });
+      expect(spies.edit).toHaveBeenCalledWith(id, 'c1', { content: 'y' });
+      expect(spies.remove).toHaveBeenCalledWith(id, 'c1');
+      expect(spies.load).toHaveBeenCalledWith(id);
+    };
+
+    it('wires anchored note callbacks to manager handlers', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      manager.createNoteFromData({
+        id: 'cb-anchored',
+        selector: '#anchor-element',
+        content: 'c',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      });
+      const note = manager.notes.get('cb-anchored');
+
+      await exerciseCallbacks(manager, note, 'cb-anchored');
+
+      expect(localThis.subscribeToComments).toHaveBeenCalledWith('cb-anchored');
+      expect(localThis.unsubscribeFromComments).toHaveBeenCalledWith('cb-anchored');
+      note.destroy();
+    });
+
+    it('wires page-level note callbacks to manager handlers', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      manager.createNoteFromData({
+        id: 'cb-page',
+        selector: PAGE_LEVEL_SELECTOR,
+        content: 'c',
+        theme: 'yellow',
+        position: { pageX: 5, pageY: 5 }
+      });
+      const note = manager.notes.get('cb-page');
+      expect(note).toBeDefined();
+
+      await exerciseCallbacks(manager, note, 'cb-page');
+
+      expect(localThis.subscribeToComments).toHaveBeenCalledWith('cb-page');
+      expect(localThis.unsubscribeFromComments).toHaveBeenCalledWith('cb-page');
+      note.destroy();
+    });
+
+    it('wires orphaned note callbacks to manager handlers', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      const noteData = { id: 'cb-orphan', selector: '.missing', content: 'c' };
+      manager.orphanedNotes.set(noteData.id, { noteData, addedAt: Date.now() });
+      manager.showOrphanedNote('cb-orphan');
+      const note = manager.notes.get('cb-orphan');
+
+      await exerciseCallbacks(manager, note, 'cb-orphan', 'handleOrphanedNoteDelete');
+
+      expect(localThis.subscribeToComments).toHaveBeenCalledWith('cb-orphan');
+      expect(localThis.unsubscribeFromComments).toHaveBeenCalledWith('cb-orphan');
+      note.destroy();
+    });
+  });
+
+  describe('coverage - remaining branches', () => {
+    const anchoredData = (id, extra = {}) => ({
+      id,
+      selector: '#anchor-element',
+      content: 'c',
+      theme: 'yellow',
+      position: { anchor: 'top-right' },
+      ...extra
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      delete navigator.userAgentData;
+    });
+
+    it('checkPendingNotes keeps unresolved notes when fuzzy match fails and anchorText is missing', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      const noteData = { id: 'pend-unresolved', selector: '.nowhere', content: 'c' };
+      manager.pendingNotes.set(noteData.id, { noteData, addedAt: Date.now() });
+      manager.orphanedNotes.set(noteData.id, { noteData, addedAt: Date.now() });
+
+      manager.checkPendingNotes();
+
+      expect(localThis.selectorEngine.findBestMatch).toHaveBeenCalledWith('.nowhere', { textContent: '' });
+      expect(manager.pendingNotes.has(noteData.id)).toBe(true);
+    });
+
+    it('loadNotes skips creation when the response is not successful', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({ success: false });
+      localThis.getCurrentUser.mockReturnValue(null);
+      const manager = new NoteManager(localThis);
+      const subscribe = jest.fn();
+
+      await manager.loadNotes(subscribe);
+
+      expect(manager.notes.size).toBe(0);
+      expect(subscribe).not.toHaveBeenCalled();
+    });
+
+    it('createNoteFromData handles multiple matches with empty text and no best match', () => {
+      const localThis = createMockDependencies();
+      document.body.innerHTML = '<div class="dup"></div><div class="dup">other</div>';
+      const manager = new NoteManager(localThis);
+
+      manager.createNoteFromData({
+        id: 'dup-note',
+        selector: '.dup',
+        anchorText: 'wanted text',
+        content: 'c',
+        theme: 'yellow',
+        position: { anchor: 'top-right' }
+      });
+
+      expect(localThis.selectorEngine.findBestMatch).toHaveBeenCalledWith('.dup', { textContent: 'wanted text' });
+      expect(manager.notes.get('dup-note').anchor).toBe(document.querySelector('.dup'));
+      manager.notes.get('dup-note').destroy();
+    });
+
+    it('handleNoteDelete succeeds when the note is not in the map', async () => {
+      const localThis = createMockDependencies();
+      localThis.sendMessage.mockResolvedValue({ success: true });
+      const manager = new NoteManager(localThis);
+
+      await manager.handleNoteDelete('ghost');
+
+      expect(localThis.visibilityManager.unobserve).not.toHaveBeenCalled();
+    });
+
+    it('handleReanchor sends empty anchorText for an element without text', async () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      const empty = document.createElement('div');
+
+      await manager.handleReanchor('n1', empty);
+
+      expect(localThis.sendMessage).toHaveBeenCalledWith({
+        action: 'updateNote',
+        note: { id: 'n1', selector: '#generated-selector', anchorText: '' }
+      });
+    });
+
+    describe('note creation metadata variants', () => {
+      const setup = () => {
+        const localThis = createMockDependencies();
+        localThis.getFrameUrl.mockReturnValue('');
+        localThis.isTopFrame.mockReturnValue(false);
+        localThis.getConsoleErrors = jest.fn(() => [{ message: 'err' }]);
+        localThis.sendMessage.mockResolvedValue({ success: false, error: 'nope' });
+        Object.defineProperty(navigator, 'userAgentData', {
+          value: { brands: [{ brand: 'Google Chrome', version: '120' }] },
+          configurable: true
+        });
+        const empty = document.createElement('div');
+        empty.id = 'empty-el';
+        document.body.appendChild(empty);
+        return { localThis, manager: new NoteManager(localThis), empty };
+      };
+
+      const savedNote = (localThis) => localThis.sendMessage.mock.calls[0][0].note;
+
+      it('handleElementSelect builds metadata for a non-top frame with console errors', async () => {
+        const { localThis, manager, empty } = setup();
+
+        await manager.handleElementSelect(empty);
+
+        const note = savedNote(localThis);
+        expect(note.anchorText).toBe('');
+        expect(note.metadata.browser).toBe('Chrome 120');
+        expect(note.metadata.isTopFrame).toBe(false);
+        expect(note.metadata.frameUrl).toBe('');
+        expect(note.metadata.consoleErrors).toEqual([{ message: 'err' }]);
+      });
+
+      it('createNoteAtElement builds metadata for a non-top frame with console errors', async () => {
+        const { localThis, manager, empty } = setup();
+
+        await manager.createNoteAtElement(empty, '#empty-el');
+
+        const note = savedNote(localThis);
+        expect(note.anchorText).toBe('');
+        expect(note.metadata.browser).toBe('Chrome 120');
+        expect(note.metadata.isTopFrame).toBe(false);
+        expect(note.metadata.consoleErrors).toEqual([{ message: 'err' }]);
+      });
+
+      it('createPageLevelNote builds metadata for a non-top frame with console errors', async () => {
+        const { localThis, manager } = setup();
+
+        const result = await manager.createPageLevelNote();
+
+        const note = savedNote(localThis);
+        expect(result).toBe(false);
+        expect(note.metadata.browser).toBe('Chrome 120');
+        expect(note.metadata.isTopFrame).toBe(false);
+        expect(note.metadata.consoleErrors).toEqual([{ message: 'err' }]);
+      });
+    });
+
+    describe('handleRealtimeNotesUpdate with a map that loses entries', () => {
+      // Returns the real entry on the first lookup (used by the diff) and nothing afterwards
+      class LossyMap extends Map {
+        constructor(entries) {
+          super(entries);
+          this.seen = new Set();
+        }
+
+        get(key) {
+          if (!this.seen.has(key)) {
+            this.seen.add(key);
+            return super.get(key);
+          }
+          return undefined;
+        }
+      }
+
+      it('skips removal when the note cannot be fetched', () => {
+        const localThis = createMockDependencies();
+        localThis.notes = new LossyMap([['gone', { anchor: null, destroy: jest.fn() }]]);
+        localThis.notes.seen.add('gone');
+        const manager = new NoteManager(localThis);
+
+        manager.handleRealtimeNotesUpdate([]);
+
+        expect(localThis.visibilityManager.unobserve).not.toHaveBeenCalled();
+      });
+
+      it('skips update when the existing note cannot be fetched', () => {
+        const localThis = createMockDependencies();
+        localThis.notes = new LossyMap([['gone', { content: 'old', theme: 'blue' }]]);
+        const manager = new NoteManager(localThis);
+
+        expect(() => manager.handleRealtimeNotesUpdate([{ id: 'gone', content: 'new', theme: 'red' }]))
+          .not.toThrow();
+      });
+    });
+
+    it('handleRealtimeNotesUpdate falls back to empty content and yellow theme', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      manager.createNoteFromData(anchoredData('fallback-note', { content: 'old', theme: 'blue' }));
+      const note = manager.notes.get('fallback-note');
+      note.richEditor = { setContent: jest.fn() };
+      note.setTheme = jest.fn();
+
+      manager.handleRealtimeNotesUpdate([{ id: 'fallback-note', selector: '#anchor-element' }]);
+
+      expect(note.richEditor.setContent).toHaveBeenCalledWith('');
+      expect(note.setTheme).toHaveBeenCalledWith('yellow');
+    });
+
+    it('handleRealtimeCommentsUpdate treats missing comments as empty', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      manager.createNoteFromData(anchoredData('no-comments'));
+      const note = manager.notes.get('no-comments');
+      note.commentSection = { updateComments: jest.fn(), destroy: jest.fn() };
+
+      manager.handleRealtimeCommentsUpdate('no-comments', undefined);
+
+      expect(note.commentSection.updateComments).toHaveBeenCalledWith([]);
+      note.destroy();
+    });
+
+    it('highlightNote defaults page-level coordinates when position is missing', () => {
+      jest.useFakeTimers();
+      const scrollToSpy = jest.spyOn(window, 'scrollTo').mockImplementation(() => {});
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      manager.createNoteFromData({
+        id: 'page-nopos',
+        selector: PAGE_LEVEL_SELECTOR,
+        content: 'c',
+        theme: 'yellow',
+        position: { pageX: 5, pageY: 5 }
+      });
+      const note = manager.notes.get('page-nopos');
+      note.position = {};
+
+      manager.highlightNote('page-nopos');
+
+      expect(scrollToSpy).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+      jest.advanceTimersByTime(500);
+      note.destroy();
+      scrollToSpy.mockRestore();
+    });
+
+    it('highlightNote handles the anchor disappearing before the highlight timers fire', () => {
+      jest.useFakeTimers();
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      manager.createNoteFromData(anchoredData('anchor-gone-1'));
+      const note = manager.notes.get('anchor-gone-1');
+      note.show = jest.fn(() => { note.anchor = null; });
+      note.bringToFront = jest.fn();
+      note.highlight = jest.fn();
+
+      manager.highlightNote('anchor-gone-1');
+
+      expect(() => jest.advanceTimersByTime(500)).not.toThrow();
+      expect(note.highlight).toHaveBeenCalled();
+    });
+
+    it('highlightNote handles the anchor disappearing before the highlight is removed', () => {
+      jest.useFakeTimers();
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      manager.createNoteFromData(anchoredData('anchor-gone-2'));
+      const note = manager.notes.get('anchor-gone-2');
+
+      manager.highlightNote('anchor-gone-2');
+      jest.advanceTimersByTime(500);
+      note.anchor = null;
+
+      expect(() => jest.advanceTimersByTime(2500)).not.toThrow();
+    });
+
+    it('showOrphanedNote reuses an existing note UI', () => {
+      const localThis = createMockDependencies();
+      const manager = new NoteManager(localThis);
+      manager.createNoteFromData(anchoredData('existing-ui'));
+      const existing = manager.notes.get('existing-ui');
+      manager.orphanedNotes.set('existing-ui', {
+        noteData: anchoredData('existing-ui'),
+        addedAt: Date.now()
+      });
+
+      manager.showOrphanedNote('existing-ui');
+
+      expect(manager.notes.get('existing-ui')).toBe(existing);
+      existing.destroy();
     });
   });
 });

@@ -12,6 +12,7 @@ import {
   setDebugMode,
   getLogLevel,
   detectDebugMode,
+  isDebugEnabled,
   backgroundLogger,
   contentLogger,
   firestoreLogger,
@@ -94,6 +95,24 @@ describe('Logger', () => {
     });
   });
   
+  describe('isDebugEnabled', () => {
+    it('should be enabled when env is undefined', () => {
+      expect(isDebugEnabled(undefined)).toBe(true);
+    });
+
+    it('should be enabled when VITE_DEBUG_MODE is not set', () => {
+      expect(isDebugEnabled({})).toBe(true);
+    });
+
+    it('should be enabled when VITE_DEBUG_MODE is true', () => {
+      expect(isDebugEnabled({ VITE_DEBUG_MODE: 'true' })).toBe(true);
+    });
+
+    it('should be disabled when VITE_DEBUG_MODE is false', () => {
+      expect(isDebugEnabled({ VITE_DEBUG_MODE: 'false' })).toBe(false);
+    });
+  });
+
   describe('setDebugMode', () => {
     it('should enable debug mode', () => {
       setDebugMode(true);
@@ -226,6 +245,28 @@ describe('Logger', () => {
     });
   });
   
+  describe('level thresholds above warn', () => {
+    // LOG_LEVELS is a mutable export; temporarily raise WARN so a logger is
+    // created with a threshold stricter than warn and error.
+    const createStrictLogger = () => {
+      const original = LOG_LEVELS.WARN;
+      LOG_LEVELS.WARN = LOG_LEVELS.NONE + 1;
+      try {
+        return createLogger('Strict', { debugMode: false });
+      } finally {
+        LOG_LEVELS.WARN = original;
+      }
+    };
+
+    it('should suppress warn and error when the threshold is above them', () => {
+      const logger = createStrictLogger();
+      logger.warn('warning message');
+      logger.error('error message');
+      expect(localThis.mockWarn).not.toHaveBeenCalled();
+      expect(localThis.mockError).not.toHaveBeenCalled();
+    });
+  });
+
   describe('log', () => {
     it('should call appropriate console method based on level', () => {
       // Mock console.debug as well since log('debug') calls console.debug

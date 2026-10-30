@@ -24,7 +24,8 @@ import {
     handleGenerateKey,
     handleCopyKey,
     // Setup
-    setupEventListeners
+    setupEventListeners,
+    init
 } from '../../site/js/generate-key.js';
 
 describe('site/js/generate-key.js', () => {
@@ -605,6 +606,175 @@ describe('site/js/generate-key.js', () => {
             document.body.innerHTML = '';
             
             expect(() => setupEventListeners({})).not.toThrow();
+        });
+    });
+    describe('default arguments and fallbacks', () => {
+        it('should use default options in handleSignIn', async () => {
+            const result = await handleSignIn();
+
+            expect(result).toBeNull();
+        });
+
+        it('should fall back to default button text when sign in button is missing', async () => {
+            const result = await handleSignIn({
+                auth: {},
+                signInWithPopup: jest.fn().mockRejectedValue({ code: 'auth/other', message: 'boom' }),
+                GoogleAuthProvider: jest.fn()
+            });
+
+            expect(result).toBeNull();
+        });
+
+        it('should use default options in handleGenerateKey', async () => {
+            const result = await handleGenerateKey();
+
+            expect(result).toBeNull();
+        });
+
+        it('should fall back to defaults when form elements are missing', async () => {
+            document.body.innerHTML = '';
+            const fetchFn = jest.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ key: 'k1' })
+            });
+
+            const result = await handleGenerateKey({ idToken: 'tok', fetchFn });
+
+            expect(result).toBe('k1');
+            const body = JSON.parse(fetchFn.mock.calls[0][1].body);
+            expect(body.name).toBe('API Key');
+        });
+
+        it('should use the default error message when response has none', async () => {
+            document.body.innerHTML = '<div id="error"></div>';
+            const fetchFn = jest.fn().mockResolvedValue({
+                ok: false,
+                json: () => Promise.resolve({})
+            });
+
+            const result = await handleGenerateKey({ idToken: 'tok', fetchFn });
+
+            expect(result).toBeNull();
+            expect(document.getElementById('error').textContent).toContain('Failed to generate key');
+        });
+
+        it('should use the global fetch by default', async () => {
+            global.fetch.mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ key: 'k2' })
+            });
+
+            const result = await handleGenerateKey({ idToken: 'tok' });
+
+            expect(result).toBe('k2');
+        });
+
+        it('should not throw when copy button is missing after copying', async () => {
+            document.body.innerHTML = '';
+            state.generatedKey = 'abc';
+
+            const result = await handleCopyKey();
+
+            expect(result).toBe(true);
+        });
+
+        it('should call setupEventListeners with no arguments', () => {
+            document.body.innerHTML = '<button id="signInBtn"></button>';
+
+            expect(() => setupEventListeners()).not.toThrow();
+        });
+
+        it('should skip copy listener when copy button is missing', () => {
+            document.body.innerHTML = '<button id="signInBtn"></button><button id="generateBtn"></button>';
+
+            expect(() => setupEventListeners({})).not.toThrow();
+        });
+    });
+
+    describe('init', () => {
+        it('should initialize firebase and set up listeners', async () => {
+            const app = { name: 'app' };
+            const auth = { name: 'auth' };
+            const initializeApp = jest.fn().mockReturnValue(app);
+            const getAuth = jest.fn().mockReturnValue(auth);
+
+            await init({ initializeApp, getAuth });
+
+            expect(state.app).toBe(app);
+            expect(state.auth).toBe(auth);
+        });
+
+        it('should skip firebase initialization when modules are missing', async () => {
+            await init();
+
+            expect(state.app).toBeNull();
+        });
+
+        it('should skip firebase initialization when only initializeApp is given', async () => {
+            await init({ initializeApp: jest.fn() });
+
+            expect(state.app).toBeNull();
+        });
+    });
+
+    describe('auto-initialization on module load', () => {
+        it('should not auto-initialize when window is undefined', async () => {
+            const originalWindow = global.window;
+            const importSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+            Object.defineProperty(global, 'window', { value: undefined, configurable: true, writable: true });
+
+            try {
+                await import('../../site/js/generate-key.js?no-window');
+                await new Promise((resolve) => setTimeout(resolve, 20));
+            } finally {
+                Object.defineProperty(global, 'window', { value: originalWindow, configurable: true, writable: true });
+            }
+
+            expect(importSpy).not.toHaveBeenCalled();
+        });
+
+        const appUrl = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        const authUrl = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        afterEach(() => {
+            jest.restoreAllMocks();
+        });
+
+        it('should load firebase modules and call init', async () => {
+            const initializeApp = jest.fn().mockReturnValue({ name: 'app' });
+            const getAuth = jest.fn().mockReturnValue({ name: 'auth' });
+            jest.mock(appUrl, () => ({}), { virtual: true });
+            jest.mock(authUrl, () => ({}), { virtual: true });
+            jest.unstable_mockModule(appUrl, () => ({ initializeApp }), { virtual: true });
+            jest.unstable_mockModule(authUrl, () => ({
+                getAuth,
+                signInWithPopup: jest.fn(),
+                GoogleAuthProvider: jest.fn()
+            }), { virtual: true });
+
+            await import('../../site/js/generate-key.js?auto-success');
+            await new Promise((resolve) => setTimeout(resolve, 20));
+
+            expect(initializeApp).toHaveBeenCalled();
+            expect(getAuth).toHaveBeenCalled();
+        });
+
+        it('should show an error when firebase modules fail to load', async () => {
+            document.body.innerHTML = '<div id="error"></div>';
+            const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+            jest.resetModules();
+            jest.mock(appUrl, () => ({}), { virtual: true });
+            jest.mock(authUrl, () => ({}), { virtual: true });
+            jest.unstable_mockModule(appUrl, () => {
+                throw new Error('network down');
+            }, { virtual: true });
+            jest.unstable_mockModule(authUrl, () => ({}), { virtual: true });
+
+            await import('../../site/js/generate-key.js?auto-failure');
+            await new Promise((resolve) => setTimeout(resolve, 20));
+
+            expect(errorSpy).toHaveBeenCalled();
+            expect(document.getElementById('error').textContent).toBe('Failed to load authentication service');
         });
     });
 });

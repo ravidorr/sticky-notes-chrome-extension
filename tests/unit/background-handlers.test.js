@@ -2468,4 +2468,585 @@ describe('Background Handlers', () => {
       expect(result.error).toBe('Injection failed');
     });
   });
+
+  describe('coverage gaps', () => {
+    const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+    const SENDER = { tab: { id: 123 }, frameId: 0 };
+
+    beforeEach(() => {
+      localThis.build = (extra = {}) => createHandlers({ ...localThis.deps, ...extra });
+      localThis.mockChromeTabs = { sendMessage: jest.fn().mockResolvedValue({}) };
+      localThis.mockChromeAction = {
+        setBadgeText: jest.fn().mockResolvedValue(),
+        setBadgeBackgroundColor: jest.fn().mockResolvedValue()
+      };
+      localThis.deps.getCurrentUser.mockResolvedValue(localThis.mockUser);
+      localThis.deps.isFirebaseConfigured.mockReturnValue(true);
+      localThis.mockChromeStorage.local.get.mockResolvedValue({});
+      localThis.mockChromeStorage.local.set.mockResolvedValue();
+      localThis.mockChromeStorage.local.remove = jest.fn().mockResolvedValue();
+    });
+
+    describe('default chrome dependencies', () => {
+      it('should fall back to null chrome APIs when chrome is not defined', () => {
+        const savedChrome = globalThis.chrome;
+        delete globalThis.chrome;
+        try {
+          const handlers = createHandlers();
+          expect(typeof handlers.handleMessage).toBe('function');
+        } finally {
+          globalThis.chrome = savedChrome;
+        }
+      });
+    });
+
+    describe('handleMessage routing', () => {
+      it('should route unshareNote', async () => {
+        localThis.deps.unshareNoteInFirestore.mockResolvedValue();
+        const handlers = localThis.build();
+
+        const result = await handlers.handleMessage(
+          { action: 'unshareNote', noteId: 'note-1', email: 'friend@example.com' }, null
+        );
+
+        expect(result.success).toBe(true);
+        expect(localThis.deps.unshareNoteInFirestore).toHaveBeenCalled();
+      });
+
+      it('should route leaveSharedNote', async () => {
+        localThis.deps.leaveSharedNoteInFirestore.mockResolvedValue();
+        const handlers = localThis.build();
+
+        const result = await handlers.handleMessage({ action: 'leaveSharedNote', noteId: 'note-1' }, null);
+
+        expect(result.success).toBe(true);
+        expect(localThis.deps.leaveSharedNoteInFirestore).toHaveBeenCalledWith('note-1', 'test@example.com');
+      });
+
+      it('should route getUnreadSharedCount', async () => {
+        const handlers = localThis.build({ getSharedNotesForUser: jest.fn().mockResolvedValue([{ id: 'a' }]) });
+
+        const result = await handlers.handleMessage({ action: 'getUnreadSharedCount' }, null);
+
+        expect(result).toEqual({ success: true, count: 1 });
+      });
+
+      it('should route markSharedNoteRead', async () => {
+        const handlers = localThis.build({
+          getSharedNotesForUser: jest.fn().mockResolvedValue([]),
+          chromeAction: localThis.mockChromeAction
+        });
+
+        const result = await handlers.handleMessage({ action: 'markSharedNoteRead', noteId: 'note-1' }, null);
+
+        expect(result.success).toBe(true);
+        expect(localThis.mockChromeStorage.local.set).toHaveBeenCalledWith({
+          [`seenSharedNotes_${localThis.mockUser.uid}`]: ['note-1']
+        });
+      });
+
+      it('should route subscribeToSharedNotesGlobal and unsubscribeFromSharedNotesGlobal', async () => {
+        const unsubscribe = jest.fn();
+        const handlers = localThis.build({
+          subscribeToSharedNotes: jest.fn().mockResolvedValue(unsubscribe),
+          getSharedNotesForUser: jest.fn().mockResolvedValue([]),
+          sharedNotesSubscription: { current: null },
+          chromeAction: localThis.mockChromeAction
+        });
+
+        await expect(handlers.handleMessage({ action: 'subscribeToSharedNotesGlobal' }, null))
+          .resolves.toEqual({ success: true });
+        await expect(handlers.handleMessage({ action: 'unsubscribeFromSharedNotesGlobal' }, null))
+          .resolves.toEqual({ success: true });
+        expect(unsubscribe).toHaveBeenCalled();
+      });
+    });
+
+    describe('login and cached user paths', () => {
+      it('should skip shared subscription and treat missing local notes as empty after login without email', async () => {
+        localThis.deps.signInWithGoogle.mockResolvedValue({ uid: 'user-1' });
+        const handlers = localThis.build();
+
+        const result = await handlers.handleLogin();
+
+        expect(result.success).toBe(true);
+        expect(result.migration).toEqual({ migrated: 0 });
+      });
+
+      it('should return no user when the storage API is unavailable and Firebase is off', async () => {
+        localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+        const handlers = localThis.build({ chromeStorage: null });
+
+        await expect(handlers.getUnreadSharedCount()).resolves.toEqual({ success: true, count: 0 });
+      });
+    });
+
+    describe('local storage without a notes key', () => {
+      beforeEach(() => {
+        localThis.deps.getCurrentUser.mockResolvedValue(null);
+        localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+        localThis.handlers = localThis.build();
+      });
+
+      it('should return no notes from getNotes', async () => {
+        const result = await localThis.handlers.getNotes('https://example.com/page');
+
+        expect(result).toEqual({ success: true, notes: [] });
+      });
+
+      it('should save the first note from saveNote', async () => {
+        const result = await localThis.handlers.saveNote({ url: 'https://example.com', selector: '#a' });
+
+        expect(result.success).toBe(true);
+        expect(localThis.mockChromeStorage.local.set).toHaveBeenCalledWith({ notes: [expect.any(Object)] });
+      });
+
+      it('should report note not found from updateNote', async () => {
+        const result = await localThis.handlers.updateNote({ id: 'missing', content: 'x' });
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should report note not found from deleteNote', async () => {
+        const result = await localThis.handlers.deleteNote('missing');
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should return no notes from getAllNotes', async () => {
+        await expect(localThis.handlers.getAllNotes()).resolves.toEqual({ success: true, notes: [] });
+      });
+    });
+
+    describe('getNotes index error', () => {
+      it('should log a hint when Firestore reports a missing index, then fall back to local storage', async () => {
+        localThis.deps.getNotesForUrl.mockRejectedValue(new Error('The query requires an index'));
+        const handlers = localThis.build();
+
+        const result = await handlers.getNotes('https://example.com/page');
+
+        expect(result.success).toBe(true);
+        expect(localThis.mockLog.error).toHaveBeenCalledWith(expect.stringContaining('missing Firestore index'));
+      });
+    });
+
+    describe('subscribeNotes edge cases', () => {
+      beforeEach(() => {
+        localThis.noteSubscriptions = new Map();
+        localThis.deps.subscribeToNotesForUrl = jest.fn().mockReturnValue(jest.fn());
+        localThis.build2 = (extra = {}) => localThis.build({
+          chromeTabs: localThis.mockChromeTabs,
+          noteSubscriptions: localThis.noteSubscriptions,
+          ...extra
+        });
+      });
+
+      it('should require Firebase when only a cached user exists', async () => {
+        localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+        localThis.mockChromeStorage.local.get.mockResolvedValue({ user: localThis.mockUser });
+
+        const result = await localThis.build2().subscribeNotes('https://example.com', SENDER);
+
+        expect(result).toEqual({ success: false, error: expect.any(String) });
+        expect(localThis.deps.subscribeToNotesForUrl).not.toHaveBeenCalled();
+      });
+
+      it('should report an unavailable subscription service', async () => {
+        const result = await localThis.build2({ subscribeToNotesForUrl: undefined })
+          .subscribeNotes('https://example.com', SENDER);
+
+        expect(result).toEqual({ success: false, error: 'Subscription service not available' });
+      });
+
+      it('should ignore an existing entry without an unsubscribe function', async () => {
+        localThis.noteSubscriptions.set('123-0', {});
+
+        const result = await localThis.build2().subscribeNotes('https://example.com', SENDER);
+
+        expect(result.success).toBe(true);
+      });
+
+      it('should clean up the subscription when the tab cannot be reached', async () => {
+        const unsubscribe = jest.fn();
+        let onNotes;
+        localThis.deps.subscribeToNotesForUrl = jest.fn((url, uid, email, notesCb) => {
+          onNotes = notesCb;
+          return unsubscribe;
+        });
+        localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('closed'));
+        const handlers = localThis.build2({ subscribeToNotesForUrl: localThis.deps.subscribeToNotesForUrl });
+
+        await handlers.subscribeNotes('https://example.com', SENDER);
+        onNotes([{ id: 'n1' }]);
+        await flush();
+
+        expect(unsubscribe).toHaveBeenCalled();
+        expect(localThis.noteSubscriptions.has('123-0')).toBe(false);
+      });
+
+      it('should log when cleaning up an unreachable tab fails, and skip non-function unsubscribes', async () => {
+        let onNotes;
+        const failing = jest.fn(() => { throw new Error('unsubscribe failed'); });
+        let returned = failing;
+        const subscribe = jest.fn((url, uid, email, notesCb) => {
+          onNotes = notesCb;
+          return returned;
+        });
+        localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('closed'));
+        const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+
+        await handlers.subscribeNotes('https://example.com', SENDER);
+        onNotes([]);
+        await flush();
+        expect(localThis.mockLog.error).toHaveBeenCalledWith('Error during unsubscribe:', expect.any(Error));
+
+        returned = undefined;
+        localThis.mockLog.error.mockClear();
+        await handlers.subscribeNotes('https://example.com', SENDER);
+        onNotes([]);
+        await flush();
+        expect(localThis.mockLog.error).not.toHaveBeenCalled();
+      });
+
+      it('should not push updates or errors when the tabs API is unavailable', async () => {
+        let onNotes;
+        let onError;
+        const subscribe = jest.fn((url, uid, email, notesCb, errorCb) => {
+          onNotes = notesCb;
+          onError = errorCb;
+          return jest.fn();
+        });
+        const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe, chromeTabs: null });
+
+        await handlers.subscribeNotes('https://example.com', SENDER);
+        onNotes([]);
+        onError(new Error('boom'));
+
+        expect(localThis.mockLog.error).toHaveBeenCalledWith('Note subscription error:', expect.any(Error));
+      });
+
+      it('should ignore a failed error notification to the tab', async () => {
+        let onError;
+        const subscribe = jest.fn((url, uid, email, notesCb, errorCb) => {
+          onError = errorCb;
+          return jest.fn();
+        });
+        localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('closed'));
+        const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+
+        await handlers.subscribeNotes('https://example.com', SENDER);
+        onError(new Error('boom'));
+        await flush();
+
+        expect(localThis.mockChromeTabs.sendMessage).toHaveBeenCalledWith(
+          123, expect.objectContaining({ action: 'subscriptionError', type: 'notes' }), { frameId: 0 }
+        );
+      });
+    });
+
+    describe('subscribeCommentsHandler edge cases', () => {
+      beforeEach(() => {
+        localThis.commentSubscriptions = new Map();
+        localThis.deps.subscribeToComments = jest.fn().mockReturnValue(jest.fn());
+        localThis.build2 = (extra = {}) => localThis.build({
+          chromeTabs: localThis.mockChromeTabs,
+          commentSubscriptions: localThis.commentSubscriptions,
+          ...extra
+        });
+      });
+
+      it('should require Firebase when only a cached user exists', async () => {
+        localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+        localThis.mockChromeStorage.local.get.mockResolvedValue({ user: localThis.mockUser });
+
+        const result = await localThis.build2().subscribeCommentsHandler('note-1', SENDER);
+
+        expect(result).toEqual({ success: false, error: expect.any(String) });
+        expect(localThis.deps.subscribeToComments).not.toHaveBeenCalled();
+      });
+
+      it('should report an unavailable subscription service', async () => {
+        const result = await localThis.build2({ subscribeToComments: undefined })
+          .subscribeCommentsHandler('note-1', SENDER);
+
+        expect(result).toEqual({ success: false, error: 'Subscription service not available' });
+      });
+
+      it('should clean up the subscription when the tab cannot be reached', async () => {
+        const unsubscribe = jest.fn();
+        let onComments;
+        const subscribe = jest.fn((noteId, user, commentsCb) => {
+          onComments = commentsCb;
+          return unsubscribe;
+        });
+        localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('closed'));
+        const handlers = localThis.build2({ subscribeToComments: subscribe });
+
+        await handlers.subscribeCommentsHandler('note-1', SENDER);
+        onComments([{ id: 'c1' }]);
+        await flush();
+
+        expect(unsubscribe).toHaveBeenCalled();
+        expect(localThis.commentSubscriptions.has('123-note-1')).toBe(false);
+      });
+
+      it('should log when cleaning up an unreachable tab fails, and skip non-function unsubscribes', async () => {
+        let onComments;
+        let returned = jest.fn(() => { throw new Error('unsubscribe failed'); });
+        const subscribe = jest.fn((noteId, user, commentsCb) => {
+          onComments = commentsCb;
+          return returned;
+        });
+        localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('closed'));
+        const handlers = localThis.build2({ subscribeToComments: subscribe });
+
+        await handlers.subscribeCommentsHandler('note-1', SENDER);
+        onComments([]);
+        await flush();
+        expect(localThis.mockLog.error).toHaveBeenCalledWith('Error during unsubscribe:', expect.any(Error));
+
+        returned = undefined;
+        localThis.mockLog.error.mockClear();
+        await handlers.subscribeCommentsHandler('note-1', SENDER);
+        onComments([]);
+        await flush();
+        expect(localThis.mockLog.error).not.toHaveBeenCalled();
+      });
+
+      it('should not push updates or errors when the tabs API is unavailable', async () => {
+        let onComments;
+        let onError;
+        const subscribe = jest.fn((noteId, user, commentsCb, errorCb) => {
+          onComments = commentsCb;
+          onError = errorCb;
+          return jest.fn();
+        });
+        const handlers = localThis.build2({ subscribeToComments: subscribe, chromeTabs: null });
+
+        await handlers.subscribeCommentsHandler('note-1', SENDER);
+        onComments([]);
+        onError(new Error('boom'));
+
+        expect(localThis.mockLog.error).toHaveBeenCalledWith('Comment subscription error:', expect.any(Error));
+      });
+
+      it('should ignore a failed error notification to the tab', async () => {
+        let onError;
+        const subscribe = jest.fn((noteId, user, commentsCb, errorCb) => {
+          onError = errorCb;
+          return jest.fn();
+        });
+        localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('closed'));
+        const handlers = localThis.build2({ subscribeToComments: subscribe });
+
+        await handlers.subscribeCommentsHandler('note-1', SENDER);
+        onError(new Error('boom'));
+        await flush();
+
+        expect(localThis.mockChromeTabs.sendMessage).toHaveBeenCalledWith(
+          123, expect.objectContaining({ action: 'subscriptionError', type: 'comments' })
+        );
+      });
+    });
+
+    describe('error handling around chrome APIs and user lookup', () => {
+      it('should return a failure when the orphaned badge cannot be updated', async () => {
+        chrome.action.setBadgeText.mockRejectedValueOnce(new Error('badge failed'));
+        const handlers = localThis.build();
+
+        await expect(handlers.updateOrphanedBadge(2, { tab: { id: 1 } }))
+          .resolves.toEqual({ success: false, error: 'badge failed' });
+      });
+
+      it('should return a failure when the frames cannot be listed', async () => {
+        const savedNavigation = chrome.webNavigation;
+        chrome.webNavigation = { getAllFrames: jest.fn().mockRejectedValue(new Error('frames failed')) };
+        try {
+          const handlers = localThis.build({ chromeTabs: localThis.mockChromeTabs });
+
+          await expect(handlers.broadcastDisableSelectionMode(SENDER))
+            .resolves.toEqual({ success: false, error: 'frames failed' });
+        } finally {
+          chrome.webNavigation = savedNavigation;
+        }
+      });
+
+      it('should return failures when the user cannot be determined for subscriptions', async () => {
+        localThis.deps.getCurrentUser.mockRejectedValue(new Error('auth down'));
+        localThis.deps.subscribeToNotesForUrl = jest.fn();
+        localThis.deps.subscribeToComments = jest.fn();
+        const handlers = localThis.build();
+
+        await expect(handlers.subscribeNotes('https://example.com', SENDER))
+          .resolves.toEqual({ success: false, error: 'auth down' });
+        await expect(handlers.subscribeCommentsHandler('note-1', SENDER))
+          .resolves.toEqual({ success: false, error: 'auth down' });
+      });
+
+      it('should return failures when unsubscribing throws', async () => {
+        const throwing = () => { throw new Error('unsubscribe failed'); };
+        const noteSubscriptions = new Map([['123-0', { unsubscribe: throwing }]]);
+        const commentSubscriptions = new Map([['123-note-1', throwing]]);
+        const handlers = localThis.build({ noteSubscriptions, commentSubscriptions });
+
+        await expect(handlers.unsubscribeNotes(SENDER))
+          .resolves.toEqual({ success: false, error: 'unsubscribe failed' });
+        await expect(handlers.unsubscribeCommentsHandler('note-1', SENDER))
+          .resolves.toEqual({ success: false, error: 'unsubscribe failed' });
+      });
+
+      it('should fall back to local storage when a Firestore delete fails without a message', async () => {
+        localThis.deps.deleteNoteFromFirestore.mockRejectedValue({});
+        localThis.mockChromeStorage.local.get.mockResolvedValue({ notes: [{ id: 'note-1' }] });
+        const handlers = localThis.build();
+
+        await expect(handlers.deleteNote('note-1')).resolves.toEqual({ success: true });
+      });
+    });
+
+    describe('bulk delete and unread shared notes edge cases', () => {
+      it('should fall back to local storage when every Firestore delete fails', async () => {
+        localThis.mockChromeStorage.local.get
+          .mockResolvedValueOnce({ notes: [{ id: 'n1', ownerId: 'user-123' }] })
+          .mockResolvedValue({});
+        localThis.deps.deleteNoteFromFirestore.mockRejectedValue(new Error('denied'));
+        const handlers = localThis.build();
+
+        const result = await handlers.deleteAllNotes();
+
+        expect(result).toEqual({ success: true, count: 1 });
+        expect(localThis.mockLog.error).toHaveBeenCalledWith(
+          'Failed to delete note from Firestore:', 'n1', expect.any(Error)
+        );
+        expect(localThis.mockChromeStorage.local.set).toHaveBeenCalledWith({ notes: [] });
+      });
+
+      it('should return a failure when deleteAllNotes cannot determine the user', async () => {
+        localThis.deps.getCurrentUser.mockRejectedValue(new Error('auth down'));
+        const handlers = localThis.build();
+
+        await expect(handlers.deleteAllNotes()).resolves.toEqual({ success: false, error: 'auth down' });
+      });
+
+      it('should report zero unread shared notes when Firebase is off but a cached user exists', async () => {
+        localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+        localThis.mockChromeStorage.local.get.mockResolvedValue({ user: localThis.mockUser });
+        const handlers = localThis.build({ getSharedNotesForUser: jest.fn() });
+
+        await expect(handlers.getUnreadSharedCount()).resolves.toEqual({ success: true, count: 0 });
+        await expect(handlers.getUnreadSharedNotes()).resolves.toEqual({ success: true, notes: [] });
+      });
+
+      it('should report zero unread shared notes when the shared notes service is missing', async () => {
+        const handlers = localThis.build({ getSharedNotesForUser: undefined });
+
+        await expect(handlers.getUnreadSharedCount()).resolves.toEqual({ success: true, count: 0 });
+        await expect(handlers.getUnreadSharedNotes()).resolves.toEqual({ success: true, notes: [] });
+      });
+
+      it('should start a seen list when marking the first shared note as read', async () => {
+        const handlers = localThis.build({
+          getSharedNotesForUser: jest.fn().mockResolvedValue([]),
+          chromeAction: localThis.mockChromeAction
+        });
+
+        await expect(handlers.markSharedNoteRead('note-1')).resolves.toEqual({ success: true });
+      });
+
+      it('should return a failure when markSharedNoteRead cannot determine the user', async () => {
+        localThis.deps.getCurrentUser.mockRejectedValue(new Error('auth down'));
+        const handlers = localThis.build();
+
+        await expect(handlers.markSharedNoteRead('note-1')).resolves.toEqual({ success: false, error: 'auth down' });
+      });
+    });
+
+    describe('updateUnreadSharedBadge edge cases', () => {
+      it('should report an unavailable action API', async () => {
+        const handlers = localThis.build({ chromeAction: null, getSharedNotesForUser: jest.fn() });
+
+        await expect(handlers.updateUnreadSharedBadge())
+          .resolves.toEqual({ success: false, error: 'Action API not available' });
+      });
+
+      it('should return a failure when the badge cannot be updated', async () => {
+        localThis.mockChromeAction.setBadgeText.mockRejectedValue(new Error('badge failed'));
+        const handlers = localThis.build({
+          chromeAction: localThis.mockChromeAction,
+          getSharedNotesForUser: jest.fn().mockResolvedValue([])
+        });
+
+        await expect(handlers.updateUnreadSharedBadge())
+          .resolves.toEqual({ success: false, error: 'badge failed' });
+      });
+    });
+
+    describe('global shared notes subscription edge cases', () => {
+      it('should require Firebase or the subscription service', async () => {
+        const noService = localThis.build({ subscribeToSharedNotes: undefined });
+        await expect(noService.subscribeToSharedNotesGlobal())
+          .resolves.toEqual({ success: false, error: expect.any(String) });
+
+        localThis.deps.isFirebaseConfigured.mockReturnValue(false);
+        localThis.mockChromeStorage.local.get.mockResolvedValue({ user: localThis.mockUser });
+        const notConfigured = localThis.build({ subscribeToSharedNotes: jest.fn() });
+        await expect(notConfigured.subscribeToSharedNotesGlobal())
+          .resolves.toEqual({ success: false, error: expect.any(String) });
+      });
+
+      it('should refresh the badge on updates and log subscription errors', async () => {
+        let onUpdate;
+        let onError;
+        const subscribe = jest.fn((email, updateCb, errorCb) => {
+          onUpdate = updateCb;
+          onError = errorCb;
+          return jest.fn();
+        });
+        const handlers = localThis.build({
+          subscribeToSharedNotes: subscribe,
+          getSharedNotesForUser: jest.fn().mockResolvedValue([]),
+          sharedNotesSubscription: { current: null },
+          chromeAction: localThis.mockChromeAction
+        });
+
+        await handlers.subscribeToSharedNotesGlobal();
+        localThis.mockChromeAction.setBadgeText.mockClear();
+        await onUpdate([{ id: 'a' }]);
+        onError(new Error('listen failed'));
+
+        expect(localThis.mockChromeAction.setBadgeText).toHaveBeenCalled();
+        expect(localThis.mockLog.debug).toHaveBeenCalledWith('Shared notes updated, count:', 1);
+        expect(localThis.mockLog.error).toHaveBeenCalledWith('Shared notes subscription error:', expect.any(Error));
+      });
+
+      it('should return a failure when the user cannot be determined', async () => {
+        localThis.deps.getCurrentUser.mockRejectedValue(new Error('auth down'));
+        const handlers = localThis.build({ subscribeToSharedNotes: jest.fn() });
+
+        await expect(handlers.subscribeToSharedNotesGlobal())
+          .resolves.toEqual({ success: false, error: 'auth down' });
+      });
+
+      it('should unsubscribe without touching the badge when the action API is unavailable', async () => {
+        const unsubscribe = jest.fn();
+        const handlers = localThis.build({
+          chromeAction: null,
+          sharedNotesSubscription: { current: unsubscribe }
+        });
+
+        await expect(handlers.unsubscribeFromSharedNotesGlobal()).resolves.toEqual({ success: true });
+        expect(unsubscribe).toHaveBeenCalled();
+      });
+
+      it('should return a failure when unsubscribing throws', async () => {
+        const handlers = localThis.build({
+          chromeAction: localThis.mockChromeAction,
+          sharedNotesSubscription: { current: () => { throw new Error('unsubscribe failed'); } }
+        });
+
+        await expect(handlers.unsubscribeFromSharedNotesGlobal())
+          .resolves.toEqual({ success: false, error: 'unsubscribe failed' });
+      });
+    });
+  });
 });

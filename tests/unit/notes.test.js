@@ -4,7 +4,7 @@
  * Tests Firestore CRUD operations with mocked dependencies.
  */
 
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 
 // Mock Firebase modules before import
 jest.unstable_mockModule('firebase/firestore', () => ({
@@ -39,6 +39,7 @@ jest.unstable_mockModule('firebase/auth', () => ({
 }));
 
 // Import after mocking
+const firestoreSdk = await import('firebase/firestore');
 const {
   createNote,
   getNotesForUrl,
@@ -1195,6 +1196,302 @@ describe('Firebase Notes', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(localThis.deps.where).toHaveBeenCalledWith('sharedWith', 'array-contains', 'user@example.com');
+    });
+  });
+
+  describe('lazy SDK loading and default dependencies', () => {
+    it('should lazy-load the Firestore SDK once and reuse it', async () => {
+      firestoreSdk.collection.mockReturnValue({ id: 'sdk-collection' });
+      firestoreSdk.query.mockReturnValue({ id: 'sdk-query' });
+      firestoreSdk.getDocs.mockResolvedValue({ forEach: () => {} });
+      const deps = { db: localThis.mockDb, isFirebaseConfigured: () => true };
+
+      await expect(getSharedNotesForUser('user@example.com', deps)).resolves.toEqual([]);
+      await expect(getSharedNotesForUser('user@example.com', deps)).resolves.toEqual([]);
+
+      expect(firestoreSdk.getDocs).toHaveBeenCalledTimes(2);
+    });
+
+    it('should reject every operation as not configured when called without deps', async () => {
+      const message = 'Firebase is not configured';
+
+      await expect(createNote({ url: 'https://example.com', selector: '#a' }, 'u', 'e@example.com')).rejects.toThrow(message);
+      await expect(getNotesForUrl('https://example.com', 'u', 'e@example.com')).rejects.toThrow(message);
+      await expect(updateNote('n', {}, 'u')).rejects.toThrow(message);
+      await expect(deleteNote('n', 'u')).rejects.toThrow(message);
+      await expect(shareNote('n', 'a@example.com', 'u')).rejects.toThrow(message);
+      await expect(unshareNote('n', 'a@example.com', 'u')).rejects.toThrow(message);
+      await expect(leaveSharedNote('n', 'a@example.com')).rejects.toThrow(message);
+      await expect(getSharedNotesForUser('a@example.com')).rejects.toThrow(message);
+    });
+
+    it('should report not configured through onError for both subscriptions without deps', () => {
+      const onError = jest.fn();
+
+      const unsubscribeUrl = subscribeToNotesForUrl('https://example.com', 'u', 'e@example.com', jest.fn(), onError);
+      const unsubscribeShared = subscribeToSharedNotes('e@example.com', jest.fn(), onError);
+
+      expect(onError).toHaveBeenCalledTimes(2);
+      expect(unsubscribeUrl()).toBeUndefined();
+      expect(unsubscribeShared()).toBeUndefined();
+    });
+  });
+
+  describe('input variants', () => {
+    it('should preserve a composite iframe URL and store a null owner email when none is given', async () => {
+      localThis.deps.addDoc.mockResolvedValue({ id: 'iframe-note' });
+      const url = 'https://example.com/page#iframe:https://frame.example.com/embed';
+
+      const result = await createNote({ url, selector: '#main' }, 'user-123', undefined, localThis.deps);
+
+      expect(result.url).toBe(url);
+      expect(result.ownerEmail).toBeNull();
+    });
+
+    it('should query with a composite iframe URL as-is', async () => {
+      localThis.deps.getDocs.mockResolvedValue({ forEach: () => {} });
+      const url = 'https://example.com/page#iframe:https://frame.example.com/embed';
+
+      await getNotesForUrl(url, 'user-123', null, localThis.deps);
+
+      expect(localThis.deps.where).toHaveBeenCalledWith('url', '==', url);
+    });
+
+    it('should skip duplicate IDs within the owned snapshot', async () => {
+      const docs = [
+        { id: 'dup', data: () => ({ content: 'first' }) },
+        { id: 'dup', data: () => ({ content: 'second' }) }
+      ];
+      localThis.deps.getDocs.mockResolvedValue({ forEach: (cb) => docs.forEach(cb) });
+
+      const notes = await getNotesForUrl('https://example.com', 'user-123', null, localThis.deps);
+
+      expect(notes).toEqual([{ id: 'dup', content: 'first' }]);
+    });
+
+    it('should treat a note without a sharedWith field as unshared', async () => {
+      localThis.deps.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({ ownerId: 'user-123' })
+      });
+      localThis.deps.updateDoc.mockResolvedValue();
+
+      await shareNote('note-123', 'friend@example.com', 'user-123', localThis.deps);
+      expect(localThis.deps.updateDoc.mock.calls[0][1].sharedWith).toEqual(['friend@example.com']);
+
+      localThis.deps.updateDoc.mockClear();
+      await unshareNote('note-123', 'friend@example.com', 'user-123', localThis.deps);
+      expect(localThis.deps.updateDoc.mock.calls[0][1].sharedWith).toEqual([]);
+
+      await expect(leaveSharedNote('note-123', 'friend@example.com', localThis.deps))
+        .rejects.toThrow('You are not in the shared list for this note');
+    });
+  });
+
+  describe('subscription lifecycle edge cases', () => {
+    const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+    const makeSnapshot = (docs) => ({
+      forEach: (cb) => docs.forEach(cb)
+    });
+    const captureListeners = () => {
+      const listeners = [];
+      localThis.deps.onSnapshot.mockImplementation((query, successCb, errorCb) => {
+        listeners.push({ successCb, errorCb });
+        return jest.fn();
+      });
+      return listeners;
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should return callable no-op unsubscribes for every invalid URL subscription', () => {
+      const onError = jest.fn();
+      const args = [
+        ['', 'user-123', 'e@example.com', jest.fn(), onError],
+        ['https://example.com', '', 'e@example.com', jest.fn(), onError],
+        ['https://example.com', 'user-123', 'e@example.com', 'nope', onError],
+        ['https://example.com', 'user-123', 'e@example.com', jest.fn(), 'nope']
+      ];
+
+      for (const callArgs of args) {
+        expect(subscribeToNotesForUrl(...callArgs, localThis.deps)()).toBeUndefined();
+      }
+      expect(onError).toHaveBeenCalledTimes(3);
+    });
+
+    it('should return callable no-op unsubscribes for every invalid shared subscription', () => {
+      const onError = jest.fn();
+      const args = [
+        [null, jest.fn(), onError],
+        ['e@example.com', 'nope', onError],
+        ['e@example.com', jest.fn(), 'nope']
+      ];
+
+      for (const callArgs of args) {
+        expect(subscribeToSharedNotes(...callArgs, localThis.deps)()).toBeUndefined();
+      }
+      expect(onError).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not set up listeners when unsubscribed before the SDK is ready', async () => {
+      const unsubscribeUrl = subscribeToNotesForUrl(
+        'https://example.com', 'user-123', 'e@example.com', jest.fn(), jest.fn(), localThis.deps
+      );
+      const unsubscribeShared = subscribeToSharedNotes('e@example.com', jest.fn(), jest.fn(), localThis.deps);
+      unsubscribeUrl();
+      unsubscribeShared();
+      await flush();
+
+      expect(localThis.deps.onSnapshot).not.toHaveBeenCalled();
+    });
+
+    it('should use a composite iframe URL as-is for the subscription query', async () => {
+      captureListeners();
+      const url = 'https://example.com/page#iframe:https://frame.example.com/embed';
+
+      subscribeToNotesForUrl(url, 'user-123', null, jest.fn(), jest.fn(), localThis.deps);
+      await flush();
+
+      expect(localThis.deps.where).toHaveBeenCalledWith('url', '==', url);
+      expect(localThis.deps.onSnapshot).toHaveBeenCalledTimes(1);
+    });
+
+    it('should merge owned and shared snapshots, skipping duplicate IDs', async () => {
+      const listeners = captureListeners();
+      const onUpdate = jest.fn();
+
+      subscribeToNotesForUrl('https://example.com', 'user-123', 'e@example.com', onUpdate, jest.fn(), localThis.deps);
+      await flush();
+      listeners[0].successCb(makeSnapshot([
+        { id: 'a', data: () => ({ content: 'owned' }) },
+        { id: 'a', data: () => ({ content: 'owned again' }) }
+      ]));
+      listeners[1].successCb(makeSnapshot([
+        { id: 'a', data: () => ({ content: 'shared copy' }) },
+        { id: 'b', data: () => ({ content: 'shared' }) },
+        { id: 'b', data: () => ({ content: 'shared again' }) }
+      ]));
+
+      expect(onUpdate).toHaveBeenLastCalledWith([
+        { id: 'a', content: 'owned' },
+        { id: 'b', content: 'shared', isShared: true }
+      ]);
+    });
+
+    it('should not notify when the snapshot handler unsubscribes mid-update', async () => {
+      const listeners = captureListeners();
+      const onUpdate = jest.fn();
+
+      const unsubscribe = subscribeToNotesForUrl(
+        'https://example.com', 'user-123', null, onUpdate, jest.fn(), localThis.deps
+      );
+      await flush();
+      listeners[0].successCb({
+        forEach: (cb) => {
+          cb({ id: 'a', data: () => ({}) });
+          unsubscribe();
+        }
+      });
+
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should forward listener errors only while subscribed (URL subscription)', async () => {
+      const listeners = captureListeners();
+      const onError = jest.fn();
+      const failure = new Error('listen failed');
+
+      const unsubscribe = subscribeToNotesForUrl(
+        'https://example.com', 'user-123', 'e@example.com', jest.fn(), onError, localThis.deps
+      );
+      await flush();
+      listeners[0].errorCb(failure);
+      listeners[1].errorCb(failure);
+      expect(onError).toHaveBeenCalledTimes(2);
+
+      onError.mockClear();
+      unsubscribe();
+      listeners[0].errorCb(failure);
+      listeners[1].errorCb(failure);
+      expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('should ignore snapshots that arrive after unsubscribe (URL subscription)', async () => {
+      const listeners = captureListeners();
+      const onUpdate = jest.fn();
+
+      const unsubscribe = subscribeToNotesForUrl(
+        'https://example.com', 'user-123', 'e@example.com', onUpdate, jest.fn(), localThis.deps
+      );
+      await flush();
+      unsubscribe();
+      listeners[0].successCb(makeSnapshot([]));
+      listeners[1].successCb(makeSnapshot([]));
+
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should report setup failures only while subscribed (URL subscription)', async () => {
+      const onError = jest.fn();
+      const failure = new Error('query failed');
+      localThis.deps.query.mockImplementation(() => { throw failure; });
+
+      subscribeToNotesForUrl('https://example.com', 'user-123', 'e@example.com', jest.fn(), onError, localThis.deps);
+      await flush();
+      expect(onError).toHaveBeenCalledWith(failure);
+
+      onError.mockClear();
+      const handle = {};
+      localThis.deps.query.mockImplementation(() => {
+        handle.unsubscribe();
+        throw failure;
+      });
+      handle.unsubscribe = subscribeToNotesForUrl(
+        'https://example.com', 'user-123', 'e@example.com', jest.fn(), onError, localThis.deps
+      );
+      await flush();
+      expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('should forward errors and ignore late snapshots for shared subscription', async () => {
+      const listeners = captureListeners();
+      const onUpdate = jest.fn();
+      const onError = jest.fn();
+      const failure = new Error('listen failed');
+
+      const unsubscribe = subscribeToSharedNotes('e@example.com', onUpdate, onError, localThis.deps);
+      await flush();
+      listeners[0].errorCb(failure);
+      expect(onError).toHaveBeenCalledWith(failure);
+
+      onError.mockClear();
+      unsubscribe();
+      listeners[0].errorCb(failure);
+      listeners[0].successCb(makeSnapshot([]));
+      expect(onError).not.toHaveBeenCalled();
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should report setup failures only while subscribed (shared subscription)', async () => {
+      const onError = jest.fn();
+      const failure = new Error('query failed');
+      localThis.deps.query.mockImplementation(() => { throw failure; });
+
+      subscribeToSharedNotes('e@example.com', jest.fn(), onError, localThis.deps);
+      await flush();
+      expect(onError).toHaveBeenCalledWith(failure);
+
+      onError.mockClear();
+      const handle = {};
+      localThis.deps.query.mockImplementation(() => {
+        handle.unsubscribe();
+        throw failure;
+      });
+      handle.unsubscribe = subscribeToSharedNotes('e@example.com', jest.fn(), onError, localThis.deps);
+      await flush();
+      expect(onError).not.toHaveBeenCalled();
     });
   });
 });

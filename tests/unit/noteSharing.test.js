@@ -122,6 +122,15 @@ describe('noteSharing', () => {
       expect(console.log).toHaveBeenCalledWith('Queued share notifications for 1 of 1 user(s) on note note-1');
     });
 
+    it('should treat a missing before or after snapshot as empty', async () => {
+      await expect(localThis.handle(undefined, { sharedWith: ['a@example.com'] })).resolves.toBeNull();
+      expect(localThis.writeEmail).toHaveBeenCalledTimes(1);
+
+      localThis.writeEmail.mockClear();
+      await expect(localThis.handle({ sharedWith: ['a@example.com'] }, undefined)).resolves.toBeNull();
+      expect(localThis.writeEmail).not.toHaveBeenCalled();
+    });
+
     it('should do nothing when no address was added', async () => {
       const result = await localThis.handle({ sharedWith: ['a@example.com'] }, { sharedWith: ['a@example.com'] });
 

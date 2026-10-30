@@ -720,4 +720,137 @@ describe('NotificationManager', () => {
       expect(() => notificationManager.dismissBanner(fakeBanner)).not.toThrow();
     });
   });
+  describe('remaining branch coverage', () => {
+    it('showToast does not auto-dismiss when duration is 0', () => {
+      const toast = notificationManager.showToast('Stay', 'success', 0);
+      jest.advanceTimersByTime(10000);
+      expect(container.contains(toast)).toBe(true);
+      expect(toast.classList.contains('sn-toast-hiding')).toBe(false);
+    });
+
+    it('showToast skips removal when toast was already detached', () => {
+      const toast = notificationManager.showToast('Gone', 'success', 100);
+      jest.advanceTimersByTime(100);
+      toast.remove();
+      expect(() => jest.advanceTimersByTime(300)).not.toThrow();
+      expect(container.contains(toast)).toBe(false);
+    });
+
+    it('showModal omits message element when no message given', () => {
+      notificationManager.showModal({ title: 'Only title' });
+      expect(container.querySelector('.sn-modal-message')).toBeNull();
+      expect(container.querySelector('.sn-modal-title')).not.toBeNull();
+    });
+
+    it('showModal resolves only once when confirm is clicked twice', async () => {
+      const promise = notificationManager.showModal({ message: 'Twice' });
+      const confirmBtn = container.querySelector('.sn-btn-primary');
+      confirmBtn.click();
+      confirmBtn.click();
+      jest.advanceTimersByTime(250);
+      await expect(promise).resolves.toEqual({ confirmed: true, value: undefined });
+    });
+
+    it('showModal ignores Enter without an input and other keys', async () => {
+      const promise = notificationManager.showModal({ message: 'No input' });
+      const overlay = container.querySelector('.sn-modal-overlay');
+      const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      overlay.dispatchEvent(enter);
+      expect(enter.defaultPrevented).toBe(false);
+      overlay.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+      expect(container.querySelector('.sn-closing')).toBeNull();
+      container.querySelector('.sn-btn-secondary').click();
+      jest.advanceTimersByTime(250);
+      await promise;
+    });
+
+    it('showModal ignores Enter when target is not the input', async () => {
+      const promise = notificationManager.showModal({ message: 'Input', inputPlaceholder: 'x' });
+      const overlay = container.querySelector('.sn-modal-overlay');
+      const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      overlay.dispatchEvent(enter);
+      expect(enter.defaultPrevented).toBe(false);
+      container.querySelector('.sn-btn-secondary').click();
+      jest.advanceTimersByTime(250);
+      await promise;
+    });
+
+    it('showBanner renders the info icon for info type', () => {
+      const banner = notificationManager.showBanner({ title: 'T', message: 'M', type: 'info', duration: 0 });
+      expect(banner.className).toContain('sn-banner-info');
+      expect(banner.querySelector('svg line').getAttribute('y1')).toBe('16');
+    });
+
+    it('dismissBanner timeout skips removal if banner already detached', () => {
+      const banner = notificationManager.showBanner({ title: 'T', message: 'M', duration: 0 });
+      notificationManager.dismissBanner(banner);
+      banner.remove();
+      expect(() => jest.advanceTimersByTime(400)).not.toThrow();
+    });
+
+    it('showInstructionTooltip works without a title', () => {
+      const tip = notificationManager.showInstructionTooltip({ hint: 'Just a hint', duration: 0 });
+      expect(tip.querySelector('.sn-instruction-tooltip-title')).toBeNull();
+      expect(tip.querySelector('.sn-instruction-tooltip-hint')).not.toBeNull();
+    });
+
+    it('showInstructionTooltip skips removal if detached before hide finishes', () => {
+      const tip = notificationManager.showInstructionTooltip({ title: 'T', duration: 100 });
+      jest.advanceTimersByTime(100);
+      tip.remove();
+      expect(() => jest.advanceTimersByTime(600)).not.toThrow();
+    });
+
+    it('hideInstructionTooltip is a no-op without a tooltip', () => {
+      expect(() => notificationManager.hideInstructionTooltip()).not.toThrow();
+    });
+
+    it('hideInstructionTooltip skips removal if detached before timeout', () => {
+      const tip = notificationManager.showInstructionTooltip({ title: 'T', duration: 0 });
+      notificationManager.hideInstructionTooltip();
+      tip.remove();
+      expect(() => jest.advanceTimersByTime(600)).not.toThrow();
+    });
+
+    describe('showInlinePopup without callbacks', () => {
+      let anchor;
+      beforeEach(() => {
+        anchor = document.createElement('div');
+        container.appendChild(anchor);
+      });
+
+      it('uses defaults and a value without a protocol', () => {
+        const popup = notificationManager.showInlinePopup({ anchor, inputValue: 'plain' });
+        const input = popup.querySelector('input');
+        expect(input.placeholder).toBe('');
+        expect(input.value).toBe('plain');
+      });
+
+      it('places the caret after the protocol for URL values', () => {
+        const popup = notificationManager.showInlinePopup({ anchor, inputValue: 'https://example.com' });
+        expect(popup.querySelector('input').value).toBe('https://example.com');
+      });
+
+      it('confirm and cancel buttons work without callbacks', () => {
+        let popup = notificationManager.showInlinePopup({ anchor });
+        popup.querySelector('.sn-btn-primary').click();
+        expect(anchor.querySelector('.sn-inline-popup')).toBeNull();
+        popup = notificationManager.showInlinePopup({ anchor });
+        popup.querySelector('.sn-btn-secondary').click();
+        expect(anchor.querySelector('.sn-inline-popup')).toBeNull();
+      });
+
+      it('Enter, Escape and other keys work without callbacks', () => {
+        let popup = notificationManager.showInlinePopup({ anchor });
+        popup.querySelector('input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        expect(anchor.querySelector('.sn-inline-popup')).toBeNull();
+        popup = notificationManager.showInlinePopup({ anchor });
+        popup.querySelector('input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(anchor.querySelector('.sn-inline-popup')).toBeNull();
+        popup = notificationManager.showInlinePopup({ anchor });
+        popup.querySelector('input').dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+        expect(anchor.querySelector('.sn-inline-popup')).not.toBeNull();
+      });
+    });
+  });
 });

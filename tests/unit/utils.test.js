@@ -1050,3 +1050,91 @@ describe('validateSelectorPattern', () => {
     expect(utils.validateSelectorPattern(undefined).valid).toBe(false);
   });
 });
+
+describe('utils remaining branch coverage', () => {
+  const localThis = {};
+
+  const setNavigator = (value) => {
+    Object.defineProperty(global, 'navigator', { value, writable: true, configurable: true });
+  };
+
+  beforeEach(() => {
+    localThis.originalNavigator = global.navigator;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(global, 'navigator', {
+      value: localThis.originalNavigator,
+      writable: true,
+      configurable: true
+    });
+  });
+
+  it('stripHtml should return an empty string when the markup has no text', () => {
+    expect(utils.stripHtml('<div></div>')).toBe('');
+  });
+
+  it('validateSelectorPattern should reject selectors over the maximum length', () => {
+    const result = utils.validateSelectorPattern('a'.repeat(utils.MAX_SELECTOR_LENGTH + 1));
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain(String(utils.MAX_SELECTOR_LENGTH));
+  });
+
+  it('getBrowserInfo should fall back to the UA string when brands list neither Edge nor Chrome', () => {
+    setNavigator({
+      userAgent: 'Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0',
+      userAgentData: { brands: [{ brand: 'Chromium', version: '120' }] }
+    });
+    const result = utils.getBrowserInfo();
+    expect(result.browser).toBe('Firefox');
+    expect(result.version).toBe('121');
+  });
+
+  it('getBrowserInfo should return an empty version when the Edge UA has no version', () => {
+    setNavigator({ userAgent: 'Mozilla/5.0 Edg', userAgentData: undefined });
+    expect(utils.getBrowserInfo()).toEqual({ browser: 'Edge', version: '', userAgent: 'Mozilla/5.0 Edg' });
+  });
+
+  it('getBrowserInfo should return an empty version when the Chrome UA has no version', () => {
+    setNavigator({ userAgent: 'Mozilla/5.0 Chrome', userAgentData: undefined });
+    expect(utils.getBrowserInfo().version).toBe('');
+    expect(utils.getBrowserInfo().browser).toBe('Chrome');
+  });
+
+  it('getBrowserInfo should return an empty version when the Firefox UA has no version', () => {
+    setNavigator({ userAgent: 'Mozilla/5.0 Firefox', userAgentData: undefined });
+    expect(utils.getBrowserInfo().version).toBe('');
+    expect(utils.getBrowserInfo().browser).toBe('Firefox');
+  });
+
+  it('getBrowserInfo should return an empty version when the Safari UA has no version', () => {
+    setNavigator({ userAgent: 'Mozilla/5.0 Safari', userAgentData: undefined });
+    expect(utils.getBrowserInfo().version).toBe('');
+    expect(utils.getBrowserInfo().browser).toBe('Safari');
+  });
+
+  it('getPageMetadata should omit the version suffix for an unknown browser', () => {
+    setNavigator({ userAgent: 'SomeUnknownAgent', userAgentData: undefined });
+    expect(utils.getPageMetadata().browser).toBe('Unknown');
+  });
+
+  it('getPageMetadata should append the version for a known browser', () => {
+    setNavigator({
+      userAgent: 'Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0.0.0 Safari/537.36',
+      userAgentData: undefined
+    });
+    expect(utils.getPageMetadata().browser).toBe('Chrome 120');
+  });
+
+  it('formatRelativeTime should handle exactly one day ago (singular)', () => {
+    jest.useFakeTimers();
+    try {
+      const now = new Date('2024-01-15T12:00:00.000Z');
+      jest.setSystemTime(now);
+      const date = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      expect(utils.formatRelativeTime(date)).toMatch(/^(1 day ago|dayAgo)$/);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});

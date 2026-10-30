@@ -1619,4 +1619,221 @@ describe('CommentSection', () => {
       expect(styles).toContain('.sn-char-counter-error');
     });
   });
+  describe('additional coverage', () => {
+    const iso = () => new Date().toISOString();
+
+    it('uses default no-op callbacks when none are provided', async () => {
+      const bare = new CommentSection({ noteId: 'bare', user: { uid: 'u1' } });
+      await expect(bare.onAddComment()).resolves.toBeUndefined();
+      await expect(bare.onEditComment()).resolves.toBeUndefined();
+      await expect(bare.onDeleteComment()).resolves.toBeUndefined();
+      await expect(bare.onLoadComments()).resolves.toEqual([]);
+      expect(() => bare.onPanelOpened()).not.toThrow();
+      expect(() => bare.onPanelClosed()).not.toThrow();
+      bare.destroy();
+    });
+
+    it('toggles the panel when the toggle button is clicked', async () => {
+      commentSection.element.querySelector('.sn-comments-toggle').click();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(commentSection.isExpanded).toBe(true);
+    });
+
+    it('loadComments does nothing without a user', async () => {
+      const guest = new CommentSection({ noteId: 'g', user: null, onLoadComments: mockCallbacks.onLoadComments });
+      await guest.loadComments();
+      expect(mockCallbacks.onLoadComments).not.toHaveBeenCalled();
+      guest.destroy();
+    });
+
+    it('groups multiple replies under the same parent', async () => {
+      mockCallbacks.onLoadComments.mockResolvedValue([
+        { id: 'c1', authorId: 'user-2', authorName: 'Jane', content: 'Parent', createdAt: iso() },
+        { id: 'c2', authorId: 'user-3', authorName: 'Bob', content: 'R1', parentId: 'c1', createdAt: iso() },
+        { id: 'c3', authorId: 'user-3', authorName: 'Bob', content: 'R2', parentId: 'c1', createdAt: iso() }
+      ]);
+      await commentSection.togglePanel();
+      expect(commentSection.element.querySelectorAll('.sn-comment-reply').length).toBe(2);
+    });
+
+    it('renderComment works without a replies argument', () => {
+      const html = commentSection.renderComment({ id: 'x', authorId: 'user-9', authorName: 'N', content: 'C', createdAt: iso() });
+      expect(html).toContain('data-comment-id="x"');
+      expect(html).not.toContain('sn-comment-replies');
+    });
+
+    it('marks edited top-level comments and replies, and handles anonymous reply authors', async () => {
+      const created = '2024-01-01T00:00:00.000Z';
+      const updated = '2024-01-02T00:00:00.000Z';
+      mockCallbacks.onLoadComments.mockResolvedValue([
+        { id: 'c1', authorId: 'user-2', authorName: 'Jane', content: 'Parent', createdAt: created, updatedAt: updated },
+        { id: 'c2', authorId: 'user-1', content: 'Reply', parentId: 'c1', createdAt: created, updatedAt: updated }
+      ]);
+      await commentSection.togglePanel();
+      const times = commentSection.element.querySelectorAll('.sn-comment-time');
+      expect(times.length).toBe(2);
+      times.forEach(el => expect(el.textContent).toContain('(edited)'));
+      const reply = commentSection.element.querySelector('.sn-comment-reply');
+      expect(reply.querySelector('.sn-edit-btn')).not.toBeNull();
+      expect(reply.querySelector('.sn-comment-author').textContent).toBe('anonymous');
+    });
+
+    it('wires up reply, edit and delete buttons', async () => {
+      mockCallbacks.onLoadComments.mockResolvedValue([
+        { id: 'c1', authorId: 'user-1', authorName: 'Test User', content: 'Mine', createdAt: iso() }
+      ]);
+      await commentSection.togglePanel();
+      const startReply = jest.spyOn(commentSection, 'startReply').mockImplementation(() => {});
+      const startEdit = jest.spyOn(commentSection, 'startEdit').mockImplementation(() => {});
+      const del = jest.spyOn(commentSection, 'deleteComment').mockImplementation(() => {});
+      commentSection.element.querySelector('.sn-reply-btn').click();
+      commentSection.element.querySelector('.sn-edit-btn').click();
+      commentSection.element.querySelector('.sn-delete-btn').click();
+      expect(startReply).toHaveBeenCalledWith('c1', 'Test User');
+      expect(startEdit).toHaveBeenCalledWith('c1');
+      expect(del).toHaveBeenCalledWith('c1');
+    });
+
+    it('reuses the reply indicator and cancels via its button', async () => {
+      mockCallbacks.onLoadComments.mockResolvedValue([
+        { id: 'c1', authorId: 'user-2', authorName: 'Jane', content: 'P', createdAt: iso() }
+      ]);
+      await commentSection.togglePanel();
+      commentSection.startReply('c1', 'Jane');
+      commentSection.startReply('c1', 'Jane');
+      expect(commentSection.element.querySelectorAll('.sn-reply-indicator').length).toBe(1);
+      commentSection.element.querySelector('.sn-cancel-reply').click();
+      expect(commentSection.replyingTo).toBeNull();
+    });
+
+    it('startEdit ignores unknown comments', () => {
+      commentSection.startEdit('missing');
+      expect(commentSection.editingComment).toBeNull();
+    });
+
+    it('startEdit removes a reply indicator, reuses the edit indicator and cancels via its button', async () => {
+      mockCallbacks.onLoadComments.mockResolvedValue([
+        { id: 'c1', authorId: 'user-1', authorName: 'Test User', content: 'Mine', createdAt: iso() }
+      ]);
+      await commentSection.togglePanel();
+      commentSection.startReply('c1', 'Test User');
+      commentSection.startEdit('c1');
+      expect(commentSection.element.querySelector('.sn-reply-indicator')).toBeNull();
+      commentSection.startEdit('c1');
+      expect(commentSection.element.querySelectorAll('.sn-edit-indicator').length).toBe(1);
+      commentSection.element.querySelector('.sn-cancel-edit').click();
+      expect(commentSection.editingComment).toBeNull();
+    });
+
+    it('cancelEdit works when no indicator exists', () => {
+      expect(() => commentSection.cancelEdit()).not.toThrow();
+    });
+
+    it('submitComment shows an error when the user was cleared but input remains', async () => {
+      await commentSection.togglePanel();
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      input.value = 'hello';
+      commentSection.user = null;
+      await commentSection.submitComment();
+      expect(mockCallbacks.onAddComment).not.toHaveBeenCalled();
+    });
+
+    it('keeps submit disabled after failure when the input was emptied', async () => {
+      await commentSection.togglePanel();
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      input.value = 'text';
+      commentSection.onAddComment = jest.fn().mockImplementation(async () => {
+        input.value = '';
+        throw new Error('fail');
+      });
+      await commentSection.submitComment();
+      expect(commentSection.element.querySelector('.sn-comment-submit').disabled).toBe(true);
+    });
+
+    it('timestampToMs handles nanoseconds fallback and unsupported types', () => {
+      expect(commentSection.timestampToMs({ seconds: 5 })).toBe(5000);
+      expect(commentSection.timestampToMs(12345)).toBeNull();
+      expect(commentSection.timestampToMs({})).toBeNull();
+    });
+
+    it('isCommentEdited returns false when createdAt is unparseable', () => {
+      expect(commentSection.isCommentEdited({ createdAt: 42, updatedAt: iso() })).toBe(false);
+    });
+
+    it('updateInputContainer returns early without a container', () => {
+      commentSection.element.querySelector('.sn-comment-input-container').remove();
+      expect(() => commentSection.updateInputContainer()).not.toThrow();
+    });
+
+    it('setupInputEventListeners returns early without input', () => {
+      commentSection.element.querySelector('.sn-comment-input').remove();
+      expect(() => commentSection.setupInputEventListeners()).not.toThrow();
+    });
+
+    it('updateCharacterCounter returns early without input or counter', () => {
+      commentSection.element.querySelector('.sn-comment-char-counter').remove();
+      expect(() => commentSection.updateCharacterCounter()).not.toThrow();
+    });
+
+    it('submits when the submit button is clicked', async () => {
+      await commentSection.togglePanel();
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      input.value = 'via button';
+      input.dispatchEvent(new Event('input'));
+      commentSection.element.querySelector('.sn-comment-submit').click();
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockCallbacks.onAddComment).toHaveBeenCalledWith('note-123', { content: 'via button', parentId: null });
+    });
+
+    it('stops keyup and keypress propagation from the input', async () => {
+      await commentSection.togglePanel();
+      const input = commentSection.element.querySelector('.sn-comment-input');
+      const onBody = jest.fn();
+      document.body.appendChild(commentSection.element);
+      document.body.addEventListener('keyup', onBody);
+      document.body.addEventListener('keypress', onBody);
+      input.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true }));
+      input.dispatchEvent(new KeyboardEvent('keypress', { key: 'a', bubbles: true }));
+      expect(onBody).not.toHaveBeenCalled();
+      document.body.removeEventListener('keyup', onBody);
+      document.body.removeEventListener('keypress', onBody);
+    });
+
+    describe('toast timers', () => {
+      let host;
+      beforeEach(() => {
+        jest.useFakeTimers();
+        host = document.createElement('div');
+        document.body.appendChild(host);
+        host.appendChild(commentSection.element);
+      });
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('defaults to success type and removes the toast after the timers', () => {
+        commentSection.showToast('Hello');
+        const toast = host.querySelector('.sn-toast');
+        expect(toast.classList.contains('sn-toast-success')).toBe(true);
+        jest.runOnlyPendingTimers();
+        expect(toast.classList.contains('sn-toast-hiding')).toBe(true);
+        jest.runOnlyPendingTimers();
+        expect(host.contains(toast)).toBe(false);
+      });
+
+      it('does not fail if the toast was already removed', () => {
+        commentSection.showToast('Hello');
+        const toast = host.querySelector('.sn-toast');
+        jest.runOnlyPendingTimers();
+        toast.remove();
+        expect(() => jest.runOnlyPendingTimers()).not.toThrow();
+      });
+
+      it('returns early when there is no container', () => {
+        const detached = new CommentSection({ noteId: 'd', user: null });
+        expect(() => detached.showToast('x')).not.toThrow();
+        detached.destroy();
+      });
+    });
+  });
 });

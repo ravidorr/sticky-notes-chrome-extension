@@ -2138,4 +2138,228 @@ describe('RichEditor', () => {
       });
     });
   });
+  describe('additional coverage', () => {
+    const realGetSelection = document.getSelection.bind(document);
+    let made;
+
+    const make = (opts = {}) => {
+      const instance = new RichEditor({ onChange: jest.fn(), ...opts });
+      document.body.appendChild(instance.element);
+      made.push(instance);
+      return instance;
+    };
+
+    beforeEach(() => {
+      made = [];
+      window.getSelection = realGetSelection;
+    });
+
+    afterEach(() => {
+      made.forEach(instance => {
+        if (instance.element.parentNode) instance.destroy();
+      });
+      jest.restoreAllMocks();
+      window.getSelection = realGetSelection;
+    });
+
+    it('works with no constructor options and a default onChange', () => {
+      const bare = new RichEditor();
+      expect(bare.content).toBe('');
+      expect(() => bare.onChange('x')).not.toThrow();
+    });
+
+    it('opens the link popup from the toolbar link button', () => {
+      const spy = jest.spyOn(editor, 'handleCreateLink').mockImplementation(() => {});
+      editor.toolbar.querySelector('[data-command="createLink"]').click();
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('opens the link popup on Ctrl+K', () => {
+      const spy = jest.spyOn(editor, 'handleCreateLink').mockImplementation(() => {});
+      editor.editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true }));
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('updates toolbar state on selectionchange only when focus is inside the editor', () => {
+      const spy = jest.spyOn(editor, 'updateToolbarState').mockImplementation(() => {});
+      document.dispatchEvent(new Event('selectionchange'));
+      expect(spy).not.toHaveBeenCalled();
+      Object.defineProperty(document, 'activeElement', { value: editor.editor, configurable: true });
+      try {
+        document.dispatchEvent(new Event('selectionchange'));
+      } finally {
+        delete document.activeElement;
+      }
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('does not toggle a checkbox state handler for clicks outside checkboxes', () => {
+      editor.editor.innerHTML = '<p>text</p>';
+      const before = editor.content;
+      editor.editor.querySelector('p').click();
+      expect(editor.content).toBe(before);
+    });
+
+    it('ignores other keys in the link popup input', () => {
+      editor.editor.innerHTML = 'Hello';
+      const range = document.createRange();
+      range.selectNodeContents(editor.editor);
+      editor.showLinkInput(range, 'Hello');
+      const input = editor.element.querySelector('.sn-inline-popup-input');
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }));
+      expect(editor.element.querySelector('.sn-inline-popup')).not.toBeNull();
+    });
+
+    it('strips non-whitelisted attributes in cleanHtml', () => {
+      const cleaned = editor.cleanHtml('<p style="color:red" id="x">Hi</p>');
+      expect(cleaned).toBe('<p>Hi</p>');
+    });
+
+    it('pastes without a length limit when maxLength is 0', () => {
+      const unlimited = make({ maxLength: 0 });
+      const exec = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      const pasteEvent = new Event('paste', { bubbles: true });
+      pasteEvent.clipboardData = { getData: (type) => (type === 'text/html' ? '<p>Hello</p>' : 'Hello') };
+      unlimited.editor.dispatchEvent(pasteEvent);
+      expect(exec).toHaveBeenCalledWith('insertHTML', false, expect.any(String));
+    });
+
+    it('truncates empty pasted HTML when the editor is already over the limit', () => {
+      const small = make({ maxLength: 3 });
+      small.editor.innerHTML = 'Hello World';
+      const exec = jest.spyOn(document, 'execCommand').mockReturnValue(true);
+      const pasteEvent = new Event('paste', { bubbles: true });
+      pasteEvent.clipboardData = { getData: (type) => (type === 'text/html' ? '<br>' : '') };
+      small.editor.dispatchEvent(pasteEvent);
+      expect(exec).toHaveBeenCalledWith('insertText', false, '');
+    });
+
+    it('truncateToMaxLength restores the cursor from an existing selection', () => {
+      const small = make({ maxLength: 5 });
+      small.editor.innerHTML = 'Hello World';
+      const range = document.createRange();
+      range.setStart(small.editor.firstChild, 8);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      small.truncateToMaxLength();
+      expect(small.getPlainText()).toBe('Hello');
+      expect(window.getSelection().rangeCount).toBe(1);
+    });
+
+    it('setCursorPosition places a real selection', () => {
+      editor.editor.innerHTML = 'Hello World';
+      editor.setCursorPosition(3);
+      const sel = window.getSelection();
+      expect(sel.rangeCount).toBe(1);
+      expect(sel.getRangeAt(0).startOffset).toBe(3);
+    });
+
+    describe('email handling without callbacks', () => {
+      it('processes removed and new emails without share callbacks', () => {
+        const bare = make({});
+        bare.trackedEmails.set('gone@example.com', { status: 'success', tooltip: '' });
+        bare.editor.innerHTML = 'new@example.com more';
+        expect(() => bare.processEmailsInContent()).not.toThrow();
+        expect(bare.trackedEmails.has('gone@example.com')).toBe(false);
+        expect(bare.trackedEmails.has('new@example.com')).toBe(true);
+      });
+
+      it('wrapEmailInSpan skips unrelated spans before finding the matching one', () => {
+        const ed = make({});
+        ed.editor.innerHTML = '<span class="sn-email-share" data-email="a@example.com">a@example.com</span> b@example.com ';
+        ed.wrapEmailInSpan('b@example.com');
+        expect(ed.editor.querySelectorAll('.sn-email-share').length).toBe(2);
+      });
+
+      it('wrapEmailInSpan splits a span with text before the email', () => {
+        const ed = make({});
+        ed.editor.innerHTML = '<span class="sn-email-share" data-email="old@example.com" data-tooltip="t">before new@example.com after</span>';
+        ed.wrapEmailInSpan('new@example.com');
+        expect(ed.editor.textContent).toBe('before new@example.com after');
+        expect(ed.editor.querySelector('.sn-email-share').textContent).toBe('new@example.com');
+      });
+
+      it('wrapEmailInSpan splits a span with nothing after the email', () => {
+        const ed = make({});
+        ed.editor.innerHTML = '<span class="sn-email-share" data-email="old@example.com" data-tooltip="t">new@example.com</span>';
+        const span = ed.editor.querySelector('.sn-email-share');
+        span.textContent = 'pre new@example.com';
+        ed.wrapEmailInSpan('new@example.com');
+        expect(ed.editor.querySelector('.sn-email-share').textContent).toBe('new@example.com');
+        expect(ed.editor.textContent).toBe('pre new@example.com');
+      });
+
+      it('wrapEmailInSpan handles a selection failure when splitting a span', () => {
+        const ed = make({});
+        ed.editor.innerHTML = '<span class="sn-email-share" data-email="old@example.com" data-tooltip="t">x new@example.com</span>';
+        window.getSelection = jest.fn(() => { throw new Error('no selection'); });
+        expect(() => ed.wrapEmailInSpan('new@example.com')).not.toThrow();
+      });
+
+      it('wrapEmailInSpan skips text nodes already inside an email span', () => {
+        const ed = make({});
+        ed.editor.innerHTML = '<span class="sn-email-share" data-email="x@example.com">x@example.com</span>';
+        ed.editor.querySelectorAll = jest.fn(() => []);
+        ed.wrapEmailInSpan('x@example.com');
+        expect(ed.editor.querySelectorAll('.sn-email-share').length).toBe(0);
+        expect(ed.editor.querySelector('.sn-email-share').textContent).toBe('x@example.com');
+      });
+
+      it('wrapEmailInSpan wraps an email that is the whole trailing text node', () => {
+        const ed = make({});
+        ed.editor.innerHTML = 'hello <b>bold</b> end@example.com';
+        ed.wrapEmailInSpan('end@example.com');
+        const span = ed.editor.querySelector('.sn-email-share');
+        expect(span.textContent).toBe('end@example.com');
+        expect(span.nextSibling).toBeNull();
+      });
+
+      it('wrapEmailInSpan handles selection failure when wrapping', () => {
+        const ed = make({});
+        ed.editor.innerHTML = 'a@example.com tail';
+        window.getSelection = jest.fn(() => { throw new Error('no selection'); });
+        expect(() => ed.wrapEmailInSpan('a@example.com')).not.toThrow();
+        expect(ed.editor.querySelector('.sn-email-share')).not.toBeNull();
+      });
+
+      it('wrapEmailInSpan does nothing when the email is not in the content', () => {
+        const ed = make({});
+        ed.editor.innerHTML = 'nothing here';
+        ed.wrapEmailInSpan('a@example.com');
+        expect(ed.editor.querySelector('.sn-email-share')).toBeNull();
+      });
+
+      it('updateEmailStatus uses an empty tooltip by default and ignores unrelated spans', () => {
+        const ed = make({});
+        ed.editor.innerHTML = '<span class="sn-email-share sn-email-share-pending" data-email="other@example.com">other@example.com</span>';
+        ed.updateEmailStatus('mine@example.com', true);
+        const span = ed.editor.querySelector('.sn-email-share');
+        expect(span.classList.contains('sn-email-share-pending')).toBe(true);
+      });
+
+      it('updateEmailStatus matches a span whose text merely contains the email', () => {
+        const ed = make({});
+        ed.editor.innerHTML = '<span class="sn-email-share" data-email="zzz@example.com">prefix mine@example.com</span>';
+        ed.updateEmailStatus('mine@example.com', false, 'bad');
+        const span = ed.editor.querySelector('.sn-email-share');
+        expect(span.classList.contains('sn-email-share-failed')).toBe(true);
+        expect(span.dataset.tooltip).toBe('bad');
+      });
+
+      it('setEmailStatuses leaves spans for other emails untouched', () => {
+        const ed = make({});
+        ed.editor.innerHTML = '<span class="sn-email-share sn-email-share-pending" data-email="other@example.com">other@example.com</span>';
+        ed.setEmailStatuses([{ email: 'mine@example.com', status: 'success', tooltip: 'ok' }]);
+        expect(ed.editor.querySelector('.sn-email-share').classList.contains('sn-email-share-pending')).toBe(true);
+      });
+    });
+
+    it('destroy is safe when the element is already detached', () => {
+      const ed = make({});
+      ed.element.remove();
+      expect(() => ed.destroy()).not.toThrow();
+    });
+  });
 });
