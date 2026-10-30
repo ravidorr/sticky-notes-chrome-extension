@@ -271,7 +271,7 @@ Version is managed in `package.json` and synced to manifests during build:
 
 Husky runs these checks before each commit:
 
-1. **Changelog check** - Required for major/minor version bumps
+1. **Changelog check** - Every commit must stage `CHANGELOG.md` (changes that do not bump the version go under "Unreleased")
 2. **lint-staged** - ESLint, Stylelint, HTMLHint, Markdownlint
 3. **Unit tests** - All Jest tests must pass (the script tests, `npm run test:scripts`, run in CI only)
 
