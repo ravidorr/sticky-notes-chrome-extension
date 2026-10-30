@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Every commit must update this file (the pre-commit hook enforces it). Changes that do not
 bump the version, such as documentation, CI or Cloud Functions work, go under
 "Unreleased" and move under the next version heading when the version is bumped.
-The entries for 1.20.3 to 1.20.18 list each change under the version that `package.json`
-had when it was merged.
+The entries for 1.20.3 to 1.20.18 follow the same rule: a change merged without a version
+bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
@@ -31,6 +31,11 @@ had when it was merged.
 
 ## [1.20.18] - 2026-10-29
 
+### Added
+
+- New versions are published to Edge Add-ons automatically after merges to main, and
+  the workflow skips visibly instead of publishing twice
+
 ### Changed
 
 - The Edge production build uses its own OAuth client (`sticky-notes-edge-extension`)
@@ -42,10 +47,15 @@ had when it was merged.
 
 - The Edge development build has a stable extension ID, so local sign-in keeps working
   between rebuilds; the Edge OAuth setup for forks is documented
-- New versions are published to Edge Add-ons automatically after merges to main, and
-  the workflow skips visibly instead of publishing twice
 
 ## [1.20.16] - 2026-10-29
+
+### Changed
+
+- Cloud Functions use `firebase-admin` 14, which clears the remaining moderate audit
+  findings
+- The Chrome Web Store cancel step retries when the API rate limit is hit
+- The remaining GitHub Actions are pinned to commit SHAs
 
 ### Removed
 
@@ -59,18 +69,19 @@ had when it was merged.
 - The Chrome development build has a stable extension ID, so local sign-in keeps working
   between rebuilds
 
-### Changed
+### Fixed
 
-- Cloud Functions use `firebase-admin` 14, which clears the remaining moderate audit
-  findings
-- The Chrome Web Store cancel step retries when the API rate limit is hit
-- The remaining GitHub Actions are pinned to commit SHAs
+- The Jest worktree ignore is tighter, and the Firestore test stub's fallback is now
+  distinguishable from real behavior
 
 ## [1.20.14] - 2026-10-29
 
 ### Changed
 
 - Upgraded `firebase` to 12.19.0
+- A Chrome Web Store release is submitted only when the extension code changes, and a
+  version bump is required only for such changes
+- The security policy version workflow actions are pinned to commit SHAs
 
 ### Security
 
@@ -78,28 +89,23 @@ had when it was merged.
 
 ### Fixed
 
-- The Jest worktree ignore is tighter, and the Firestore test stub's fallback is now
-  distinguishable from real behavior
+- Failed share emails are retried without sending duplicates; retries are bounded and
+  malformed note fields are treated as permanent failures
+
+### Removed
+
+- The unused manual test tracking spreadsheet
 
 ## [1.20.13] - 2026-10-29
 
 ### Fixed
 
-- Failed share emails are retried without sending duplicates; retries are bounded and
-  malformed note fields are treated as permanent failures
 - The entry-point check in the release scripts compares real paths, so a script started
   through a symlink or wrapper no longer exits without validating anything
 
 ### Changed
 
 - Every script under `scripts/` is linted and the merge gates are tested
-- A Chrome Web Store release is submitted only when the extension code changes, and a
-  version bump is required only for such changes
-- The security policy version workflow actions are pinned to commit SHAs
-
-### Removed
-
-- The unused manual test tracking spreadsheet
 
 ## [1.20.12] - 2026-10-29
 
@@ -177,6 +183,13 @@ had when it was merged.
 
 - Publishing to the Chrome Web Store after merges to main, with a version pre-check
 - A pull request check that requires a version bump
+- A security policy in `SECURITY.md` and a CI check that its supported version matches
+  `package.json`
+- README status badges
+
+### Security
+
+- Remediated npm audit findings
 
 ## [1.20.3+8] - 2026-10-08
 
@@ -187,13 +200,6 @@ had when it was merged.
 ### Added
 
 - GitHub Sponsors funding metadata
-- A security policy in `SECURITY.md` and a CI check that its supported version matches
-  `package.json`
-- README status badges
-
-### Security
-
-- Remediated npm audit findings
 
 ## [1.20.3.8] - 2026-02-21
 
@@ -203,20 +209,19 @@ had when it was merged.
 
 ## [1.20.3.7] - 2026-02-03
 
-### Changed
+### Fixed
 
-- Version bump with no other changes
+- `document.baseURI` references are fixed in the service worker build
+
+### Added
+
+- A Chrome extension best practices skill for AI assistants
 
 ## [1.20.3.6] - 2026-02-03
 
 ### Fixed
 
-- The service worker is built as an IIFE instead of ES modules, and `document.baseURI`
-  references are fixed in its build
-
-### Added
-
-- A Chrome extension best practices skill for AI assistants
+- The service worker is built as an IIFE instead of ES modules
 
 ## [1.20.3.5] - 2026-02-03
 
@@ -231,12 +236,6 @@ had when it was merged.
 
 - All lint warnings across the codebase
 
-## [1.20.3.3] - 2026-02-03
-
-### Fixed
-
-- The Firebase lazy boundary is restored so the SDK is not parsed eagerly
-
 ### Changed
 
 - The popup and options page initialize with parallel async operations
@@ -245,6 +244,18 @@ had when it was merged.
 
 - CLAUDE.md with guidelines for AI assistants
 
+## [1.20.3.3] - 2026-02-03
+
+### Changed
+
+- The service worker no longer loads the Firebase SDK (about 800KB) at startup; Firebase
+  loads on demand and background handlers avoid eager user fetches
+
+### Fixed
+
+- Firebase lazy loading and dynamic imports work in the service worker, and the Firebase
+  lazy boundary is restored so the SDK is not parsed eagerly
+
 ## [1.20.3] - 2026-02-02
 
 ### Changed
@@ -252,13 +263,10 @@ had when it was merged.
 - The Open Dashboard button is part of the "Your Dashboard" feature card on the options
   page, and the whole card is clickable
 - The add note hint is a tooltip on the Add Note button, which saves popup space
-- The service worker no longer loads the Firebase SDK (about 800KB) at startup; Firebase
-  loads on demand and background handlers avoid eager user fetches
 
 ### Fixed
 
 - The build removes the manifest `key` field, which the Chrome Web Store rejects
-- Firebase lazy loading and dynamic imports work in the service worker
 
 ## [1.20.2] - 2026-02-01
 
