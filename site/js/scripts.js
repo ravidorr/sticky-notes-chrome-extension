@@ -580,7 +580,7 @@ const STORE_URLS = {
 
 /**
  * Detect the user's browser type
- * @returns {string} 'chrome', 'edge', or 'other'
+ * @returns {string} 'chrome' or 'edge'
  */
 function getBrowserType() {
     // Check User-Agent Client Hints API first (more reliable, modern browsers)

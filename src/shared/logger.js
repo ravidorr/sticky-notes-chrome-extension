@@ -90,9 +90,7 @@ export function createLogger(namespace, options = {}) {
      * @param  {...any} args - Arguments to log
      */
     warn(...args) {
-      if (currentLevel <= LOG_LEVELS.WARN) {
-        console.warn(prefix, ...args);
-      }
+      console.warn(prefix, ...args);
     },
     
     /**
@@ -100,9 +98,7 @@ export function createLogger(namespace, options = {}) {
      * @param  {...any} args - Arguments to log
      */
     error(...args) {
-      if (currentLevel <= LOG_LEVELS.ERROR) {
-        console.error(prefix, ...args);
-      }
+      console.error(prefix, ...args);
     },
     
     /**

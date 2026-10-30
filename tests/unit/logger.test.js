@@ -245,28 +245,6 @@ describe('Logger', () => {
     });
   });
   
-  describe('level thresholds above warn', () => {
-    // LOG_LEVELS is a mutable export; temporarily raise WARN so a logger is
-    // created with a threshold stricter than warn and error.
-    const createStrictLogger = () => {
-      const original = LOG_LEVELS.WARN;
-      LOG_LEVELS.WARN = LOG_LEVELS.NONE + 1;
-      try {
-        return createLogger('Strict', { debugMode: false });
-      } finally {
-        LOG_LEVELS.WARN = original;
-      }
-    };
-
-    it('should suppress warn and error when the threshold is above them', () => {
-      const logger = createStrictLogger();
-      logger.warn('warning message');
-      logger.error('error message');
-      expect(localThis.mockWarn).not.toHaveBeenCalled();
-      expect(localThis.mockError).not.toHaveBeenCalled();
-    });
-  });
-
   describe('log', () => {
     it('should call appropriate console method based on level', () => {
       // Mock console.debug as well since log('debug') calls console.debug
