@@ -14,6 +14,14 @@ jest.unstable_mockModule('firebase-admin/firestore', () => ({
   }
 }));
 
+const lazyCreateTransport = jest.fn().mockReturnValue('lazy-transport');
+jest.unstable_mockModule('nodemailer', () => ({
+  default: { createTransport: lazyCreateTransport }
+}), { virtual: true });
+// Jest resolves the dynamic import through the CJS virtual registry as well
+jest.mock('nodemailer', () => ({ default: { createTransport: lazyCreateTransport } }), { virtual: true });
+
+const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
 const {
   deliverMail,
   createTransport,
@@ -340,6 +348,46 @@ describe('mailSender', () => {
         socketTimeout: 20000,
         auth: { user: 'me@example.com', pass: 'pw' }
       });
+    });
+  });
+
+  describe('createTransport default library', () => {
+    it('should lazily import nodemailer when none is injected', async () => {
+      const result = await createTransport({ user: 'me@example.com', password: 'pw' });
+
+      expect(result).toBe('lazy-transport');
+      expect(lazyCreateTransport).toHaveBeenCalledWith(
+        expect.objectContaining({ auth: { user: 'me@example.com', pass: 'pw' } })
+      );
+    });
+  });
+
+  describe('default dependencies', () => {
+    it('should use Firestore, the server timestamp and the clock when no deps are given', async () => {
+      getFirestore.mockReturnValue(localThis.db);
+      const stamp = { toMillis: () => localThis.nowMs };
+      FieldValue.serverTimestamp.mockReturnValue(stamp);
+
+      const result = await deliverMail(
+        localThis.docRef, localThis.mail, localThis.config, { transport: localThis.transport }
+      );
+
+      expect(result).toBe('SUCCESS');
+      expect(getFirestore).toHaveBeenCalled();
+      expect(localThis.store.delivery.endTime).toBe(stamp);
+    });
+  });
+
+  describe('omitted deps argument', () => {
+    it('should default deps to an empty object in deliverMail and handleMailCreated', async () => {
+      getFirestore.mockReturnValue(localThis.db);
+      localThis.store.delivery = { state: 'SUCCESS', attempts: 1 };
+
+      await expect(deliverMail(localThis.docRef, localThis.mail, localThis.config)).resolves.toBe('SKIPPED');
+      await expect(handleMailCreated({
+        params: { mailId: 'mail-1' },
+        data: { ref: localThis.docRef, data: () => localThis.mail }
+      }, localThis.config)).resolves.toBeNull();
     });
   });
 

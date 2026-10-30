@@ -441,5 +441,50 @@ describe('pageContext', () => {
       // stringify() catches the error and returns '[Unable to stringify]'
       expect(window.__stickyNotesErrorBuffer[0].message).toBe('[Unable to stringify]');
     });
+
+    it('should stringify ShadowRoot with a host', async () => {
+      await loadPageContext();
+
+      const host = document.createElement('div');
+      const root = host.attachShadow({ mode: 'open' });
+      localThis.rejectionListeners[0]({ reason: root });
+
+      expect(window.__stickyNotesErrorBuffer[0].message).toBe('ShadowRoot(div)');
+    });
+
+    it('should stringify ShadowRoot without a host as unknown', async () => {
+      await loadPageContext();
+
+      const host = document.createElement('div');
+      const root = host.attachShadow({ mode: 'open' });
+      Object.defineProperty(root, 'host', { value: null });
+      localThis.rejectionListeners[0]({ reason: root });
+
+      expect(window.__stickyNotesErrorBuffer[0].message).toBe('ShadowRoot(unknown)');
+    });
+
+    it('should use fallback message when Error reason message getter throws', async () => {
+      await loadPageContext();
+
+      const err = new Error('x');
+      Object.defineProperty(err, 'message', {
+        get() { throw new Error('boom'); }
+      });
+      localThis.rejectionListeners[0]({ reason: err });
+
+      expect(window.__stickyNotesErrorBuffer[0].message).toBe(
+        'Unhandled Promise Rejection (unable to get details)'
+      );
+    });
+
+    it('should handle an Error rejection without a stack', async () => {
+      await loadPageContext();
+
+      const err = new Error('no stack here');
+      err.stack = '';
+      localThis.rejectionListeners[0]({ reason: err });
+
+      expect(window.__stickyNotesErrorBuffer[0].message).toBe('no stack here');
+    });
   });
 });

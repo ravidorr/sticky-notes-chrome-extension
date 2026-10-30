@@ -13,17 +13,23 @@ const LOG_LEVELS = {
 };
 
 /**
+ * Check whether debug mode is enabled for a Vite env object
+ * @param {Object} [env] - import.meta.env, undefined outside a Vite build
+ * @returns {boolean} True unless VITE_DEBUG_MODE is 'false'
+ */
+export function isDebugEnabled(env) {
+  return !env || env.VITE_DEBUG_MODE !== 'false';
+}
+
+/**
  * Detect if debug mode is enabled from environment
  * @returns {boolean} True if debug mode is enabled
  */
 export function detectDebugMode() {
   // Check if debug mode is enabled
   // In production, set VITE_DEBUG_MODE=false in .env
-  // Handle case where import.meta.env is undefined (e.g., in test environment)
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    return import.meta.env.VITE_DEBUG_MODE !== 'false';
-  }
-  return true;
+  // import.meta.env is undefined in the test environment
+  return isDebugEnabled(import.meta.env);
 }
 
 // Module-level debug mode (can be overridden for testing)
@@ -84,9 +90,7 @@ export function createLogger(namespace, options = {}) {
      * @param  {...any} args - Arguments to log
      */
     warn(...args) {
-      if (currentLevel <= LOG_LEVELS.WARN) {
-        console.warn(prefix, ...args);
-      }
+      console.warn(prefix, ...args);
     },
     
     /**
@@ -94,9 +98,7 @@ export function createLogger(namespace, options = {}) {
      * @param  {...any} args - Arguments to log
      */
     error(...args) {
-      if (currentLevel <= LOG_LEVELS.ERROR) {
-        console.error(prefix, ...args);
-      }
+      console.error(prefix, ...args);
     },
     
     /**

@@ -2,7 +2,7 @@
  * SelectorEngine Unit Tests
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
 // We need to import the module dynamically due to ES modules
 let SelectorEngine;
@@ -820,6 +820,230 @@ describe('SelectorEngine', () => {
       const result = engine.validateSelector('div:has(:invalid-pseudo)');
       // May be invalid depending on browser support
       expect(typeof result.valid).toBe('boolean');
+    });
+  });
+
+  describe('remaining branch coverage', () => {
+    describe('generate() path fallback', () => {
+      it('should fall back to a path selector when no strategy is unique', () => {
+        document.body.innerHTML = '<div><span></span></div><div><span></span></div>';
+        const target = document.querySelectorAll('span')[1];
+
+        const selector = engine.generate(target);
+
+        expect(selector).toBe('div:nth-of-type(2) > span:nth-of-type(1)');
+        expect(document.querySelector(selector)).toBe(target);
+      });
+    });
+
+    describe('getIdSelector()', () => {
+      it('should return null when the id is shared by several elements', () => {
+        document.body.innerHTML = '<div id="dup"></div><div id="dup"></div>';
+        expect(engine.getIdSelector(document.querySelector('#dup'))).toBeNull();
+      });
+
+      it('should return null when CSS.escape throws', () => {
+        document.body.innerHTML = '<div id="boom"></div>';
+        CSS.escape.mockImplementationOnce(() => {
+          throw new Error('escape failed');
+        });
+        expect(engine.getIdSelector(document.querySelector('#boom'))).toBeNull();
+      });
+    });
+
+    describe('getClassSelector()', () => {
+      it('should use a class combination when single classes are not unique', () => {
+        document.body.innerHTML = `
+          <div class="aa bb" id="target"></div>
+          <div class="aa"></div>
+          <div class="bb"></div>
+        `;
+        const selector = engine.getClassSelector(document.getElementById('target'));
+        expect(selector).toBe('div.aa.bb');
+      });
+
+      it('should return null when the only stable class is not unique', () => {
+        document.body.innerHTML = '<div class="aa"></div><div class="aa"></div>';
+        expect(engine.getClassSelector(document.querySelector('div'))).toBeNull();
+      });
+
+      it('should return null when even the class combination is not unique', () => {
+        document.body.innerHTML = '<div class="aa bb"></div><div class="aa bb"></div>';
+        expect(engine.getClassSelector(document.querySelector('div'))).toBeNull();
+      });
+    });
+
+    describe('getNthChildSelector()', () => {
+      it('should return null when the element is not among its parent children', () => {
+        const fake = {
+          tagName: 'DIV',
+          parentElement: { children: [] }
+        };
+        expect(engine.getNthChildSelector(fake)).toBeNull();
+      });
+
+      it('should return null when the parent has no short selector', () => {
+        document.body.innerHTML = '<div></div>';
+        expect(engine.getNthChildSelector(document.querySelector('div'))).toBeNull();
+      });
+
+      it('should return null when the nth-of-type selector is not unique', () => {
+        document.body.innerHTML = '<section><p></p></section><section><p></p></section>';
+        expect(engine.getNthChildSelector(document.querySelector('p'))).toBeNull();
+      });
+    });
+
+    describe('buildPathSelector() and getElementPart()', () => {
+      it('should return the full path when it never becomes unique (detached tree)', () => {
+        const wrapper = document.createElement('section');
+        const child = document.createElement('div');
+        wrapper.appendChild(child);
+
+        expect(engine.buildPathSelector(child)).toBe('section > div:nth-of-type(1)');
+      });
+
+      it('should use a preferred attribute for a path part', () => {
+        document.body.innerHTML = '<div data-test-id="part"></div>';
+        const part = engine.getElementPart(document.querySelector('div'));
+        expect(part).toBe('div[data-test-id="part"]');
+      });
+
+      it('should use the bare tag name for an element without a parent', () => {
+        expect(engine.getElementPart(document.documentElement)).toBe('html');
+      });
+
+      it('should handle elements without a classList', () => {
+        const fake = {
+          tagName: 'DIV',
+          id: '',
+          getAttribute: () => null,
+          parentElement: null
+        };
+        expect(engine.getElementPart(fake)).toBe('div');
+        expect(engine.getShortSelector(fake)).toBe('div');
+      });
+    });
+
+    describe('isDynamicId()', () => {
+      it('should treat an empty id as dynamic', () => {
+        expect(engine.isDynamicId('')).toBe(true);
+      });
+    });
+
+    describe('validate()', () => {
+      it('should return false for a syntactically invalid selector', () => {
+        const element = document.body;
+        expect(engine.validate('div[', element)).toBe(false);
+      });
+    });
+
+    describe('findBestMatch() and findCandidates()', () => {
+      it('should work without metadata', () => {
+        document.body.innerHTML = '<button id="save">Save</button>';
+        expect(engine.findBestMatch('button#save')).toBe(document.getElementById('save'));
+      });
+
+      const buildMany = (count, className) => {
+        const fragment = document.createDocumentFragment();
+        for (let i = 0; i < count; i++) {
+          const item = document.createElement('div');
+          if (className && i < 3) item.className = className;
+          fragment.appendChild(item);
+        }
+        document.body.appendChild(fragment);
+      };
+
+      it('should narrow many candidates to elements sharing the classes', () => {
+        buildMany(150, 'target-class');
+        const parts = engine.parseSelector('div.target-class');
+        const candidates = engine.findCandidates(parts, {});
+        expect(candidates).toHaveLength(3);
+      });
+
+      it('should keep the tag candidates when no element matches the classes', () => {
+        buildMany(150);
+        const parts = engine.parseSelector('div.missing-class');
+        const candidates = engine.findCandidates(parts, {});
+        expect(candidates).toHaveLength(100);
+      });
+
+      it('should keep the tag candidates when too many elements match the classes', () => {
+        buildMany(150, '');
+        document.querySelectorAll('div').forEach(div => div.classList.add('common'));
+        const parts = engine.parseSelector('div.common');
+        expect(engine.findCandidates(parts, {})).toHaveLength(100);
+      });
+
+      it('should filter many candidates by attribute when there are no classes', () => {
+        buildMany(150);
+        document.querySelectorAll('div')[120].setAttribute('data-x', '1');
+        const parts = engine.parseSelector('div[data-x="1"]');
+        const candidates = engine.findCandidates(parts, {});
+        expect(candidates).toHaveLength(1);
+        expect(candidates[0].getAttribute('data-x')).toBe('1');
+      });
+
+      it('should query every element when the selector has no tag name', () => {
+        document.body.innerHTML = '<p class="one"></p><span class="one"></span>';
+        const parts = engine.parseSelector('.one');
+        expect(engine.findCandidates(parts, {})).toHaveLength(2);
+      });
+    });
+
+    describe('scoreCandidate()', () => {
+      it('should not award tag points for a different tag', () => {
+        document.body.innerHTML = '<span id="x"></span>';
+        const parts = engine.parseSelector('div');
+        expect(engine.scoreCandidate(document.getElementById('x'), parts, {})).toBe(0);
+      });
+
+      it('should skip attributes missing on the element', () => {
+        document.body.innerHTML = '<div></div>';
+        const parts = engine.parseSelector('div[data-missing="a"]');
+        expect(engine.scoreCandidate(document.querySelector('div'), parts, {})).toBe(40);
+      });
+
+      it('should not award text points for dissimilar text', () => {
+        document.body.innerHTML = '<div>completely different</div>';
+        const parts = engine.parseSelector('div');
+        const score = engine.scoreCandidate(document.querySelector('div'), parts, {
+          textContent: 'zzzzzzzzzzzz'
+        });
+        expect(score).toBe(67);
+      });
+    });
+
+    describe('generateFallbackSelectors()', () => {
+      it('should skip the primary selector when generate returns nothing', () => {
+        document.body.innerHTML = '<div id="solo"></div>';
+        const element = document.getElementById('solo');
+        const spy = jest.spyOn(engine, 'generate').mockReturnValue(null);
+
+        const selectors = engine.generateFallbackSelectors(element);
+
+        expect(selectors).toContain('#solo');
+        spy.mockRestore();
+      });
+    });
+
+    describe('validateSelector() extra patterns', () => {
+      it('should reject a url() pattern that passes the shared checks', () => {
+        const result = engine.validateSelector('[style*="url(image.png)"]');
+        expect(result.valid).toBe(false);
+        expect(result.error).toBe('Selector contains potentially unsafe patterns');
+      });
+
+      it('should reject unicode escape sequences', () => {
+        const result = engine.validateSelector('.a\\31 b');
+        expect(result.valid).toBe(false);
+      });
+
+      it('should report invalid CSS syntax', () => {
+        const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const result = engine.validateSelector('div[');
+        expect(result).toEqual({ valid: false, error: 'Invalid CSS selector syntax' });
+        errorSpy.mockRestore();
+      });
     });
   });
 });

@@ -40,14 +40,20 @@ export function isEdgeBrowser() {
 }
 
 /**
+ * Resolve the OAuth client ID from a Vite env object
+ * @param {Object} [env] - import.meta.env, undefined outside a Vite build
+ * @returns {string} OAuth client ID, or a placeholder when unset
+ */
+export function resolveOAuthClientId(env) {
+  return env?.VITE_OAUTH_CLIENT_ID || 'YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com';
+}
+
+/**
  * Get OAuth client ID from environment
  * @returns {string} OAuth client ID
  */
 export function getOAuthClientId() {
-  if (typeof import.meta === 'undefined' || !import.meta.env) {
-    return 'YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com';
-  }
-  return import.meta.env.VITE_OAUTH_CLIENT_ID || 'YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com';
+  return resolveOAuthClientId(import.meta.env);
 }
 
 /**
@@ -81,7 +87,7 @@ export async function getOAuthToken(deps = {}) {
  * @param {Object} deps - Dependencies for testing
  * @returns {Promise<string>} OAuth token
  */
-async function getOAuthTokenViaGetAuthToken(deps = {}) {
+async function getOAuthTokenViaGetAuthToken(deps) {
   const chromeIdentity = deps.chromeIdentity || chrome.identity;
   const chromeRuntime = deps.chromeRuntime || chrome.runtime;
   
@@ -104,7 +110,7 @@ async function getOAuthTokenViaGetAuthToken(deps = {}) {
  * @param {Object} deps - Dependencies for testing
  * @returns {Promise<string>} OAuth token
  */
-async function getOAuthTokenViaWebAuthFlow(deps = {}) {
+async function getOAuthTokenViaWebAuthFlow(deps) {
   const chromeIdentity = deps.chromeIdentity || chrome.identity;
   const getClientId = deps.getOAuthClientId || getOAuthClientId;
   const clientId = getClientId();

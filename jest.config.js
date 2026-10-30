@@ -30,10 +30,10 @@ export default {
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
     global: {
-      statements: 85,
-      branches: 75,
-      functions: 75,
-      lines: 85
+      statements: 100,
+      branches: 100,
+      functions: 100,
+      lines: 100
     }
   },
   verbose: true,

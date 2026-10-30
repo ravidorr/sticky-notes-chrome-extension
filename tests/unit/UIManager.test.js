@@ -47,6 +47,11 @@ describe('UIManager', () => {
     localThis.ui = new UIManager({ onElementSelect: jest.fn() });
   });
 
+  afterEach(() => {
+    // Destroy any selection overlay so its document-level listeners do not leak between tests
+    localThis.ui.disableSelectionMode();
+  });
+
   it('should re-anchor using exact oldText match when selector matches multiple elements', () => {
     const match1 = document.createElement('div');
     match1.className = 'sn-test-target';
@@ -217,6 +222,14 @@ describe('UIManager', () => {
   });
 
   describe('enableSelectionMode', () => {
+    it('should skip when already in selection mode', () => {
+      localThis.ui.isSelectionMode = true;
+      localThis.ui.enableSelectionMode();
+
+      expect(document.body.classList.contains('sn-selection-mode')).toBe(false);
+      expect(localThis.ui.selectionOverlay).toBeFalsy();
+    });
+
     beforeEach(() => {
       localThis.ui.createShadowContainer();
     });
@@ -557,6 +570,26 @@ describe('UIManager', () => {
       expect(refreshBtn.textContent).toBeTruthy();
     });
     
+    it('should invoke reload when refresh button is clicked', () => {
+      const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      localThis.ui.showRefreshNotification();
+
+      expect(() => document.getElementById('sn-refresh-btn').click()).not.toThrow();
+      errSpy.mockRestore();
+    });
+
+    it('should fade out and remove notification when dismissed', () => {
+      localThis.ui.showRefreshNotification();
+      const notification = document.getElementById('sticky-notes-refresh-notification');
+
+      document.getElementById('sn-dismiss-refresh-btn').click();
+
+      expect(notification.style.opacity).toBe('0');
+      expect(notification.style.transform).toBe('translateX(100%)');
+      jest.advanceTimersByTime(300);
+      expect(document.getElementById('sticky-notes-refresh-notification')).toBeNull();
+    });
+
     it('should have dismiss button', () => {
       localThis.ui.showRefreshNotification();
       
@@ -619,6 +652,257 @@ describe('UIManager', () => {
       localThis.observerCallback([]);
       
       expect(note.updateAnchor).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('applyPreferencesStyles errors', () => {
+    it('should swallow errors when the shadow root is not initialized', async () => {
+      const fresh = new UIManager({ onElementSelect: jest.fn() });
+      fresh.shadowRoot = null;
+
+      await expect(fresh.applyPreferencesStyles()).resolves.toBeUndefined();
+    });
+  });
+
+  describe('applyPreferencesStyles with stored preferences', () => {
+    it('should set note width and font size CSS variables', async () => {
+      global.chrome.storage = {
+        sync: {
+          get: jest.fn().mockResolvedValue({ preferences: { noteWidth: 360, fontSize: 'large' } })
+        }
+      };
+      localThis.ui.createShadowContainer();
+      await localThis.ui.applyPreferencesStyles();
+
+      const host = localThis.ui.shadowRoot.host;
+      expect(host.style.getPropertyValue('--sn-note-width')).toBe('360px');
+      expect(host.style.getPropertyValue('--sn-font-size')).toBe('16px');
+    });
+  });
+
+  describe('selection overlay callbacks', () => {
+    it('should route overlay onSelect to handleElementSelect', () => {
+      localThis.ui.createShadowContainer();
+      const selectSpy = jest.spyOn(localThis.ui, 'handleElementSelect').mockResolvedValue();
+      localThis.ui.enableSelectionMode();
+      const element = document.createElement('div');
+
+      localThis.ui.selectionOverlay.onSelect(element);
+
+      expect(selectSpy).toHaveBeenCalledWith(element);
+    });
+
+    it('should route overlay onCancel to disableSelectionModeAllFrames', () => {
+      localThis.ui.createShadowContainer();
+      localThis.ui.enableSelectionMode();
+
+      localThis.ui.selectionOverlay.onCancel();
+
+      expect(localThis.ui.isSelectionMode).toBe(false);
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ action: 'broadcastDisableSelectionMode' });
+    });
+
+    it('should invoke the sendMessage catch callback without throwing', () => {
+      localThis.ui.createShadowContainer();
+      chrome.runtime.sendMessage.mockReturnValue({
+        catch: (callback) => callback(new Error('no receiver'))
+      });
+
+      expect(() => localThis.ui.disableSelectionModeAllFrames()).not.toThrow();
+    });
+
+    it('should disable selection mode without an overlay', () => {
+      localThis.ui.isSelectionMode = true;
+      localThis.ui.selectionOverlay = null;
+
+      localThis.ui.disableSelectionMode();
+
+      expect(localThis.ui.isSelectionMode).toBe(false);
+    });
+  });
+
+  describe('banner and tooltip timers when container changed', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      localThis.ui.createShadowContainer();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should not remove a banner that was already detached before the timeout', () => {
+      const banner = document.createElement('div');
+      localThis.ui.container.appendChild(banner);
+
+      localThis.ui.dismissBanner(banner);
+      localThis.ui.container.removeChild(banner);
+
+      expect(() => jest.advanceTimersByTime(400)).not.toThrow();
+    });
+
+    it('should skip tooltip fade when it was already removed', () => {
+      localThis.ui.startReanchorMode({ id: 'note-1' });
+      const tooltip = localThis.ui.container.querySelector('.sn-instruction-tooltip');
+      tooltip.remove();
+
+      jest.advanceTimersByTime(3500);
+
+      expect(tooltip.classList.contains('sn-instruction-tooltip-hiding')).toBe(false);
+    });
+
+    it('should skip tooltip removal when it was removed during the fade', () => {
+      localThis.ui.startReanchorMode({ id: 'note-1' });
+      const tooltip = localThis.ui.container.querySelector('.sn-instruction-tooltip');
+
+      jest.advanceTimersByTime(3100);
+      expect(tooltip.classList.contains('sn-instruction-tooltip-hiding')).toBe(true);
+      tooltip.remove();
+
+      expect(() => jest.advanceTimersByTime(600)).not.toThrow();
+    });
+
+    it('should handle banner content that is missing', () => {
+      localThis.ui.showReanchorUI({ id: 'note-nc' });
+
+      const banner = localThis.ui.container.querySelector('.sn-banner');
+      expect(banner).toBeTruthy();
+    });
+  });
+
+  describe('refresh notification hover effects', () => {
+    it('should change button backgrounds on hover', () => {
+      localThis.ui.showRefreshNotification();
+      const refreshBtn = document.getElementById('sn-refresh-btn');
+      const dismissBtn = document.getElementById('sn-dismiss-refresh-btn');
+
+      refreshBtn.dispatchEvent(new Event('mouseenter'));
+      expect(refreshBtn.style.background).toBe('rgb(37, 99, 235)');
+      refreshBtn.dispatchEvent(new Event('mouseleave'));
+      expect(refreshBtn.style.background).toBe('rgb(59, 130, 246)');
+
+      dismissBtn.dispatchEvent(new Event('mouseenter'));
+      expect(dismissBtn.style.background).toBe('rgb(229, 231, 235)');
+      dismissBtn.dispatchEvent(new Event('mouseleave'));
+      expect(dismissBtn.style.background).toBe('rgb(243, 244, 246)');
+    });
+  });
+
+  describe('setupMutationObserver edge cases', () => {
+    it('should work when noteManager argument is omitted', () => {
+      const notes = new Map();
+
+      localThis.ui.setupMutationObserver(notes, localThis.visibilityManager);
+
+      expect(() => localThis.observerCallback([])).not.toThrow();
+    });
+
+    it('should handle a note whose anchor is null', () => {
+      const note = {
+        id: 'note-null-anchor',
+        selector: '.does-not-exist-anywhere',
+        anchor: null,
+        updateAnchor: jest.fn()
+      };
+      const notes = new Map([[note.id, note]]);
+
+      localThis.ui.setupMutationObserver(notes, localThis.visibilityManager, localThis.noteManager);
+      localThis.observerCallback([]);
+
+      expect(note.updateAnchor).not.toHaveBeenCalled();
+    });
+
+    it('should handle an anchor without text content', () => {
+      const match = document.createElement('div');
+      match.className = 'sn-empty-text';
+      document.body.appendChild(match);
+      const note = {
+        id: 'note-notext',
+        selector: '.sn-empty-text',
+        anchor: document.createElement('div'),
+        updateAnchor: jest.fn()
+      };
+      const notes = new Map([[note.id, note]]);
+
+      localThis.ui.setupMutationObserver(notes, localThis.visibilityManager, localThis.noteManager);
+      localThis.observerCallback([]);
+
+      expect(note.updateAnchor).toHaveBeenCalledWith(match);
+    });
+
+    it('should keep the first match when findBestMatch returns null', () => {
+      const first = document.createElement('div');
+      first.className = 'sn-multi';
+      first.textContent = 'A';
+      const second = document.createElement('div');
+      second.className = 'sn-multi';
+      second.textContent = 'B';
+      document.body.appendChild(first);
+      document.body.appendChild(second);
+      const oldAnchor = document.createElement('div');
+      oldAnchor.textContent = 'Z';
+      localThis.noteManager.selectorEngine.findBestMatch.mockReturnValueOnce(null);
+      const note = {
+        id: 'note-nobest',
+        selector: '.sn-multi',
+        anchor: oldAnchor,
+        updateAnchor: jest.fn()
+      };
+      const notes = new Map([[note.id, note]]);
+
+      localThis.ui.setupMutationObserver(notes, localThis.visibilityManager, localThis.noteManager);
+      localThis.observerCallback([]);
+
+      expect(note.updateAnchor).toHaveBeenCalledWith(first);
+    });
+
+    it('should handle matching elements with empty text content', () => {
+      const first = document.createElement('div');
+      first.className = 'sn-multi3';
+      const second = document.createElement('div');
+      second.className = 'sn-multi3';
+      second.textContent = 'Z';
+      document.body.appendChild(first);
+      document.body.appendChild(second);
+      const oldAnchor = document.createElement('div');
+      oldAnchor.textContent = 'Z';
+      const note = {
+        id: 'note-emptymatch',
+        selector: '.sn-multi3',
+        anchor: oldAnchor,
+        updateAnchor: jest.fn()
+      };
+      const notes = new Map([[note.id, note]]);
+
+      localThis.ui.setupMutationObserver(notes, localThis.visibilityManager, localThis.noteManager);
+      localThis.observerCallback([]);
+
+      expect(note.updateAnchor).toHaveBeenCalledWith(second);
+    });
+
+    it('should skip disambiguation when noteManager has no selectorEngine', () => {
+      const first = document.createElement('div');
+      first.className = 'sn-multi2';
+      first.textContent = 'A';
+      const second = document.createElement('div');
+      second.className = 'sn-multi2';
+      second.textContent = 'B';
+      document.body.appendChild(first);
+      document.body.appendChild(second);
+      const oldAnchor = document.createElement('div');
+      oldAnchor.textContent = 'Z';
+      const note = {
+        id: 'note-noengine',
+        selector: '.sn-multi2',
+        anchor: oldAnchor,
+        updateAnchor: jest.fn()
+      };
+      const notes = new Map([[note.id, note]]);
+
+      localThis.ui.setupMutationObserver(notes, localThis.visibilityManager, { checkPendingNotes: jest.fn() });
+      localThis.observerCallback([]);
+
+      expect(note.updateAnchor).toHaveBeenCalledWith(first);
     });
   });
 });

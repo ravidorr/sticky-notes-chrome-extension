@@ -204,10 +204,10 @@ The project enforces minimum coverage thresholds (configured in `jest.config.js`
 
 | Metric | Minimum |
 |--------|---------|
-| Statements | 85% |
-| Branches | 75% |
-| Functions | 75% |
-| Lines | 85% |
+| Statements | 100% |
+| Branches | 100% |
+| Functions | 100% |
+| Lines | 100% |
 
 ### Pre-commit Hooks
 

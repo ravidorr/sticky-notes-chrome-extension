@@ -3028,4 +3028,792 @@ describe('StickyNote', () => {
       });
     });
   });
+  describe('full coverage additions', () => {
+    let extras;
+    let extraNote;
+
+    const makeNote = (opts = {}) => {
+      const created = new StickyNote({
+        id: `extra-${extras.length}`,
+        anchor,
+        content: '',
+        ...opts
+      });
+      container.appendChild(created.element);
+      extras.push(created);
+      return created;
+    };
+
+    const defineDims = (el, width, height) => {
+      Object.defineProperty(el, 'offsetWidth', { value: width, configurable: true });
+      Object.defineProperty(el, 'offsetHeight', { value: height, configurable: true });
+    };
+
+    const rect = (left, top, width, height) => ({
+      left,
+      top,
+      width,
+      height,
+      right: left + width,
+      bottom: top + height
+    });
+
+    beforeEach(() => {
+      extras = [];
+      extraNote = makeNote();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.restoreAllMocks();
+      extras.forEach(created => created.destroy());
+    });
+
+    describe('constructor defaults', () => {
+      it('provides no-op callbacks when none are passed', async () => {
+        const bare = new StickyNote({ id: 'bare', anchor, content: '' });
+        extras.push(bare);
+        expect(() => bare.onSave()).not.toThrow();
+        expect(() => bare.onThemeChange()).not.toThrow();
+        expect(() => bare.onPositionChange()).not.toThrow();
+        expect(() => bare.onDelete()).not.toThrow();
+        await expect(bare.onAddComment()).resolves.toBeUndefined();
+        await expect(bare.onEditComment()).resolves.toBeUndefined();
+        await expect(bare.onDeleteComment()).resolves.toBeUndefined();
+        await expect(bare.onLoadComments()).resolves.toEqual([]);
+        expect(() => bare.onCommentsOpened()).not.toThrow();
+        expect(() => bare.onCommentsClosed()).not.toThrow();
+        expect(() => bare.onVisibilityChange()).not.toThrow();
+      });
+
+      it('wires rich editor callbacks to the note handlers', () => {
+        const shareSpy = jest.spyOn(extraNote, 'handleAutoShare').mockResolvedValue();
+        const unshareSpy = jest.spyOn(extraNote, 'handleAutoUnshare').mockResolvedValue();
+        extraNote.richEditor.onEmailShare('a@example.com');
+        extraNote.richEditor.onEmailUnshare('a@example.com');
+        extraNote.richEditor.onChange('<p>changed</p>');
+        expect(shareSpy).toHaveBeenCalledWith('a@example.com');
+        expect(unshareSpy).toHaveBeenCalledWith('a@example.com');
+        expect(extraNote.content).toBe('<p>changed</p>');
+      });
+
+      it('renders the show-note state when created hidden', () => {
+        const hidden = makeNote({ isHidden: true });
+        expect(hidden.element.querySelector('.sn-hide-btn').title).toBe('showNote');
+      });
+    });
+
+    describe('console error rendering', () => {
+      it('handles errors without message or timestamp', () => {
+        const withErrors = makeNote({
+          metadata: { url: 'http://localhost/', consoleErrors: [{ type: 'console.error' }, { type: 'error', message: 'Boom', timestamp: Date.now() }] }
+        });
+        const items = withErrors.element.querySelectorAll('.sn-console-error-item');
+        expect(items.length).toBe(2);
+        expect(items[0].querySelector('.sn-console-error-message').textContent).toBe('');
+        expect(items[0].querySelector('.sn-console-error-time')).toBeNull();
+        expect(items[1].querySelector('.sn-console-error-time')).not.toBeNull();
+      });
+
+      it('toggleConsoleErrors tolerates missing chevron and toggle elements', () => {
+        const withErrors = makeNote({
+          metadata: { url: 'http://localhost/', consoleErrors: [{ type: 'error', message: 'x' }] }
+        });
+        withErrors.element.querySelector('.sn-console-errors-chevron')?.remove();
+        withErrors.element.querySelector('.sn-console-errors-toggle').removeAttribute('class');
+        expect(() => withErrors.toggleConsoleErrors({ stopPropagation: jest.fn() })).not.toThrow();
+      });
+
+      it('toggleConsoleErrors does nothing when the list is missing', () => {
+        const stop = jest.fn();
+        expect(() => extraNote.toggleConsoleErrors({ stopPropagation: stop })).not.toThrow();
+        expect(stop).toHaveBeenCalled();
+      });
+    });
+
+    describe('setupEventListeners variations', () => {
+      it('tolerates a missing environment badge', () => {
+        extraNote.element.querySelector('.sn-environment-badge').remove();
+        expect(() => extraNote.setupEventListeners()).not.toThrow();
+      });
+
+      it('brings the note to front when the body area receives focus', () => {
+        const body = document.createElement('div');
+        body.className = 'sn-note-body';
+        extraNote.element.appendChild(body);
+        extraNote.setupEventListeners();
+        const spy = jest.spyOn(extraNote, 'bringToFront');
+        body.dispatchEvent(new Event('focusin', { bubbles: true }));
+        expect(spy).toHaveBeenCalled();
+      });
+
+      it('does not bring to front for clicks inside a confirm dialog', () => {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'sn-confirm-backdrop';
+        const inner = document.createElement('button');
+        backdrop.appendChild(inner);
+        extraNote.element.appendChild(backdrop);
+        const spy = jest.spyOn(extraNote, 'bringToFront');
+        inner.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(spy).not.toHaveBeenCalled();
+        extraNote.element.click();
+        expect(spy).toHaveBeenCalled();
+      });
+    });
+
+    describe('handleHideClick and updateHiddenState', () => {
+      it('hides the note after a delay when toggled to hidden', () => {
+        jest.useFakeTimers();
+        const visibilitySpy = jest.fn();
+        extraNote.onVisibilityChange = visibilitySpy;
+        extraNote.show();
+        const hideSpy = jest.spyOn(extraNote, 'hide');
+        extraNote.handleHideClick({ stopPropagation: jest.fn() });
+        expect(extraNote.isHidden).toBe(true);
+        expect(visibilitySpy).toHaveBeenCalledWith(true);
+        expect(extraNote.element.querySelector('.sn-hide-btn').title).toBe('showNote');
+        jest.advanceTimersByTime(600);
+        expect(hideSpy).toHaveBeenCalled();
+      });
+
+      it('shows the note again without scheduling a hide when toggled back', () => {
+        jest.useFakeTimers();
+        extraNote.isHidden = true;
+        const hideSpy = jest.spyOn(extraNote, 'hide');
+        extraNote.handleHideClick({ stopPropagation: jest.fn() });
+        expect(extraNote.isHidden).toBe(false);
+        expect(extraNote.element.querySelector('.sn-hide-btn').title).toBe('hideNote');
+        jest.advanceTimersByTime(600);
+        expect(hideSpy).not.toHaveBeenCalled();
+      });
+
+      it('updateHiddenState returns early without a hide button', () => {
+        extraNote.element.querySelector('.sn-hide-btn').remove();
+        expect(() => extraNote.updateHiddenState()).not.toThrow();
+      });
+    });
+
+    describe('handleCopyMarkdown', () => {
+      it('copies markdown and shows a success toast', async () => {
+        const copySpy = jest.spyOn(extraNote, 'copyTextToClipboard').mockResolvedValue();
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        await extraNote.handleCopyMarkdown({ stopPropagation: jest.fn() });
+        expect(copySpy).toHaveBeenCalledWith(expect.any(String));
+        expect(toastSpy).toHaveBeenCalledWith('copiedToClipboard');
+      });
+
+      it('shows an error toast when copying fails', async () => {
+        jest.spyOn(extraNote, 'copyTextToClipboard').mockRejectedValue(new Error('nope'));
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        await extraNote.handleCopyMarkdown({ stopPropagation: jest.fn() });
+        expect(toastSpy).toHaveBeenCalledWith('failedToCopy', 'error');
+      });
+    });
+
+    describe('handleScreenshot flows', () => {
+      let originalClipboardItem;
+      let originalClipboard;
+
+      beforeEach(() => {
+        jest.useFakeTimers();
+        originalClipboardItem = global.ClipboardItem;
+        originalClipboard = navigator.clipboard;
+        global.ClipboardItem = class {
+          constructor(data) {
+            this.data = data;
+          }
+        };
+        navigator.clipboard = { write: jest.fn().mockResolvedValue() };
+      });
+
+      afterEach(() => {
+        global.ClipboardItem = originalClipboardItem;
+        navigator.clipboard = originalClipboard;
+      });
+
+      const run = async (target) => {
+        const promise = target.handleScreenshot({ stopPropagation: jest.fn() });
+        await jest.advanceTimersByTimeAsync(150);
+        await promise;
+      };
+
+      it('copies the screenshot and restores a visible note', async () => {
+        extraNote.show();
+        chrome.runtime.sendMessage.mockResolvedValue({ success: true, dataUrl: 'data:image/png;base64,AAA' });
+        jest.spyOn(extraNote, 'dataUrlToBlob').mockResolvedValue(new Blob(['x']));
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        await run(extraNote);
+        expect(navigator.clipboard.write).toHaveBeenCalled();
+        expect(toastSpy).toHaveBeenCalledWith('screenshotCopied');
+        expect(extraNote.isVisible).toBe(true);
+        expect(anchor.style.outline).toBe('');
+      });
+
+      it('reports capture failure with the server error message', async () => {
+        chrome.runtime.sendMessage.mockResolvedValue({ success: false, error: 'denied' });
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        await run(extraNote);
+        expect(toastSpy).toHaveBeenCalledWith('failedToScreenshot', 'error');
+      });
+
+      it('reports capture failure without an error message', async () => {
+        chrome.runtime.sendMessage.mockResolvedValue({ success: false });
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        await run(extraNote);
+        expect(toastSpy).toHaveBeenCalledWith('failedToScreenshot', 'error');
+      });
+
+      it('fails when the extension context is invalidated', async () => {
+        const originalSend = chrome.runtime.sendMessage;
+        delete chrome.runtime.sendMessage;
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        try {
+          await run(extraNote);
+        } finally {
+          chrome.runtime.sendMessage = originalSend;
+        }
+        expect(toastSpy).toHaveBeenCalledWith('failedToScreenshot', 'error');
+      });
+
+      it('works for notes without an anchor', async () => {
+        const noAnchor = makeNote({ anchor: null });
+        chrome.runtime.sendMessage.mockResolvedValue({ success: false });
+        const toastSpy = jest.spyOn(noAnchor, 'showToast');
+        await run(noAnchor);
+        expect(toastSpy).toHaveBeenCalledWith('failedToScreenshot', 'error');
+      });
+    });
+
+    describe('toggleMetadata', () => {
+      it('expands and collapses the metadata panel', () => {
+        const stop = jest.fn();
+        const panel = extraNote.element.querySelector('.sn-metadata-panel');
+        extraNote.toggleMetadata({ stopPropagation: stop });
+        expect(panel.classList.contains('sn-hidden')).toBe(false);
+        expect(extraNote.element.querySelector('.sn-metadata-toggle').getAttribute('aria-expanded')).toBe('true');
+        extraNote.toggleMetadata({ stopPropagation: stop });
+        expect(panel.classList.contains('sn-hidden')).toBe(true);
+        expect(extraNote.element.querySelector('.sn-metadata-toggle').getAttribute('aria-expanded')).toBe('false');
+      });
+    });
+
+    describe('environment dropdown', () => {
+      const keyEvent = (key, target) => {
+        const evt = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+        target.dispatchEvent(evt);
+        return evt;
+      };
+
+      it('navigates options with ArrowDown and ArrowUp', () => {
+        const options = Array.from(extraNote.element.querySelectorAll('.sn-env-option'));
+        const focusSpy = jest.spyOn(options[1], 'focus');
+        keyEvent('ArrowDown', options[0]);
+        expect(focusSpy).toHaveBeenCalled();
+        const lastFocus = jest.spyOn(options[options.length - 1], 'focus');
+        keyEvent('ArrowDown', options[options.length - 1]);
+        expect(lastFocus).not.toHaveBeenCalled();
+        const upFocus = jest.spyOn(options[0], 'focus');
+        keyEvent('ArrowUp', options[1]);
+        expect(upFocus).toHaveBeenCalled();
+        const badgeFocus = jest.spyOn(extraNote.element.querySelector('.sn-environment-badge'), 'focus');
+        keyEvent('ArrowUp', options[0]);
+        expect(badgeFocus).toHaveBeenCalled();
+      });
+
+      it('ArrowUp on the first option tolerates a missing badge', () => {
+        const options = Array.from(extraNote.element.querySelectorAll('.sn-env-option'));
+        extraNote.element.querySelector('.sn-environment-badge').remove();
+        expect(() => keyEvent('ArrowUp', options[0])).not.toThrow();
+      });
+
+      it('selects an option with Enter and Space', () => {
+        const options = Array.from(extraNote.element.querySelectorAll('.sn-env-option'));
+        const spy = jest.spyOn(extraNote, 'handleEnvironmentSelect').mockImplementation(() => {});
+        keyEvent('Enter', options[0]);
+        keyEvent(' ', options[0]);
+        expect(spy).toHaveBeenCalledTimes(2);
+      });
+
+      it('closes the dropdown on Escape and Tab', () => {
+        const options = Array.from(extraNote.element.querySelectorAll('.sn-env-option'));
+        const closeSpy = jest.spyOn(extraNote, 'closeEnvironmentDropdown');
+        keyEvent('Escape', options[0]);
+        keyEvent('Tab', options[0]);
+        keyEvent('x', options[0]);
+        expect(closeSpy).toHaveBeenCalledTimes(2);
+      });
+
+      it('Escape tolerates a missing badge', () => {
+        const options = Array.from(extraNote.element.querySelectorAll('.sn-env-option'));
+        extraNote.element.querySelector('.sn-environment-badge').remove();
+        expect(() => keyEvent('Escape', options[0])).not.toThrow();
+      });
+
+      it('openEnvironmentDropdown focuses the first option when none is selected', () => {
+        extraNote.metadata.environment = 'unknown-env';
+        const first = extraNote.element.querySelector('.sn-env-option');
+        const focusSpy = jest.spyOn(first, 'focus');
+        extraNote.openEnvironmentDropdown();
+        expect(focusSpy).toHaveBeenCalled();
+      });
+
+      it('openEnvironmentDropdown does nothing without a dropdown', () => {
+        extraNote.element.querySelector('.sn-environment-dropdown').remove();
+        expect(() => extraNote.openEnvironmentDropdown()).not.toThrow();
+      });
+
+      it('handleEnvironmentSelect closes when the option has no environment', () => {
+        const closeSpy = jest.spyOn(extraNote, 'closeEnvironmentDropdown');
+        extraNote.handleEnvironmentSelect({ stopPropagation: jest.fn(), currentTarget: { dataset: {} } });
+        expect(closeSpy).toHaveBeenCalled();
+      });
+
+      it('handleEnvironmentSelect works without a badge', () => {
+        extraNote.metadata.environment = 'local';
+        extraNote.element.querySelector('.sn-environment-badge').remove();
+        const saveSpy = jest.spyOn(extraNote, 'triggerSave').mockImplementation(() => {});
+        extraNote.handleEnvironmentSelect({ stopPropagation: jest.fn(), currentTarget: { dataset: { env: 'staging' } } });
+        expect(extraNote.metadata.environment).toBe('staging');
+        expect(saveSpy).toHaveBeenCalled();
+      });
+
+      it('closeEnvironmentDropdown tolerates missing elements', () => {
+        extraNote.element.querySelector('.sn-environment-dropdown').remove();
+        extraNote.element.querySelector('.sn-environment-badge').remove();
+        expect(() => extraNote.closeEnvironmentDropdown()).not.toThrow();
+      });
+
+      it('handleDocumentClick ignores destroyed notes and missing selectors', () => {
+        const target = document.createElement('div');
+        const closeSpy = jest.spyOn(extraNote, 'closeEnvironmentDropdown');
+        extraNote.element.querySelector('.sn-environment-selector').remove();
+        extraNote.handleDocumentClick({ target });
+        expect(closeSpy).not.toHaveBeenCalled();
+        const savedElement = extraNote.element;
+        extraNote.element = null;
+        expect(() => extraNote.handleDocumentClick({ target })).not.toThrow();
+        extraNote.element = savedElement;
+      });
+
+      it('handleDocumentClick keeps the dropdown when clicking inside the selector', () => {
+        const closeSpy = jest.spyOn(extraNote, 'closeEnvironmentDropdown');
+        const selector = extraNote.element.querySelector('.sn-environment-selector');
+        extraNote.handleDocumentClick({ target: selector });
+        expect(closeSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('copyTextToClipboard policies', () => {
+      let originalClipboard;
+      let originalExec;
+
+      beforeEach(() => {
+        originalClipboard = navigator.clipboard;
+        originalExec = document.execCommand;
+      });
+
+      afterEach(() => {
+        navigator.clipboard = originalClipboard;
+        document.execCommand = originalExec;
+        delete document.featurePolicy;
+        delete document.permissionsPolicy;
+      });
+
+      it('uses the deprecated featurePolicy alias and falls back to execCommand when blocked', async () => {
+        const write = jest.fn().mockResolvedValue();
+        navigator.clipboard = { writeText: write };
+        Object.defineProperty(document, 'featurePolicy', {
+          value: { allowsFeature: jest.fn(() => false) },
+          configurable: true
+        });
+        document.execCommand = jest.fn(() => true);
+        await extraNote.copyTextToClipboard('abc');
+        expect(write).not.toHaveBeenCalled();
+        expect(document.execCommand).toHaveBeenCalledWith('copy');
+      });
+
+      it('respects permissionsPolicy and ignores errors thrown by policy checks', async () => {
+        navigator.clipboard = { writeText: jest.fn().mockResolvedValue() };
+        Object.defineProperty(document, 'permissionsPolicy', {
+          value: { allowsFeature: jest.fn(() => { throw new Error('boom'); }) },
+          configurable: true
+        });
+        await extraNote.copyTextToClipboard('abc');
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith('abc');
+      });
+
+      it('throws when execCommand copy returns false and still removes the textarea', async () => {
+        navigator.clipboard = undefined;
+        document.execCommand = jest.fn(() => false);
+        await expect(extraNote.copyTextToClipboard('abc')).rejects.toThrow('execCommand copy returned false');
+        expect(document.querySelector('textarea[readonly]')).toBeNull();
+      });
+    });
+
+    describe('pickers', () => {
+      it('theme picker buttons apply themes and respond to hover', () => {
+        extraNote.showThemePicker();
+        const picker = extraNote.element.querySelector('.sn-theme-picker');
+        const buttons = picker.querySelectorAll('button');
+        buttons[0].dispatchEvent(new MouseEvent('mouseenter'));
+        expect(buttons[0].style.transform).toBe('scale(1.1)');
+        buttons[0].dispatchEvent(new MouseEvent('mouseleave'));
+        expect(buttons[0].style.transform).toBe('scale(1)');
+        const themeSpy = jest.fn();
+        extraNote.onThemeChange = themeSpy;
+        buttons[1].click();
+        expect(themeSpy).toHaveBeenCalled();
+        expect(extraNote.element.querySelector('.sn-theme-picker')).toBeNull();
+      });
+
+      it('theme picker closes on outside click and stays on inside click', async () => {
+        jest.useFakeTimers();
+        extraNote.showThemePicker();
+        jest.runOnlyPendingTimers();
+        const picker = extraNote.element.querySelector('.sn-theme-picker');
+        picker.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(extraNote.element.querySelector('.sn-theme-picker')).not.toBeNull();
+        document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(extraNote.element.querySelector('.sn-theme-picker')).toBeNull();
+      });
+
+      it('position picker buttons change position and respond to hover', () => {
+        extraNote.position = { anchor: 'top-right' };
+        extraNote.showPositionPicker();
+        const picker = extraNote.element.querySelector('.sn-position-picker');
+        const buttons = picker.querySelectorAll('button');
+        buttons[0].dispatchEvent(new MouseEvent('mouseenter'));
+        expect(buttons[0].style.background).not.toBe('');
+        buttons.forEach(btn => btn.dispatchEvent(new MouseEvent('mouseleave')));
+        const posSpy = jest.fn();
+        extraNote.onPositionChange = posSpy;
+        buttons[1].click();
+        expect(posSpy).toHaveBeenCalled();
+        expect(extraNote.customPosition).toBeNull();
+        expect(extraNote.element.querySelector('.sn-position-picker')).toBeNull();
+      });
+
+      it('position picker closes on outside click and stays on inside click', () => {
+        jest.useFakeTimers();
+        extraNote.showPositionPicker();
+        jest.runOnlyPendingTimers();
+        const picker = extraNote.element.querySelector('.sn-position-picker');
+        picker.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(extraNote.element.querySelector('.sn-position-picker')).not.toBeNull();
+        document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(extraNote.element.querySelector('.sn-position-picker')).toBeNull();
+      });
+
+      it('handleThemeClick and handlePositionClick open their pickers', () => {
+        const stop = jest.fn();
+        const themeSpy = jest.spyOn(extraNote, 'showThemePicker').mockImplementation(() => {});
+        const posSpy = jest.spyOn(extraNote, 'showPositionPicker').mockImplementation(() => {});
+        extraNote.handleThemeClick({ stopPropagation: stop });
+        extraNote.handlePositionClick({ stopPropagation: stop });
+        expect(themeSpy).toHaveBeenCalled();
+        expect(posSpy).toHaveBeenCalled();
+      });
+    });
+
+    describe('updatePosition coverage', () => {
+      const positions = ['top-left', 'top-center', 'top-right', 'center-left', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right', 'unknown'];
+
+      it('returns early without an element', () => {
+        const saved = extraNote.element;
+        extraNote.element = null;
+        expect(() => extraNote.updatePosition()).not.toThrow();
+        extraNote.element = saved;
+      });
+
+      it('returns early without an anchor', () => {
+        extraNote.anchor = null;
+        extraNote.element.style.left = '';
+        extraNote.updatePosition();
+        expect(extraNote.element.style.left).toBe('');
+      });
+
+      it('returns early when the note has no measurable size', () => {
+        defineDims(extraNote.element, 0, 0);
+        extraNote.element.getBoundingClientRect = jest.fn(() => rect(0, 0, 0, 0));
+        extraNote.element.style.left = '';
+        extraNote.updatePosition();
+        expect(extraNote.element.style.left).toBe('');
+      });
+
+      it.each(positions)('positions the note for %s with narrow and wide anchors', (pos) => {
+        defineDims(extraNote.element, 200, 100);
+        extraNote.position = { anchor: pos };
+        extraNote.customPosition = null;
+        anchor.getBoundingClientRect = jest.fn(() => rect(300, 300, 100, 50));
+        extraNote.updatePosition();
+        expect(extraNote.element.style.left).not.toBe('');
+        anchor.getBoundingClientRect = jest.fn(() => rect(10, 300, 1000, 50));
+        extraNote.updatePosition();
+        expect(extraNote.element.style.top).not.toBe('');
+      });
+
+      it('page-level notes without measurable size are not positioned', () => {
+        const pageNote = makeNote({ anchor: null, selector: '__PAGE__', position: { pageX: 5, pageY: 6 } });
+        defineDims(pageNote.element, 0, 0);
+        pageNote.element.getBoundingClientRect = jest.fn(() => rect(0, 0, 0, 0));
+        pageNote.element.style.left = '';
+        pageNote.updatePosition();
+        expect(pageNote.element.style.left).toBe('');
+      });
+    });
+
+    describe('drag coverage', () => {
+      it('does not start dragging from a note button', () => {
+        const btn = extraNote.element.querySelector('.sn-note-btn');
+        extraNote.handleDragStart({ target: btn, clientX: 1, clientY: 1, preventDefault: jest.fn() });
+        expect(extraNote.isDragging).toBe(false);
+      });
+
+      it('ignores drag move and drag end when not dragging', () => {
+        extraNote.isDragging = false;
+        const before = extraNote.element.style.left;
+        extraNote.handleDragMove({ clientX: 50, clientY: 50 });
+        extraNote.handleDragEnd();
+        expect(extraNote.element.style.left).toBe(before);
+      });
+
+      it('stores an absolute custom position when there is no anchor', () => {
+        const noAnchor = makeNote({ anchor: null });
+        noAnchor.isDragging = true;
+        noAnchor.dragOffset = { x: 0, y: 0 };
+        noAnchor.handleDragMove({ clientX: 40, clientY: 60 });
+        expect(noAnchor.customPosition).toEqual(expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }));
+      });
+    });
+
+    describe('auto share and unshare branches', () => {
+      const withoutRuntimeId = async (fn) => {
+        const savedId = chrome.runtime.id;
+        chrome.runtime.id = undefined;
+        try {
+          await fn();
+        } finally {
+          chrome.runtime.id = savedId;
+        }
+      };
+
+      it('handleShare opens the share modal', () => {
+        const spy = jest.spyOn(extraNote, 'showShareModal').mockImplementation(() => {});
+        extraNote.handleShare();
+        expect(spy).toHaveBeenCalled();
+      });
+
+      it('handleAutoShare without id and without rich editor returns quietly', async () => {
+        const noId = makeNote({ id: null });
+        noId.richEditor = null;
+        await expect(noId.handleAutoShare('a@example.com')).resolves.toBeUndefined();
+      });
+
+      it('handleAutoShare with id-less note updates the editor status', async () => {
+        const noId = makeNote({ id: null });
+        const spy = jest.spyOn(noId.richEditor, 'updateEmailStatus');
+        await noId.handleAutoShare('a@example.com');
+        expect(spy).toHaveBeenCalledWith('a@example.com', false, 'noteNotSavedYet');
+      });
+
+      it('handleAutoShare with self and without rich editor returns quietly', async () => {
+        const self = makeNote({ user: { email: 'Me@Example.com' } });
+        self.richEditor = null;
+        await expect(self.handleAutoShare('me@example.com')).resolves.toBeUndefined();
+      });
+
+      it('handleAutoShare handles users without email', async () => {
+        const noEmail = makeNote({ user: { uid: 'u1' } });
+        chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+        await noEmail.handleAutoShare('a@example.com');
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ action: 'shareNote' }));
+      });
+
+      it('handleAutoShare reports context invalidation', async () => {
+        const spy = jest.spyOn(extraNote.richEditor, 'updateEmailStatus');
+        await withoutRuntimeId(() => extraNote.handleAutoShare('a@example.com'));
+        expect(spy).toHaveBeenCalledWith('a@example.com', false, 'failedToShare');
+      });
+
+      it('handleAutoShare context invalidation without a rich editor', async () => {
+        extraNote.richEditor = null;
+        await withoutRuntimeId(() => extraNote.handleAutoShare('a@example.com'));
+        expect(true).toBe(true);
+      });
+
+      it('handleAutoShare success without a rich editor', async () => {
+        extraNote.richEditor = null;
+        chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        await extraNote.handleAutoShare('a@example.com');
+        expect(toastSpy).toHaveBeenCalledWith('noteShared');
+      });
+
+      it('handleAutoShare failure without a rich editor', async () => {
+        extraNote.richEditor = null;
+        chrome.runtime.sendMessage.mockResolvedValue({ success: false, error: 'No' });
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        await extraNote.handleAutoShare('a@example.com');
+        expect(toastSpy).toHaveBeenCalledWith('No', 'error');
+      });
+
+      it('handleAutoUnshare reports context invalidation', async () => {
+        await withoutRuntimeId(() => expect(extraNote.handleAutoUnshare('a@example.com')).resolves.toBeUndefined());
+      });
+
+      it('handleAutoUnshare logs failed responses', async () => {
+        chrome.runtime.sendMessage.mockResolvedValue({ success: false, error: 'nope' });
+        await expect(extraNote.handleAutoUnshare('a@example.com')).resolves.toBeUndefined();
+      });
+
+      it('handleAutoUnshare without id does nothing', async () => {
+        const noId = makeNote({ id: null });
+        chrome.runtime.sendMessage.mockClear();
+        await noId.handleAutoUnshare('a@example.com');
+        expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('share modal flows', () => {
+      const openModal = () => {
+        extraNote.showShareModal();
+        const overlay = container.querySelector('.sn-modal-overlay');
+        return {
+          overlay,
+          input: overlay.querySelector('.sn-modal-input'),
+          shareBtn: overlay.querySelector('.sn-btn-primary'),
+          cancelBtn: overlay.querySelector('.sn-btn-secondary')
+        };
+      };
+      const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+      it('rejects an empty email', async () => {
+        const { shareBtn } = openModal();
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        shareBtn.click();
+        await flush();
+        expect(toastSpy).toHaveBeenCalledWith('invalidEmail', 'error');
+      });
+
+      it('reports context invalidation while sharing', async () => {
+        const { input, shareBtn } = openModal();
+        input.value = 'a@example.com';
+        const originalSend = chrome.runtime.sendMessage;
+        delete chrome.runtime.sendMessage;
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        try {
+          shareBtn.click();
+          await flush();
+        } finally {
+          chrome.runtime.sendMessage = originalSend;
+        }
+        expect(toastSpy).toHaveBeenCalledWith('failedToShare', 'error');
+      });
+
+      it('shows the server error when sharing fails', async () => {
+        const { input, shareBtn } = openModal();
+        input.value = 'a@example.com';
+        chrome.runtime.sendMessage.mockResolvedValue({ success: false, error: 'Denied' });
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        shareBtn.click();
+        await flush();
+        expect(toastSpy).toHaveBeenCalledWith('Denied', 'error');
+      });
+
+      it('falls back to a generic error when the failure has no message', async () => {
+        const { input, shareBtn } = openModal();
+        input.value = 'a@example.com';
+        chrome.runtime.sendMessage.mockResolvedValue(undefined);
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        shareBtn.click();
+        await flush();
+        expect(toastSpy).toHaveBeenCalledWith('failedToShare', 'error');
+      });
+
+      it('submits on Enter and ignores other keys', async () => {
+        const { input } = openModal();
+        input.value = '';
+        const toastSpy = jest.spyOn(extraNote, 'showToast');
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+        expect(toastSpy).not.toHaveBeenCalled();
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+        await flush();
+        expect(toastSpy).toHaveBeenCalledWith('invalidEmail', 'error');
+      });
+
+      it('closes on Escape, ignores other keys, and respects overlay clicks', () => {
+        jest.useFakeTimers();
+        const { overlay } = openModal();
+        overlay.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+        expect(overlay.classList.contains('sn-closing')).toBe(false);
+        overlay.querySelector('.sn-modal').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(overlay.classList.contains('sn-closing')).toBe(false);
+        overlay.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        expect(overlay.classList.contains('sn-closing')).toBe(true);
+        jest.advanceTimersByTime(200);
+        expect(container.contains(overlay)).toBe(false);
+      });
+
+      it('cleanup tolerates an overlay that was already removed', () => {
+        jest.useFakeTimers();
+        const { overlay, cancelBtn } = openModal();
+        cancelBtn.click();
+        overlay.remove();
+        expect(() => jest.advanceTimersByTime(200)).not.toThrow();
+      });
+
+      it('closes when the overlay itself is clicked', () => {
+        jest.useFakeTimers();
+        const { overlay } = openModal();
+        overlay.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(overlay.classList.contains('sn-closing')).toBe(true);
+      });
+    });
+
+    describe('toast and misc', () => {
+      it('removes the toast after the display timers', () => {
+        jest.useFakeTimers();
+        extraNote.showToast('Hello');
+        const toast = container.querySelector('.sn-toast');
+        jest.runOnlyPendingTimers();
+        expect(toast.classList.contains('sn-toast-hiding')).toBe(true);
+        jest.runOnlyPendingTimers();
+        expect(container.contains(toast)).toBe(false);
+      });
+
+      it('toast removal tolerates an already-detached toast', () => {
+        jest.useFakeTimers();
+        extraNote.showToast('Hello');
+        const toast = container.querySelector('.sn-toast');
+        jest.runOnlyPendingTimers();
+        toast.remove();
+        expect(() => jest.runOnlyPendingTimers()).not.toThrow();
+      });
+
+      it('highlight resets styles after a second', () => {
+        jest.useFakeTimers();
+        extraNote.highlight();
+        expect(extraNote.element.style.transform).toBe('scale(1.05)');
+        jest.advanceTimersByTime(1100);
+        expect(extraNote.element.style.transform).toBe('');
+        expect(extraNote.element.style.boxShadow).toBe('');
+      });
+
+      it('setUser forwards to the comment section when present', () => {
+        const spy = jest.spyOn(extraNote.commentSection, 'setUser');
+        extraNote.setUser({ uid: 'u2' });
+        expect(spy).toHaveBeenCalledWith({ uid: 'u2' });
+        extraNote.commentSection = null;
+        expect(() => extraNote.setUser({ uid: 'u3' })).not.toThrow();
+      });
+
+      it('refreshComments forwards to the comment section when present', async () => {
+        const spy = jest.spyOn(extraNote.commentSection, 'refresh').mockResolvedValue();
+        await extraNote.refreshComments();
+        expect(spy).toHaveBeenCalled();
+        extraNote.commentSection = null;
+        await expect(extraNote.refreshComments()).resolves.toBeUndefined();
+      });
+    });
+  });
 });

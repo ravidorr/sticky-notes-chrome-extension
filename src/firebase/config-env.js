@@ -6,31 +6,29 @@
  */
 
 /**
+ * Build a Firebase config object from a Vite env object
+ * @param {Object} [env] - import.meta.env, undefined outside a Vite build
+ * @returns {Object} Firebase configuration object
+ */
+export function buildFirebaseConfig(env) {
+  return {
+    apiKey: env?.VITE_FIREBASE_API_KEY,
+    authDomain: env?.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: env?.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: env?.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: env?.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: env?.VITE_FIREBASE_APP_ID
+  };
+}
+
+/**
  * Get Firebase config from environment variables
  * Separated for testability
  * @returns {Object} Firebase configuration object
  */
 export function getFirebaseConfig() {
-  // Handle case where import.meta.env is undefined (e.g., in test environment)
-  if (typeof import.meta === 'undefined' || !import.meta.env) {
-    return {
-      apiKey: undefined,
-      authDomain: undefined,
-      projectId: undefined,
-      storageBucket: undefined,
-      messagingSenderId: undefined,
-      appId: undefined
-    };
-  }
-
-  return {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID
-  };
+  // import.meta.env is undefined in the test environment
+  return buildFirebaseConfig(import.meta.env);
 }
 
 /**

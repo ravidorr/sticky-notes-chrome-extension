@@ -4,7 +4,7 @@
  * Tests Firestore CRUD operations for comments with mocked dependencies.
  */
 
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 
 // Mock Firebase modules before import
 jest.unstable_mockModule('firebase/firestore', () => ({
@@ -40,6 +40,7 @@ jest.unstable_mockModule('firebase/auth', () => ({
 }));
 
 // Import after mocking
+const firestoreSdk = await import('firebase/firestore');
 const {
   createComment,
   getCommentsForNote,
@@ -861,6 +862,167 @@ describe('Firebase Comments', () => {
 
       // onError should NOT have been called because we unsubscribed first
       expect(onError).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('lazy SDK loading and default dependencies', () => {
+    it('should lazy-load the Firestore SDK once and reuse it', async () => {
+      firestoreSdk.collection.mockReturnValue({ id: 'sdk-collection' });
+      firestoreSdk.getDocs.mockResolvedValue({ size: 3 });
+      const deps = { db: localThis.mockDb, isFirebaseConfigured: () => true };
+
+      await expect(getCommentCount('note-123', deps)).resolves.toBe(3);
+      await expect(getCommentCount('note-123', deps)).resolves.toBe(3);
+
+      expect(firestoreSdk.collection).toHaveBeenCalledTimes(2);
+      expect(firestoreSdk.getDocs).toHaveBeenCalledTimes(2);
+    });
+
+    it('should reject every operation as not configured when called without deps', async () => {
+      const message = 'Firebase is not configured';
+
+      await expect(createComment('n', { content: 'hi' }, localThis.mockUser)).rejects.toThrow(message);
+      await expect(getCommentsForNote('n', localThis.mockUser)).rejects.toThrow(message);
+      await expect(updateComment('n', 'c', { content: 'hi' }, 'user-123')).rejects.toThrow(message);
+      await expect(deleteComment('n', 'c', 'user-123')).rejects.toThrow(message);
+      await expect(getCommentCount('n')).rejects.toThrow(message);
+    });
+
+    it('should report not configured through onError and return a callable no-op unsubscribe', () => {
+      const onError = jest.fn();
+
+      const unsubscribe = subscribeToComments('note-123', localThis.mockUser, jest.fn(), onError);
+
+      expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'Firebase is not configured' }));
+      expect(unsubscribe()).toBeUndefined();
+    });
+
+    it('should return callable no-op unsubscribe functions for invalid note and user', () => {
+      const onError = jest.fn();
+
+      const badNote = subscribeToComments('', localThis.mockUser, jest.fn(), onError, localThis.deps);
+      const badUser = subscribeToComments('note-123', null, jest.fn(), onError, localThis.deps);
+
+      expect(badNote()).toBeUndefined();
+      expect(badUser()).toBeUndefined();
+      expect(onError).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('subscribeToComments lifecycle edge cases', () => {
+    const allowNote = () => {
+      localThis.deps.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => localThis.mockNoteData
+      });
+    };
+    const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.restoreAllMocks();
+    });
+
+    it('should not check access results when unsubscribed while getDoc is pending', async () => {
+      const onError = jest.fn();
+      let resolveGetDoc;
+      localThis.deps.getDoc.mockReturnValue(new Promise(resolve => {
+        resolveGetDoc = resolve;
+      }));
+
+      const unsubscribe = subscribeToComments('note-123', localThis.mockUser, jest.fn(), onError, localThis.deps);
+      await flush();
+      unsubscribe();
+      resolveGetDoc({ exists: () => false });
+      await flush();
+
+      expect(onError).not.toHaveBeenCalled();
+      expect(localThis.deps.onSnapshot).not.toHaveBeenCalled();
+    });
+
+    it('should not attach the listener when unsubscribed while the query is built', async () => {
+      allowNote();
+      const handle = {};
+      localThis.deps.orderBy.mockImplementation(() => {
+        handle.unsubscribe();
+        return {};
+      });
+
+      handle.unsubscribe = subscribeToComments('note-123', localThis.mockUser, jest.fn(), jest.fn(), localThis.deps);
+      await flush();
+
+      expect(localThis.deps.onSnapshot).not.toHaveBeenCalled();
+    });
+
+    it('should ignore snapshots that arrive after unsubscribe', async () => {
+      allowNote();
+      const onUpdate = jest.fn();
+      let snapshotCallback;
+      localThis.deps.onSnapshot.mockImplementation((query, successCb) => {
+        snapshotCallback = successCb;
+        return jest.fn();
+      });
+
+      const unsubscribe = subscribeToComments('note-123', localThis.mockUser, onUpdate, jest.fn(), localThis.deps);
+      await flush();
+      unsubscribe();
+      snapshotCallback({ forEach: jest.fn() });
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should skip a debounced update when unsubscribe could not cancel the timer', async () => {
+      jest.useFakeTimers();
+      allowNote();
+      const onUpdate = jest.fn();
+      let snapshotCallback;
+      localThis.deps.onSnapshot.mockImplementation((query, successCb) => {
+        snapshotCallback = successCb;
+        return jest.fn();
+      });
+
+      const unsubscribe = subscribeToComments('note-123', localThis.mockUser, onUpdate, jest.fn(), localThis.deps);
+      await Promise.resolve();
+      await Promise.resolve();
+      snapshotCallback({ forEach: jest.fn() });
+      jest.spyOn(globalThis, 'clearTimeout').mockImplementation(() => {});
+      unsubscribe();
+      jest.advanceTimersByTime(150);
+
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should forward listener errors only while subscribed', async () => {
+      allowNote();
+      const onError = jest.fn();
+      let errorCallback;
+      localThis.deps.onSnapshot.mockImplementation((query, successCb, errCb) => {
+        errorCallback = errCb;
+        return jest.fn();
+      });
+
+      const unsubscribe = subscribeToComments('note-123', localThis.mockUser, jest.fn(), onError, localThis.deps);
+      await flush();
+      const failure = new Error('listen failed');
+      errorCallback(failure);
+      expect(onError).toHaveBeenCalledWith(failure);
+
+      onError.mockClear();
+      unsubscribe();
+      errorCallback(failure);
+      expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('should report setup failures while still subscribed', async () => {
+      const onError = jest.fn();
+      const failure = new Error('Network error');
+      localThis.deps.getDoc.mockRejectedValue(failure);
+
+      subscribeToComments('note-123', localThis.mockUser, jest.fn(), onError, localThis.deps);
+      await flush();
+
+      expect(onError).toHaveBeenCalledWith(failure);
     });
   });
 

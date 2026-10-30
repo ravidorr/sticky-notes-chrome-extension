@@ -36,6 +36,20 @@ describe('SyncLogic', () => {
     });
   });
 
+  describe('purgeExpiredSessionMarkers defaults', () => {
+    it('should use the current time and default grace period when omitted', () => {
+      const markers = new Map([
+        ['old', Date.now() - 60000],
+        ['fresh', Date.now()]
+      ]);
+
+      const expired = purgeExpiredSessionMarkers(markers);
+
+      expect(expired).toEqual(['old']);
+      expect(markers.has('fresh')).toBe(true);
+    });
+  });
+
   describe('calculateNoteDiff', () => {
     it('should identify notes to remove', () => {
       const currentNotes = new Map([
@@ -108,6 +122,15 @@ describe('SyncLogic', () => {
       
       expect(diff.toCreate).toHaveLength(1);
       expect(diff.toCreate[0].isNewNote).toBe(true);
+    });
+
+    it('should treat missing content and theme as defaults', () => {
+      const currentNotes = new Map([['a', { content: '', theme: 'yellow' }]]);
+      const updatedList = [{ id: 'a' }];
+
+      const diff = calculateNoteDiff(currentNotes, updatedList, new Map());
+
+      expect(diff.toUpdate).toHaveLength(0);
     });
   });
 });

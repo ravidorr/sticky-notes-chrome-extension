@@ -395,4 +395,98 @@ describe('ConfirmDialog', () => {
       await promise;
     });
   });
+  describe('mouse and focus handling', () => {
+    const setActive = (el) => {
+      Object.defineProperty(document, 'activeElement', { value: el, configurable: true });
+    };
+    afterEach(() => {
+      delete document.activeElement;
+    });
+
+    it('stops propagation on mousedown for both buttons', async () => {
+      const promise = ConfirmDialog.show({ message: 'Msg', shadowRoot });
+      const cancelBtn = shadowRoot.querySelector('.sn-confirm-cancel');
+      const confirmBtn = shadowRoot.querySelector('.sn-confirm-ok');
+      const onBody = jest.fn();
+      document.body.addEventListener('mousedown', onBody);
+      confirmBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }));
+      cancelBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }));
+      expect(onBody).not.toHaveBeenCalled();
+      document.body.removeEventListener('mousedown', onBody);
+      cancelBtn.click();
+      await promise;
+    });
+
+    it('resolves true on confirm mouseup', async () => {
+      const promise = ConfirmDialog.show({ message: 'Msg', shadowRoot });
+      shadowRoot.querySelector('.sn-confirm-ok').dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      await expect(promise).resolves.toBe(true);
+    });
+
+    it('resolves false on cancel mouseup', async () => {
+      const promise = ConfirmDialog.show({ message: 'Msg', shadowRoot });
+      shadowRoot.querySelector('.sn-confirm-cancel').dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      await expect(promise).resolves.toBe(false);
+    });
+
+    it('wraps focus to last button on Shift+Tab from first', async () => {
+      const promise = ConfirmDialog.show({ message: 'Msg', shadowRoot });
+      const dialog = shadowRoot.querySelector('.sn-confirm-dialog');
+      const cancelBtn = shadowRoot.querySelector('.sn-confirm-cancel');
+      const confirmBtn = shadowRoot.querySelector('.sn-confirm-ok');
+      const focusSpy = jest.spyOn(confirmBtn, 'focus');
+      setActive(cancelBtn);
+      const evt = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+      dialog.dispatchEvent(evt);
+      expect(evt.defaultPrevented).toBe(true);
+      expect(focusSpy).toHaveBeenCalled();
+      cancelBtn.click();
+      await promise;
+    });
+
+    it('ignores backdrop clicks that originate inside the dialog', async () => {
+      const promise = ConfirmDialog.show({ message: 'Msg', shadowRoot });
+      const dialog = shadowRoot.querySelector('.sn-confirm-dialog');
+      const cancelBtn = shadowRoot.querySelector('.sn-confirm-cancel');
+      dialog.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(shadowRoot.querySelector('.sn-confirm-closing')).toBeNull();
+      cancelBtn.click();
+      await promise;
+    });
+
+    it('ignores unrelated keys and non-wrapping Tab presses', async () => {
+      const promise = ConfirmDialog.show({ message: 'Msg', shadowRoot });
+      const dialog = shadowRoot.querySelector('.sn-confirm-dialog');
+      const cancelBtn = shadowRoot.querySelector('.sn-confirm-cancel');
+      const confirmBtn = shadowRoot.querySelector('.sn-confirm-ok');
+      const other = new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true });
+      dialog.dispatchEvent(other);
+      expect(other.defaultPrevented).toBe(false);
+      setActive(cancelBtn);
+      const forward = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+      dialog.dispatchEvent(forward);
+      expect(forward.defaultPrevented).toBe(false);
+      setActive(confirmBtn);
+      const backward = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+      dialog.dispatchEvent(backward);
+      expect(backward.defaultPrevented).toBe(false);
+      cancelBtn.click();
+      await promise;
+    });
+
+    it('wraps focus to first button on Tab from last', async () => {
+      const promise = ConfirmDialog.show({ message: 'Msg', shadowRoot });
+      const dialog = shadowRoot.querySelector('.sn-confirm-dialog');
+      const cancelBtn = shadowRoot.querySelector('.sn-confirm-cancel');
+      const confirmBtn = shadowRoot.querySelector('.sn-confirm-ok');
+      const focusSpy = jest.spyOn(cancelBtn, 'focus');
+      setActive(confirmBtn);
+      const evt = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+      dialog.dispatchEvent(evt);
+      expect(evt.defaultPrevented).toBe(true);
+      expect(focusSpy).toHaveBeenCalled();
+      cancelBtn.click();
+      await promise;
+    });
+  });
 });

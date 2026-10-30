@@ -5,7 +5,7 @@
  * Since auth.js uses dependency injection, we can test it directly.
  */
 
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 
 // Mock all Firebase modules before import
 jest.unstable_mockModule('firebase/auth', () => ({
@@ -36,6 +36,7 @@ jest.unstable_mockModule('firebase/firestore', () => ({
 const {
   isAuthConfigured,
   getOAuthClientId,
+  resolveOAuthClientId,
   getOAuthToken,
   signInWithGoogle,
   signOut,
@@ -66,6 +67,104 @@ describe('Firebase Auth', () => {
     localThis.mockChromeRuntime = {
       lastError: null
     };
+  });
+
+  describe('global chrome fallbacks (no injected deps)', () => {
+    afterEach(() => {
+      delete globalThis.fetch;
+      delete chrome.identity.getRedirectURL;
+      chrome.runtime.lastError = undefined;
+    });
+
+    it('should report auth as not configured with the real environment', () => {
+      expect(isAuthConfigured()).toBe(false);
+    });
+
+    it('should get a token through the global chrome.identity on Chrome', async () => {
+      await expect(getOAuthToken()).resolves.toBe('mock-token');
+    });
+
+    it('should use String(err) when lastError has no message', async () => {
+      chrome.identity.getAuthToken.mockImplementationOnce((options, callback) => {
+        chrome.runtime.lastError = 'plain failure';
+        callback(undefined);
+      });
+
+      await expect(getOAuthToken()).rejects.toThrow('plain failure');
+    });
+
+    it('should use the global chrome.identity and default client id on Edge', async () => {
+      chrome.identity.getRedirectURL = jest.fn(() => 'https://ext.example/redirect');
+      chrome.identity.launchWebAuthFlow.mockResolvedValueOnce('https://ext.example/redirect#access_token=edge-token');
+
+      await expect(getOAuthToken({ isEdgeBrowser: true })).resolves.toBe('edge-token');
+    });
+
+    it('should return a mock user through the global chrome.storage when auth is unconfigured', async () => {
+      const user = await signInWithGoogle();
+
+      expect(user.displayName).toBe('Local User');
+      expect(chrome.storage.local.set).toHaveBeenCalledWith({ user });
+    });
+
+    it('should sign in with the lazily loaded SDK and the real helpers', async () => {
+      const authModule = await import('firebase/auth');
+      authModule.GoogleAuthProvider.credential.mockReturnValueOnce('cred');
+      authModule.signInWithCredential.mockResolvedValueOnce({
+        user: { uid: 'u1', displayName: 'User', email: 'u@example.com', photoURL: null }
+      });
+
+      const user = await signInWithGoogle({ isAuthConfigured: true });
+
+      expect(user).toEqual({ uid: 'u1', displayName: 'User', email: 'u@example.com', photoURL: null });
+      expect(authModule.GoogleAuthProvider.credential).toHaveBeenCalledWith(null, 'mock-token');
+    });
+
+    it('should revoke the cached token with the global identity and fetch', async () => {
+      globalThis.fetch = jest.fn(() => Promise.resolve({}));
+
+      await revokeOAuthToken();
+
+      expect(chrome.identity.removeCachedAuthToken).toHaveBeenCalledWith({ token: 'mock-token' }, expect.any(Function));
+      expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('revoke?token=mock-token'));
+    });
+
+    it('should sign out through the global storage when auth is unconfigured', async () => {
+      await signOut();
+
+      expect(chrome.storage.local.remove).toHaveBeenCalledWith(['user']);
+    });
+
+    it('should sign out with the lazily loaded SDK and the real revoke helper', async () => {
+      const authModule = await import('firebase/auth');
+      globalThis.fetch = jest.fn(() => Promise.resolve({}));
+      const authInstance = { name: 'auth-instance' };
+
+      await signOut({ isAuthConfigured: true, auth: authInstance });
+
+      expect(authModule.signOut).toHaveBeenCalledWith(authInstance);
+      expect(chrome.storage.local.remove).toHaveBeenCalledWith(['user']);
+    });
+
+    it('should read the current user from the global storage', async () => {
+      await expect(getCurrentUser()).resolves.toBeNull();
+    });
+  });
+
+  describe('isEdgeBrowser without navigator', () => {
+    it('should return false when navigator is undefined', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+      Object.defineProperty(globalThis, 'navigator', { value: undefined, configurable: true, writable: true });
+      try {
+        expect(isEdgeBrowser()).toBe(false);
+      } finally {
+        if (descriptor) {
+          Object.defineProperty(globalThis, 'navigator', descriptor);
+        } else {
+          delete globalThis.navigator;
+        }
+      }
+    });
   });
 
   describe('isEdgeBrowser', () => {
@@ -149,6 +248,23 @@ describe('Firebase Auth', () => {
         value: localThis.originalUserAgent,
         configurable: true
       });
+    });
+  });
+
+  describe('resolveOAuthClientId', () => {
+    const placeholder = 'YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com';
+
+    it('should return the env value when set', () => {
+      expect(resolveOAuthClientId({ VITE_OAUTH_CLIENT_ID: 'abc.apps.googleusercontent.com' }))
+        .toBe('abc.apps.googleusercontent.com');
+    });
+
+    it('should return the placeholder when the variable is not set', () => {
+      expect(resolveOAuthClientId({})).toBe(placeholder);
+    });
+
+    it('should return the placeholder when env is undefined', () => {
+      expect(resolveOAuthClientId(undefined)).toBe(placeholder);
     });
   });
 

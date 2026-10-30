@@ -12,6 +12,7 @@ import {
   setDebugMode,
   getLogLevel,
   detectDebugMode,
+  isDebugEnabled,
   backgroundLogger,
   contentLogger,
   firestoreLogger,
@@ -94,6 +95,24 @@ describe('Logger', () => {
     });
   });
   
+  describe('isDebugEnabled', () => {
+    it('should be enabled when env is undefined', () => {
+      expect(isDebugEnabled(undefined)).toBe(true);
+    });
+
+    it('should be enabled when VITE_DEBUG_MODE is not set', () => {
+      expect(isDebugEnabled({})).toBe(true);
+    });
+
+    it('should be enabled when VITE_DEBUG_MODE is true', () => {
+      expect(isDebugEnabled({ VITE_DEBUG_MODE: 'true' })).toBe(true);
+    });
+
+    it('should be disabled when VITE_DEBUG_MODE is false', () => {
+      expect(isDebugEnabled({ VITE_DEBUG_MODE: 'false' })).toBe(false);
+    });
+  });
+
   describe('setDebugMode', () => {
     it('should enable debug mode', () => {
       setDebugMode(true);

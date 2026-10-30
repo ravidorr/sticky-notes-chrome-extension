@@ -43,7 +43,17 @@ import {
     setupEventListeners,
     setupCleanup,
     // Report functions
-    getNotesForReport
+    getNotesForReport,
+    getDOMElements,
+    init,
+    openReportModal,
+    closeReportModal,
+    getReportOptions,
+    generateReportHTML,
+    generateReportMarkdown,
+    downloadReportFile,
+    handleGenerateReport,
+    setupReportModal
 } from '../../site/js/dashboard.js';
 
 describe('site/js/dashboard.js', () => {
@@ -1934,6 +1944,1211 @@ describe('site/js/dashboard.js', () => {
             expect(appState.displayedNotes[0].id).toBe('1');
             
             jest.useRealTimers();
+        });
+    });
+    // ============================================
+    // Coverage: report generation
+    // ============================================
+
+    describe('report modal and generation', () => {
+        const reportDom = `
+            <div id="status"></div>
+            <span id="userEmail">Signed in as user@example.com</span>
+            <button id="generateReportBtn"></button>
+            <div id="reportModal" class="hidden">
+                <div class="modal-backdrop"></div>
+                <button id="reportModalClose"></button>
+                <button id="reportModalCancel"></button>
+                <button id="report-modal-generate"></button>
+                <input type="radio" name="reportFormat" value="html" checked>
+                <input type="radio" name="reportFormat" value="markdown">
+                <input type="radio" name="reportFormat" value="pdf">
+                <input type="radio" name="reportScope" value="allNotes" checked>
+                <input type="radio" name="reportScope" value="filtered">
+                <input type="radio" name="reportScope" value="dateRange">
+                <div id="dateRangeInputs" class="hidden">
+                    <input type="date" id="reportDateStart">
+                    <input type="date" id="reportDateEnd">
+                </div>
+                <input type="checkbox" id="reportIncludeMetadata" checked>
+                <input type="checkbox" id="reportIncludeComments" checked>
+            </div>
+        `;
+
+        const sampleNotes = () => [
+            {
+                id: 'note-1',
+                theme: 'blue',
+                content: '<b>Hello</b> world',
+                createdAt: '2024-03-10T10:00:00Z',
+                url: 'https://example.com/page',
+                selector: '#main',
+                metadata: { browser: 'Chrome', viewport: '1920x1080', environment: 'staging' }
+            },
+            {
+                id: 'note-2',
+                createdAt: '2024-03-12T10:00:00Z',
+                url: 'https://example.com/other',
+                selector: '__PAGE__',
+                metadata: { environment: 'weird' }
+            },
+            {
+                id: 'note-3',
+                theme: 'purple',
+                content: '',
+                createdAt: '2024-03-14T10:00:00Z',
+                metadata: { url: 'https://meta.example.org/x', browser: 'Firefox' }
+            },
+            {
+                id: 'note-4',
+                theme: 'green',
+                content: 'plain',
+                createdAt: '2024-03-15T10:00:00Z',
+                url: 'not a url'
+            }
+        ];
+
+        beforeEach(() => {
+            document.body.innerHTML = reportDom;
+            URL.createObjectURL = jest.fn(() => 'blob:mock');
+            URL.revokeObjectURL = jest.fn();
+        });
+
+        describe('openReportModal', () => {
+            it('should do nothing when the modal is missing', () => {
+                document.body.innerHTML = '';
+
+                expect(() => openReportModal()).not.toThrow();
+            });
+
+            it('should reset the form and show the modal', () => {
+                document.querySelector('input[name="reportFormat"][value="pdf"]').checked = true;
+                document.querySelector('input[name="reportScope"][value="dateRange"]').checked = true;
+                document.getElementById('reportIncludeMetadata').checked = false;
+                document.getElementById('reportIncludeComments').checked = false;
+
+                openReportModal();
+
+                expect(document.querySelector('input[name="reportFormat"][value="html"]').checked).toBe(true);
+                expect(document.querySelector('input[name="reportScope"][value="allNotes"]').checked).toBe(true);
+                expect(document.getElementById('dateRangeInputs').classList.contains('hidden')).toBe(true);
+                expect(document.getElementById('reportIncludeMetadata').checked).toBe(true);
+                expect(document.getElementById('reportIncludeComments').checked).toBe(true);
+                expect(document.getElementById('reportModal').classList.contains('hidden')).toBe(false);
+            });
+
+            it('should work when optional form controls are missing', () => {
+                document.body.innerHTML = '<div id="reportModal" class="hidden"></div>';
+
+                openReportModal();
+
+                expect(document.getElementById('reportModal').classList.contains('hidden')).toBe(false);
+            });
+        });
+
+        describe('closeReportModal', () => {
+            it('should hide the modal', () => {
+                document.getElementById('reportModal').classList.remove('hidden');
+
+                closeReportModal();
+
+                expect(document.getElementById('reportModal').classList.contains('hidden')).toBe(true);
+            });
+
+            it('should not throw when the modal is missing', () => {
+                document.body.innerHTML = '';
+
+                expect(() => closeReportModal()).not.toThrow();
+            });
+        });
+
+        describe('getReportOptions', () => {
+            it('should return defaults when no controls exist', () => {
+                document.body.innerHTML = '';
+
+                expect(getReportOptions()).toEqual({
+                    format: 'html',
+                    scope: 'allNotes',
+                    includeMetadata: true,
+                    includeComments: true
+                });
+            });
+
+            it('should read the checked controls', () => {
+                document.querySelector('input[name="reportFormat"][value="markdown"]').checked = true;
+                document.querySelector('input[name="reportScope"][value="filtered"]').checked = true;
+                document.getElementById('reportIncludeMetadata').checked = false;
+                document.getElementById('reportIncludeComments').checked = false;
+
+                expect(getReportOptions()).toEqual({
+                    format: 'markdown',
+                    scope: 'filtered',
+                    includeMetadata: false,
+                    includeComments: false
+                });
+            });
+
+            it('should include a date range when both dates are set', () => {
+                document.querySelector('input[name="reportScope"][value="dateRange"]').checked = true;
+                document.getElementById('reportDateStart').value = '2024-03-01';
+                document.getElementById('reportDateEnd').value = '2024-03-31';
+
+                const options = getReportOptions();
+
+                expect(options.dateRange.start).toEqual(new Date('2024-03-01'));
+                expect(options.dateRange.end).toEqual(new Date('2024-03-31T23:59:59'));
+            });
+
+            it('should omit the date range when a date is missing', () => {
+                document.querySelector('input[name="reportScope"][value="dateRange"]').checked = true;
+                document.getElementById('reportDateStart').value = '2024-03-01';
+
+                expect(getReportOptions().dateRange).toBeUndefined();
+            });
+
+            it('should omit the date range when the date inputs are missing', () => {
+                document.querySelector('input[name="reportScope"][value="dateRange"]').checked = true;
+                document.getElementById('reportDateStart').remove();
+
+                expect(getReportOptions().dateRange).toBeUndefined();
+            });
+        });
+
+        describe('getNotesForReport scopes', () => {
+            const all = [
+                { id: 'a', createdAt: '2024-03-01T00:00:00Z' },
+                { id: 'b', createdAt: '2024-05-01T00:00:00Z' }
+            ];
+
+            it('should use filtered notes for the filtered scope', () => {
+                const filtered = [all[0]];
+
+                expect(getNotesForReport({ scope: 'filtered' }, all, filtered)).toBe(filtered);
+            });
+
+            it('should filter by date for the dateRange scope', () => {
+                const options = {
+                    scope: 'dateRange',
+                    dateRange: { start: new Date('2024-02-01'), end: new Date('2024-04-01') }
+                };
+
+                expect(getNotesForReport(options, all, [])).toEqual([all[0]]);
+            });
+
+            it('should return all notes for dateRange without a range', () => {
+                expect(getNotesForReport({ scope: 'dateRange' }, all, [])).toBe(all);
+            });
+
+            it('should return all notes for allNotes and unknown scopes', () => {
+                expect(getNotesForReport({ scope: 'allNotes' }, all, [])).toBe(all);
+                expect(getNotesForReport({ scope: 'other' }, all, [])).toBe(all);
+            });
+        });
+
+        describe('generateReportHTML', () => {
+            it('should build a full report with stats, metadata and notes', () => {
+                const html = generateReportHTML(sampleNotes(), { includeMetadata: true });
+
+                expect(html).toContain('<!DOCTYPE html>');
+                expect(html).toContain('By: Signed in as user@example.com');
+                expect(html).toContain('blue: 1');
+                expect(html).toContain('example.com: 2 notes');
+                expect(html).toContain('meta.example.org: 1 notes');
+                expect(html).toContain('<strong>Browser:</strong> Chrome');
+                expect(html).toContain('<strong>Viewport:</strong> 1920x1080');
+                expect(html).toContain('<code>#main</code>');
+                expect(html).not.toContain('<code>__PAGE__</code>');
+                expect(html).toContain('<strong>URL:</strong>');
+            });
+
+            it('should omit metadata when disabled and handle no notes', () => {
+                document.getElementById('userEmail').remove();
+
+                const html = generateReportHTML([], { includeMetadata: false });
+
+                expect(html).toContain('Total Notes:</strong> 0');
+                expect(html).not.toContain('By:');
+                expect(html).not.toContain('metadata-header">');
+            });
+
+            it('should handle notes without any url', () => {
+                const html = generateReportHTML([{ id: 'n', createdAt: '2024-01-01T00:00:00Z' }], { includeMetadata: true });
+
+                expect(html).not.toContain('<strong>URL:</strong>');
+                expect(html).toContain('Top Domains');
+            });
+
+            it('should skip metadata for notes that have none', () => {
+                const html = generateReportHTML([sampleNotes()[3]], { includeMetadata: true });
+
+                expect(html).not.toContain('<div class="metadata-header">');
+            });
+        });
+
+        describe('generateReportMarkdown', () => {
+            it('should build markdown with metadata', () => {
+                const md = generateReportMarkdown(sampleNotes(), { includeMetadata: true });
+
+                expect(md).toContain('# Sticky Notes Report');
+                expect(md).toContain('| **By:** Signed in as user@example.com');
+                expect(md).toContain('### Note (blue)');
+                expect(md).toContain('Hello world');
+                expect(md).toContain('- Browser: Chrome');
+                expect(md).toContain('- Viewport: 1920x1080');
+                expect(md).toContain('- Environment: staging');
+                expect(md).toContain('- Selector: `#main`');
+                expect(md).not.toContain('`__PAGE__`');
+                expect(md).toContain('**URL:** https://example.com/page');
+            });
+
+            it('should omit metadata, email and empty content when not available', () => {
+                document.getElementById('userEmail').remove();
+
+                const md = generateReportMarkdown(sampleNotes(), { includeMetadata: false });
+
+                expect(md).not.toContain('**By:**');
+                expect(md).not.toContain('**Metadata:**');
+            });
+
+            it('should handle metadata without optional fields', () => {
+                const md = generateReportMarkdown([
+                    { id: 'n', createdAt: '2024-01-01T00:00:00Z', metadata: {} }
+                ], { includeMetadata: true });
+
+                expect(md).toContain('**Metadata:**');
+                expect(md).not.toContain('- Browser:');
+            });
+        });
+
+        describe('downloadReportFile', () => {
+            beforeEach(() => {
+                localThis.clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+            });
+
+            afterEach(() => {
+                localThis.clickSpy.mockRestore();
+            });
+
+            it('should download markdown files', () => {
+                downloadReportFile('# md', 'markdown');
+
+                expect(localThis.clickSpy).toHaveBeenCalled();
+                expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
+            });
+
+            it('should download html files', () => {
+                downloadReportFile('<html></html>', 'html');
+
+                expect(URL.createObjectURL).toHaveBeenCalled();
+            });
+
+            it('should default to html for unknown formats', () => {
+                downloadReportFile('x', 'unknown');
+
+                expect(URL.createObjectURL.mock.calls[0][0].type).toBe('text/html;charset=utf-8');
+            });
+        });
+
+        describe('handleGenerateReport', () => {
+            beforeEach(() => {
+                state.allNotes = sampleNotes();
+                state.displayedNotes = [sampleNotes()[0]];
+                localThis.clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+            });
+
+            afterEach(() => {
+                localThis.clickSpy.mockRestore();
+                jest.restoreAllMocks();
+            });
+
+            it('should download an html report by default', () => {
+                handleGenerateReport();
+
+                expect(localThis.clickSpy).toHaveBeenCalled();
+                expect(document.getElementById('status').textContent).toBe('Report generated with 4 notes');
+                expect(document.getElementById('reportModal').classList.contains('hidden')).toBe(true);
+            });
+
+            it('should download a markdown report', () => {
+                document.querySelector('input[name="reportFormat"][value="markdown"]').checked = true;
+
+                handleGenerateReport();
+
+                expect(URL.createObjectURL.mock.calls[0][0].type).toBe('text/markdown;charset=utf-8');
+            });
+
+            it('should use displayed notes for the filtered scope', () => {
+                document.querySelector('input[name="reportScope"][value="filtered"]').checked = true;
+
+                handleGenerateReport();
+
+                expect(document.getElementById('status').textContent).toBe('Report generated with 1 notes');
+            });
+
+            it('should require both dates for the date range scope', () => {
+                document.querySelector('input[name="reportScope"][value="dateRange"]').checked = true;
+                document.getElementById('reportDateStart').value = '2024-03-01';
+
+                handleGenerateReport();
+
+                expect(document.getElementById('status').textContent).toBe('Please select both start and end dates');
+                expect(localThis.clickSpy).not.toHaveBeenCalled();
+            });
+
+            it('should require date inputs to exist for the date range scope', () => {
+                document.querySelector('input[name="reportScope"][value="dateRange"]').checked = true;
+                document.getElementById('reportDateStart').remove();
+                document.getElementById('reportDateEnd').remove();
+
+                handleGenerateReport();
+
+                expect(document.getElementById('status').textContent).toBe('Please select both start and end dates');
+            });
+
+            it('should generate a report for a valid date range', () => {
+                document.querySelector('input[name="reportScope"][value="dateRange"]').checked = true;
+                document.getElementById('reportDateStart').value = '2024-03-01';
+                document.getElementById('reportDateEnd').value = '2024-03-11';
+
+                handleGenerateReport();
+
+                expect(document.getElementById('status').textContent).toBe('Report generated with 1 notes');
+            });
+
+            it('should report when there are no notes', () => {
+                state.allNotes = [];
+
+                handleGenerateReport();
+
+                expect(document.getElementById('status').textContent).toBe('No notes to include in report');
+            });
+
+            it('should open a print window for pdf reports', () => {
+                document.querySelector('input[name="reportFormat"][value="pdf"]').checked = true;
+                const printWindow = { document: { write: jest.fn(), close: jest.fn() }, print: jest.fn() };
+                window.open = jest.fn().mockReturnValue(printWindow);
+
+                handleGenerateReport();
+
+                expect(printWindow.document.write).toHaveBeenCalled();
+                expect(printWindow.print).toHaveBeenCalled();
+                expect(document.getElementById('status').textContent).toContain('use browser print');
+            });
+
+            it('should handle a blocked print window for pdf reports', () => {
+                document.querySelector('input[name="reportFormat"][value="pdf"]').checked = true;
+                window.open = jest.fn().mockReturnValue(null);
+
+                handleGenerateReport();
+
+                expect(document.getElementById('status').textContent).toContain('use browser print');
+            });
+        });
+
+        describe('setupReportModal', () => {
+            it('should do nothing when the modal is missing', () => {
+                document.body.innerHTML = '';
+
+                expect(() => setupReportModal()).not.toThrow();
+            });
+
+            it('should wire up all buttons', () => {
+                const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+                state.allNotes = sampleNotes();
+                setupReportModal();
+
+                document.getElementById('generateReportBtn').click();
+                expect(document.getElementById('reportModal').classList.contains('hidden')).toBe(false);
+
+                document.getElementById('reportModalClose').click();
+                expect(document.getElementById('reportModal').classList.contains('hidden')).toBe(true);
+
+                document.getElementById('generateReportBtn').click();
+                document.getElementById('reportModalCancel').click();
+                expect(document.getElementById('reportModal').classList.contains('hidden')).toBe(true);
+
+                document.getElementById('generateReportBtn').click();
+                document.querySelector('.modal-backdrop').click();
+                expect(document.getElementById('reportModal').classList.contains('hidden')).toBe(true);
+
+                document.getElementById('report-modal-generate').click();
+                expect(clickSpy).toHaveBeenCalled();
+                clickSpy.mockRestore();
+            });
+
+            it('should toggle date range inputs when the scope changes', () => {
+                setupReportModal();
+                const dateRange = document.querySelector('input[name="reportScope"][value="dateRange"]');
+                const allNotes = document.querySelector('input[name="reportScope"][value="allNotes"]');
+
+                dateRange.checked = true;
+                dateRange.dispatchEvent(new Event('change', { bubbles: true }));
+
+                expect(document.getElementById('dateRangeInputs').classList.contains('hidden')).toBe(false);
+                expect(document.getElementById('reportDateStart').value).not.toBe('');
+                expect(document.getElementById('reportDateEnd').value).not.toBe('');
+
+                allNotes.checked = true;
+                allNotes.dispatchEvent(new Event('change', { bubbles: true }));
+
+                expect(document.getElementById('dateRangeInputs').classList.contains('hidden')).toBe(true);
+            });
+
+            it('should keep existing dates when the scope changes to date range', () => {
+                setupReportModal();
+                document.getElementById('reportDateStart').value = '2024-01-01';
+                document.getElementById('reportDateEnd').value = '2024-01-31';
+                const dateRange = document.querySelector('input[name="reportScope"][value="dateRange"]');
+
+                dateRange.dispatchEvent(new Event('change', { bubbles: true }));
+
+                expect(document.getElementById('reportDateStart').value).toBe('2024-01-01');
+                expect(document.getElementById('reportDateEnd').value).toBe('2024-01-31');
+            });
+
+            it('should handle a scope change without the date inputs', () => {
+                setupReportModal();
+                document.getElementById('dateRangeInputs').remove();
+                const dateRange = document.querySelector('input[name="reportScope"][value="dateRange"]');
+                const allNotes = document.querySelector('input[name="reportScope"][value="allNotes"]');
+
+                expect(() => {
+                    dateRange.dispatchEvent(new Event('change', { bubbles: true }));
+                    allNotes.dispatchEvent(new Event('change', { bubbles: true }));
+                }).not.toThrow();
+            });
+
+            it('should close on Escape only when the modal is open', () => {
+                setupReportModal();
+                const modal = document.getElementById('reportModal');
+
+                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                expect(modal.classList.contains('hidden')).toBe(true);
+
+                modal.classList.remove('hidden');
+                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+                expect(modal.classList.contains('hidden')).toBe(false);
+
+                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                expect(modal.classList.contains('hidden')).toBe(true);
+            });
+
+            it('should work with a bare modal', () => {
+                document.body.innerHTML = '<div id="reportModal"></div>';
+
+                expect(() => setupReportModal()).not.toThrow();
+            });
+        });
+    });
+    // ============================================
+    // Coverage: utility and rendering fallbacks
+    // ============================================
+
+    describe('fallback branches in utilities and UI helpers', () => {
+        it('stripHtml should return empty string when markup has no text', () => {
+            expect(stripHtml('<br>')).toBe('');
+        });
+
+        it('renderConsoleErrors should handle errors without a message', () => {
+            const html = renderConsoleErrors([{ type: 'exception' }]);
+
+            expect(html).toContain('console-error-exception');
+        });
+
+        it('filterNotesBySearch should handle notes without content, url or selector', () => {
+            expect(filterNotesBySearch([{ id: '1' }], 'abc')).toEqual([]);
+        });
+
+        it('hideApiKeySection should handle missing elements', () => {
+            expect(() => hideApiKeySection({})).not.toThrow();
+        });
+
+        it('handleDomainSelectChange should do nothing without a domain select', () => {
+            const loadFn = jest.fn();
+
+            handleDomainSelectChange({}, loadFn);
+
+            expect(loadFn).not.toHaveBeenCalled();
+        });
+
+        it('handleDomainSelectChange should handle a custom value without url input', () => {
+            document.body.innerHTML = '<select id="sel"><option value="__custom__" selected>Custom</option></select>';
+
+            expect(() => handleDomainSelectChange({ domainSelect: document.getElementById('sel') }, jest.fn())).not.toThrow();
+        });
+
+        it('handleDomainSelectChange should handle a domain value without url input or loader', () => {
+            document.body.innerHTML = '<select id="sel"><option value="a.com" selected>a.com</option></select>';
+
+            expect(() => handleDomainSelectChange({ domainSelect: document.getElementById('sel') })).not.toThrow();
+        });
+
+        it('renderNotes should render shared notes without owner, empty content and replies', () => {
+            document.body.innerHTML = '<div id="list"></div>';
+            const list = document.getElementById('list');
+
+            renderNotes(list, [{
+                id: 'abcdefghijkl',
+                url: 'https://example.com',
+                selector: '.x',
+                content: '',
+                isShared: true,
+                createdAt: '2024-01-01T00:00:00Z',
+                comments: [
+                    { content: 'first', createdAt: '2024-01-02T00:00:00Z' },
+                    { content: 'reply', parentId: 'c1', authorName: 'Bob', createdAt: '2024-01-03T00:00:00Z' }
+                ]
+            }]);
+
+            expect(list.innerHTML).toContain('Shared by unknown');
+            expect(list.innerHTML).toContain('No content');
+            expect(list.innerHTML).toContain('comment-reply');
+            expect(list.innerHTML).toContain('Unknown');
+        });
+
+        it('saveApiKey should work without callbacks', () => {
+            document.body.innerHTML = '<input id="k" value="abc"><div id="s"></div>';
+
+            saveApiKey({
+                apiKeyInput: document.getElementById('k'),
+                status: document.getElementById('s')
+            }, state);
+
+            expect(state.apiKey).toBe('abc');
+        });
+
+        it('handleFilterTabClick should work without a loader', () => {
+            document.body.innerHTML = '<button class="t" data-filter="owned"></button>';
+            const tab = document.querySelector('.t');
+
+            handleFilterTabClick(tab, [tab], state);
+
+            expect(state.currentFilter).toBe('owned');
+        });
+
+        it('handleAutoRefreshChange should tolerate a missing refresh function', () => {
+            jest.useFakeTimers();
+            const appState = { refreshInterval: null };
+
+            handleAutoRefreshChange(true, appState);
+            jest.advanceTimersByTime(5000);
+            clearRefreshInterval(appState);
+
+            expect(appState.refreshInterval).toBeNull();
+        });
+
+        it('handleAutoRefreshChange should do nothing when disabling without an interval', () => {
+            const appState = { refreshInterval: null };
+
+            handleAutoRefreshChange(false, appState);
+
+            expect(appState.refreshInterval).toBeNull();
+        });
+
+        it('openSettings should work without an API key input or key', () => {
+            document.body.innerHTML = '<input id="k" value="old">';
+
+            openSettings({ apiKeyInput: document.getElementById('k') });
+            expect(document.getElementById('k').value).toBe('');
+
+            expect(() => openSettings({})).not.toThrow();
+        });
+
+        it('checkApiKey should work without callbacks', () => {
+            expect(() => checkApiKey({}, { apiKey: 'a-valid-key' })).not.toThrow();
+        });
+    });
+
+    describe('loadStats edge cases', () => {
+        const okResponse = (stats) => ({ ok: true, json: () => Promise.resolve(stats) });
+
+        it('should handle zero counts and missing optional data', async () => {
+            document.body.innerHTML = `
+                <span id="tabCountAll">x</span><span id="tabCountOwned">x</span><span id="tabCountShared">x</span>
+                <select id="domainSelect"><option value="">All</option><option value="__custom__">Custom</option></select>
+            `;
+            global.fetch.mockResolvedValueOnce(okResponse({ total: 0, owned: 0, shared: 0, domainCount: 0, user: {} }));
+            const elements = getDOMElements();
+
+            const result = await loadStats('key', elements);
+
+            expect(result).not.toBeNull();
+            expect(document.getElementById('tabCountAll').textContent).toBe('');
+            expect(document.getElementById('tabCountOwned').textContent).toBe('');
+            expect(document.getElementById('tabCountShared').textContent).toBe('');
+        });
+
+        it('should handle partial theme data with the theme elements present', async () => {
+            document.body.innerHTML = `
+                <div id="themeBreakdown"></div>
+                <span id="themeYellow"></span><span id="themeBlue"></span><span id="themeGreen"></span><span id="themePink"></span>
+            `;
+            global.fetch.mockResolvedValueOnce(okResponse({ total: 2, owned: 2, shared: 0, byTheme: { yellow: 2 } }));
+
+            await loadStats('key', getDOMElements());
+
+            expect(document.getElementById('themeBlue').style.flex).toContain('0');
+            expect(document.getElementById('themeBreakdown').getAttribute('aria-label')).toContain('0 blue');
+        });
+
+        it('should handle theme data that has no yellow notes', async () => {
+            document.body.innerHTML = `
+                <div id="themeBreakdown"></div>
+                <span id="themeYellow"></span><span id="themeBlue"></span><span id="themeGreen"></span><span id="themePink"></span>
+            `;
+            global.fetch.mockResolvedValueOnce(okResponse({ total: 3, byTheme: { blue: 3 } }));
+
+            await loadStats('key', getDOMElements());
+
+            expect(document.getElementById('themeBreakdown').getAttribute('aria-label')).toContain('0 yellow');
+        });
+
+        it('should handle theme data when the theme elements are missing', async () => {
+            document.body.innerHTML = '';
+            global.fetch.mockResolvedValueOnce(okResponse({ total: 2, byTheme: { yellow: 1, blue: 1 } }));
+
+            const result = await loadStats('key', getDOMElements());
+
+            expect(result).not.toBeNull();
+        });
+
+        it('should handle empty theme data when the theme elements are present', async () => {
+            document.body.innerHTML = `
+                <span id="themeYellow"></span><span id="themeBlue"></span><span id="themeGreen"></span><span id="themePink"></span>
+            `;
+            global.fetch.mockResolvedValueOnce(okResponse({ total: 0 }));
+
+            await loadStats('key', getDOMElements());
+
+            expect(document.getElementById('themeYellow').style.flex).toMatch(/^0/);
+        });
+
+        it('should populate the domain select with an empty list when domains are absent', async () => {
+            document.body.innerHTML = '<select id="domainSelect"><option value="">All</option><option value="__custom__">Custom</option></select>';
+            global.fetch.mockResolvedValueOnce(okResponse({ total: 1 }));
+
+            await loadStats('key', getDOMElements());
+
+            expect(document.getElementById('domainSelect').options).toHaveLength(2);
+        });
+    });
+
+    describe('loadNotes edge cases', () => {
+        const jsonResponse = (data, ok = true, status = 200) => ({
+            ok,
+            status,
+            json: () => Promise.resolve(data)
+        });
+
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="status"></div>
+                <div id="notesList"></div>
+                <select id="domainSelect"><option value="">All</option><option value="__custom__">Custom</option></select>
+                <input id="urlInput" value="">
+            `;
+            localThis.elements = getDOMElements();
+            jest.spyOn(console, 'error').mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            console.error.mockRestore();
+        });
+
+        it('should return an empty list when called without options', async () => {
+            expect(await loadNotes()).toEqual([]);
+        });
+
+        it('should return an empty list without an API key or elements', async () => {
+            expect(await loadNotes({ apiKey: null })).toEqual([]);
+        });
+
+        it('should fetch commented notes along with their comments', async () => {
+            global.fetch.mockImplementation((url) => {
+                if (url.endsWith('/notes/commented')) {
+                    return Promise.resolve(jsonResponse({ notes: [
+                        { id: 'n1' }, { id: 'n2' }, { id: 'n3' }, { id: 'n4' }
+                    ] }));
+                }
+                if (url.includes('/n1/')) {
+                    return Promise.resolve(jsonResponse({ comments: [{ content: 'hi' }] }));
+                }
+                if (url.includes('/n2/')) {
+                    return Promise.resolve(jsonResponse({}));
+                }
+                if (url.includes('/n3/')) {
+                    return Promise.resolve(jsonResponse({}, false, 500));
+                }
+                return Promise.reject(new Error('network'));
+            });
+
+            const notes = await loadNotes({
+                apiKey: 'key',
+                elements: localThis.elements,
+                currentFilter: 'commented'
+            });
+
+            expect(notes).toHaveLength(4);
+            expect(notes[0].comments).toHaveLength(1);
+            expect(notes[1].comments).toEqual([]);
+            expect(notes[2].comments).toEqual([]);
+            expect(notes[3].comments).toEqual([]);
+        });
+
+        it('should not fetch comments when there are no commented notes', async () => {
+            global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [] }));
+
+            const notes = await loadNotes({ apiKey: 'key', elements: localThis.elements, currentFilter: 'commented' });
+
+            expect(notes).toEqual([]);
+            expect(global.fetch).toHaveBeenCalledTimes(1);
+        });
+
+        it('should treat a missing notes field as an empty list', async () => {
+            global.fetch.mockResolvedValueOnce(jsonResponse({}));
+
+            expect(await loadNotes({ apiKey: 'key', elements: localThis.elements })).toEqual([]);
+        });
+
+        it('should pass the filter param for non-all filters', async () => {
+            global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [] }));
+
+            await loadNotes({ apiKey: 'key', elements: localThis.elements, currentFilter: 'owned' });
+
+            expect(global.fetch.mock.calls[0][0]).toContain('filter=owned');
+        });
+
+        it('should send a custom url that starts with http as a url param', async () => {
+            localThis.elements.domainSelect.value = '__custom__';
+            localThis.elements.urlInput.value = 'https://example.com/x';
+            global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [] }));
+
+            await loadNotes({ apiKey: 'key', elements: localThis.elements });
+
+            expect(global.fetch.mock.calls[0][0]).toContain('url=');
+        });
+
+        it('should send a custom value without protocol as a domain param', async () => {
+            localThis.elements.domainSelect.value = '__custom__';
+            localThis.elements.urlInput.value = 'example.com';
+            global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [] }));
+
+            await loadNotes({ apiKey: 'key', elements: localThis.elements });
+
+            expect(global.fetch.mock.calls[0][0]).toContain('domain=example.com');
+        });
+
+        it('should handle a 401 response with all callbacks', async () => {
+            global.fetch.mockResolvedValueOnce(jsonResponse({}, false, 401));
+            const onUnauthorized = jest.fn();
+
+            const notes = await loadNotes({ apiKey: 'key', elements: localThis.elements, onUnauthorized });
+
+            expect(notes).toEqual([]);
+            expect(onUnauthorized).toHaveBeenCalled();
+            expect(localThis.elements.status.textContent).toContain('Invalid API key');
+        });
+
+        it('should handle a 401 response without status element or callback', async () => {
+            global.fetch.mockResolvedValueOnce(jsonResponse({}, false, 401));
+
+            const notes = await loadNotes({ apiKey: 'key', elements: { notesList: localThis.elements.notesList } });
+
+            expect(notes).toEqual([]);
+        });
+
+        it('should report other API errors', async () => {
+            global.fetch.mockResolvedValueOnce(jsonResponse({}, false, 500));
+
+            const notes = await loadNotes({ apiKey: 'key', elements: localThis.elements });
+
+            expect(notes).toEqual([]);
+            expect(localThis.elements.status.textContent).toContain('API error: 500');
+        });
+
+        it('should handle fetch failures without a status element', async () => {
+            global.fetch.mockRejectedValueOnce(new Error('offline'));
+
+            expect(await loadNotes({ apiKey: 'key', elements: {} })).toEqual([]);
+        });
+
+        it('should succeed without a status element or notes list', async () => {
+            global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [{ id: 'a' }] }));
+
+            const notes = await loadNotes({ apiKey: 'key', elements: {} });
+
+            expect(notes).toHaveLength(1);
+        });
+
+        it('should show a filtered count when searching', async () => {
+            document.body.insertAdjacentHTML('beforeend', '<input id="searchInput" value="zzz">');
+            localThis.elements = getDOMElements();
+            global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [
+                { id: 'a', content: 'abc', url: 'https://a.com', selector: '.a', createdAt: '2024-01-01T00:00:00Z' }
+            ] }));
+
+            await loadNotes({ apiKey: 'key', elements: localThis.elements });
+
+            expect(localThis.elements.status.textContent).toContain('0 of 1');
+        });
+
+        it('should use the selected domain for the empty-state context', async () => {
+            const option = document.createElement('option');
+            option.value = 'a.com';
+            localThis.elements.domainSelect.insertBefore(option, localThis.elements.domainSelect.lastElementChild);
+            localThis.elements.domainSelect.value = 'a.com';
+            global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [] }));
+
+            await loadNotes({ apiKey: 'key', elements: localThis.elements });
+
+            expect(localThis.elements.notesList.innerHTML).toContain('a.com');
+        });
+    });
+
+    // ============================================
+    // Coverage: event wiring
+    // ============================================
+
+    describe('setupEventListeners edge cases', () => {
+        const buildDom = () => {
+            document.body.innerHTML = `
+                <div id="status"></div>
+                <button id="saveApiKeyBtn"></button>
+                <input id="apiKeyInput">
+                <button id="loadBtn"></button>
+                <input id="urlInput">
+                <select id="domainSelect"><option value="">All</option></select>
+                <button class="filter-tab" data-filter="all"></button>
+                <button class="filter-tab" data-filter="owned"></button>
+                <input type="checkbox" id="autoRefresh">
+                <button id="settingsBtn"></button>
+                <input id="searchInput">
+                <div id="notesList"></div>
+            `;
+            return getDOMElements();
+        };
+
+        it('should not throw when events fire without handlers', () => {
+            const elements = buildDom();
+            setupEventListeners(elements, { ...state });
+
+            elements.saveApiKeyBtn.click();
+            elements.loadBtn.click();
+            elements.settingsBtn.click();
+            elements.domainSelect.dispatchEvent(new Event('change'));
+            elements.apiKeyInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter' }));
+            elements.urlInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter' }));
+            elements.filterTabs[1].click();
+
+            expect(elements.filterTabs[1].classList.contains('active')).toBe(true);
+        });
+
+        it('should ignore non-Enter keypresses', () => {
+            const elements = buildDom();
+            const handlers = { onSaveApiKey: jest.fn(), onLoadNotes: jest.fn() };
+            setupEventListeners(elements, { ...state }, handlers);
+
+            elements.apiKeyInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'a' }));
+            elements.urlInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'a' }));
+
+            expect(handlers.onSaveApiKey).not.toHaveBeenCalled();
+            expect(handlers.onLoadNotes).not.toHaveBeenCalled();
+        });
+
+        it('should call handlers for Enter, domain change, filter tabs and auto refresh', () => {
+            jest.useFakeTimers();
+            const elements = buildDom();
+            const appState = { ...state, refreshInterval: null };
+            const handlers = {
+                onSaveApiKey: jest.fn(),
+                onLoadNotes: jest.fn(),
+                onDomainChange: jest.fn(),
+                onRefresh: jest.fn(),
+                onOpenSettings: jest.fn()
+            };
+            setupEventListeners(elements, appState, handlers);
+
+            elements.apiKeyInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter' }));
+            elements.urlInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter' }));
+            elements.domainSelect.dispatchEvent(new Event('change'));
+            elements.filterTabs[1].click();
+            elements.autoRefreshCheckbox.checked = true;
+            elements.autoRefreshCheckbox.dispatchEvent(new Event('change'));
+            jest.advanceTimersByTime(5000);
+            elements.settingsBtn.click();
+            elements.saveApiKeyBtn.click();
+            elements.loadBtn.click();
+            clearRefreshInterval(appState);
+
+            expect(handlers.onSaveApiKey).toHaveBeenCalledTimes(2);
+            expect(handlers.onDomainChange).toHaveBeenCalled();
+            expect(handlers.onRefresh).toHaveBeenCalled();
+            expect(handlers.onOpenSettings).toHaveBeenCalled();
+            expect(appState.currentFilter).toBe('owned');
+        });
+
+        it('should work with no elements at all', () => {
+            expect(() => setupEventListeners({}, { ...state })).not.toThrow();
+        });
+
+        it('should update the status when searching with and without a query', () => {
+            jest.useFakeTimers();
+            const elements = buildDom();
+            const appState = {
+                ...state,
+                allNotes: [{ id: '1', content: 'alpha' }, { id: '2', content: 'beta' }],
+                displayedNotes: []
+            };
+            setupEventListeners(elements, appState, {});
+
+            elements.searchInput.value = 'alpha';
+            elements.searchInput.dispatchEvent(new Event('input'));
+            jest.advanceTimersByTime(300);
+            expect(document.getElementById('status').textContent).toContain('Found 1 of 2');
+
+            elements.searchInput.value = '';
+            elements.searchInput.dispatchEvent(new Event('input'));
+            jest.advanceTimersByTime(300);
+            expect(document.getElementById('status').textContent).toBe('Found 2 notes');
+
+            appState.allNotes = [{ id: '1', content: 'alpha' }];
+            elements.searchInput.dispatchEvent(new Event('input'));
+            jest.advanceTimersByTime(300);
+            expect(document.getElementById('status').textContent).toBe('Found 1 note');
+        });
+
+        it('should search without a status element', () => {
+            jest.useFakeTimers();
+            const elements = buildDom();
+            document.getElementById('status').remove();
+            setupEventListeners(elements, { ...state, allNotes: [] }, {});
+
+            elements.searchInput.value = 'x';
+            elements.searchInput.dispatchEvent(new Event('input'));
+
+            expect(() => jest.advanceTimersByTime(300)).not.toThrow();
+        });
+
+        it('should toggle console errors and ignore other clicks', () => {
+            const elements = buildDom();
+            elements.notesList.innerHTML = `
+                <div class="console-errors">
+                    <button class="console-errors-header" aria-expanded="false"></button>
+                    <div class="console-errors-list" hidden></div>
+                </div>
+                <button class="console-errors-header" id="orphan" aria-expanded="false"></button>
+                <p id="other">x</p>
+            `;
+            setupEventListeners(elements, { ...state }, {});
+            const header = elements.notesList.querySelector('.console-errors .console-errors-header');
+            const list = elements.notesList.querySelector('.console-errors-list');
+
+            header.click();
+            expect(header.getAttribute('aria-expanded')).toBe('true');
+            expect(list.hidden).toBe(false);
+
+            header.click();
+            expect(list.hidden).toBe(true);
+
+            document.getElementById('other').click();
+            document.getElementById('orphan').click();
+            expect(document.getElementById('orphan').getAttribute('aria-expanded')).toBe('false');
+        });
+    });
+
+    describe('setupCleanup page lifecycle', () => {
+        beforeEach(() => {
+            localThis.windowListeners = [];
+            const originalAdd = window.addEventListener.bind(window);
+            jest.spyOn(window, 'addEventListener').mockImplementation((type, handler, opts) => {
+                localThis.windowListeners.push([type, handler]);
+                originalAdd(type, handler, opts);
+            });
+            jest.useFakeTimers();
+            document.body.innerHTML = '<input type="checkbox" id="autoRefresh">';
+            global.fetch.mockResolvedValue({ ok: false, status: 500, json: () => Promise.resolve({}) });
+            jest.spyOn(console, 'error').mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            window.addEventListener.mockRestore();
+            localThis.windowListeners.forEach(([type, handler]) => window.removeEventListener(type, handler));
+            console.error.mockRestore();
+        });
+
+        it('should clear the interval on pagehide', () => {
+            const appState = { apiKey: null, refreshInterval: setInterval(() => {}, 1000) };
+            setupCleanup(appState);
+
+            window.dispatchEvent(new Event('pagehide'));
+
+            expect(appState.refreshInterval).toBeNull();
+        });
+
+        it('should ignore pageshow events that are not persisted', () => {
+            const appState = { apiKey: 'key', refreshInterval: null, currentFilter: 'all' };
+            setupCleanup(appState);
+
+            window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false }));
+
+            expect(global.fetch).not.toHaveBeenCalled();
+        });
+
+        it('should refresh and restart auto refresh when restored from bfcache', () => {
+            const appState = { apiKey: 'key', refreshInterval: null, currentFilter: 'all' };
+            document.getElementById('autoRefresh').checked = true;
+            setupCleanup(appState);
+
+            window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+            expect(global.fetch).toHaveBeenCalled();
+            expect(appState.refreshInterval).not.toBeNull();
+
+            global.fetch.mockClear();
+            jest.advanceTimersByTime(5000);
+            expect(global.fetch).toHaveBeenCalled();
+
+            clearRefreshInterval(appState);
+        });
+
+        it('should not refresh without an API key or auto refresh', () => {
+            const appState = { apiKey: null, refreshInterval: null, currentFilter: 'all' };
+            setupCleanup(appState);
+
+            window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+
+            expect(global.fetch).not.toHaveBeenCalled();
+            expect(appState.refreshInterval).toBeNull();
+        });
+
+        it('should not restart auto refresh when an interval already exists', () => {
+            const existing = setInterval(() => {}, 1000);
+            const appState = { apiKey: null, refreshInterval: existing, currentFilter: 'all' };
+            document.getElementById('autoRefresh').checked = true;
+            setupCleanup(appState);
+
+            window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+
+            expect(appState.refreshInterval).toBe(existing);
+            clearInterval(existing);
+        });
+    });
+
+    describe('init', () => {
+        const initDom = `
+            <div id="apiKeySection"></div>
+            <div id="mainContent"></div>
+            <input id="apiKeyInput">
+            <button id="saveApiKeyBtn"></button>
+            <button id="settingsBtn"></button>
+            <input id="urlInput">
+            <button id="loadBtn"></button>
+            <div id="notesList"></div>
+            <div id="status"></div>
+            <input type="checkbox" id="autoRefresh">
+            <select id="domainSelect"><option value="">All</option><option value="__custom__">Custom</option></select>
+            <span id="keyIndicator"></span>
+        `;
+        const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+        beforeEach(() => {
+            document.body.innerHTML = initDom;
+            jest.spyOn(console, 'error').mockImplementation(() => {});
+            global.fetch.mockImplementation((url) => Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve(url.endsWith('/stats') ? { total: 1 } : { notes: [] })
+            }));
+        });
+
+        afterEach(() => {
+            console.error.mockRestore();
+        });
+
+        it('should show the API key section when no key is stored', () => {
+            init();
+
+            expect(document.getElementById('apiKeySection').style.display).toBe('flex');
+            expect(global.fetch).not.toHaveBeenCalled();
+        });
+
+        it('should load stats and notes when a key is stored', async () => {
+            localStorage.setItem('sticky_notes_api_key', 'a-very-long-api-key-value');
+
+            init();
+            await flush();
+
+            expect(global.fetch).toHaveBeenCalledTimes(2);
+            expect(document.getElementById('mainContent').style.display).toBe('block');
+        });
+
+        it('should save a new key and load data', async () => {
+            init();
+            document.getElementById('apiKeyInput').value = 'new-key';
+
+            document.getElementById('saveApiKeyBtn').click();
+            await flush();
+
+            expect(localStorage.getItem('sticky_notes_api_key')).toBe('new-key');
+            expect(global.fetch).toHaveBeenCalled();
+        });
+
+        it('should wire load, domain change, refresh and settings handlers', async () => {
+            jest.useFakeTimers();
+            localStorage.setItem('sticky_notes_api_key', 'abc');
+            init();
+            global.fetch.mockClear();
+
+            document.getElementById('loadBtn').click();
+            document.getElementById('domainSelect').value = '';
+            document.getElementById('domainSelect').dispatchEvent(new Event('change'));
+            document.getElementById('autoRefresh').checked = true;
+            document.getElementById('autoRefresh').dispatchEvent(new Event('change'));
+            jest.advanceTimersByTime(5000);
+            document.getElementById('settingsBtn').click();
+
+            expect(global.fetch.mock.calls.length).toBeGreaterThanOrEqual(3);
+            expect(document.getElementById('apiKeyInput').value).toBe('abc');
+
+            document.getElementById('autoRefresh').checked = false;
+            document.getElementById('autoRefresh').dispatchEvent(new Event('change'));
+        });
+
+        it('should clear the key and show the key section on unauthorized responses', async () => {
+            localStorage.setItem('sticky_notes_api_key', 'bad');
+            global.fetch.mockImplementation(() => Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) }));
+
+            init();
+            await flush();
+
+            expect(state.apiKey).toBeNull();
+            expect(document.getElementById('apiKeySection').style.display).toBe('flex');
+        });
+    });
+
+    describe('auto-initialization on module load', () => {
+        afterEach(() => {
+            delete document.readyState;
+            jest.restoreAllMocks();
+        });
+
+        it('should defer init until DOMContentLoaded while the document is loading', async () => {
+            Object.defineProperty(document, 'readyState', { value: 'loading', configurable: true });
+            const addSpy = jest.spyOn(document, 'addEventListener');
+
+            await import('../../site/js/dashboard.js?loading');
+
+            expect(addSpy).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
+        });
+
+        it('should skip auto-init when document is undefined', async () => {
+            const original = Object.getOwnPropertyDescriptor(globalThis, 'document');
+            Object.defineProperty(globalThis, 'document', { value: undefined, configurable: true, writable: true });
+
+            try {
+                await expect(import('../../site/js/dashboard.js?nodocument')).resolves.toBeDefined();
+            } finally {
+                Object.defineProperty(globalThis, 'document', original);
+            }
         });
     });
 });

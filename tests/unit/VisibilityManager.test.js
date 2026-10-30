@@ -269,6 +269,28 @@ describe('VisibilityManager', () => {
     });
   });
 
+  describe('edge cases', () => {
+    it('should ignore unobserve for a falsy anchor', () => {
+      manager.observe(anchor, mockNote);
+      manager.unobserve(null);
+      expect(manager.isObserving(anchor)).toBe(true);
+      expect(mockNote.hide).not.toHaveBeenCalled();
+    });
+
+    it('should unobserve an anchor that has no registered note', () => {
+      const unknownAnchor = document.createElement('div');
+      expect(() => manager.unobserve(unknownAnchor)).not.toThrow();
+      expect(manager.isObserving(unknownAnchor)).toBe(false);
+    });
+
+    it('should ignore intersection entries for unknown targets', () => {
+      manager.observe(anchor, mockNote);
+      manager.handleIntersection([{ target: document.createElement('div'), isIntersecting: true }]);
+      expect(mockNote.show).not.toHaveBeenCalled();
+      expect(mockNote.hide).not.toHaveBeenCalled();
+    });
+  });
+
   describe('scroll and resize handlers', () => {
     it('should update visible note positions on scroll', () => {
       mockNote.isVisible = true;
@@ -286,6 +308,32 @@ describe('VisibilityManager', () => {
       // Just verify no errors occur
     });
     
+    it('should update only visible notes inside the animation frame and throttle repeated scrolls', () => {
+      const pending = [];
+      const rafSpy = jest.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+        pending.push(cb);
+        return 1;
+      });
+      const hiddenNote = { show: jest.fn(), hide: jest.fn(), isVisible: false, updatePosition: jest.fn() };
+      const otherAnchor = document.createElement('div');
+      mockNote.isVisible = true;
+      manager.observe(anchor, mockNote);
+      manager.observe(otherAnchor, hiddenNote);
+
+      window.dispatchEvent(new Event('scroll'));
+      const afterFirst = pending.length;
+      window.dispatchEvent(new Event('scroll'));
+      expect(pending.length).toBe(afterFirst);
+
+      pending.splice(0).forEach((cb) => cb());
+      expect(mockNote.updatePosition).toHaveBeenCalledTimes(1);
+      expect(hiddenNote.updatePosition).not.toHaveBeenCalled();
+
+      window.dispatchEvent(new Event('scroll'));
+      expect(pending.length).toBeGreaterThan(0);
+      rafSpy.mockRestore();
+    });
+
     it('should update visible note positions on resize', () => {
       mockNote.isVisible = true;
       manager.observe(anchor, mockNote);

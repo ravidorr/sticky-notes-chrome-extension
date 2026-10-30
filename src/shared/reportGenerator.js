@@ -320,9 +320,7 @@ export class ReportGenerator {
     if (metadata.viewport) {
       html += `<div class="metadata-item"><strong>Viewport:</strong> ${escapeHtml(metadata.viewport)}</div>`;
     }
-    if (env) {
-      html += `<div class="metadata-item"><strong>Environment:</strong> <span style="color: ${envColor};">${escapeHtml(env)}</span></div>`;
-    }
+    html += `<div class="metadata-item"><strong>Environment:</strong> <span style="color: ${envColor};">${escapeHtml(env)}</span></div>`;
     if (selector && selector !== '__PAGE__') {
       html += `<div class="metadata-item metadata-selector"><strong>Selector:</strong> <code>${escapeHtml(selector)}</code></div>`;
     }

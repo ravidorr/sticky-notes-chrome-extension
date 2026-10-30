@@ -63,6 +63,31 @@ describe('MessageHandler', () => {
     });
   });
 
+  describe('setup listener responses', () => {
+    it('should send the response when handleMessage resolves', async () => {
+      messageHandler.setup();
+      const listener = mockChromeRuntime.onMessage.addListener.mock.calls[0][0];
+      const sendResponse = jest.fn();
+
+      listener({ action: 'ping' }, {}, sendResponse);
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(sendResponse).toHaveBeenCalledWith({ success: true, ready: true });
+    });
+
+    it('should send an error response when handleMessage rejects', async () => {
+      messageHandler.handleMessage = jest.fn().mockRejectedValue(new Error('fail'));
+      messageHandler.setup();
+      const listener = mockChromeRuntime.onMessage.addListener.mock.calls[0][0];
+      const sendResponse = jest.fn();
+
+      listener({ action: 'ping' }, {}, sendResponse);
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'fail' });
+    });
+  });
+
   describe('handleMessage', () => {
     it('should handle ping', async () => {
       const result = await messageHandler.handleMessage({ action: 'ping' });

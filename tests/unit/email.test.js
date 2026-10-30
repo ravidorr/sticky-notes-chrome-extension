@@ -15,6 +15,7 @@ jest.unstable_mockModule('firebase-admin/firestore', () => ({
 }));
 
 // Import after mocking
+const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
 const { writeShareNotificationEmail, MailValidationError, _testHelpers } = await import('../../functions/lib/email.js');
 const {
   extractDomain,
@@ -307,6 +308,38 @@ describe('Email Module', () => {
         )).rejects.toBeInstanceOf(MailValidationError);
       }
       expect(localThis.mockCollection.add).not.toHaveBeenCalled();
+    });
+
+    it('should wrap a template failure in a MailValidationError', async () => {
+      // Passes validation (two reads), then yields a non-string when the templates are built
+      let reads = 0;
+      const noteData = {
+        content: 'x',
+        get ownerEmail() {
+          reads += 1;
+          return reads <= 2 ? 'owner@example.com' : 42;
+        }
+      };
+
+      await expect(writeShareNotificationEmail(
+        localThis.recipientEmail, noteData, localThis.noteId, localThis.deps
+      )).rejects.toThrow(/Could not build the share email/);
+      expect(localThis.mockCollection.add).not.toHaveBeenCalled();
+    });
+
+    it('should use Firestore and the server timestamp when no deps are given', async () => {
+      const stamp = { _type: 'realServerTimestamp' };
+      getFirestore.mockReturnValue(localThis.mockDb);
+      FieldValue.serverTimestamp.mockReturnValueOnce(stamp);
+
+      await expect(writeShareNotificationEmail(
+        localThis.recipientEmail, localThis.noteData, localThis.noteId
+      )).resolves.toBe('mail-doc-123');
+
+      expect(getFirestore).toHaveBeenCalled();
+      expect(localThis.mockCollection.add).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: expect.objectContaining({ createdAt: stamp }) })
+      );
     });
 
     it('should accept a note without content or url', async () => {

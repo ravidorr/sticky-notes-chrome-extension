@@ -5,7 +5,7 @@
  * Firebase SDK is mocked to allow testing without actual Firebase.
  */
 
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 
 // Mock Firebase SDK modules before importing config
 jest.unstable_mockModule('firebase/app', () => ({
@@ -36,6 +36,8 @@ const {
   resetFirebase
 } = await import('../../src/firebase/config.js');
 
+const { buildFirebaseConfig } = await import('../../src/firebase/config-env.js');
+
 describe('Firebase Config', () => {
   const localThis = {};
 
@@ -43,6 +45,38 @@ describe('Firebase Config', () => {
     jest.clearAllMocks();
     // Reset Firebase state before each test
     resetFirebase();
+  });
+
+  describe('buildFirebaseConfig', () => {
+    it('should map VITE_FIREBASE_* variables to config keys', () => {
+      const config = buildFirebaseConfig({
+        VITE_FIREBASE_API_KEY: 'key',
+        VITE_FIREBASE_AUTH_DOMAIN: 'domain',
+        VITE_FIREBASE_PROJECT_ID: 'project',
+        VITE_FIREBASE_STORAGE_BUCKET: 'bucket',
+        VITE_FIREBASE_MESSAGING_SENDER_ID: 'sender',
+        VITE_FIREBASE_APP_ID: 'app'
+      });
+      expect(config).toEqual({
+        apiKey: 'key',
+        authDomain: 'domain',
+        projectId: 'project',
+        storageBucket: 'bucket',
+        messagingSenderId: 'sender',
+        appId: 'app'
+      });
+    });
+
+    it('should return undefined values when env is undefined', () => {
+      expect(buildFirebaseConfig(undefined)).toEqual({
+        apiKey: undefined,
+        authDomain: undefined,
+        projectId: undefined,
+        storageBucket: undefined,
+        messagingSenderId: undefined,
+        appId: undefined
+      });
+    });
   });
 
   describe('getFirebaseConfig', () => {
@@ -249,6 +283,70 @@ describe('Firebase Config', () => {
         forceOwnership: false
       });
       expect(mockDeps.persistentLocalCache).toHaveBeenCalled();
+    });
+  });
+
+  describe('initializeFirebase edge paths', () => {
+    const makeDeps = (overrides = {}) => ({
+      initializeApp: jest.fn(() => ({ name: 'app' })),
+      initializeAuth: jest.fn(() => ({ name: 'auth' })),
+      getAuth: jest.fn(() => ({ name: 'existing-auth' })),
+      indexedDBLocalPersistence: { type: 'indexedDB' },
+      browserLocalPersistence: { type: 'local' },
+      initializeFirestore: jest.fn(() => ({ name: 'db' })),
+      getFirestore: jest.fn(() => ({ name: 'fallback-db' })),
+      persistentLocalCache: jest.fn(() => ({})),
+      persistentSingleTabManager: jest.fn(() => ({})),
+      memoryLocalCache: jest.fn(() => ({ type: 'memoryCache' })),
+      ...overrides
+    });
+    const config = { apiKey: 'real-api-key' };
+
+    afterEach(() => {
+      delete globalThis.ServiceWorkerGlobalScope;
+    });
+
+    it('should fall back to the existing auth instance when initializeAuth throws', async () => {
+      const deps = makeDeps({
+        initializeAuth: jest.fn(() => { throw new Error('already initialized'); })
+      });
+
+      const result = await initializeFirebase({ config, deps });
+
+      expect(deps.getAuth).toHaveBeenCalled();
+      expect(result.auth).toEqual({ name: 'existing-auth' });
+    });
+
+    it('should use indexedDB auth persistence and a memory cache inside a service worker', async () => {
+      globalThis.ServiceWorkerGlobalScope = class {
+        static [Symbol.hasInstance]() {
+          return true;
+        }
+      };
+      const deps = makeDeps();
+
+      await initializeFirebase({ config, deps });
+
+      expect(deps.initializeAuth).toHaveBeenCalledWith(
+        expect.anything(),
+        { persistence: [deps.indexedDBLocalPersistence] }
+      );
+      expect(deps.memoryLocalCache).toHaveBeenCalled();
+      expect(deps.persistentLocalCache).not.toHaveBeenCalled();
+    });
+
+    it('should use the environment config when called without options', async () => {
+      const result = await initializeFirebase();
+
+      expect(result).toEqual({ app: null, auth: null, db: null });
+    });
+
+    it('should lazy-load the Firebase SDK when no deps are injected', async () => {
+      const result = await initializeFirebase({ config });
+
+      expect(result.app).toEqual({ name: 'mock-app' });
+      expect(result.auth).toEqual({ name: 'mock-auth' });
+      expect(result.db).toEqual({ name: 'mock-db-initialized' });
     });
   });
 

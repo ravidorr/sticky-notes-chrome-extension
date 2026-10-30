@@ -13,13 +13,23 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.19] - 2026-10-30
+
 ### Changed
 
+- Unit test coverage thresholds raised to 100% for statements, branches, functions and lines
+- Removed unreachable fallbacks and guards in `site/js/dashboard.js`, `site/js/scripts.js`,
+  `src/shared/reportGenerator.js`, the `warn` and `error` level checks in `src/shared/logger.js`
+  and the private `deps = {}` defaults in `src/firebase`
+- `logger.js`, `config-env.js` and `auth.js` read `import.meta.env` through small pure
+  helpers (`isDebugEnabled`, `buildFirebaseConfig`, `resolveOAuthClientId`) so the
+  environment branches can be tested
 - The pre-commit hook now requires a CHANGELOG.md update on every commit, not only on
   major or minor version bumps
 
 ### Added
 
+- Unit tests that bring every measured file to 100% coverage
 - Tests for the changelog check in `scripts/check-changelog.test.mjs`, and tests that run
   it as a command in `scripts/validator-cli.test.mjs`
 

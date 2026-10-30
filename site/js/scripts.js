@@ -580,7 +580,7 @@ const STORE_URLS = {
 
 /**
  * Detect the user's browser type
- * @returns {string} 'chrome', 'edge', or 'other'
+ * @returns {string} 'chrome' or 'edge'
  */
 function getBrowserType() {
     // Check User-Agent Client Hints API first (more reliable, modern browsers)
@@ -629,7 +629,7 @@ function updateInstallButtons() {
         }
     };
     
-    const cfg = config[browser] || config.chrome;
+    const cfg = config[browser];
     
     buttons.forEach(btn => {
         // Update href
@@ -788,9 +788,7 @@ function init() {
     // Return master cleanup function
     return {
         cleanup: () => {
-            Object.values(cleanups).forEach(cleanup => {
-                if (typeof cleanup === 'function') cleanup();
-            });
+            Object.values(cleanups).forEach(cleanup => cleanup());
         },
         demoControl
     };
