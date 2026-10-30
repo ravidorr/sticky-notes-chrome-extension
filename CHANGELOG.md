@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Every commit must update this file (the pre-commit hook enforces it). Changes that do not
 bump the version, such as documentation, CI or Cloud Functions work, go under
 "Unreleased" and move under the next version heading when the version is bumped.
-A change merged at an already released version is listed under the next version.
+The entries for 1.20.3 to 1.20.18 list each change under the version that `package.json`
+had when it was merged.
 
 ## [Unreleased]
 
@@ -19,11 +20,14 @@ A change merged at an already released version is listed under the next version.
 
 ### Added
 
-- Tests for the changelog check in `scripts/check-changelog.test.mjs`
+- Tests for the changelog check in `scripts/check-changelog.test.mjs`, and tests that run
+  it as a command in `scripts/validator-cli.test.mjs`
 
 ### Documentation
 
 - Backfilled this changelog for versions 1.20.3 to 1.20.18 from the git history
+- The README lists the changelog check and how to amend a commit that already updated
+  the changelog
 
 ## [1.20.18] - 2026-10-29
 
