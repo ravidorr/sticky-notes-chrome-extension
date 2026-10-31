@@ -15,10 +15,27 @@ bump is listed under the next version bump after it.
 
 ### Security
 
-- API key management routes (`/keys`) are rate limited to 100 requests per 15 minutes per client on each function instance
-  (code-scanning alerts `js/missing-rate-limiting`)
+- API key management routes (`/keys`) are rate limited to 100 requests per 15 minutes per client
+  on each function instance (code-scanning alerts `js/missing-rate-limiting`)
 - The REST API no longer sends `Access-Control-Allow-Credentials`; callers authenticate with the
   `Authorization` header, not cookies (code-scanning alert `js/cors-permissive-configuration`)
+
+## [1.20.20] - 2026-10-31
+
+### Changed
+
+- `SECURITY.md` lists 1.20.20 as the supported version
+
+### Fixed
+
+- A stray `node_modules` symlink committed by mistake in this change was removed
+
+### Security
+
+- Pasted HTML in the rich editor is sanitized with DOMPurify and parsed in an inert document
+  (`DOMParser`) instead of a live element,
+  and links with `javascript:`, `data:` or `vbscript:` hrefs lose their href
+  (code-scanning alerts `js/xss` in `RichEditor.js`)
 - CI and Lighthouse workflows now declare read-only `contents` permissions at the workflow level
   (code-scanning alerts `actions/missing-workflow-permissions`)
 
