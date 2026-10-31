@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { firebaseAuth } from '../middleware/auth.js';
 import { 
@@ -14,6 +15,16 @@ import {
 } from '../lib/apiKeys.js';
 
 const router = Router();
+
+// Per-client limit for key management requests (they are rare, so a low ceiling is fine).
+// The default store is in memory, so the limit applies per function instance: it blunts
+// bursts from one client but is not a service-wide quota.
+const keysLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false
+});
 const API_KEYS_COLLECTION = 'apiKeys';
 
 /**
@@ -21,7 +32,7 @@ const API_KEYS_COLLECTION = 'apiKeys';
  * List all API keys for the authenticated user
  * Returns key metadata (not the actual keys)
  */
-router.get('/', firebaseAuth(), async (req, res) => {
+router.get('/', keysLimiter, firebaseAuth(), async (req, res) => {
   try {
     const { uid } = req.user;
     
@@ -60,7 +71,7 @@ router.get('/', firebaseAuth(), async (req, res) => {
  * Generate a new API key
  * Body: { name: string, scopes: string[] }
  */
-router.post('/', firebaseAuth(), async (req, res) => {
+router.post('/', keysLimiter, firebaseAuth(), async (req, res) => {
   try {
     const { uid } = req.user;
     const { name, scopes } = req.body;
@@ -140,7 +151,7 @@ router.post('/', firebaseAuth(), async (req, res) => {
  * DELETE /api/keys/:keyId
  * Revoke (deactivate) an API key
  */
-router.delete('/:keyId', firebaseAuth(), async (req, res) => {
+router.delete('/:keyId', keysLimiter, firebaseAuth(), async (req, res) => {
   try {
     const { uid } = req.user;
     const { keyId } = req.params;
@@ -186,7 +197,7 @@ router.delete('/:keyId', firebaseAuth(), async (req, res) => {
  * PATCH /api/keys/:keyId
  * Update an API key (name or scopes)
  */
-router.patch('/:keyId', firebaseAuth(), async (req, res) => {
+router.patch('/:keyId', keysLimiter, firebaseAuth(), async (req, res) => {
   try {
     const { uid } = req.user;
     const { keyId } = req.params;
