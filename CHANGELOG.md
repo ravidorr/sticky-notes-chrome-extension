@@ -13,6 +13,8 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.21] - 2026-10-31
+
 ### Security
 
 - Plain-text previews remove tags with a character scan instead of a regex (Cloud Functions email
@@ -21,6 +23,8 @@ bump is listed under the next version bump after it.
 - The share-note email check in `functions/routes/notes.js` no longer uses a backtracking regex
   (code-scanning alert `js/polynomial-redos`)
 - Test helpers no longer use regexes flagged as incomplete sanitization or bad tag filters
+- CI and Lighthouse workflows now declare read-only `contents` permissions at the workflow level
+  (code-scanning alerts `actions/missing-workflow-permissions`)
 
 ## [1.20.19] - 2026-10-30
 
