@@ -13,6 +13,13 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+### Security
+
+- API key management routes (`/keys`) are rate limited to 100 requests per 15 minutes per client
+  (code-scanning alerts `js/missing-rate-limiting`)
+- The REST API no longer sends `Access-Control-Allow-Credentials`; callers authenticate with the
+  `Authorization` header, not cookies (code-scanning alert `js/cors-permissive-configuration`)
+
 ## [1.20.19] - 2026-10-30
 
 ### Changed

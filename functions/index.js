@@ -27,12 +27,16 @@ if (getApps().length === 0) {
 // Create Express app
 const app = express();
 
-// CORS configuration - allow requests from any origin for API access
+// The function runs behind Google's proxy, so trust one hop for client IPs (rate limiting)
+app.set('trust proxy', 1);
+
+// CORS configuration - allow requests from any origin for API access.
+// Callers authenticate with an Authorization header, never cookies, so credentials stay off
 const corsOptions = {
   origin: true, // Allow all origins
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
+  credentials: false,
   maxAge: 86400 // 24 hours
 };
 
