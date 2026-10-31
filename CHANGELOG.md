@@ -15,6 +15,10 @@ bump is listed under the next version bump after it.
 
 ## [1.20.20] - 2026-10-31
 
+### Changed
+
+- `SECURITY.md` lists 1.20.20 as the supported version
+
 ### Security
 
 - Pasted HTML in the rich editor is sanitized with DOMPurify and parsed in an inert document
