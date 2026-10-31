@@ -19,6 +19,8 @@ bump is listed under the next version bump after it.
   (code-scanning alerts `js/missing-rate-limiting`)
 - The REST API no longer sends `Access-Control-Allow-Credentials`; callers authenticate with the
   `Authorization` header, not cookies (code-scanning alert `js/cors-permissive-configuration`)
+- CI and Lighthouse workflows now declare read-only `contents` permissions at the workflow level
+  (code-scanning alerts `actions/missing-workflow-permissions`)
 
 ## [1.20.19] - 2026-10-30
 
