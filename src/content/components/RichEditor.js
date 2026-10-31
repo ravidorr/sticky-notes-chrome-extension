@@ -4,6 +4,7 @@
  * Supports: Bold, Italic, Lists, Links, Auto-share via email detection
  */
 
+import DOMPurify from 'dompurify';
 import { escapeHtml, isValidEmail, extractEmails, MAX_NOTE_LENGTH, NOTE_LENGTH_WARNING_THRESHOLD } from '../../shared/utils.js';
 import { t } from '../../shared/i18n.js';
 
@@ -554,8 +555,8 @@ export class RichEditor {
    * @returns {string} Cleaned HTML
    */
   cleanHtml(html) {
-    // Parse into an inert document so nothing in the pasted markup loads or runs
-    const temp = this._parseHtml(html);
+    // Sanitize first, then parse into an inert document so nothing in the pasted markup loads or runs
+    const temp = this._parseHtml(DOMPurify.sanitize(html, { ADD_ATTR: ['contenteditable'] }));
     
     // Remove unwanted elements
     const unwanted = temp.querySelectorAll('script, style, meta, link, head');

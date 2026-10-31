@@ -13,9 +13,12 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.20] - 2026-10-31
+
 ### Security
 
-- Pasted HTML in the rich editor is parsed in an inert document (`DOMParser`) instead of a live element,
+- Pasted HTML in the rich editor is sanitized with DOMPurify and parsed in an inert document
+  (`DOMParser`) instead of a live element,
   and links with `javascript:`, `data:` or `vbscript:` hrefs lose their href
   (code-scanning alerts `js/xss` in `RichEditor.js`)
 
