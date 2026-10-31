@@ -13,6 +13,12 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+### Security
+
+- Pasted HTML in the rich editor is parsed in an inert document (`DOMParser`) instead of a live element,
+  and links with `javascript:`, `data:` or `vbscript:` hrefs lose their href
+  (code-scanning alerts `js/xss` in `RichEditor.js`)
+
 ## [1.20.19] - 2026-10-30
 
 ### Changed
