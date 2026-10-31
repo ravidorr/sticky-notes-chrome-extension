@@ -15,6 +15,10 @@ bump is listed under the next version bump after it.
 
 ## [1.20.21] - 2026-10-31
 
+### Fixed
+
+- A stray `node_modules` symlink committed by mistake in this change was removed
+
 ### Security
 
 - Plain-text previews remove tags with a character scan instead of a regex (Cloud Functions email
