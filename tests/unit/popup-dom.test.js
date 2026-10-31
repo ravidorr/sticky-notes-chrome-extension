@@ -77,7 +77,9 @@ globalThis.__JEST__ = savedJestFlag;
 addListenerSpy.mockRestore();
 
 const html = readFileSync(resolve(process.cwd(), 'src/popup/popup.html'), 'utf8');
-const bodyHtml = html.match(/<body[^>]*>([\s\S]*)<\/body>/)[1].replace(/<script[\s\S]*?<\/script>/g, '');
+const parsedPopup = new DOMParser().parseFromString(html, 'text/html');
+parsedPopup.querySelectorAll('script').forEach(script => script.remove());
+const bodyHtml = parsedPopup.body.innerHTML;
 
 const flush = () => new Promise(done => setTimeout(done, 0));
 const qs = (selector) => document.querySelector(selector);

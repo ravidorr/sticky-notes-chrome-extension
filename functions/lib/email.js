@@ -44,7 +44,7 @@ function truncateContent(content, maxLength = MAX_CONTENT_PREVIEW_LENGTH) {
   if (!content) return '';
   
   // Strip HTML tags for plain text preview
-  const plainText = content.replace(/<[^>]*>/g, '').trim();
+  const plainText = content.replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim();
   
   if (plainText.length <= maxLength) {
     return plainText;

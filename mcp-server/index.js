@@ -512,7 +512,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           notes.forEach((note, index) => {
             const theme = note.theme || 'yellow';
             const themeMarker = { yellow: '[Y]', blue: '[B]', green: '[G]', pink: '[P]' }[theme] || '[?]';
-            const content = note.content ? note.content.replace(/<[^>]*>/g, '').trim() : '_No content_';
+            const content = note.content ? note.content.replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim() : '_No content_';
             const date = note.createdAt ? new Date(note.createdAt).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
@@ -588,7 +588,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           markdown += '_You haven\'t commented on any notes yet._';
         } else {
           result.notes.forEach((note, index) => {
-            const content = note.content ? note.content.replace(/<[^>]*>/g, '').trim().substring(0, 100) : '_No content_';
+            const content = note.content ? note.content.replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim().substring(0, 100) : '_No content_';
             markdown += `${index + 1}. **${note.selector}** on ${note.url}\n`;
             markdown += `   > ${content}${content.length >= 100 ? '...' : ''}\n`;
             markdown += `   _ID: ${note.id}${note.isShared ? ' (shared)' : ''}_\n`;
