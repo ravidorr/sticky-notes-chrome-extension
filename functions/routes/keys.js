@@ -16,7 +16,9 @@ import {
 
 const router = Router();
 
-// Per-client limit for key management requests (they are rare, so a low ceiling is fine)
+// Per-client limit for key management requests (they are rare, so a low ceiling is fine).
+// The default store is in memory, so the limit applies per function instance: it blunts
+// bursts from one client but is not a service-wide quota.
 const keysLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 100,
