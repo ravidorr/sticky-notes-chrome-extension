@@ -13,6 +13,11 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+### Security
+
+- CI and Lighthouse workflows now declare read-only `contents` permissions at the workflow level
+  (code-scanning alerts `actions/missing-workflow-permissions`)
+
 ## [1.20.19] - 2026-10-30
 
 ### Changed
