@@ -5,7 +5,7 @@
 
 import { createPopupHandlers } from './handlers.js';
 import { initializeI18n, t } from '../shared/i18n.js';
-import { isRestrictedUrl } from '../shared/utils.js';
+import { isRestrictedUrl, stripHtml } from '../shared/utils.js';
 
 /**
  * Show a toast notification in the popup
@@ -795,7 +795,7 @@ async function previewOldNotes(days) {
  */
 function renderOldNotePreviewItem(note) {
   const themeColor = handlers.getThemeColor(note.theme);
-  const content = note.content ? note.content.replace(/<[^>]*>/g, '').substring(0, 50) : t('emptyNote');
+  const content = note.content ? stripHtml(note.content).substring(0, 50) : t('emptyNote');
   
   // Extract hostname from URL
   let displayUrl = '';

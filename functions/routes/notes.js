@@ -1058,8 +1058,16 @@ router.post('/:id/share', apiKeyAuth({ requiredScope: 'notes:write' }), async (r
       });
     }
     
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    const atIndex = email.indexOf('@');
+    const domain = email.slice(atIndex + 1);
+    const dotIndex = domain.lastIndexOf('.');
+    const isValidFormat = email.length <= 254
+      && atIndex > 0
+      && !domain.includes('@')
+      && !/\s/.test(email)
+      && dotIndex > 0
+      && dotIndex < domain.length - 1;
+    if (!isValidFormat) {
       return res.status(400).json({
         error: 'Bad Request',
         message: 'Invalid email format'

@@ -20,6 +20,21 @@ bump is listed under the next version bump after it.
 - The REST API no longer sends `Access-Control-Allow-Credentials`; callers authenticate with the
   `Authorization` header, not cookies (code-scanning alert `js/cors-permissive-configuration`)
 
+## [1.20.21] - 2026-10-31
+
+### Security
+
+- Plain-text previews remove tags with a character scan instead of a regex (Cloud Functions email
+  preview, MCP server note listings), and the popup and `stripHtml` parse HTML in an inert document
+  (code-scanning alerts `js/incomplete-multi-character-sanitization`)
+- The share-note email check in `functions/routes/notes.js` no longer uses a backtracking regex
+  (code-scanning alert `js/polynomial-redos`)
+- Test helpers no longer use regexes flagged as incomplete sanitization or bad tag filters
+
+### Changed
+
+- `SECURITY.md` lists 1.20.21 as the supported version
+
 ## [1.20.20] - 2026-10-31
 
 ### Changed

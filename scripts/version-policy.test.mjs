@@ -90,7 +90,7 @@ describe('version policy in every case', () => {
       const result = validate('1.20.9', current, lock('1.20.8'), extension);
 
       assert.equal(result.valid, false);
-      assert.match(result.problems.at(-1), new RegExp(`package-lock\\.json must have version ${current.replace(/\./g, '\\.')}`));
+      assert.ok(result.problems.at(-1).includes(`package-lock.json must have version ${current}`));
     });
 
     it(`fails a version that is not valid for a Chrome extension when code ${label}`, () => {
