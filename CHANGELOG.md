@@ -19,6 +19,10 @@ bump is listed under the next version bump after it.
 
 - `SECURITY.md` lists 1.20.20 as the supported version
 
+### Fixed
+
+- A stray `node_modules` symlink committed by mistake in this change was removed
+
 ### Security
 
 - Pasted HTML in the rich editor is sanitized with DOMPurify and parsed in an inert document
