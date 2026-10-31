@@ -85,6 +85,10 @@ describe('Email Module', () => {
       expect(result.endsWith('...')).toBe(true);
     });
 
+    it('should not leave a tag behind when tags are nested inside each other', () => {
+      expect(truncateContent('<scr<b>ipt>alert(1)</scr</b>ipt>')).toBe('iptalert(1)ipt');
+    });
+
     it('should strip HTML tags', () => {
       const html = '<p>Hello <strong>world</strong></p>';
       expect(truncateContent(html)).toBe('Hello world');

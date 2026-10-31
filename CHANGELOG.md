@@ -15,8 +15,8 @@ bump is listed under the next version bump after it.
 
 ### Security
 
-- Plain-text previews strip leftover angle brackets after removing tags (Cloud Functions email preview,
-  MCP server note listings), and the popup and `stripHtml` parse HTML in an inert document
+- Plain-text previews remove tags with a character scan instead of a regex (Cloud Functions email
+  preview, MCP server note listings), and the popup and `stripHtml` parse HTML in an inert document
   (code-scanning alerts `js/incomplete-multi-character-sanitization`)
 - The share-note email check in `functions/routes/notes.js` no longer uses a backtracking regex
   (code-scanning alert `js/polynomial-redos`)

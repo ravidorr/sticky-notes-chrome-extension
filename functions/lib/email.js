@@ -33,6 +33,27 @@ function extractDomain(url) {
 }
 
 /**
+ * Remove HTML tags, and any stray angle bracket, from a string.
+ * Scans character by character so partial tags such as "<scr<b>ipt>" cannot survive.
+ * @param {string} text - Text that may contain HTML
+ * @returns {string} Text without markup
+ */
+function stripTags(text) {
+  let out = '';
+  let inTag = false;
+  for (const ch of text) {
+    if (ch === '<') {
+      inTag = true;
+    } else if (ch === '>') {
+      inTag = false;
+    } else if (!inTag) {
+      out += ch;
+    }
+  }
+  return out;
+}
+
+/**
  * Truncates content to a maximum length, adding ellipsis if needed.
  * Also strips HTML tags for plain text display.
  * 
@@ -44,7 +65,7 @@ function truncateContent(content, maxLength = MAX_CONTENT_PREVIEW_LENGTH) {
   if (!content) return '';
   
   // Strip HTML tags for plain text preview
-  const plainText = content.replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim();
+  const plainText = stripTags(content).trim();
   
   if (plainText.length <= maxLength) {
     return plainText;

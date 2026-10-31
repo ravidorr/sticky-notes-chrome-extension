@@ -20,6 +20,27 @@ import process from 'process';
 const API_BASE_URL = process.env.STICKY_NOTES_API_URL || 
   'https://us-central1-sticky-notes-chrome-extension.cloudfunctions.net/api';
 const DASHBOARD_URL = process.env.STICKY_NOTES_DASHBOARD_URL;
+
+/**
+ * Remove HTML tags, and any stray angle bracket, from note content.
+ * Scans character by character so partial tags such as "<scr<b>ipt>" cannot survive.
+ * @param {string} text - Text that may contain HTML
+ * @returns {string} Text without markup
+ */
+function stripTags(text) {
+  let out = '';
+  let inTag = false;
+  for (const ch of text) {
+    if (ch === '<') {
+      inTag = true;
+    } else if (ch === '>') {
+      inTag = false;
+    } else if (!inTag) {
+      out += ch;
+    }
+  }
+  return out;
+}
 const API_KEY = process.env.STICKY_NOTES_API_KEY;
 
 if (!API_KEY) {
@@ -512,7 +533,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           notes.forEach((note, index) => {
             const theme = note.theme || 'yellow';
             const themeMarker = { yellow: '[Y]', blue: '[B]', green: '[G]', pink: '[P]' }[theme] || '[?]';
-            const content = note.content ? note.content.replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim() : '_No content_';
+            const content = note.content ? stripTags(note.content).trim() : '_No content_';
             const date = note.createdAt ? new Date(note.createdAt).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
@@ -588,7 +609,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           markdown += '_You haven\'t commented on any notes yet._';
         } else {
           result.notes.forEach((note, index) => {
-            const content = note.content ? note.content.replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim().substring(0, 100) : '_No content_';
+            const content = note.content ? stripTags(note.content).trim().substring(0, 100) : '_No content_';
             markdown += `${index + 1}. **${note.selector}** on ${note.url}\n`;
             markdown += `   > ${content}${content.length >= 100 ? '...' : ''}\n`;
             markdown += `   _ID: ${note.id}${note.isShared ? ' (shared)' : ''}_\n`;
