@@ -15,10 +15,6 @@ bump is listed under the next version bump after it.
 
 ## [1.20.21] - 2026-10-31
 
-### Fixed
-
-- A stray `node_modules` symlink committed by mistake in this change was removed
-
 ### Security
 
 - Plain-text previews remove tags with a character scan instead of a regex (Cloud Functions email
@@ -27,6 +23,27 @@ bump is listed under the next version bump after it.
 - The share-note email check in `functions/routes/notes.js` no longer uses a backtracking regex
   (code-scanning alert `js/polynomial-redos`)
 - Test helpers no longer use regexes flagged as incomplete sanitization or bad tag filters
+
+### Changed
+
+- `SECURITY.md` lists 1.20.21 as the supported version
+
+## [1.20.20] - 2026-10-31
+
+### Changed
+
+- `SECURITY.md` lists 1.20.20 as the supported version
+
+### Fixed
+
+- A stray `node_modules` symlink committed by mistake in this change was removed
+
+### Security
+
+- Pasted HTML in the rich editor is sanitized with DOMPurify and parsed in an inert document
+  (`DOMParser`) instead of a live element,
+  and links with `javascript:`, `data:` or `vbscript:` hrefs lose their href
+  (code-scanning alerts `js/xss` in `RichEditor.js`)
 - CI and Lighthouse workflows now declare read-only `contents` permissions at the workflow level
   (code-scanning alerts `actions/missing-workflow-permissions`)
 

@@ -2215,6 +2215,17 @@ describe('RichEditor', () => {
       expect(cleaned).toBe('<p>Hi</p>');
     });
 
+    it('keeps safe link hrefs and drops script hrefs in cleanHtml', () => {
+      const cleaned = editor.cleanHtml('<a href="https://example.com">a</a><a href=" JavaScript:alert(1)">b</a>');
+      expect(cleaned).toBe('<a href="https://example.com">a</a><a>b</a>');
+    });
+
+    it('does not run handlers in pasted markup', () => {
+      window.xssFired = false;
+      editor.cleanHtml('<img src="x" onerror="window.xssFired = true">');
+      expect(window.xssFired).toBe(false);
+    });
+
     it('pastes without a length limit when maxLength is 0', () => {
       const unlimited = make({ maxLength: 0 });
       const exec = jest.spyOn(document, 'execCommand').mockReturnValue(true);

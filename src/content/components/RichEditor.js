@@ -4,6 +4,7 @@
  * Supports: Bold, Italic, Lists, Links, Auto-share via email detection
  */
 
+import DOMPurify from 'dompurify';
 import { escapeHtml, isValidEmail, extractEmails, MAX_NOTE_LENGTH, NOTE_LENGTH_WARNING_THRESHOLD } from '../../shared/utils.js';
 import { t } from '../../shared/i18n.js';
 
@@ -275,13 +276,12 @@ export class RichEditor {
         const cleaned = this.cleanHtml(html);
         
         // If pasting would exceed limit, truncate to plain text
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = cleaned;
-        const pasteTextLength = (tempDiv.textContent || '').length;
+        const pasteText = this._parseHtml(cleaned).textContent || '';
+        const pasteTextLength = pasteText.length;
         
         if (pasteTextLength > availableSpace) {
           // Truncate to available space
-          const truncatedText = (tempDiv.textContent || '').substring(0, availableSpace);
+          const truncatedText = pasteText.substring(0, availableSpace);
           document.execCommand('insertText', false, truncatedText);
         } else {
           document.execCommand('insertHTML', false, cleaned);
@@ -555,9 +555,8 @@ export class RichEditor {
    * @returns {string} Cleaned HTML
    */
   cleanHtml(html) {
-    // Create a temporary element
-    const temp = document.createElement('div');
-    temp.innerHTML = html;
+    // Sanitize first, then parse into an inert document so nothing in the pasted markup loads or runs
+    const temp = this._parseHtml(DOMPurify.sanitize(html, { ADD_ATTR: ['contenteditable'] }));
     
     // Remove unwanted elements
     const unwanted = temp.querySelectorAll('script, style, meta, link, head');
@@ -571,8 +570,8 @@ export class RichEditor {
       const isCheckboxInput = el.tagName === 'INPUT' && el.getAttribute('type') === 'checkbox';
       const isCheckboxLabel = el.tagName === 'LABEL' && el.classList.contains('sn-checkbox');
       attrs.forEach(attr => {
-        if (el.tagName === 'A' && attr.name === 'href') {
-          return; // Keep href on links
+        if (el.tagName === 'A' && attr.name === 'href' && !/^\s*(javascript|data|vbscript):/i.test(attr.value)) {
+          return; // Keep href on links unless it runs script
         }
         if (isEmailShareSpan && (attr.name === 'class' || attr.name.startsWith('data-'))) {
           return; // Keep class and data attributes on email share spans
@@ -589,7 +588,7 @@ export class RichEditor {
     
     // Only allow certain tags
     const allowedTags = ['P', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'A', 'UL', 'OL', 'LI', 'DIV', 'SPAN', 'CODE', 'STRIKE', 'S', 'DEL', 'BLOCKQUOTE', 'INPUT', 'LABEL'];
-    const walker = document.createTreeWalker(temp, NodeFilter.SHOW_ELEMENT);
+    const walker = temp.ownerDocument.createTreeWalker(temp, NodeFilter.SHOW_ELEMENT);
     const nodesToRemove = [];
     
     while (walker.nextNode()) {
@@ -609,6 +608,15 @@ export class RichEditor {
     return temp.innerHTML;
   }
   
+  /**
+   * Parse an HTML string into the body of an inert document
+   * @param {string} html - Raw HTML
+   * @returns {HTMLElement} Body element of the parsed document
+   */
+  _parseHtml(html) {
+    return new DOMParser().parseFromString(html, 'text/html').body;
+  }
+
   // escapeHtml is now imported from shared/utils.js
   
   /**
