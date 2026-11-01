@@ -13,6 +13,31 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+### Security
+
+- The web dashboard (`site/dashboard.html`) signs in with Google through Firebase Auth instead of asking for a
+  long-lived `sk_live_` API key, so it no longer keeps a credential in `localStorage` (code-scanning alert
+  `js/clear-text-storage-of-sensitive-data`). It holds only the Firebase session, whose ID token lasts about an hour
+  and is refreshed by the SDK. The Firebase SDK keeps its own session (a refresh token) in the browser's IndexedDB,
+  which is how a reload stays signed in. A leftover `sticky_notes_api_key` entry is deleted on the first load.
+- The `/notes` and `/notes/:noteId/comments` routes of the Cloud Functions API now accept a Firebase ID token as well
+  as an API key (`apiKeyOrFirebaseAuth`). Existing API key clients are unchanged. A token needs a verified email,
+  is rate limited per user, and is checked for revocation at most once a minute per user. Token verification
+  failures caused by the backend (credentials, permissions, network) return 500 instead of 401, so they do not sign dashboard users out.
+- The notes and comments routes now have a per-client rate limit (1000 requests per minute per instance) that runs
+  before authentication.
+- The dashboard Content Security Policy now allows only the Firebase Auth SDK and Google sign-in sources
+  (`gstatic.com`, `apis.google.com`, `identitytoolkit.googleapis.com`, `securetoken.googleapis.com`, and the
+  `accounts.google.com` and project `firebaseapp.com` frames).
+
+- The dashboard page requests its script and stylesheet with a `?v=firebase-auth` query, so returning visitors do not
+  run a cached copy of the old API key dashboard (those files are served as immutable for a year).
+- A delayed 401 or 403 from a previous account no longer signs out the account that signed in afterwards.
+
+### Changed
+
+- Added unit tests for `functions/middleware/auth.js` and included it in the coverage thresholds
+
 ## [1.20.23] - 2026-11-01
 
 ### Security

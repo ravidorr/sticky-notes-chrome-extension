@@ -21,25 +21,33 @@ import {
     // DOM helpers
     showStatus,
     // UI functions
-    updateKeyIndicator,
-    showApiKeySection,
-    hideApiKeySection,
+    updateAccountIndicator,
+    showSignInSection,
+    hideSignInSection,
+    showSignInError,
     handleUrlParams,
     handleDomainSelectChange,
     populateDomainDropdown,
     // Rendering
     renderNotes,
     // API functions
-    saveApiKey,
+    removeLegacyApiKey,
+    getSignInErrorMessage,
+    signIn,
+    signOutUser,
+    authFetch,
     loadStats,
     loadNotes,
     // Event handlers
     handleFilterTabClick,
     handleAutoRefreshChange,
     clearRefreshInterval,
-    openSettings,
     // Initialization
-    checkApiKey,
+    applyAuthState,
+    initializeFirebaseAuth,
+    resetSignedOutState,
+    initWithFirebaseModules,
+    start,
     setupEventListeners,
     setupCleanup,
     // Report functions
@@ -56,6 +64,20 @@ import {
     setupReportModal
 } from '../../site/js/dashboard.js';
 
+/**
+ * A Firebase auth stand-in with a signed-in user whose getIdToken returns the given token
+ */
+// authFetch awaits getIdToken before it calls fetch, so tests that use fake timers let promises settle
+async function flushPromises() {
+    for (let i = 0; i < 10; i += 1) {
+        await Promise.resolve();
+    }
+}
+
+function createAuth(token = 'test-id-token') {
+    return { currentUser: { email: 'user@example.com', getIdToken: jest.fn().mockResolvedValue(token) } };
+}
+
 describe('site/js/dashboard.js', () => {
     const localThis = {};
 
@@ -67,7 +89,7 @@ describe('site/js/dashboard.js', () => {
         localStorage.clear();
         
         // Reset state
-        state.apiKey = null;
+        state.auth = null;
         state.currentFilter = 'all';
         state.refreshInterval = null;
         state.searchQuery = '';
@@ -502,93 +524,113 @@ describe('site/js/dashboard.js', () => {
     // UI Function Tests
     // ============================================
 
-    describe('updateKeyIndicator', () => {
+    describe('updateAccountIndicator', () => {
         beforeEach(() => {
-            document.body.innerHTML = '<span id="keyIndicator"></span>';
-            localThis.keyIndicator = document.getElementById('keyIndicator');
+            document.body.innerHTML = '<span id="accountIndicator"></span>';
+            localThis.accountIndicator = document.getElementById('accountIndicator');
         });
 
-        it('should show truncated key when key is long enough', () => {
-            const longKey = 'abcdefghijklmnopqrstuvwxyz';
-            updateKeyIndicator(localThis.keyIndicator, longKey);
-            
-            expect(localThis.keyIndicator.textContent).toBe('Key: abcdefghijkl...wxyz');
-            expect(localThis.keyIndicator.style.display).toBe('inline');
+        it('should show the signed-in email', () => {
+            updateAccountIndicator(localThis.accountIndicator, { email: 'user@example.com' });
+
+            expect(localThis.accountIndicator.textContent).toBe('Signed in as user@example.com');
+            expect(localThis.accountIndicator.style.display).toBe('inline');
         });
 
-        it('should hide indicator when key is too short', () => {
-            updateKeyIndicator(localThis.keyIndicator, 'short');
-            
-            expect(localThis.keyIndicator.style.display).toBe('none');
+        it('should hide and clear the indicator when signed out', () => {
+            localThis.accountIndicator.textContent = 'old';
+
+            updateAccountIndicator(localThis.accountIndicator, null);
+
+            expect(localThis.accountIndicator.textContent).toBe('');
+            expect(localThis.accountIndicator.style.display).toBe('none');
         });
 
-        it('should hide indicator when key is null', () => {
-            updateKeyIndicator(localThis.keyIndicator, null);
-            
-            expect(localThis.keyIndicator.style.display).toBe('none');
+        it('should hide the indicator for a user without an email', () => {
+            updateAccountIndicator(localThis.accountIndicator, {});
+
+            expect(localThis.accountIndicator.style.display).toBe('none');
         });
 
-        it('should handle null element gracefully', () => {
-            expect(() => updateKeyIndicator(null, 'key')).not.toThrow();
+        it('should handle a missing element', () => {
+            expect(() => updateAccountIndicator(null, { email: 'a@b.c' })).not.toThrow();
         });
     });
 
-    describe('showApiKeySection', () => {
+    describe('showSignInSection', () => {
         beforeEach(() => {
             document.body.innerHTML = `
-                <div id="apiKeySection" style="display: none;"></div>
+                <div id="signInSection" style="display: none;"></div>
                 <div id="mainContent"></div>
-                <input id="apiKeyInput" />
+                <button id="signInBtn"></button>
             `;
             localThis.elements = {
-                apiKeySection: document.getElementById('apiKeySection'),
+                signInSection: document.getElementById('signInSection'),
                 mainContent: document.getElementById('mainContent'),
-                apiKeyInput: document.getElementById('apiKeyInput')
+                signInBtn: document.getElementById('signInBtn')
             };
         });
 
-        it('should show the API key section', () => {
-            showApiKeySection(localThis.elements);
-            
-            expect(localThis.elements.apiKeySection.style.display).toBe('flex');
-        });
+        it('should show the overlay and hide the main content', () => {
+            showSignInSection(localThis.elements);
 
-        it('should hide the main content', () => {
-            showApiKeySection(localThis.elements);
-            
+            expect(localThis.elements.signInSection.style.display).toBe('flex');
             expect(localThis.elements.mainContent.style.display).toBe('none');
         });
 
-        it('should focus the API key input', () => {
-            const focusSpy = jest.spyOn(localThis.elements.apiKeyInput, 'focus');
-            showApiKeySection(localThis.elements);
-            
+        it('should focus the sign-in button', () => {
+            const focusSpy = jest.spyOn(localThis.elements.signInBtn, 'focus');
+
+            showSignInSection(localThis.elements);
+
             expect(focusSpy).toHaveBeenCalled();
+        });
+
+        it('should handle missing elements', () => {
+            expect(() => showSignInSection({})).not.toThrow();
         });
     });
 
-    describe('hideApiKeySection', () => {
+    describe('hideSignInSection', () => {
         beforeEach(() => {
             document.body.innerHTML = `
-                <div id="apiKeySection" style="display: flex;"></div>
+                <div id="signInSection" style="display: flex;"></div>
                 <div id="mainContent" style="display: none;"></div>
             `;
             localThis.elements = {
-                apiKeySection: document.getElementById('apiKeySection'),
+                signInSection: document.getElementById('signInSection'),
                 mainContent: document.getElementById('mainContent')
             };
         });
 
-        it('should hide the API key section', () => {
-            hideApiKeySection(localThis.elements);
-            
-            expect(localThis.elements.apiKeySection.style.display).toBe('none');
+        it('should hide the overlay and show the main content', () => {
+            hideSignInSection(localThis.elements);
+
+            expect(localThis.elements.signInSection.style.display).toBe('none');
+            expect(localThis.elements.mainContent.style.display).toBe('block');
         });
 
-        it('should show the main content', () => {
-            hideApiKeySection(localThis.elements);
-            
-            expect(localThis.elements.mainContent.style.display).toBe('block');
+        it('should handle missing elements', () => {
+            expect(() => hideSignInSection({})).not.toThrow();
+        });
+    });
+
+    describe('showSignInError', () => {
+        it('should show and clear a message', () => {
+            document.body.innerHTML = '<p id="e" style="display: none;"></p>';
+            const el = document.getElementById('e');
+
+            showSignInError(el, 'Nope');
+            expect(el.textContent).toBe('Nope');
+            expect(el.style.display).toBe('block');
+
+            showSignInError(el, '');
+            expect(el.textContent).toBe('');
+            expect(el.style.display).toBe('none');
+        });
+
+        it('should handle a missing element', () => {
+            expect(() => showSignInError(null, 'x')).not.toThrow();
         });
     });
 
@@ -900,40 +942,257 @@ describe('site/js/dashboard.js', () => {
     // API Function Tests
     // ============================================
 
-    describe('saveApiKey', () => {
+    describe('removeLegacyApiKey', () => {
+        it('should delete a leftover API key from localStorage', () => {
+            localStorage.setItem('sticky_notes_api_key', 'sk_live_old');
+            localStorage.setItem('other', 'keep');
+
+            removeLegacyApiKey();
+
+            expect(localStorage.getItem('sticky_notes_api_key')).toBeNull();
+            expect(localStorage.getItem('other')).toBe('keep');
+        });
+
+        it('should not throw when storage is blocked', () => {
+            const spy = jest.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+                throw new Error('blocked');
+            });
+
+            try {
+                expect(() => removeLegacyApiKey()).not.toThrow();
+            } finally {
+                spy.mockRestore();
+            }
+        });
+    });
+
+    describe('getSignInErrorMessage', () => {
+        it('should explain a blocked popup', () => {
+            expect(getSignInErrorMessage({ code: 'auth/popup-blocked' })).toContain('Popup was blocked');
+        });
+
+        it('should stay quiet when the user closes or repeats the popup', () => {
+            expect(getSignInErrorMessage({ code: 'auth/popup-closed-by-user' })).toBeNull();
+            expect(getSignInErrorMessage({ code: 'auth/cancelled-popup-request' })).toBeNull();
+        });
+
+        it('should include the error message for other failures', () => {
+            expect(getSignInErrorMessage({ code: 'auth/network-request-failed', message: 'offline' }))
+                .toBe('Sign in failed: offline');
+        });
+
+        it('should cope with a missing error', () => {
+            expect(getSignInErrorMessage(undefined)).toBe('Sign in failed: undefined');
+        });
+    });
+
+    describe('signIn', () => {
         beforeEach(() => {
-            document.body.innerHTML = `
-                <div id="apiKeySection"></div>
-                <div id="mainContent"></div>
-                <input id="apiKeyInput" value="test-api-key-12345678" />
-                <span id="keyIndicator"></span>
-                <div id="status"></div>
-            `;
+            document.body.innerHTML = '<button id="signInBtn"></button><p id="signInError"></p>';
             localThis.elements = {
-                apiKeySection: document.getElementById('apiKeySection'),
-                mainContent: document.getElementById('mainContent'),
-                apiKeyInput: document.getElementById('apiKeyInput'),
-                keyIndicator: document.getElementById('keyIndicator'),
-                status: document.getElementById('status')
+                signInBtn: document.getElementById('signInBtn'),
+                signInError: document.getElementById('signInError')
             };
-            localThis.appState = { apiKey: null };
+            localThis.GoogleAuthProvider = jest.fn();
+            localThis.signInWithPopup = jest.fn().mockResolvedValue({ user: {} });
+            localThis.firebase = {
+                auth: {},
+                signInWithPopup: localThis.signInWithPopup,
+                GoogleAuthProvider: localThis.GoogleAuthProvider
+            };
         });
 
-        it('should save valid API key', () => {
-            const onSuccess = jest.fn();
-            saveApiKey(localThis.elements, localThis.appState, { onSuccess });
-            
-            expect(localThis.appState.apiKey).toBe('test-api-key-12345678');
-            expect(localStorage.getItem('sticky_notes_api_key')).toBe('test-api-key-12345678');
-            expect(onSuccess).toHaveBeenCalled();
+        it('should open the Google popup and report success', async () => {
+            const result = await signIn(localThis.elements, localThis.firebase);
+
+            expect(result).toBe(true);
+            expect(localThis.GoogleAuthProvider).toHaveBeenCalled();
+            expect(localThis.signInWithPopup).toHaveBeenCalledWith(localThis.firebase.auth, expect.any(localThis.GoogleAuthProvider));
+            expect(localThis.elements.signInBtn.disabled).toBe(false);
         });
 
-        it('should show error for empty API key', () => {
-            localThis.elements.apiKeyInput.value = '  ';
-            saveApiKey(localThis.elements, localThis.appState);
-            
-            expect(localThis.appState.apiKey).toBeNull();
-            expect(localThis.elements.status.textContent).toContain('valid API key');
+        it('should disable the button while the popup is open', async () => {
+            let disabledDuringPopup;
+            localThis.signInWithPopup.mockImplementation(() => {
+                disabledDuringPopup = localThis.elements.signInBtn.disabled;
+                return Promise.resolve({});
+            });
+
+            await signIn(localThis.elements, localThis.firebase);
+
+            expect(disabledDuringPopup).toBe(true);
+        });
+
+        it('should report that sign-in is unavailable without Firebase', async () => {
+            const result = await signIn(localThis.elements, { auth: null });
+
+            expect(result).toBe(false);
+            expect(localThis.elements.signInError.textContent).toBe('Sign in is not available');
+        });
+
+        it('should show a message when the sign-in fails', async () => {
+            localThis.signInWithPopup.mockRejectedValue({ code: 'auth/popup-blocked' });
+
+            const result = await signIn(localThis.elements, localThis.firebase);
+
+            expect(result).toBe(false);
+            expect(localThis.elements.signInError.textContent).toContain('Popup was blocked');
+            expect(localThis.elements.signInBtn.disabled).toBe(false);
+        });
+
+        it('should show no message when the user closes the popup', async () => {
+            localThis.signInWithPopup.mockRejectedValue({ code: 'auth/popup-closed-by-user' });
+
+            const result = await signIn(localThis.elements, localThis.firebase);
+
+            expect(result).toBe(false);
+            expect(localThis.elements.signInError.textContent).toBe('');
+        });
+
+        it('should clear an earlier error before trying again', async () => {
+            localThis.elements.signInError.textContent = 'old error';
+
+            await signIn(localThis.elements, localThis.firebase);
+
+            expect(localThis.elements.signInError.textContent).toBe('');
+        });
+
+        it('should work without a button or error element', async () => {
+            expect(await signIn({}, localThis.firebase)).toBe(true);
+            expect(await signIn({}, { auth: null })).toBe(false);
+        });
+    });
+
+    describe('signOutUser', () => {
+        beforeEach(() => {
+            document.body.innerHTML = '<div id="status"></div>';
+            localThis.elements = { status: document.getElementById('status') };
+        });
+
+        it('should sign out of Firebase', async () => {
+            const signOut = jest.fn().mockResolvedValue();
+            const auth = {};
+
+            await signOutUser(localThis.elements, { auth, signOut });
+
+            expect(signOut).toHaveBeenCalledWith(auth);
+        });
+
+        it('should do nothing without Firebase', async () => {
+            await expect(signOutUser(localThis.elements, { auth: null })).resolves.toBeUndefined();
+        });
+
+        it('should show an error when sign-out fails', async () => {
+            const signOut = jest.fn().mockRejectedValue(new Error('network'));
+
+            await signOutUser(localThis.elements, { auth: {}, signOut });
+
+            expect(localThis.elements.status.textContent).toBe('Sign out failed: network');
+        });
+    });
+
+    describe('authFetch', () => {
+        const respond = (status) => ({ ok: status < 400, status });
+
+        it('should return null when nobody is signed in', async () => {
+            expect(await authFetch(null, 'https://api.test/x')).toBeNull();
+            expect(await authFetch({ currentUser: null }, 'https://api.test/x')).toBeNull();
+            expect(global.fetch).not.toHaveBeenCalled();
+        });
+
+        it('should send the current ID token as a Bearer header', async () => {
+            const auth = createAuth('token-1');
+            global.fetch.mockResolvedValueOnce(respond(200));
+
+            const response = await authFetch(auth, 'https://api.test/x');
+
+            expect(response.status).toBe(200);
+            expect(auth.currentUser.getIdToken).toHaveBeenCalledWith();
+            expect(global.fetch).toHaveBeenCalledTimes(1);
+            expect(global.fetch).toHaveBeenCalledWith('https://api.test/x', {
+                headers: { 'Authorization': 'Bearer token-1' }
+            });
+        });
+
+        it('should refresh the token once and retry after a 401', async () => {
+            const auth = createAuth('stale');
+            auth.currentUser.getIdToken.mockImplementation((force) => Promise.resolve(force ? 'fresh' : 'stale'));
+            global.fetch.mockResolvedValueOnce(respond(401)).mockResolvedValueOnce(respond(200));
+
+            const response = await authFetch(auth, 'https://api.test/x');
+
+            expect(response.status).toBe(200);
+            expect(auth.currentUser.getIdToken).toHaveBeenLastCalledWith(true);
+            expect(global.fetch).toHaveBeenCalledTimes(2);
+            expect(global.fetch.mock.calls[1][1].headers.Authorization).toBe('Bearer fresh');
+        });
+
+        it('should return the second 401 without retrying again', async () => {
+            const auth = createAuth();
+            global.fetch.mockResolvedValue(respond(401));
+
+            const response = await authFetch(auth, 'https://api.test/x');
+
+            expect(response.status).toBe(401);
+            expect(global.fetch).toHaveBeenCalledTimes(2);
+        });
+
+        it('should return the original 401 when the session cannot be refreshed', async () => {
+            const auth = createAuth();
+            auth.currentUser.getIdToken.mockImplementation((force) => (
+                force ? Promise.reject(new Error('auth/user-token-expired')) : Promise.resolve('stale')
+            ));
+            global.fetch.mockResolvedValueOnce(respond(401));
+
+            const response = await authFetch(auth, 'https://api.test/x');
+
+            expect(response.status).toBe(401);
+            expect(global.fetch).toHaveBeenCalledTimes(1);
+        });
+
+        it('should share one token refresh between concurrent requests', async () => {
+            const auth = createAuth('stale');
+            let finishRefresh;
+            auth.currentUser.getIdToken.mockImplementation((force) => (
+                force ? new Promise((resolve) => { finishRefresh = resolve; }) : Promise.resolve('stale')
+            ));
+            global.fetch.mockImplementation((url, options) => Promise.resolve(
+                respond(options.headers.Authorization === 'Bearer fresh' ? 200 : 401)
+            ));
+
+            const requests = Promise.all([
+                authFetch(auth, 'https://api.test/a'),
+                authFetch(auth, 'https://api.test/b'),
+                authFetch(auth, 'https://api.test/c')
+            ]);
+            await flushPromises();
+            finishRefresh('fresh');
+            const responses = await requests;
+
+            expect(responses.map((response) => response.status)).toEqual([200, 200, 200]);
+            expect(auth.currentUser.getIdToken.mock.calls.filter(([force]) => force)).toHaveLength(1);
+        });
+
+        it('should start a new refresh for a later 401', async () => {
+            const auth = createAuth('stale');
+            auth.currentUser.getIdToken.mockImplementation((force) => Promise.resolve(force ? 'fresh' : 'stale'));
+            global.fetch.mockResolvedValue(respond(401));
+
+            await authFetch(auth, 'https://api.test/a');
+            await authFetch(auth, 'https://api.test/b');
+
+            expect(auth.currentUser.getIdToken.mock.calls.filter(([force]) => force)).toHaveLength(2);
+        });
+
+        it('should not send an API key or touch localStorage', async () => {
+            const getItem = jest.spyOn(Storage.prototype, 'getItem');
+            global.fetch.mockResolvedValueOnce(respond(200));
+
+            await authFetch(createAuth('abc'), 'https://api.test/x');
+
+            expect(getItem).not.toHaveBeenCalled();
+            expect(JSON.stringify(global.fetch.mock.calls)).not.toContain('sk_live_');
+            getItem.mockRestore();
         });
     });
 
@@ -954,7 +1213,7 @@ describe('site/js/dashboard.js', () => {
                 <span id="legendPink"></span>
                 <div id="themeBreakdown"></div>
                 <span id="userEmail"></span>
-                <span id="keyIndicator"></span>
+                <span id="accountIndicator"></span>
                 <span id="lastUpdated"></span>
                 <span id="tabCountAll"></span>
                 <span id="tabCountOwned"></span>
@@ -966,7 +1225,7 @@ describe('site/js/dashboard.js', () => {
             `;
             localThis.elements = {
                 userEmailSpan: document.getElementById('userEmail'),
-                keyIndicator: document.getElementById('keyIndicator'),
+                accountIndicator: document.getElementById('accountIndicator'),
                 domainSelect: document.getElementById('domainSelect'),
                 tabCountAll: document.getElementById('tabCountAll'),
                 tabCountOwned: document.getElementById('tabCountOwned'),
@@ -974,7 +1233,7 @@ describe('site/js/dashboard.js', () => {
             };
         });
 
-        it('should return null when no API key', async () => {
+        it('should return null when nobody is signed in', async () => {
             const result = await loadStats(null, localThis.elements);
             expect(result).toBeNull();
         });
@@ -995,7 +1254,7 @@ describe('site/js/dashboard.js', () => {
                 json: () => Promise.resolve(mockStats)
             });
             
-            const result = await loadStats('test-api-key', localThis.elements);
+            const result = await loadStats(createAuth(), localThis.elements);
             
             expect(result).toEqual(mockStats);
             expect(document.getElementById('statTotal').textContent).toBe('10');
@@ -1017,7 +1276,7 @@ describe('site/js/dashboard.js', () => {
                 json: () => Promise.resolve(mockStats)
             });
             
-            await loadStats('test-api-key', localThis.elements);
+            await loadStats(createAuth(), localThis.elements);
             
             expect(localThis.elements.tabCountAll.textContent).toBe('10');
             expect(localThis.elements.tabCountOwned.textContent).toBe('5');
@@ -1039,7 +1298,7 @@ describe('site/js/dashboard.js', () => {
                 json: () => Promise.resolve(mockStats)
             });
             
-            await loadStats('test-api-key', localThis.elements);
+            await loadStats(createAuth(), localThis.elements);
             
             // Total is 100, so percentages should be: yellow=50%, blue=30%, green=15%, pink=5%
             // Browser normalizes the flex value (removes trailing zeros)
@@ -1064,7 +1323,7 @@ describe('site/js/dashboard.js', () => {
                 json: () => Promise.resolve(mockStats)
             });
             
-            await loadStats('test-api-key', localThis.elements);
+            await loadStats(createAuth(), localThis.elements);
             
             const themeBreakdown = document.getElementById('themeBreakdown');
             expect(themeBreakdown.getAttribute('aria-label')).toContain('4 yellow');
@@ -1086,10 +1345,23 @@ describe('site/js/dashboard.js', () => {
                 json: () => Promise.resolve(mockStats)
             });
             
-            await loadStats('test-api-key', localThis.elements);
+            await loadStats(createAuth(), localThis.elements);
             
             const lastUpdated = document.getElementById('lastUpdated');
             expect(lastUpdated.textContent).toContain('Updated');
+        });
+
+        it('should ignore a response that arrives after the user signed out', async () => {
+            const auth = createAuth();
+            global.fetch.mockImplementationOnce(() => {
+                auth.currentUser = null;
+                return Promise.resolve({ ok: true, json: () => Promise.resolve({ total: 99 }) });
+            });
+
+            const result = await loadStats(auth, localThis.elements);
+
+            expect(result).toBeNull();
+            expect(document.getElementById('statTotal').textContent).toBe('');
         });
 
         it('should handle API errors gracefully', async () => {
@@ -1098,14 +1370,14 @@ describe('site/js/dashboard.js', () => {
                 status: 500
             });
             
-            const result = await loadStats('test-api-key', localThis.elements);
+            const result = await loadStats(createAuth(), localThis.elements);
             expect(result).toBeNull();
         });
 
         it('should handle network errors gracefully', async () => {
             global.fetch.mockRejectedValueOnce(new Error('Network error'));
             
-            const result = await loadStats('test-api-key', localThis.elements);
+            const result = await loadStats(createAuth(), localThis.elements);
             expect(result).toBeNull();
         });
     });
@@ -1131,8 +1403,8 @@ describe('site/js/dashboard.js', () => {
             };
         });
 
-        it('should return empty array when no API key', async () => {
-            const result = await loadNotes({ apiKey: null, elements: localThis.elements });
+        it('should return empty array and show the sign-in overlay when nobody is signed in', async () => {
+            const result = await loadNotes({ auth: null, elements: localThis.elements });
             expect(result).toEqual([]);
         });
 
@@ -1153,7 +1425,7 @@ describe('site/js/dashboard.js', () => {
             });
             
             const result = await loadNotes({
-                apiKey: 'test-key',
+                auth: createAuth(),
                 elements: localThis.elements,
                 currentFilter: 'all'
             });
@@ -1165,20 +1437,21 @@ describe('site/js/dashboard.js', () => {
         it('should handle 401 unauthorized', async () => {
             const onUnauthorized = jest.fn();
             
-            global.fetch.mockResolvedValueOnce({
+            global.fetch.mockResolvedValue({
                 ok: false,
                 status: 401
             });
             
             const result = await loadNotes({
-                apiKey: 'invalid-key',
+                auth: createAuth(),
                 elements: localThis.elements,
                 onUnauthorized
             });
             
             expect(result).toEqual([]);
             expect(onUnauthorized).toHaveBeenCalled();
-            expect(localStorage.getItem('sticky_notes_api_key')).toBeNull();
+            // One retry with a refreshed token before giving up
+            expect(global.fetch).toHaveBeenCalledTimes(2);
         });
 
         it('should filter by domain', async () => {
@@ -1195,7 +1468,7 @@ describe('site/js/dashboard.js', () => {
             });
             
             await loadNotes({
-                apiKey: 'test-key',
+                auth: createAuth(),
                 elements: localThis.elements
             });
             
@@ -1220,7 +1493,7 @@ describe('site/js/dashboard.js', () => {
             });
             
             await loadNotes({
-                apiKey: 'test-key',
+                auth: createAuth(),
                 elements: localThis.elements
             });
             
@@ -1244,7 +1517,7 @@ describe('site/js/dashboard.js', () => {
             });
             
             await loadNotes({
-                apiKey: 'test-key',
+                auth: createAuth(),
                 elements: localThis.elements
             });
             
@@ -1268,7 +1541,7 @@ describe('site/js/dashboard.js', () => {
             });
             
             await loadNotes({
-                apiKey: 'test-key',
+                auth: createAuth(),
                 elements: localThis.elements
             });
             
@@ -1284,7 +1557,7 @@ describe('site/js/dashboard.js', () => {
             });
             
             await loadNotes({
-                apiKey: 'test-key',
+                auth: createAuth(),
                 elements: localThis.elements
             });
             
@@ -1369,107 +1642,168 @@ describe('site/js/dashboard.js', () => {
         });
     });
 
-    describe('openSettings', () => {
+    describe('applyAuthState', () => {
         beforeEach(() => {
             document.body.innerHTML = `
-                <div id="apiKeySection" style="display: none;"></div>
+                <div id="signInSection" style="display: none;"></div>
                 <div id="mainContent"></div>
-                <input id="apiKeyInput" />
+                <span id="accountIndicator"></span>
+                <p id="signInError">old</p>
             `;
             localThis.elements = {
-                apiKeySection: document.getElementById('apiKeySection'),
+                signInSection: document.getElementById('signInSection'),
                 mainContent: document.getElementById('mainContent'),
-                apiKeyInput: document.getElementById('apiKeyInput')
+                accountIndicator: document.getElementById('accountIndicator'),
+                signInError: document.getElementById('signInError')
             };
         });
 
-        it('should pre-fill API key input and show section', () => {
-            openSettings(localThis.elements, 'existing-key');
-            
-            expect(localThis.elements.apiKeyInput.value).toBe('existing-key');
-            expect(localThis.elements.apiKeySection.style.display).toBe('flex');
+        it('should show the sign-in overlay when signed out', () => {
+            const onSignedOut = jest.fn();
+
+            applyAuthState(localThis.elements, null, { onSignedOut });
+
+            expect(localThis.elements.signInSection.style.display).toBe('flex');
+            expect(localThis.elements.accountIndicator.style.display).toBe('none');
+            expect(onSignedOut).toHaveBeenCalled();
+        });
+
+        it('should show the dashboard and the account when signed in', () => {
+            const onSignedIn = jest.fn();
+
+            applyAuthState(localThis.elements, { email: 'me@example.com' }, { onSignedIn });
+
+            expect(localThis.elements.signInSection.style.display).toBe('none');
+            expect(localThis.elements.mainContent.style.display).toBe('block');
+            expect(localThis.elements.accountIndicator.textContent).toBe('Signed in as me@example.com');
+            expect(localThis.elements.signInError.textContent).toBe('');
+            expect(onSignedIn).toHaveBeenCalled();
+        });
+
+        it('should work without callbacks', () => {
+            expect(() => applyAuthState({}, null)).not.toThrow();
+            expect(() => applyAuthState({}, { email: 'a@b.c' })).not.toThrow();
         });
     });
 
-    // ============================================
-    // Initialization Tests
-    // ============================================
+    describe('resetSignedOutState', () => {
+        it('should drop cached notes, the notes list and auto-refresh', () => {
+            document.body.innerHTML = '<input type="checkbox" id="autoRefresh" checked><div id="notesList">old</div>';
+            const interval = setInterval(() => {}, 1000);
+            const appState = { allNotes: [{ id: '1' }], displayedNotes: [{ id: '1' }], refreshInterval: interval };
 
-    describe('checkApiKey', () => {
-        beforeEach(() => {
+            resetSignedOutState(getDOMElements(), appState);
+
+            expect(appState.allNotes).toEqual([]);
+            expect(appState.displayedNotes).toEqual([]);
+            expect(appState.refreshInterval).toBeNull();
+            expect(document.getElementById('autoRefresh').checked).toBe(false);
+            expect(document.getElementById('notesList').innerHTML).toBe('');
+        });
+
+        it('should clear the stats, counts, theme bar, email and domains of the previous user', () => {
             document.body.innerHTML = `
-                <div id="apiKeySection" style="display: none;"></div>
-                <div id="mainContent"></div>
-                <span id="keyIndicator"></span>
+                <span id="statTotal">9</span><span id="statOwned">9</span><span id="statShared">9</span><span id="statDomains">9</span>
+                <span id="tabCountAll">9</span><span id="tabCountOwned">9</span><span id="tabCountShared">9</span>
+                <span id="legendYellow">4</span><span id="legendBlue">4</span><span id="legendGreen">4</span><span id="legendPink">4</span>
+                <div id="themeYellow" style="flex: 50"></div><div id="themeBlue" style="flex: 50"></div>
+                <div id="themeGreen"></div><div id="themePink"></div>
+                <span id="userEmail" title="Signed in as a@b.c">Signed in as a@b.c</span>
+                <select id="domainSelect"><option value="">All</option><option value="a.com">a.com</option><option value="__custom__">Custom</option></select>
             `;
-            localThis.elements = {
-                apiKeySection: document.getElementById('apiKeySection'),
-                mainContent: document.getElementById('mainContent'),
-                keyIndicator: document.getElementById('keyIndicator')
-            };
+
+            resetSignedOutState(getDOMElements(), { allNotes: [], displayedNotes: [] });
+
+            expect(document.getElementById('statTotal').textContent).toBe('-');
+            expect(document.getElementById('statDomains').textContent).toBe('-');
+            expect(document.getElementById('tabCountAll').textContent).toBe('');
+            expect(document.getElementById('legendYellow').textContent).toBe('0');
+            expect(document.getElementById('themeYellow').style.flex).toMatch(/^0/);
+            expect(document.getElementById('userEmail').textContent).toBe('');
+            expect(document.getElementById('userEmail').hasAttribute('title')).toBe(false);
+            expect(document.getElementById('domainSelect').options).toHaveLength(2);
         });
 
-        it('should show API key section when no key', () => {
-            const appState = { apiKey: null };
-            checkApiKey(localThis.elements, appState, {});
-            
-            expect(localThis.elements.apiKeySection.style.display).toBe('flex');
+        it('should work without the optional elements', () => {
+            document.body.innerHTML = '';
+            expect(() => resetSignedOutState({}, { allNotes: [], displayedNotes: [] })).not.toThrow();
+        });
+    });
+
+    describe('initializeFirebaseAuth', () => {
+        beforeEach(() => {
+            document.body.innerHTML = '<p id="signInError"></p>';
+            localThis.elements = { signInError: document.getElementById('signInError') };
         });
 
-        it('should hide section and call callback when key exists', () => {
-            const appState = { apiKey: 'valid-key-12345678901234567890' };
-            const onApiKeyValid = jest.fn();
-            
-            checkApiKey(localThis.elements, appState, { onApiKeyValid });
-            
-            expect(localThis.elements.apiKeySection.style.display).toBe('none');
-            expect(onApiKeyValid).toHaveBeenCalled();
+        it('should create the auth instance from the Firebase config', () => {
+            const app = {};
+            const auth = { name: 'auth' };
+            const initializeApp = jest.fn().mockReturnValue(app);
+            const getAuth = jest.fn().mockReturnValue(auth);
+
+            const result = initializeFirebaseAuth({ initializeApp, getAuth }, localThis.elements);
+
+            expect(result).toBe(auth);
+            expect(initializeApp).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'sticky-notes-chrome-extension' }));
+            expect(getAuth).toHaveBeenCalledWith(app);
+        });
+
+        it('should return null when the SDK is missing', () => {
+            expect(initializeFirebaseAuth({}, localThis.elements)).toBeNull();
+        });
+
+        it('should show the error and return null when initialization throws', () => {
+            const initializeApp = jest.fn(() => { throw new Error('bad config'); });
+
+            const result = initializeFirebaseAuth({ initializeApp, getAuth: jest.fn() }, localThis.elements);
+
+            expect(result).toBeNull();
+            expect(localThis.elements.signInError.textContent).toBe('Firebase initialization failed: bad config');
         });
     });
 
     describe('setupEventListeners', () => {
         beforeEach(() => {
             document.body.innerHTML = `
-                <button id="saveApiKeyBtn"></button>
-                <input id="apiKeyInput" />
+                <button id="signInBtn"></button>
                 <button id="loadBtn"></button>
                 <input id="urlInput" />
                 <select id="domainSelect"></select>
                 <button class="filter-tab" data-filter="all"></button>
                 <input type="checkbox" id="autoRefresh" />
-                <button id="settingsBtn"></button>
+                <button id="signOutBtn"></button>
                 <input type="search" id="searchInput" />
                 <div id="notesList"></div>
                 <div id="status"></div>
             `;
             localThis.elements = {
-                saveApiKeyBtn: document.getElementById('saveApiKeyBtn'),
-                apiKeyInput: document.getElementById('apiKeyInput'),
+                signInBtn: document.getElementById('signInBtn'),
                 loadBtn: document.getElementById('loadBtn'),
                 urlInput: document.getElementById('urlInput'),
                 domainSelect: document.getElementById('domainSelect'),
                 filterTabs: document.querySelectorAll('.filter-tab'),
                 autoRefreshCheckbox: document.getElementById('autoRefresh'),
-                settingsBtn: document.getElementById('settingsBtn'),
+                signOutBtn: document.getElementById('signOutBtn'),
                 searchInput: document.getElementById('searchInput'),
                 notesList: document.getElementById('notesList')
             };
             localThis.appState = { currentFilter: 'all', searchQuery: '', allNotes: [] };
             localThis.handlers = {
-                onSaveApiKey: jest.fn(),
+                onSignIn: jest.fn(),
+                onSignOut: jest.fn(),
                 onLoadNotes: jest.fn(),
                 onDomainChange: jest.fn(),
-                onRefresh: jest.fn(),
-                onOpenSettings: jest.fn()
+                onRefresh: jest.fn()
             };
         });
 
-        it('should set up save API key button click handler', () => {
+        it('should set up sign-in button click handler', () => {
             setupEventListeners(localThis.elements, localThis.appState, localThis.handlers);
             
-            localThis.elements.saveApiKeyBtn.click();
+            localThis.elements.signInBtn.click();
             
-            expect(localThis.handlers.onSaveApiKey).toHaveBeenCalled();
+            expect(localThis.handlers.onSignIn).toHaveBeenCalled();
         });
 
         it('should set up load button click handler', () => {
@@ -1480,21 +1814,12 @@ describe('site/js/dashboard.js', () => {
             expect(localThis.handlers.onLoadNotes).toHaveBeenCalled();
         });
 
-        it('should set up settings button click handler', () => {
+        it('should set up sign-out button click handler', () => {
             setupEventListeners(localThis.elements, localThis.appState, localThis.handlers);
             
-            localThis.elements.settingsBtn.click();
+            localThis.elements.signOutBtn.click();
             
-            expect(localThis.handlers.onOpenSettings).toHaveBeenCalled();
-        });
-
-        it('should set up Enter key handler for API key input', () => {
-            setupEventListeners(localThis.elements, localThis.appState, localThis.handlers);
-            
-            const event = new KeyboardEvent('keypress', { key: 'Enter' });
-            localThis.elements.apiKeyInput.dispatchEvent(event);
-            
-            expect(localThis.handlers.onSaveApiKey).toHaveBeenCalled();
+            expect(localThis.handlers.onSignOut).toHaveBeenCalled();
         });
 
         it('should set up search input with debounced filtering', () => {
@@ -1529,14 +1854,13 @@ describe('site/js/dashboard.js', () => {
         it('should set up console errors toggle via event delegation', () => {
             // Create a notesList with console errors
             document.body.innerHTML = `
-                <button id="saveApiKeyBtn"></button>
-                <input id="apiKeyInput" />
+                <button id="signInBtn"></button>
                 <button id="loadBtn"></button>
                 <input id="urlInput" />
                 <select id="domainSelect"></select>
                 <button class="filter-tab" data-filter="all"></button>
                 <input type="checkbox" id="autoRefresh" />
-                <button id="settingsBtn"></button>
+                <button id="signOutBtn"></button>
                 <div id="notesList">
                     <div class="console-errors">
                         <button class="console-errors-header" aria-expanded="false">Toggle</button>
@@ -1546,14 +1870,13 @@ describe('site/js/dashboard.js', () => {
             `;
             
             const elements = {
-                saveApiKeyBtn: document.getElementById('saveApiKeyBtn'),
-                apiKeyInput: document.getElementById('apiKeyInput'),
+                signInBtn: document.getElementById('signInBtn'),
                 loadBtn: document.getElementById('loadBtn'),
                 urlInput: document.getElementById('urlInput'),
                 domainSelect: document.getElementById('domainSelect'),
                 filterTabs: document.querySelectorAll('.filter-tab'),
                 autoRefreshCheckbox: document.getElementById('autoRefresh'),
-                settingsBtn: document.getElementById('settingsBtn'),
+                signOutBtn: document.getElementById('signOutBtn'),
                 notesList: document.getElementById('notesList')
             };
             
@@ -1614,7 +1937,7 @@ describe('site/js/dashboard.js', () => {
             // Setup: no interval initially, but checkbox is checked
             localThis.appState = { 
                 refreshInterval: null, 
-                apiKey: 'test-key',
+                auth: createAuth(),
                 currentFilter: 'all'
             };
             
@@ -1649,7 +1972,7 @@ describe('site/js/dashboard.js', () => {
             // Setup: appState with API key
             localThis.appState = { 
                 refreshInterval: null, 
-                apiKey: 'test-key',
+                auth: createAuth(),
                 currentFilter: 'all'
             };
             
@@ -1676,6 +1999,7 @@ describe('site/js/dashboard.js', () => {
             // Simulate pageshow event from BFCache (persisted = true)
             const event = new PageTransitionEvent('pageshow', { persisted: true });
             window.dispatchEvent(event);
+            await flushPromises();
             
             // Should have made fetch calls immediately for stats and notes
             expect(global.fetch).toHaveBeenCalled();
@@ -1689,7 +2013,7 @@ describe('site/js/dashboard.js', () => {
             // Setup: appState without API key
             localThis.appState = { 
                 refreshInterval: null, 
-                apiKey: null,
+                auth: null,
                 currentFilter: 'all'
             };
             
@@ -1715,7 +2039,7 @@ describe('site/js/dashboard.js', () => {
         it('should not restore interval on pageshow if not from BFCache', () => {
             localThis.appState = { 
                 refreshInterval: null, 
-                apiKey: 'test-key',
+                auth: createAuth(),
                 currentFilter: 'all'
             };
             
@@ -1851,7 +2175,7 @@ describe('site/js/dashboard.js', () => {
             });
             
             await loadNotes({
-                apiKey: 'test-key',
+                auth: createAuth(),
                 elements: localThis.elements
             });
             
@@ -1875,7 +2199,7 @@ describe('site/js/dashboard.js', () => {
             });
             
             await loadNotes({
-                apiKey: 'test-key',
+                auth: createAuth(),
                 elements: localThis.elements
             });
             
@@ -1904,28 +2228,26 @@ describe('site/js/dashboard.js', () => {
             };
             
             document.body.innerHTML = `
-                <button id="saveApiKeyBtn"></button>
-                <input id="apiKeyInput" />
+                <button id="signInBtn"></button>
                 <button id="loadBtn"></button>
                 <input id="urlInput" />
                 <select id="domainSelect"></select>
                 <button class="filter-tab" data-filter="all"></button>
                 <input type="checkbox" id="autoRefresh" />
-                <button id="settingsBtn"></button>
+                <button id="signOutBtn"></button>
                 <input type="search" id="searchInput" />
                 <div id="notesList"></div>
                 <div id="status"></div>
             `;
             
             const elements = {
-                saveApiKeyBtn: document.getElementById('saveApiKeyBtn'),
-                apiKeyInput: document.getElementById('apiKeyInput'),
+                signInBtn: document.getElementById('signInBtn'),
                 loadBtn: document.getElementById('loadBtn'),
                 urlInput: document.getElementById('urlInput'),
                 domainSelect: document.getElementById('domainSelect'),
                 filterTabs: document.querySelectorAll('.filter-tab'),
                 autoRefreshCheckbox: document.getElementById('autoRefresh'),
-                settingsBtn: document.getElementById('settingsBtn'),
+                signOutBtn: document.getElementById('signOutBtn'),
                 searchInput: document.getElementById('searchInput'),
                 notesList: document.getElementById('notesList')
             };
@@ -2459,10 +2781,6 @@ describe('site/js/dashboard.js', () => {
             expect(filterNotesBySearch([{ id: '1' }], 'abc')).toEqual([]);
         });
 
-        it('hideApiKeySection should handle missing elements', () => {
-            expect(() => hideApiKeySection({})).not.toThrow();
-        });
-
         it('handleDomainSelectChange should do nothing without a domain select', () => {
             const loadFn = jest.fn();
 
@@ -2506,17 +2824,6 @@ describe('site/js/dashboard.js', () => {
             expect(list.innerHTML).toContain('Unknown');
         });
 
-        it('saveApiKey should work without callbacks', () => {
-            document.body.innerHTML = '<input id="k" value="abc"><div id="s"></div>';
-
-            saveApiKey({
-                apiKeyInput: document.getElementById('k'),
-                status: document.getElementById('s')
-            }, state);
-
-            expect(state.apiKey).toBe('abc');
-        });
-
         it('handleFilterTabClick should work without a loader', () => {
             document.body.innerHTML = '<button class="t" data-filter="owned"></button>';
             const tab = document.querySelector('.t');
@@ -2544,19 +2851,6 @@ describe('site/js/dashboard.js', () => {
 
             expect(appState.refreshInterval).toBeNull();
         });
-
-        it('openSettings should work without an API key input or key', () => {
-            document.body.innerHTML = '<input id="k" value="old">';
-
-            openSettings({ apiKeyInput: document.getElementById('k') });
-            expect(document.getElementById('k').value).toBe('');
-
-            expect(() => openSettings({})).not.toThrow();
-        });
-
-        it('checkApiKey should work without callbacks', () => {
-            expect(() => checkApiKey({}, { apiKey: 'a-valid-key' })).not.toThrow();
-        });
     });
 
     describe('loadStats edge cases', () => {
@@ -2570,7 +2864,7 @@ describe('site/js/dashboard.js', () => {
             global.fetch.mockResolvedValueOnce(okResponse({ total: 0, owned: 0, shared: 0, domainCount: 0, user: {} }));
             const elements = getDOMElements();
 
-            const result = await loadStats('key', elements);
+            const result = await loadStats(createAuth(), elements);
 
             expect(result).not.toBeNull();
             expect(document.getElementById('tabCountAll').textContent).toBe('');
@@ -2585,7 +2879,7 @@ describe('site/js/dashboard.js', () => {
             `;
             global.fetch.mockResolvedValueOnce(okResponse({ total: 2, owned: 2, shared: 0, byTheme: { yellow: 2 } }));
 
-            await loadStats('key', getDOMElements());
+            await loadStats(createAuth(), getDOMElements());
 
             expect(document.getElementById('themeBlue').style.flex).toContain('0');
             expect(document.getElementById('themeBreakdown').getAttribute('aria-label')).toContain('0 blue');
@@ -2598,7 +2892,7 @@ describe('site/js/dashboard.js', () => {
             `;
             global.fetch.mockResolvedValueOnce(okResponse({ total: 3, byTheme: { blue: 3 } }));
 
-            await loadStats('key', getDOMElements());
+            await loadStats(createAuth(), getDOMElements());
 
             expect(document.getElementById('themeBreakdown').getAttribute('aria-label')).toContain('0 yellow');
         });
@@ -2607,7 +2901,7 @@ describe('site/js/dashboard.js', () => {
             document.body.innerHTML = '';
             global.fetch.mockResolvedValueOnce(okResponse({ total: 2, byTheme: { yellow: 1, blue: 1 } }));
 
-            const result = await loadStats('key', getDOMElements());
+            const result = await loadStats(createAuth(), getDOMElements());
 
             expect(result).not.toBeNull();
         });
@@ -2618,7 +2912,7 @@ describe('site/js/dashboard.js', () => {
             `;
             global.fetch.mockResolvedValueOnce(okResponse({ total: 0 }));
 
-            await loadStats('key', getDOMElements());
+            await loadStats(createAuth(), getDOMElements());
 
             expect(document.getElementById('themeYellow').style.flex).toMatch(/^0/);
         });
@@ -2627,7 +2921,7 @@ describe('site/js/dashboard.js', () => {
             document.body.innerHTML = '<select id="domainSelect"><option value="">All</option><option value="__custom__">Custom</option></select>';
             global.fetch.mockResolvedValueOnce(okResponse({ total: 1 }));
 
-            await loadStats('key', getDOMElements());
+            await loadStats(createAuth(), getDOMElements());
 
             expect(document.getElementById('domainSelect').options).toHaveLength(2);
         });
@@ -2660,7 +2954,7 @@ describe('site/js/dashboard.js', () => {
         });
 
         it('should return an empty list without an API key or elements', async () => {
-            expect(await loadNotes({ apiKey: null })).toEqual([]);
+            expect(await loadNotes({ auth: null })).toEqual([]);
         });
 
         it('should fetch commented notes along with their comments', async () => {
@@ -2683,7 +2977,7 @@ describe('site/js/dashboard.js', () => {
             });
 
             const notes = await loadNotes({
-                apiKey: 'key',
+                auth: createAuth(),
                 elements: localThis.elements,
                 currentFilter: 'commented'
             });
@@ -2698,7 +2992,7 @@ describe('site/js/dashboard.js', () => {
         it('should not fetch comments when there are no commented notes', async () => {
             global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [] }));
 
-            const notes = await loadNotes({ apiKey: 'key', elements: localThis.elements, currentFilter: 'commented' });
+            const notes = await loadNotes({ auth: createAuth(), elements: localThis.elements, currentFilter: 'commented' });
 
             expect(notes).toEqual([]);
             expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -2707,13 +3001,13 @@ describe('site/js/dashboard.js', () => {
         it('should treat a missing notes field as an empty list', async () => {
             global.fetch.mockResolvedValueOnce(jsonResponse({}));
 
-            expect(await loadNotes({ apiKey: 'key', elements: localThis.elements })).toEqual([]);
+            expect(await loadNotes({ auth: createAuth(), elements: localThis.elements })).toEqual([]);
         });
 
         it('should pass the filter param for non-all filters', async () => {
             global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [] }));
 
-            await loadNotes({ apiKey: 'key', elements: localThis.elements, currentFilter: 'owned' });
+            await loadNotes({ auth: createAuth(), elements: localThis.elements, currentFilter: 'owned' });
 
             expect(global.fetch.mock.calls[0][0]).toContain('filter=owned');
         });
@@ -2723,7 +3017,7 @@ describe('site/js/dashboard.js', () => {
             localThis.elements.urlInput.value = 'https://example.com/x';
             global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [] }));
 
-            await loadNotes({ apiKey: 'key', elements: localThis.elements });
+            await loadNotes({ auth: createAuth(), elements: localThis.elements });
 
             expect(global.fetch.mock.calls[0][0]).toContain('url=');
         });
@@ -2733,7 +3027,7 @@ describe('site/js/dashboard.js', () => {
             localThis.elements.urlInput.value = 'example.com';
             global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [] }));
 
-            await loadNotes({ apiKey: 'key', elements: localThis.elements });
+            await loadNotes({ auth: createAuth(), elements: localThis.elements });
 
             expect(global.fetch.mock.calls[0][0]).toContain('domain=example.com');
         });
@@ -2742,17 +3036,93 @@ describe('site/js/dashboard.js', () => {
             global.fetch.mockResolvedValueOnce(jsonResponse({}, false, 401));
             const onUnauthorized = jest.fn();
 
-            const notes = await loadNotes({ apiKey: 'key', elements: localThis.elements, onUnauthorized });
+            const notes = await loadNotes({ auth: createAuth(), elements: localThis.elements, onUnauthorized });
 
             expect(notes).toEqual([]);
             expect(onUnauthorized).toHaveBeenCalled();
-            expect(localThis.elements.status.textContent).toContain('Invalid API key');
+            expect(localThis.elements.status.textContent).toContain('Your session has expired');
+        });
+
+        it('should explain a 403 and end the session through the callback', async () => {
+            global.fetch.mockResolvedValueOnce(jsonResponse({}, false, 403));
+            const onUnauthorized = jest.fn();
+
+            const notes = await loadNotes({ auth: createAuth(), elements: localThis.elements, onUnauthorized });
+
+            expect(notes).toEqual([]);
+            expect(onUnauthorized).toHaveBeenCalledWith(expect.stringContaining('email address is not verified'));
+            expect(localThis.elements.status.textContent).toContain('email address is not verified');
+        });
+
+        it('should pass the session expired message for a 401', async () => {
+            global.fetch.mockResolvedValue(jsonResponse({}, false, 401));
+            const onUnauthorized = jest.fn();
+
+            await loadNotes({ auth: createAuth(), elements: localThis.elements, onUnauthorized });
+
+            expect(onUnauthorized).toHaveBeenCalledWith('Your session has expired. Please sign in again.');
+        });
+
+        it('should treat a user who signed out while the request started as unauthorized', async () => {
+            // loadNotes sees the user first, and authFetch finds nobody a moment later
+            const user = createAuth().currentUser;
+            let reads = 0;
+            const auth = { get currentUser() { reads += 1; return reads === 1 ? user : null; } };
+            const onUnauthorized = jest.fn();
+
+            const notes = await loadNotes({ auth, elements: localThis.elements, onUnauthorized });
+
+            expect(notes).toEqual([]);
+            expect(global.fetch).not.toHaveBeenCalled();
+            expect(onUnauthorized).toHaveBeenCalledWith('Your session has expired. Please sign in again.');
+        });
+
+        it('should drop a response that arrives after the user signed out', async () => {
+            const auth = createAuth();
+            state.allNotes = [];
+            global.fetch.mockImplementationOnce(() => {
+                auth.currentUser = null;
+                return Promise.resolve(jsonResponse({ notes: [{ id: 'old', url: 'https://a.com' }] }));
+            });
+
+            const notes = await loadNotes({ auth, elements: localThis.elements });
+
+            expect(notes).toEqual([]);
+            expect(state.allNotes).toEqual([]);
+            expect(localThis.elements.notesList.innerHTML).toBe('');
+        });
+
+        it('should drop a response when a different account signed in meanwhile', async () => {
+            const auth = createAuth();
+            global.fetch.mockImplementationOnce(() => {
+                auth.currentUser = { email: 'other@example.com', getIdToken: jest.fn().mockResolvedValue('t') };
+                return Promise.resolve(jsonResponse({ notes: [{ id: 'old', url: 'https://a.com' }] }));
+            });
+
+            const notes = await loadNotes({ auth, elements: localThis.elements });
+
+            expect(notes).toEqual([]);
+            expect(state.allNotes).toEqual([]);
+        });
+
+        it('should ignore a stale 401 when a different account signed in meanwhile', async () => {
+            const auth = createAuth();
+            const onUnauthorized = jest.fn();
+            global.fetch.mockImplementationOnce(() => {
+                auth.currentUser = { email: 'other@example.com', getIdToken: jest.fn().mockResolvedValue('t') };
+                return Promise.resolve(jsonResponse({}, false, 401));
+            });
+
+            const notes = await loadNotes({ auth, elements: localThis.elements, onUnauthorized });
+
+            expect(notes).toEqual([]);
+            expect(onUnauthorized).not.toHaveBeenCalled();
         });
 
         it('should handle a 401 response without status element or callback', async () => {
             global.fetch.mockResolvedValueOnce(jsonResponse({}, false, 401));
 
-            const notes = await loadNotes({ apiKey: 'key', elements: { notesList: localThis.elements.notesList } });
+            const notes = await loadNotes({ auth: createAuth(), elements: { notesList: localThis.elements.notesList } });
 
             expect(notes).toEqual([]);
         });
@@ -2760,7 +3130,7 @@ describe('site/js/dashboard.js', () => {
         it('should report other API errors', async () => {
             global.fetch.mockResolvedValueOnce(jsonResponse({}, false, 500));
 
-            const notes = await loadNotes({ apiKey: 'key', elements: localThis.elements });
+            const notes = await loadNotes({ auth: createAuth(), elements: localThis.elements });
 
             expect(notes).toEqual([]);
             expect(localThis.elements.status.textContent).toContain('API error: 500');
@@ -2769,13 +3139,13 @@ describe('site/js/dashboard.js', () => {
         it('should handle fetch failures without a status element', async () => {
             global.fetch.mockRejectedValueOnce(new Error('offline'));
 
-            expect(await loadNotes({ apiKey: 'key', elements: {} })).toEqual([]);
+            expect(await loadNotes({ auth: createAuth(), elements: {} })).toEqual([]);
         });
 
         it('should succeed without a status element or notes list', async () => {
             global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [{ id: 'a' }] }));
 
-            const notes = await loadNotes({ apiKey: 'key', elements: {} });
+            const notes = await loadNotes({ auth: createAuth(), elements: {} });
 
             expect(notes).toHaveLength(1);
         });
@@ -2787,7 +3157,7 @@ describe('site/js/dashboard.js', () => {
                 { id: 'a', content: 'abc', url: 'https://a.com', selector: '.a', createdAt: '2024-01-01T00:00:00Z' }
             ] }));
 
-            await loadNotes({ apiKey: 'key', elements: localThis.elements });
+            await loadNotes({ auth: createAuth(), elements: localThis.elements });
 
             expect(localThis.elements.status.textContent).toContain('0 of 1');
         });
@@ -2799,7 +3169,7 @@ describe('site/js/dashboard.js', () => {
             localThis.elements.domainSelect.value = 'a.com';
             global.fetch.mockResolvedValueOnce(jsonResponse({ notes: [] }));
 
-            await loadNotes({ apiKey: 'key', elements: localThis.elements });
+            await loadNotes({ auth: createAuth(), elements: localThis.elements });
 
             expect(localThis.elements.notesList.innerHTML).toContain('a.com');
         });
@@ -2813,15 +3183,14 @@ describe('site/js/dashboard.js', () => {
         const buildDom = () => {
             document.body.innerHTML = `
                 <div id="status"></div>
-                <button id="saveApiKeyBtn"></button>
-                <input id="apiKeyInput">
+                <button id="signInBtn"></button>
                 <button id="loadBtn"></button>
                 <input id="urlInput">
                 <select id="domainSelect"><option value="">All</option></select>
                 <button class="filter-tab" data-filter="all"></button>
                 <button class="filter-tab" data-filter="owned"></button>
                 <input type="checkbox" id="autoRefresh">
-                <button id="settingsBtn"></button>
+                <button id="signOutBtn"></button>
                 <input id="searchInput">
                 <div id="notesList"></div>
             `;
@@ -2832,11 +3201,10 @@ describe('site/js/dashboard.js', () => {
             const elements = buildDom();
             setupEventListeners(elements, { ...state });
 
-            elements.saveApiKeyBtn.click();
+            elements.signInBtn.click();
             elements.loadBtn.click();
-            elements.settingsBtn.click();
+            elements.signOutBtn.click();
             elements.domainSelect.dispatchEvent(new Event('change'));
-            elements.apiKeyInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter' }));
             elements.urlInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter' }));
             elements.filterTabs[1].click();
 
@@ -2845,13 +3213,12 @@ describe('site/js/dashboard.js', () => {
 
         it('should ignore non-Enter keypresses', () => {
             const elements = buildDom();
-            const handlers = { onSaveApiKey: jest.fn(), onLoadNotes: jest.fn() };
+            const handlers = { onSignIn: jest.fn(), onLoadNotes: jest.fn() };
             setupEventListeners(elements, { ...state }, handlers);
 
-            elements.apiKeyInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'a' }));
             elements.urlInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'a' }));
 
-            expect(handlers.onSaveApiKey).not.toHaveBeenCalled();
+            expect(handlers.onSignIn).not.toHaveBeenCalled();
             expect(handlers.onLoadNotes).not.toHaveBeenCalled();
         });
 
@@ -2860,30 +3227,29 @@ describe('site/js/dashboard.js', () => {
             const elements = buildDom();
             const appState = { ...state, refreshInterval: null };
             const handlers = {
-                onSaveApiKey: jest.fn(),
+                onSignIn: jest.fn(),
+                onSignOut: jest.fn(),
                 onLoadNotes: jest.fn(),
                 onDomainChange: jest.fn(),
-                onRefresh: jest.fn(),
-                onOpenSettings: jest.fn()
+                onRefresh: jest.fn()
             };
             setupEventListeners(elements, appState, handlers);
 
-            elements.apiKeyInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter' }));
             elements.urlInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter' }));
             elements.domainSelect.dispatchEvent(new Event('change'));
             elements.filterTabs[1].click();
             elements.autoRefreshCheckbox.checked = true;
             elements.autoRefreshCheckbox.dispatchEvent(new Event('change'));
             jest.advanceTimersByTime(5000);
-            elements.settingsBtn.click();
-            elements.saveApiKeyBtn.click();
+            elements.signOutBtn.click();
+            elements.signInBtn.click();
             elements.loadBtn.click();
             clearRefreshInterval(appState);
 
-            expect(handlers.onSaveApiKey).toHaveBeenCalledTimes(2);
+            expect(handlers.onSignIn).toHaveBeenCalledTimes(1);
             expect(handlers.onDomainChange).toHaveBeenCalled();
             expect(handlers.onRefresh).toHaveBeenCalled();
-            expect(handlers.onOpenSettings).toHaveBeenCalled();
+            expect(handlers.onSignOut).toHaveBeenCalled();
             expect(appState.currentFilter).toBe('owned');
         });
 
@@ -2977,7 +3343,7 @@ describe('site/js/dashboard.js', () => {
         });
 
         it('should clear the interval on pagehide', () => {
-            const appState = { apiKey: null, refreshInterval: setInterval(() => {}, 1000) };
+            const appState = { auth: null, refreshInterval: setInterval(() => {}, 1000) };
             setupCleanup(appState);
 
             window.dispatchEvent(new Event('pagehide'));
@@ -2986,7 +3352,7 @@ describe('site/js/dashboard.js', () => {
         });
 
         it('should ignore pageshow events that are not persisted', () => {
-            const appState = { apiKey: 'key', refreshInterval: null, currentFilter: 'all' };
+            const appState = { auth: createAuth(), refreshInterval: null, currentFilter: 'all' };
             setupCleanup(appState);
 
             window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false }));
@@ -2994,24 +3360,26 @@ describe('site/js/dashboard.js', () => {
             expect(global.fetch).not.toHaveBeenCalled();
         });
 
-        it('should refresh and restart auto refresh when restored from bfcache', () => {
-            const appState = { apiKey: 'key', refreshInterval: null, currentFilter: 'all' };
+        it('should refresh and restart auto refresh when restored from bfcache', async () => {
+            const appState = { auth: createAuth(), refreshInterval: null, currentFilter: 'all' };
             document.getElementById('autoRefresh').checked = true;
             setupCleanup(appState);
 
             window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+            await flushPromises();
             expect(global.fetch).toHaveBeenCalled();
             expect(appState.refreshInterval).not.toBeNull();
 
             global.fetch.mockClear();
             jest.advanceTimersByTime(5000);
+            await flushPromises();
             expect(global.fetch).toHaveBeenCalled();
 
             clearRefreshInterval(appState);
         });
 
         it('should not refresh without an API key or auto refresh', () => {
-            const appState = { apiKey: null, refreshInterval: null, currentFilter: 'all' };
+            const appState = { auth: null, refreshInterval: null, currentFilter: 'all' };
             setupCleanup(appState);
 
             window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
@@ -3022,7 +3390,7 @@ describe('site/js/dashboard.js', () => {
 
         it('should not restart auto refresh when an interval already exists', () => {
             const existing = setInterval(() => {}, 1000);
-            const appState = { apiKey: null, refreshInterval: existing, currentFilter: 'all' };
+            const appState = { auth: null, refreshInterval: existing, currentFilter: 'all' };
             document.getElementById('autoRefresh').checked = true;
             setupCleanup(appState);
 
@@ -3035,20 +3403,44 @@ describe('site/js/dashboard.js', () => {
 
     describe('init', () => {
         const initDom = `
-            <div id="apiKeySection"></div>
+            <div id="signInSection"></div>
             <div id="mainContent"></div>
-            <input id="apiKeyInput">
-            <button id="saveApiKeyBtn"></button>
-            <button id="settingsBtn"></button>
+            <button id="signInBtn"></button>
+            <p id="signInError"></p>
+            <button id="signOutBtn"></button>
             <input id="urlInput">
             <button id="loadBtn"></button>
             <div id="notesList"></div>
             <div id="status"></div>
             <input type="checkbox" id="autoRefresh">
             <select id="domainSelect"><option value="">All</option><option value="__custom__">Custom</option></select>
-            <span id="keyIndicator"></span>
+            <span id="accountIndicator"></span>
         `;
         const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+        // Firebase stand-ins. onAuthStateChanged keeps its listener so a test can sign in and out.
+        const createFirebase = (user = null) => {
+            const auth = { currentUser: user };
+            const firebase = {
+                auth,
+                listener: null,
+                initializeApp: jest.fn(() => ({})),
+                getAuth: jest.fn(() => auth),
+                onAuthStateChanged: jest.fn((_auth, listener) => {
+                    firebase.listener = listener;
+                    listener(auth.currentUser);
+                }),
+                signInWithPopup: jest.fn(() => Promise.resolve({})),
+                signOut: jest.fn(() => {
+                    auth.currentUser = null;
+                    firebase.listener(null);
+                    return Promise.resolve();
+                }),
+                GoogleAuthProvider: jest.fn()
+            };
+            return firebase;
+        };
+        const signedInUser = () => ({ email: 'me@example.com', getIdToken: jest.fn().mockResolvedValue('token') });
 
         beforeEach(() => {
             document.body.innerHTML = initDom;
@@ -3064,38 +3456,55 @@ describe('site/js/dashboard.js', () => {
             console.error.mockRestore();
         });
 
-        it('should show the API key section when no key is stored', () => {
-            init();
+        it('should remove a leftover API key from localStorage', () => {
+            localStorage.setItem('sticky_notes_api_key', 'sk_live_leftover');
 
-            expect(document.getElementById('apiKeySection').style.display).toBe('flex');
+            init(createFirebase());
+
+            expect(localStorage.getItem('sticky_notes_api_key')).toBeNull();
+        });
+
+        it('should show the sign-in overlay and call nothing when signed out', () => {
+            init(createFirebase());
+
+            expect(document.getElementById('signInSection').style.display).toBe('flex');
             expect(global.fetch).not.toHaveBeenCalled();
         });
 
-        it('should load stats and notes when a key is stored', async () => {
-            localStorage.setItem('sticky_notes_api_key', 'a-very-long-api-key-value');
+        it('should load stats and notes for a restored session', async () => {
+            const firebase = createFirebase(signedInUser());
 
-            init();
+            init(firebase);
             await flush();
 
             expect(global.fetch).toHaveBeenCalledTimes(2);
+            expect(global.fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer token');
             expect(document.getElementById('mainContent').style.display).toBe('block');
+            expect(document.getElementById('accountIndicator').textContent).toBe('Signed in as me@example.com');
+            expect(state.auth).toBe(firebase.auth);
         });
 
-        it('should save a new key and load data', async () => {
-            init();
-            document.getElementById('apiKeyInput').value = 'new-key';
+        it('should open the Google popup from the sign-in button and load data once signed in', async () => {
+            const firebase = createFirebase();
+            init(firebase);
 
-            document.getElementById('saveApiKeyBtn').click();
+            document.getElementById('signInBtn').click();
+            await flush();
+            expect(firebase.signInWithPopup).toHaveBeenCalledWith(firebase.auth, expect.any(firebase.GoogleAuthProvider));
+
+            // The auth listener fires when the popup succeeds
+            firebase.auth.currentUser = signedInUser();
+            firebase.listener(firebase.auth.currentUser);
             await flush();
 
-            expect(localStorage.getItem('sticky_notes_api_key')).toBe('new-key');
-            expect(global.fetch).toHaveBeenCalled();
+            expect(global.fetch).toHaveBeenCalledTimes(2);
+            expect(document.getElementById('signInSection').style.display).toBe('none');
         });
 
-        it('should wire load, domain change, refresh and settings handlers', async () => {
+        it('should wire load, domain change and refresh handlers', async () => {
             jest.useFakeTimers();
-            localStorage.setItem('sticky_notes_api_key', 'abc');
-            init();
+            init(createFirebase(signedInUser()));
+            await flushPromises();
             global.fetch.mockClear();
 
             document.getElementById('loadBtn').click();
@@ -3104,24 +3513,78 @@ describe('site/js/dashboard.js', () => {
             document.getElementById('autoRefresh').checked = true;
             document.getElementById('autoRefresh').dispatchEvent(new Event('change'));
             jest.advanceTimersByTime(5000);
-            document.getElementById('settingsBtn').click();
+            await flushPromises();
 
-            expect(global.fetch.mock.calls.length).toBeGreaterThanOrEqual(3);
-            expect(document.getElementById('apiKeyInput').value).toBe('abc');
+            expect(global.fetch.mock.calls.length).toBeGreaterThanOrEqual(4);
 
             document.getElementById('autoRefresh').checked = false;
             document.getElementById('autoRefresh').dispatchEvent(new Event('change'));
         });
 
-        it('should clear the key and show the key section on unauthorized responses', async () => {
-            localStorage.setItem('sticky_notes_api_key', 'bad');
-            global.fetch.mockImplementation(() => Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) }));
+        it('should sign out, stop auto-refresh and show the overlay from the sign-out button', async () => {
+            const firebase = createFirebase(signedInUser());
+            init(firebase);
+            await flush();
+            state.allNotes = [{ id: '1' }];
+            document.getElementById('autoRefresh').checked = true;
 
-            init();
+            document.getElementById('signOutBtn').click();
             await flush();
 
-            expect(state.apiKey).toBeNull();
-            expect(document.getElementById('apiKeySection').style.display).toBe('flex');
+            expect(firebase.signOut).toHaveBeenCalledWith(firebase.auth);
+            expect(document.getElementById('signInSection').style.display).toBe('flex');
+            expect(document.getElementById('accountIndicator').style.display).toBe('none');
+            expect(document.getElementById('autoRefresh').checked).toBe(false);
+            expect(state.allNotes).toEqual([]);
+        });
+
+        it('should end the session and show the overlay when the API keeps rejecting the token', async () => {
+            const firebase = createFirebase(signedInUser());
+            global.fetch.mockImplementation(() => Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) }));
+
+            init(firebase);
+            await flush();
+
+            expect(firebase.signOut).toHaveBeenCalled();
+            expect(document.getElementById('signInSection').style.display).toBe('flex');
+        });
+
+        it('should explain on the sign-in overlay why the session ended', async () => {
+            const firebase = createFirebase(signedInUser());
+            global.fetch.mockImplementation(() => Promise.resolve({ ok: false, status: 403, json: () => Promise.resolve({}) }));
+
+            init(firebase);
+            await flush();
+
+            expect(document.getElementById('signInError').textContent).toContain('email address is not verified');
+        });
+
+        it('should show the overlay with an error when the Firebase SDK did not load', () => {
+            init();
+
+            expect(state.auth).toBeNull();
+            expect(document.getElementById('signInSection').style.display).toBe('flex');
+            expect(document.getElementById('signInError').textContent).toContain('Sign in is not available');
+            expect(global.fetch).not.toHaveBeenCalled();
+        });
+
+        it('should keep the initialization error instead of the generic one', () => {
+            const firebase = createFirebase();
+            firebase.initializeApp.mockImplementation(() => { throw new Error('bad config'); });
+
+            init(firebase);
+
+            expect(document.getElementById('signInError').textContent).toBe('Firebase initialization failed: bad config');
+        });
+
+        it('should not store any credential in localStorage', async () => {
+            const setItem = jest.spyOn(Storage.prototype, 'setItem');
+
+            init(createFirebase(signedInUser()));
+            await flush();
+
+            expect(setItem).not.toHaveBeenCalled();
+            setItem.mockRestore();
         });
     });
 
@@ -3138,6 +3601,36 @@ describe('site/js/dashboard.js', () => {
             await import('../../site/js/dashboard.js?loading');
 
             expect(addSpy).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
+        });
+
+        it('should start the dashboard with an error when the Firebase SDK cannot load', async () => {
+            document.body.innerHTML = `
+                <div id="signInSection"></div><div id="mainContent"></div>
+                <p id="signInError"></p>
+            `;
+            jest.spyOn(console, 'error').mockImplementation(() => {});
+
+            // jsdom cannot import the https CDN modules, so the load fails
+            start();
+            await new Promise((resolve) => setTimeout(resolve, 50));
+
+            expect(console.error).toHaveBeenCalledWith('Failed to load Firebase:', expect.anything());
+            expect(document.getElementById('signInSection').style.display).toBe('flex');
+            expect(document.getElementById('signInError').textContent).toContain('Sign in is not available');
+        });
+
+        it('should pass the loaded Firebase functions to init', () => {
+            document.body.innerHTML = '<div id="signInSection"></div><div id="mainContent"></div><p id="signInError"></p>';
+            const auth = { currentUser: null };
+            const onAuthStateChanged = jest.fn();
+
+            initWithFirebaseModules([
+                { initializeApp: jest.fn(() => ({})) },
+                { getAuth: jest.fn(() => auth), onAuthStateChanged, signInWithPopup: jest.fn(), signOut: jest.fn(), GoogleAuthProvider: jest.fn() }
+            ]);
+
+            expect(state.auth).toBe(auth);
+            expect(onAuthStateChanged).toHaveBeenCalledWith(auth, expect.any(Function));
         });
 
         it('should skip auto-init when document is undefined', async () => {

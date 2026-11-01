@@ -22,7 +22,7 @@ API keys are used for all notes-related operations. Include the key in the `Auth
 Authorization: Bearer sk_live_abc123...
 ```
 
-### 2. Firebase ID Tokens (for key management)
+### 2. Firebase ID Tokens (for key management and the web dashboard)
 
 To generate or manage API keys, use a Firebase ID token:
 
@@ -31,6 +31,16 @@ Authorization: Bearer eyJhbGciOiJSUzI1NiIs...
 ```
 
 You can obtain a Firebase ID token by signing in with the Chrome extension or using the Firebase Auth SDK.
+
+The `/notes` and `/notes/:noteId/comments` routes accept either credential. The web dashboard signs in with
+Google and sends a short-lived (about one hour) Firebase ID token, so it never stores an API key. Scripts and
+the MCP server keep using API keys. A `Bearer` value that starts with `sk_live_` is treated as an API key, and any
+other `Bearer` value that looks like a JWT is verified as a Firebase ID token.
+
+A signed-in user has both `notes:read` and `notes:write` on their own notes. The token must carry a verified email
+address, because notes are shared by email. The session is also checked for revocation (a disabled account or
+revoked refresh tokens), at most once a minute per user. A `Bearer` value that is not shaped like an ID token is
+treated as an API key.
 
 ---
 
@@ -399,9 +409,9 @@ The Chrome extension automatically captures console errors when creating notes, 
 
 ## Rate Limiting
 
-The API enforces rate limits per API key:
+The API enforces rate limits per API key, or per user for Firebase ID tokens:
 
-- **100 requests per minute** per API key
+- **100 requests per minute** per API key or signed-in user
 
 Rate limit headers are included in every response:
 
@@ -440,8 +450,8 @@ All errors follow a consistent format:
 | Status | Error | Description |
 |--------|-------|-------------|
 | 400 | Bad Request | Invalid request body or parameters |
-| 401 | Unauthorized | Missing or invalid API key |
-| 403 | Forbidden | Valid key but insufficient permissions |
+| 401 | Unauthorized | Missing or invalid API key or Firebase ID token |
+| 403 | Forbidden | Valid credential but insufficient permissions, or a Firebase ID token without a verified email |
 | 404 | Not Found | Resource doesn't exist |
 | 429 | Too Many Requests | Rate limit exceeded |
 | 500 | Internal Server Error | Server-side error |

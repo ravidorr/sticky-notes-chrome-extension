@@ -5,7 +5,8 @@
 
 import { Router } from 'express';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { apiKeyAuth } from '../middleware/auth.js';
+import { apiKeyOrFirebaseAuth } from '../middleware/auth.js';
+import { apiLimiter } from '../middleware/rateLimit.js';
 import { validateNoteData, normalizeUrl, normalizeDomain, VALID_THEMES } from '../lib/utils.js';
 
 const router = Router();
@@ -54,7 +55,7 @@ async function getCommentCounts(db, noteIds) {
  *   - limit: Max results (default 50, max 100)
  *   - offset: Pagination offset (default 0)
  */
-router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
+router.get('/', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
     const { userId, userEmail } = req.apiKey;
     const { url, domain, filter = 'all', limit = '50', offset = '0' } = req.query;
@@ -271,7 +272,7 @@ router.get('/', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) =>
  *   - q: Search query (required)
  *   - limit: Max results (default 50, max 100)
  */
-router.get('/search', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
+router.get('/search', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
     const { userId, userEmail } = req.apiKey;
     const { q, limit = '50' } = req.query;
@@ -372,7 +373,7 @@ router.get('/search', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
  * GET /api/notes/stats
  * Get statistics about the user's notes
  */
-router.get('/stats', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
+router.get('/stats', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
     const { userId, userEmail } = req.apiKey;
     const normalizedEmail = userEmail?.toLowerCase();
@@ -495,7 +496,7 @@ router.get('/stats', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, re
  *   - limit: Max results (default 50, max 100)
  *   - offset: Pagination offset (default 0)
  */
-router.get('/commented', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
+router.get('/commented', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
     const { userId, userEmail } = req.apiKey;
     const { limit = '50', offset = '0' } = req.query;
@@ -607,7 +608,7 @@ router.get('/commented', apiKeyAuth({ requiredScope: 'notes:read' }), async (req
  *   - format: Export format (json only for now)
  *   - includeComments: Whether to include comments (default false)
  */
-router.get('/export', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
+router.get('/export', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
     const { userId, userEmail } = req.apiKey;
     const { includeComments = 'false' } = req.query;
@@ -719,7 +720,7 @@ router.get('/export', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, r
  * GET /api/notes/:id
  * Get a specific note by ID (owned or shared)
  */
-router.get('/:id', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
+router.get('/:id', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
     const { userId, userEmail } = req.apiKey;
     const { id } = req.params;
@@ -782,7 +783,7 @@ router.get('/:id', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res)
  * POST /api/notes
  * Create a new note
  */
-router.post('/', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.post('/', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId } = req.apiKey;
     const noteData = req.body;
@@ -841,7 +842,7 @@ router.post('/', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) 
  * PUT /api/notes/:id
  * Update a note
  */
-router.put('/:id', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.put('/:id', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId } = req.apiKey;
     const { id } = req.params;
@@ -929,7 +930,7 @@ router.put('/:id', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res
  * Delete multiple notes at once
  * Body: { ids: string[] }
  */
-router.delete('/bulk', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.delete('/bulk', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId } = req.apiKey;
     const { ids } = req.body;
@@ -1002,7 +1003,7 @@ router.delete('/bulk', apiKeyAuth({ requiredScope: 'notes:write' }), async (req,
  * DELETE /api/notes/:id
  * Delete a note
  */
-router.delete('/:id', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.delete('/:id', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId } = req.apiKey;
     const { id } = req.params;
@@ -1044,7 +1045,7 @@ router.delete('/:id', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, 
  * POST /api/notes/:id/share
  * Share a note with another user by email
  */
-router.post('/:id/share', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.post('/:id/share', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId } = req.apiKey;
     const { id } = req.params;
@@ -1140,7 +1141,7 @@ router.post('/:id/share', apiKeyAuth({ requiredScope: 'notes:write' }), async (r
  * DELETE /api/notes/:id/share/:email
  * Unshare a note (remove user from sharedWith)
  */
-router.delete('/:id/share/:email', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.delete('/:id/share/:email', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId } = req.apiKey;
     const { id, email } = req.params;
@@ -1193,7 +1194,7 @@ router.delete('/:id/share/:email', apiKeyAuth({ requiredScope: 'notes:write' }),
  * Create multiple notes at once
  * Body: { notes: Array<NoteData> }
  */
-router.post('/bulk', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.post('/bulk', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId } = req.apiKey;
     const { notes } = req.body;
