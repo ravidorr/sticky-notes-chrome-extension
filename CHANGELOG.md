@@ -13,6 +13,8 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.23] - 2026-11-01
+
 ### Security
 
 - Fixed Dependabot alerts for `re2js`, `katex`, `compression` and `@grpc/grpc-js` in the dev tooling and
