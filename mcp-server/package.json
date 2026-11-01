@@ -9,6 +9,6 @@
     "panel": "npx serve panel -l 3002"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.32.0"
   }
 }
