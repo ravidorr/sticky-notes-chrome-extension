@@ -22,6 +22,17 @@ const RATE_LIMIT = {
 };
 
 /**
+ * How long a successful revocation check is trusted for one user. A disabled account or a
+ * revoked session is locked out within this time, without a user lookup on every request.
+ */
+const REVOCATION_CHECK_TTL_MS = 60 * 1000;
+
+/**
+ * uid -> time of the last successful revocation check
+ */
+const revocationChecks = new Map();
+
+/**
  * Clean up old rate limit entries
  */
 function cleanupRateLimits() {
@@ -29,6 +40,11 @@ function cleanupRateLimits() {
   for (const [key, data] of rateLimitStore.entries()) {
     if (now - data.windowStart > RATE_LIMIT.windowMs) {
       rateLimitStore.delete(key);
+    }
+  }
+  for (const [uid, checkedAt] of revocationChecks.entries()) {
+    if (now - checkedAt >= REVOCATION_CHECK_TTL_MS) {
+      revocationChecks.delete(uid);
     }
   }
 }
@@ -245,41 +261,88 @@ export function firebaseAuth() {
 const FIREBASE_USER_SCOPES = ['notes:read', 'notes:write'];
 
 /**
+ * Shape of a JWT (a Firebase ID token): three base64url segments
+ */
+const JWT_PATTERN = /^[\w-]+\.[\w-]+\.[\w-]+$/;
+
+/**
+ * Error codes of firebase-admin that mean the token itself is bad (401). Anything else, such as
+ * a failed certificate fetch or a lookup error, is a server problem (500) and must not look like
+ * an expired session to the dashboard.
+ * @param {Error} error - Error thrown by verifyIdToken
+ * @returns {boolean} True when the token is invalid, expired or revoked
+ */
+function isInvalidTokenError(error) {
+  return typeof error?.code === 'string'
+    && error.code.startsWith('auth/')
+    && error.code !== 'auth/internal-error';
+}
+
+/**
+ * Verify an ID token, checking for revocation unless it was checked recently for this user
+ * @param {string} idToken - Firebase ID token
+ * @returns {Promise<Object>} Decoded token
+ */
+async function verifyFirebaseToken(idToken) {
+  const auth = getAuth();
+  const decodedToken = await auth.verifyIdToken(idToken, false);
+  const checkedAt = revocationChecks.get(decodedToken.uid);
+
+  if (checkedAt !== undefined && Date.now() - checkedAt < REVOCATION_CHECK_TTL_MS) {
+    return decodedToken;
+  }
+
+  const checkedToken = await auth.verifyIdToken(idToken, true);
+  revocationChecks.set(checkedToken.uid, Date.now());
+  return checkedToken;
+}
+
+/**
  * API key or Firebase ID token authentication
  *
  * The dashboard signs in with Google and sends a Firebase ID token, while the MCP server,
- * scripts and curl send an API key. A Bearer value that starts with the API key prefix is
- * handled by apiKeyAuth, anything else is verified as a Firebase ID token. Both paths fill
- * req.apiKey with the same shape, so the route handlers do not care which one was used.
+ * scripts and curl send an API key. A Bearer value that starts with the API key prefix, and
+ * anything that is not shaped like a JWT, is handled by apiKeyAuth. A JWT is verified as a
+ * Firebase ID token. Both paths fill req.apiKey with the same shape, so the route handlers
+ * do not care which one was used.
  *
  * @param {Object} options - Middleware options
  * @param {string} options.requiredScope - Required scope for this route
  * @returns {Function} Express middleware function
  */
 export function apiKeyOrFirebaseAuth(options = {}) {
-  const { requiredScope } = options;
   const checkApiKey = apiKeyAuth(options);
-  // A revoked or disabled account must not keep writing for the rest of the token's hour.
-  // The check costs a lookup per request, so reads (the dashboard polls) skip it.
-  const checkRevoked = Boolean(requiredScope) && requiredScope !== 'notes:read';
 
   return async (req, res, next) => {
     const authHeader = req.headers.authorization;
     const credential = extractApiKey(authHeader);
 
-    // Keep every non-token case on the API key path, so its messages and behavior are unchanged
-    // (a truthy credential means the header is a string)
-    if (!credential || !authHeader.startsWith('Bearer ') || credential.startsWith(API_KEY_PREFIX)) {
+    // A missing header, a raw key, an API key and anything that cannot be an ID token stay on
+    // the API key path, so its messages and behavior are unchanged for those callers.
+    // (A truthy credential means the header is a string)
+    if (
+      !credential
+      || !authHeader.startsWith('Bearer ')
+      || credential.startsWith(API_KEY_PREFIX)
+      || !JWT_PATTERN.test(credential)
+    ) {
       return checkApiKey(req, res, next);
     }
 
     let decodedToken;
     try {
-      decodedToken = await getAuth().verifyIdToken(credential, checkRevoked);
-    } catch {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Invalid or expired Firebase ID token'
+      decodedToken = await verifyFirebaseToken(credential);
+    } catch (error) {
+      if (isInvalidTokenError(error)) {
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Invalid or expired Firebase ID token'
+        });
+      }
+      console.error('Firebase token verification error:', error);
+      return res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'Authentication failed'
       });
     }
 

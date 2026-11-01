@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { apiKeyOrFirebaseAuth } from '../middleware/auth.js';
+import { apiLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
 const NOTES_COLLECTION = 'notes';
@@ -39,7 +40,7 @@ async function checkNoteAccess(db, noteId, userId, userEmail) {
  * GET /api/notes/:noteId/comments
  * List all comments for a note
  */
-router.get('/:noteId/comments', apiKeyOrFirebaseAuth({ requiredScope: 'notes:read' }), async (req, res) => {
+router.get('/:noteId/comments', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
     const { userId, userEmail } = req.apiKey;
     const { noteId } = req.params;
@@ -88,7 +89,7 @@ router.get('/:noteId/comments', apiKeyOrFirebaseAuth({ requiredScope: 'notes:rea
  * POST /api/notes/:noteId/comments
  * Add a comment to a note
  */
-router.post('/:noteId/comments', apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.post('/:noteId/comments', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId, userEmail } = req.apiKey;
     const { noteId } = req.params;
@@ -187,7 +188,7 @@ router.post('/:noteId/comments', apiKeyOrFirebaseAuth({ requiredScope: 'notes:wr
  * PUT /api/notes/:noteId/comments/:commentId
  * Update a comment
  */
-router.put('/:noteId/comments/:commentId', apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.put('/:noteId/comments/:commentId', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId } = req.apiKey;
     const { noteId, commentId } = req.params;
@@ -256,7 +257,7 @@ router.put('/:noteId/comments/:commentId', apiKeyOrFirebaseAuth({ requiredScope:
  * DELETE /api/notes/:noteId/comments/:commentId
  * Delete a comment
  */
-router.delete('/:noteId/comments/:commentId', apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.delete('/:noteId/comments/:commentId', apiLimiter, apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId } = req.apiKey;
     const { noteId, commentId } = req.params;

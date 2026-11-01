@@ -79,9 +79,14 @@ function keySnapshot(overrides = {}) {
   };
 }
 
+// The middleware remembers a revocation check per uid, so each test gets its own user by default
+let uidCounter = 0;
+const JWT = 'header.payload.signature';
+
 function verifiedToken(overrides = {}) {
+  uidCounter += 1;
   return {
-    uid: 'uid-1',
+    uid: `uid-${uidCounter}`,
     email: 'Dash.User@Example.com',
     email_verified: true,
     name: 'Dash User',
@@ -313,13 +318,13 @@ describe('functions/middleware/auth.js', () => {
     });
 
     it('accepts a valid ID token and fills req.apiKey with the same shape as a key', async () => {
-      mockVerifyIdToken.mockResolvedValue(verifiedToken());
+      mockVerifyIdToken.mockResolvedValue(verifiedToken({ uid: 'uid-fixed' }));
 
-      const req = await run('Bearer id-token');
+      const req = await run(`Bearer ${JWT}`);
 
       expect(req.apiKey).toEqual({
         id: null,
-        userId: 'uid-1',
+        userId: 'uid-fixed',
         userEmail: 'dash.user@example.com',
         scopes: ['notes:read', 'notes:write'],
         name: 'Dash User',
@@ -332,49 +337,137 @@ describe('functions/middleware/auth.js', () => {
     it('falls back to the email when the token has no display name', async () => {
       mockVerifyIdToken.mockResolvedValue(verifiedToken({ name: undefined }));
 
-      const req = await run('Bearer id-token');
+      const req = await run(`Bearer ${JWT}`);
 
       expect(req.apiKey.name).toBe('dash.user@example.com');
     });
 
-    it('does not check revocation on read routes', async () => {
+    it('checks revocation on the first request of a user, for read and write routes alike', async () => {
       mockVerifyIdToken.mockResolvedValue(verifiedToken());
 
-      await run('Bearer id-token', { requiredScope: 'notes:read' });
+      await run(`Bearer ${JWT}`, { requiredScope: 'notes:read' });
 
-      expect(mockVerifyIdToken).toHaveBeenCalledWith('id-token', false);
+      expect(mockVerifyIdToken).toHaveBeenNthCalledWith(1, JWT, false);
+      expect(mockVerifyIdToken).toHaveBeenNthCalledWith(2, JWT, true);
+      expect(localThis.next).toHaveBeenCalledTimes(1);
     });
 
-    it('checks revocation on write routes', async () => {
+    it('checks revocation when no scope is required', async () => {
       mockVerifyIdToken.mockResolvedValue(verifiedToken());
 
-      await run('Bearer id-token', { requiredScope: 'notes:write' });
+      await apiKeyOrFirebaseAuth()(createReq(`Bearer ${JWT}`), localThis.res, localThis.next);
 
-      expect(mockVerifyIdToken).toHaveBeenCalledWith('id-token', true);
+      expect(mockVerifyIdToken).toHaveBeenCalledWith(JWT, true);
     });
 
-    it('does not check revocation when no scope is required', async () => {
-      mockVerifyIdToken.mockResolvedValue(verifiedToken());
+    it('does not repeat the revocation lookup within a minute, and does again after it', async () => {
+      const token = verifiedToken();
+      mockVerifyIdToken.mockResolvedValue(token);
+      const now = realNow();
+      const dateNow = jest.spyOn(Date, 'now').mockReturnValue(now);
 
-      await apiKeyOrFirebaseAuth()(createReq('Bearer id-token'), localThis.res, localThis.next);
+      await run(`Bearer ${JWT}`);
+      mockVerifyIdToken.mockClear();
+      dateNow.mockReturnValue(now + 30 * 1000);
+      await run(`Bearer ${JWT}`);
 
-      expect(mockVerifyIdToken).toHaveBeenCalledWith('id-token', false);
+      expect(mockVerifyIdToken).toHaveBeenCalledTimes(1);
+      expect(mockVerifyIdToken).toHaveBeenCalledWith(JWT, false);
+
+      mockVerifyIdToken.mockClear();
+      dateNow.mockReturnValue(now + 61 * 1000);
+      await run(`Bearer ${JWT}`);
+
+      expect(mockVerifyIdToken).toHaveBeenCalledWith(JWT, true);
     });
 
-    it('rejects an invalid or revoked ID token', async () => {
-      mockVerifyIdToken.mockRejectedValue(new Error('auth/id-token-revoked'));
+    it('locks a user out once the revocation check fails', async () => {
+      const token = verifiedToken();
+      mockVerifyIdToken.mockImplementation((_jwt, checkRevoked) => (
+        checkRevoked
+          ? Promise.reject(Object.assign(new Error('revoked'), { code: 'auth/id-token-revoked' }))
+          : Promise.resolve(token)
+      ));
 
-      await run('Bearer id-token', { requiredScope: 'notes:write' });
+      await run(`Bearer ${JWT}`);
+
+      expect(localThis.res.statusCode).toBe(401);
+      expect(localThis.next).not.toHaveBeenCalled();
+    });
+
+    it('drops old revocation checks when the cleanup runs', async () => {
+      const token = verifiedToken();
+      mockVerifyIdToken.mockResolvedValue(token);
+      const now = realNow();
+      const dateNow = jest.spyOn(Date, 'now').mockReturnValue(now);
+      await run(`Bearer ${JWT}`);
+
+      dateNow.mockReturnValue(now + 2 * 60 * 1000);
+      runCleanup();
+      mockVerifyIdToken.mockClear();
+      await run(`Bearer ${JWT}`);
+
+      expect(mockVerifyIdToken).toHaveBeenCalledWith(JWT, true);
+    });
+
+    it('keeps a recent revocation check when the cleanup runs', async () => {
+      const token = verifiedToken();
+      mockVerifyIdToken.mockResolvedValue(token);
+      await run(`Bearer ${JWT}`);
+
+      runCleanup();
+      mockVerifyIdToken.mockClear();
+      await run(`Bearer ${JWT}`);
+
+      expect(mockVerifyIdToken).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends a Bearer value that is not shaped like an ID token to the API key path', async () => {
+      await run('Bearer not-a-token');
+
+      expect(mockVerifyIdToken).not.toHaveBeenCalled();
+      expect(localThis.res.statusCode).toBe(401);
+      expect(localThis.res.body.message).toBe('Invalid API key format');
+    });
+
+    it('rejects an invalid, expired or revoked ID token with 401', async () => {
+      mockVerifyIdToken.mockRejectedValue(Object.assign(new Error('expired'), { code: 'auth/id-token-expired' }));
+
+      await run(`Bearer ${JWT}`, { requiredScope: 'notes:write' });
 
       expect(localThis.res.statusCode).toBe(401);
       expect(localThis.res.body.message).toBe('Invalid or expired Firebase ID token');
       expect(localThis.next).not.toHaveBeenCalled();
     });
 
+    it.each([
+      ['an error without a code', new Error('network down')],
+      ['an error with a non-string code', Object.assign(new Error('odd'), { code: 500 })],
+      ['a non-auth error code', Object.assign(new Error('app'), { code: 'app/network-error' })],
+      ['an internal auth error', Object.assign(new Error('boom'), { code: 'auth/internal-error' })]
+    ])('returns 500 and logs %s, so a backend problem does not look like an expired session', async (_name, error) => {
+      mockVerifyIdToken.mockRejectedValue(error);
+
+      await run(`Bearer ${JWT}`);
+
+      expect(localThis.res.statusCode).toBe(500);
+      expect(localThis.res.body.message).toBe('Authentication failed');
+      expect(console.error).toHaveBeenCalledWith('Firebase token verification error:', error);
+      expect(localThis.next).not.toHaveBeenCalled();
+    });
+
+    it('returns 500 when the thrown value is not an object', async () => {
+      mockVerifyIdToken.mockRejectedValue(undefined);
+
+      await run(`Bearer ${JWT}`);
+
+      expect(localThis.res.statusCode).toBe(500);
+    });
+
     it('rejects a token whose email is not verified', async () => {
       mockVerifyIdToken.mockResolvedValue(verifiedToken({ email_verified: false }));
 
-      await run('Bearer id-token');
+      await run(`Bearer ${JWT}`);
 
       expect(localThis.res.statusCode).toBe(403);
       expect(localThis.next).not.toHaveBeenCalled();
@@ -383,7 +476,7 @@ describe('functions/middleware/auth.js', () => {
     it('rejects a token with no email', async () => {
       mockVerifyIdToken.mockResolvedValue(verifiedToken({ email: undefined }));
 
-      await run('Bearer id-token');
+      await run(`Bearer ${JWT}`);
 
       expect(localThis.res.statusCode).toBe(403);
     });
@@ -393,9 +486,9 @@ describe('functions/middleware/auth.js', () => {
       const limited = apiKeyOrFirebaseAuth({ requiredScope: 'notes:read' });
 
       for (let i = 0; i < 100; i += 1) {
-        await limited(createReq('Bearer id-token'), createRes(), jest.fn());
+        await limited(createReq(`Bearer ${JWT}`), createRes(), jest.fn());
       }
-      await limited(createReq('Bearer id-token'), localThis.res, localThis.next);
+      await limited(createReq(`Bearer ${JWT}`), localThis.res, localThis.next);
 
       expect(localThis.res.statusCode).toBe(429);
       expect(localThis.next).not.toHaveBeenCalled();

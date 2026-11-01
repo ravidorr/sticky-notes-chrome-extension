@@ -1150,6 +1150,40 @@ describe('site/js/dashboard.js', () => {
             expect(global.fetch).toHaveBeenCalledTimes(1);
         });
 
+        it('should share one token refresh between concurrent requests', async () => {
+            const auth = createAuth('stale');
+            let finishRefresh;
+            auth.currentUser.getIdToken.mockImplementation((force) => (
+                force ? new Promise((resolve) => { finishRefresh = resolve; }) : Promise.resolve('stale')
+            ));
+            global.fetch.mockImplementation((url, options) => Promise.resolve(
+                respond(options.headers.Authorization === 'Bearer fresh' ? 200 : 401)
+            ));
+
+            const requests = Promise.all([
+                authFetch(auth, 'https://api.test/a'),
+                authFetch(auth, 'https://api.test/b'),
+                authFetch(auth, 'https://api.test/c')
+            ]);
+            await flushPromises();
+            finishRefresh('fresh');
+            const responses = await requests;
+
+            expect(responses.map((response) => response.status)).toEqual([200, 200, 200]);
+            expect(auth.currentUser.getIdToken.mock.calls.filter(([force]) => force)).toHaveLength(1);
+        });
+
+        it('should start a new refresh for a later 401', async () => {
+            const auth = createAuth('stale');
+            auth.currentUser.getIdToken.mockImplementation((force) => Promise.resolve(force ? 'fresh' : 'stale'));
+            global.fetch.mockResolvedValue(respond(401));
+
+            await authFetch(auth, 'https://api.test/a');
+            await authFetch(auth, 'https://api.test/b');
+
+            expect(auth.currentUser.getIdToken.mock.calls.filter(([force]) => force)).toHaveLength(2);
+        });
+
         it('should not send an API key or touch localStorage', async () => {
             const getItem = jest.spyOn(Storage.prototype, 'getItem');
             global.fetch.mockResolvedValueOnce(respond(200));
@@ -1315,6 +1349,19 @@ describe('site/js/dashboard.js', () => {
             
             const lastUpdated = document.getElementById('lastUpdated');
             expect(lastUpdated.textContent).toContain('Updated');
+        });
+
+        it('should ignore a response that arrives after the user signed out', async () => {
+            const auth = createAuth();
+            global.fetch.mockImplementationOnce(() => {
+                auth.currentUser = null;
+                return Promise.resolve({ ok: true, json: () => Promise.resolve({ total: 99 }) });
+            });
+
+            const result = await loadStats(auth, localThis.elements);
+
+            expect(result).toBeNull();
+            expect(document.getElementById('statTotal').textContent).toBe('');
         });
 
         it('should handle API errors gracefully', async () => {
@@ -1654,7 +1701,31 @@ describe('site/js/dashboard.js', () => {
             expect(document.getElementById('notesList').innerHTML).toBe('');
         });
 
+        it('should clear the stats, counts, theme bar, email and domains of the previous user', () => {
+            document.body.innerHTML = `
+                <span id="statTotal">9</span><span id="statOwned">9</span><span id="statShared">9</span><span id="statDomains">9</span>
+                <span id="tabCountAll">9</span><span id="tabCountOwned">9</span><span id="tabCountShared">9</span>
+                <span id="legendYellow">4</span><span id="legendBlue">4</span><span id="legendGreen">4</span><span id="legendPink">4</span>
+                <div id="themeYellow" style="flex: 50"></div><div id="themeBlue" style="flex: 50"></div>
+                <div id="themeGreen"></div><div id="themePink"></div>
+                <span id="userEmail" title="Signed in as a@b.c">Signed in as a@b.c</span>
+                <select id="domainSelect"><option value="">All</option><option value="a.com">a.com</option><option value="__custom__">Custom</option></select>
+            `;
+
+            resetSignedOutState(getDOMElements(), { allNotes: [], displayedNotes: [] });
+
+            expect(document.getElementById('statTotal').textContent).toBe('-');
+            expect(document.getElementById('statDomains').textContent).toBe('-');
+            expect(document.getElementById('tabCountAll').textContent).toBe('');
+            expect(document.getElementById('legendYellow').textContent).toBe('0');
+            expect(document.getElementById('themeYellow').style.flex).toMatch(/^0/);
+            expect(document.getElementById('userEmail').textContent).toBe('');
+            expect(document.getElementById('userEmail').hasAttribute('title')).toBe(false);
+            expect(document.getElementById('domainSelect').options).toHaveLength(2);
+        });
+
         it('should work without the optional elements', () => {
+            document.body.innerHTML = '';
             expect(() => resetSignedOutState({}, { allNotes: [], displayedNotes: [] })).not.toThrow();
         });
     });
@@ -2972,6 +3043,68 @@ describe('site/js/dashboard.js', () => {
             expect(localThis.elements.status.textContent).toContain('Your session has expired');
         });
 
+        it('should explain a 403 and end the session through the callback', async () => {
+            global.fetch.mockResolvedValueOnce(jsonResponse({}, false, 403));
+            const onUnauthorized = jest.fn();
+
+            const notes = await loadNotes({ auth: createAuth(), elements: localThis.elements, onUnauthorized });
+
+            expect(notes).toEqual([]);
+            expect(onUnauthorized).toHaveBeenCalledWith(expect.stringContaining('email address is not verified'));
+            expect(localThis.elements.status.textContent).toContain('email address is not verified');
+        });
+
+        it('should pass the session expired message for a 401', async () => {
+            global.fetch.mockResolvedValue(jsonResponse({}, false, 401));
+            const onUnauthorized = jest.fn();
+
+            await loadNotes({ auth: createAuth(), elements: localThis.elements, onUnauthorized });
+
+            expect(onUnauthorized).toHaveBeenCalledWith('Your session has expired. Please sign in again.');
+        });
+
+        it('should treat a user who signed out while the request started as unauthorized', async () => {
+            // loadNotes sees the user first, and authFetch finds nobody a moment later
+            const user = createAuth().currentUser;
+            let reads = 0;
+            const auth = { get currentUser() { reads += 1; return reads === 1 ? user : null; } };
+            const onUnauthorized = jest.fn();
+
+            const notes = await loadNotes({ auth, elements: localThis.elements, onUnauthorized });
+
+            expect(notes).toEqual([]);
+            expect(global.fetch).not.toHaveBeenCalled();
+            expect(onUnauthorized).toHaveBeenCalledWith('Your session has expired. Please sign in again.');
+        });
+
+        it('should drop a response that arrives after the user signed out', async () => {
+            const auth = createAuth();
+            state.allNotes = [];
+            global.fetch.mockImplementationOnce(() => {
+                auth.currentUser = null;
+                return Promise.resolve(jsonResponse({ notes: [{ id: 'old', url: 'https://a.com' }] }));
+            });
+
+            const notes = await loadNotes({ auth, elements: localThis.elements });
+
+            expect(notes).toEqual([]);
+            expect(state.allNotes).toEqual([]);
+            expect(localThis.elements.notesList.innerHTML).toBe('');
+        });
+
+        it('should drop a response when a different account signed in meanwhile', async () => {
+            const auth = createAuth();
+            global.fetch.mockImplementationOnce(() => {
+                auth.currentUser = { email: 'other@example.com', getIdToken: jest.fn().mockResolvedValue('t') };
+                return Promise.resolve(jsonResponse({ notes: [{ id: 'old', url: 'https://a.com' }] }));
+            });
+
+            const notes = await loadNotes({ auth, elements: localThis.elements });
+
+            expect(notes).toEqual([]);
+            expect(state.allNotes).toEqual([]);
+        });
+
         it('should handle a 401 response without status element or callback', async () => {
             global.fetch.mockResolvedValueOnce(jsonResponse({}, false, 401));
 
@@ -3400,6 +3533,16 @@ describe('site/js/dashboard.js', () => {
 
             expect(firebase.signOut).toHaveBeenCalled();
             expect(document.getElementById('signInSection').style.display).toBe('flex');
+        });
+
+        it('should explain on the sign-in overlay why the session ended', async () => {
+            const firebase = createFirebase(signedInUser());
+            global.fetch.mockImplementation(() => Promise.resolve({ ok: false, status: 403, json: () => Promise.resolve({}) }));
+
+            init(firebase);
+            await flush();
+
+            expect(document.getElementById('signInError').textContent).toContain('email address is not verified');
         });
 
         it('should show the overlay with an error when the Firebase SDK did not load', () => {

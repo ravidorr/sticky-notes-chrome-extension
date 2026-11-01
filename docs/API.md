@@ -35,10 +35,12 @@ You can obtain a Firebase ID token by signing in with the Chrome extension or us
 The `/notes` and `/notes/:noteId/comments` routes accept either credential. The web dashboard signs in with
 Google and sends a short-lived (about one hour) Firebase ID token, so it never stores an API key. Scripts and
 the MCP server keep using API keys. A `Bearer` value that starts with `sk_live_` is treated as an API key, and any
-other `Bearer` value is verified as a Firebase ID token.
+other `Bearer` value that looks like a JWT is verified as a Firebase ID token.
 
 A signed-in user has both `notes:read` and `notes:write` on their own notes. The token must carry a verified email
-address, because notes are shared by email. Write requests also check that the session has not been revoked.
+address, because notes are shared by email. The session is also checked for revocation (a disabled account or
+revoked refresh tokens), at most once a minute per user. A `Bearer` value that is not shaped like an ID token is
+treated as an API key.
 
 ---
 

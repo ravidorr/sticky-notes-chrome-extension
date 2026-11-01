@@ -10,6 +10,11 @@ import { API_BASE_URL, FIREBASE_CONFIG } from './config.js';
 // ============================================
 
 const LEGACY_API_KEY_STORAGE_KEY = 'sticky_notes_api_key';
+const STAT_CARD_IDS = ['statTotal', 'statOwned', 'statShared', 'statDomains'];
+const LEGEND_IDS = ['legendYellow', 'legendBlue', 'legendGreen', 'legendPink'];
+const THEME_SEGMENT_IDS = ['themeYellow', 'themeBlue', 'themeGreen', 'themePink'];
+const SESSION_EXPIRED_MESSAGE = 'Your session has expired. Please sign in again.';
+const UNVERIFIED_EMAIL_MESSAGE = 'This Google account cannot use the dashboard because its email address is not verified.';
 
 const state = {
     auth: null,
@@ -526,6 +531,26 @@ async function signOutUser(elements, firebase) {
 }
 
 /**
+ * Force one token refresh per user at a time. The commented view sends many requests at once,
+ * and when they all get a 401 they should share a single call to the token endpoint.
+ */
+const pendingRefreshes = new WeakMap();
+
+/**
+ * Get a freshly issued ID token, sharing a refresh that is already in flight
+ * @param {Object} user - Firebase user
+ * @returns {Promise<string>} Fresh ID token
+ */
+function refreshIdToken(user) {
+    let refresh = pendingRefreshes.get(user);
+    if (!refresh) {
+        refresh = user.getIdToken(true).finally(() => pendingRefreshes.delete(user));
+        pendingRefreshes.set(user, refresh);
+    }
+    return refresh;
+}
+
+/**
  * Fetch an API URL with the signed-in user's Firebase ID token.
  * getIdToken() returns the cached token until it is about to expire, then the SDK refreshes
  * it. A 401 means the token was rejected, so refresh once and retry before giving up.
@@ -543,7 +568,7 @@ async function authFetch(auth, url) {
 
     let freshToken;
     try {
-        freshToken = await user.getIdToken(true);
+        freshToken = await refreshIdToken(user);
     } catch {
         // The session can no longer be refreshed (revoked or disabled), so report the original 401
         return response;
@@ -558,7 +583,8 @@ async function authFetch(auth, url) {
  * @returns {Promise<Object|null>} Stats object or null
  */
 async function loadStats(auth, elements) {
-    if (!auth?.currentUser) return null;
+    const user = auth?.currentUser;
+    if (!user) return null;
     
     try {
         const response = await authFetch(auth, `${API_BASE_URL}/notes/stats`);
@@ -566,6 +592,9 @@ async function loadStats(auth, elements) {
         if (!response?.ok) return null;
         
         const stats = await response.json();
+        
+        // The user signed out, or another account signed in, while the request was running
+        if (auth.currentUser !== user) return null;
         
         // Update stat cards
         const statTotal = document.getElementById('statTotal');
@@ -656,7 +685,8 @@ async function loadNotes(options = {}) {
         onUnauthorized
     } = options;
     
-    if (!auth?.currentUser) {
+    const user = auth?.currentUser;
+    if (!user) {
         if (elements) showSignInSection(elements);
         return [];
     }
@@ -702,11 +732,12 @@ async function loadNotes(options = {}) {
 
         if (!response?.ok) {
             // No response means the user signed out while the request was starting
-            if (!response || response.status === 401) {
+            if (!response || response.status === 401 || response.status === 403) {
+                const message = response?.status === 403 ? UNVERIFIED_EMAIL_MESSAGE : SESSION_EXPIRED_MESSAGE;
                 if (elements?.status) {
-                    showStatus(elements.status, 'Your session has expired. Please sign in again.', 'error');
+                    showStatus(elements.status, message, 'error');
                 }
-                if (onUnauthorized) onUnauthorized();
+                if (onUnauthorized) onUnauthorized(message);
                 return [];
             }
             throw new Error(`API error: ${response.status}`);
@@ -733,6 +764,9 @@ async function loadNotes(options = {}) {
             );
             notes = notesWithComments;
         }
+        
+        // The user signed out, or another account signed in, while the requests were running
+        if (auth.currentUser !== user) return [];
         
         // Cache notes for search filtering
         state.allNotes = notes;
@@ -1570,10 +1604,11 @@ function init(firebaseModules = {}) {
         auth: state.auth,
         elements,
         currentFilter: state.currentFilter,
-        onUnauthorized: () => {
+        onUnauthorized: (message) => {
             // The token was rejected even after a refresh, so end the session
             signOutUser(elements, firebase);
             showSignInSection(elements);
+            showSignInError(elements.signInError, message);
         }
     });
     
@@ -1626,6 +1661,28 @@ function resetSignedOutState(elements, appState) {
     appState.allNotes = [];
     appState.displayedNotes = [];
     if (elements.notesList) elements.notesList.innerHTML = '';
+    
+    // Stat cards, tab counts, header email and domain list belong to the previous user too
+    STAT_CARD_IDS.forEach((id) => {
+        const card = document.getElementById(id);
+        if (card) card.textContent = '-';
+    });
+    [elements.tabCountAll, elements.tabCountOwned, elements.tabCountShared].forEach((tabCount) => {
+        if (tabCount) tabCount.textContent = '';
+    });
+    LEGEND_IDS.forEach((id) => {
+        const legend = document.getElementById(id);
+        if (legend) legend.textContent = '0';
+    });
+    THEME_SEGMENT_IDS.forEach((id) => {
+        const segment = document.getElementById(id);
+        if (segment) segment.style.flex = 0;
+    });
+    if (elements.userEmailSpan) {
+        elements.userEmailSpan.textContent = '';
+        elements.userEmailSpan.removeAttribute('title');
+    }
+    populateDomainDropdown(elements.domainSelect, []);
 }
 
 // ============================================
