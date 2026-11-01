@@ -4,7 +4,7 @@
     "url": "https://github.com/sponsors/ravidorr"
   },
   "name": "sticky-notes-chrome-extension",
-  "version": "1.20.22",
+  "version": "1.20.23",
   "description": "Element-anchored sticky notes for annotating any website",
   "type": "module",
   "scripts": {
@@ -124,5 +124,19 @@
     "fsevents@2.3.2": true,
     "protobufjs": false,
     "@firebase/util": false
+  },
+  "overrides": {
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "^1.13.6"
+    },
+    "markdownlint": {
+      "re2js": "^2.8.7"
+    },
+    "micromark-extension-math": {
+      "katex": "^0.18.2"
+    },
+    "serve": {
+      "compression": "^1.8.2"
+    }
   }
 }

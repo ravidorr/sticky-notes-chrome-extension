@@ -13,6 +13,16 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.23] - 2026-11-01
+
+### Security
+
+- Fixed Dependabot alerts for `re2js`, `katex`, `compression` and `@grpc/grpc-js` in the dev tooling and
+  Firebase dependency tree with npm `overrides` in the root `package.json` (patched releases, no change to the
+  extension bundle)
+- Fixed the `minimatch` and `glob` alerts in `functions/` by resolving a single `google-gax` 6.x release through an
+  npm `override`, which drops the vulnerable `rimraf`, `glob` and `minimatch` chain
+
 ## [1.20.22] - 2026-11-01
 
 ### Changed
