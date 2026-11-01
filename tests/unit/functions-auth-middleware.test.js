@@ -430,8 +430,15 @@ describe('functions/middleware/auth.js', () => {
       expect(localThis.res.body.message).toBe('Invalid API key format');
     });
 
-    it('rejects an invalid, expired or revoked ID token with 401', async () => {
-      mockVerifyIdToken.mockRejectedValue(Object.assign(new Error('expired'), { code: 'auth/id-token-expired' }));
+    it.each([
+      'auth/argument-error',
+      'auth/id-token-expired',
+      'auth/id-token-revoked',
+      'auth/invalid-id-token',
+      'auth/user-disabled',
+      'auth/user-not-found'
+    ])('rejects a token that fails with %s using 401', async (code) => {
+      mockVerifyIdToken.mockRejectedValue(Object.assign(new Error('bad token'), { code }));
 
       await run(`Bearer ${JWT}`, { requiredScope: 'notes:write' });
 
@@ -444,7 +451,9 @@ describe('functions/middleware/auth.js', () => {
       ['an error without a code', new Error('network down')],
       ['an error with a non-string code', Object.assign(new Error('odd'), { code: 500 })],
       ['a non-auth error code', Object.assign(new Error('app'), { code: 'app/network-error' })],
-      ['an internal auth error', Object.assign(new Error('boom'), { code: 'auth/internal-error' })]
+      ['an internal auth error', Object.assign(new Error('boom'), { code: 'auth/internal-error' })],
+      ['a credential error', Object.assign(new Error('creds'), { code: 'auth/invalid-credential' })],
+      ['a permission error', Object.assign(new Error('iam'), { code: 'auth/insufficient-permission' })]
     ])('returns 500 and logs %s, so a backend problem does not look like an expired session', async (_name, error) => {
       mockVerifyIdToken.mockRejectedValue(error);
 

@@ -267,15 +267,24 @@ const JWT_PATTERN = /^[\w-]+\.[\w-]+\.[\w-]+$/;
 
 /**
  * Error codes of firebase-admin that mean the token itself is bad (401). Anything else, such as
- * a failed certificate fetch or a lookup error, is a server problem (500) and must not look like
- * an expired session to the dashboard.
+ * a failed certificate fetch, a credential or permission problem, or a lookup error, is a server
+ * problem (500) and must not look like an expired session to the dashboard.
+ */
+const INVALID_TOKEN_CODES = new Set([
+  'auth/argument-error',
+  'auth/id-token-expired',
+  'auth/id-token-revoked',
+  'auth/invalid-id-token',
+  'auth/user-disabled',
+  'auth/user-not-found'
+]);
+
+/**
  * @param {Error} error - Error thrown by verifyIdToken
  * @returns {boolean} True when the token is invalid, expired or revoked
  */
 function isInvalidTokenError(error) {
-  return typeof error?.code === 'string'
-    && error.code.startsWith('auth/')
-    && error.code !== 'auth/internal-error';
+  return INVALID_TOKEN_CODES.has(error?.code);
 }
 
 /**

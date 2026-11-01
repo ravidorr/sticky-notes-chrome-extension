@@ -23,7 +23,7 @@ bump is listed under the next version bump after it.
 - The `/notes` and `/notes/:noteId/comments` routes of the Cloud Functions API now accept a Firebase ID token as well
   as an API key (`apiKeyOrFirebaseAuth`). Existing API key clients are unchanged. A token needs a verified email,
   is rate limited per user, and is checked for revocation at most once a minute per user. Token verification
-  failures caused by the backend return 500 instead of 401, so they do not sign dashboard users out.
+  failures caused by the backend (credentials, permissions, network) return 500 instead of 401, so they do not sign dashboard users out.
 - The notes and comments routes now have a per-client rate limit (1000 requests per minute per instance) that runs
   before authentication.
 - The dashboard Content Security Policy now allows only the Firebase Auth SDK and Google sign-in sources
