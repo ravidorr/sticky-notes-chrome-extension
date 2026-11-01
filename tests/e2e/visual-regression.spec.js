@@ -185,41 +185,23 @@ test.describe('Visual Regression Tests', () => {
     });
 
     test.describe('Dashboard Page', () => {
-        test('dashboard - API key overlay', async ({ page }) => {
+        // The dashboard only shows notes to a signed-in user, and a Google sign-in cannot run in a
+        // visual test, so both themes capture the sign-in overlay
+        test('dashboard - sign-in overlay', async ({ page }) => {
             await page.goto('/dashboard.html');
-            // Clear any stored API key to show overlay
-            await page.evaluate(() => localStorage.removeItem('sticky_notes_api_key'));
-            await page.reload();
             await page.waitForTimeout(300);
             
-            await expect(page).toHaveScreenshot('dashboard-api-key-overlay.png', {
+            await expect(page).toHaveScreenshot('dashboard-sign-in-overlay.png', {
                 animations: 'disabled'
             });
         });
 
-        test('dashboard - light mode', async ({ page }) => {
-            await page.goto('/dashboard.html');
-            await page.evaluate(() => {
-                localStorage.setItem('sticky_notes_api_key', 'test_key_for_screenshot');
-            });
-            await page.reload();
-            
-            await expect(page).toHaveScreenshot('dashboard-light.png', {
-                fullPage: true,
-                animations: 'disabled'
-            });
-        });
-
-        test('dashboard - dark mode', async ({ page }) => {
+        test('dashboard - sign-in overlay dark mode', async ({ page }) => {
             await page.emulateMedia({ colorScheme: 'dark' });
             await page.goto('/dashboard.html');
-            await page.evaluate(() => {
-                localStorage.setItem('sticky_notes_api_key', 'test_key_for_screenshot');
-            });
-            await page.reload();
+            await page.waitForTimeout(300);
             
-            await expect(page).toHaveScreenshot('dashboard-dark.png', {
-                fullPage: true,
+            await expect(page).toHaveScreenshot('dashboard-sign-in-overlay-dark.png', {
                 animations: 'disabled'
             });
         });

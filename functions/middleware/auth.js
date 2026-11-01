@@ -4,7 +4,8 @@
  */
 
 import { getFirestore } from 'firebase-admin/firestore';
-import { hashApiKey, isValidApiKeyFormat, hasScope } from '../lib/apiKeys.js';
+import { getAuth } from 'firebase-admin/auth';
+import { API_KEY_PREFIX, hashApiKey, isValidApiKeyFormat, hasScope } from '../lib/apiKeys.js';
 
 /**
  * Rate limiting store (in-memory for simplicity)
@@ -32,8 +33,8 @@ function cleanupRateLimits() {
   }
 }
 
-// Cleanup every minute
-setInterval(cleanupRateLimits, 60 * 1000);
+// Cleanup every minute. unref() keeps this timer from holding a process (or a test run) open
+setInterval(cleanupRateLimits, 60 * 1000).unref();
 
 /**
  * Check rate limit for a key
@@ -58,6 +59,30 @@ function checkRateLimit(keyId) {
     remaining,
     resetTime
   };
+}
+
+/**
+ * Count a request against the rate limit and set the X-RateLimit headers.
+ * Sends the 429 response itself when the limit is exceeded.
+ * @param {Object} res - Express response
+ * @param {string} id - Rate limit bucket (API key ID or user bucket)
+ * @returns {boolean} True when the request may continue
+ */
+function enforceRateLimit(res, id) {
+  const rateLimit = checkRateLimit(id);
+  res.set('X-RateLimit-Limit', RATE_LIMIT.maxRequests.toString());
+  res.set('X-RateLimit-Remaining', rateLimit.remaining.toString());
+  res.set('X-RateLimit-Reset', Math.ceil(rateLimit.resetTime / 1000).toString());
+
+  if (!rateLimit.allowed) {
+    res.status(429).json({
+      error: 'Too Many Requests',
+      message: 'Rate limit exceeded. Try again later.',
+      retryAfter: Math.ceil((rateLimit.resetTime - Date.now()) / 1000)
+    });
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -137,17 +162,8 @@ export function apiKeyAuth(options = {}) {
       }
       
       // Check rate limit
-      const rateLimit = checkRateLimit(keyDoc.id);
-      res.set('X-RateLimit-Limit', RATE_LIMIT.maxRequests.toString());
-      res.set('X-RateLimit-Remaining', rateLimit.remaining.toString());
-      res.set('X-RateLimit-Reset', Math.ceil(rateLimit.resetTime / 1000).toString());
-      
-      if (!rateLimit.allowed) {
-        return res.status(429).json({
-          error: 'Too Many Requests',
-          message: 'Rate limit exceeded. Try again later.',
-          retryAfter: Math.ceil((rateLimit.resetTime - Date.now()) / 1000)
-        });
+      if (!enforceRateLimit(res, keyDoc.id)) {
+        return;
       }
       
       // Check required scope
@@ -203,8 +219,6 @@ export function firebaseAuth() {
       
       const idToken = authHeader.substring(7);
       
-      // Import here to avoid circular dependencies
-      const { getAuth } = await import('firebase-admin/auth');
       const decodedToken = await getAuth().verifyIdToken(idToken);
       
       req.user = {
@@ -221,5 +235,75 @@ export function firebaseAuth() {
         message: 'Invalid or expired Firebase ID token'
       });
     }
+  };
+}
+
+/**
+ * Scopes granted to a signed-in user. The owner can already read and write all of their
+ * own notes in the extension, so a Firebase session gets the same access as a full API key.
+ */
+const FIREBASE_USER_SCOPES = ['notes:read', 'notes:write'];
+
+/**
+ * API key or Firebase ID token authentication
+ *
+ * The dashboard signs in with Google and sends a Firebase ID token, while the MCP server,
+ * scripts and curl send an API key. A Bearer value that starts with the API key prefix is
+ * handled by apiKeyAuth, anything else is verified as a Firebase ID token. Both paths fill
+ * req.apiKey with the same shape, so the route handlers do not care which one was used.
+ *
+ * @param {Object} options - Middleware options
+ * @param {string} options.requiredScope - Required scope for this route
+ * @returns {Function} Express middleware function
+ */
+export function apiKeyOrFirebaseAuth(options = {}) {
+  const { requiredScope } = options;
+  const checkApiKey = apiKeyAuth(options);
+  // A revoked or disabled account must not keep writing for the rest of the token's hour.
+  // The check costs a lookup per request, so reads (the dashboard polls) skip it.
+  const checkRevoked = Boolean(requiredScope) && requiredScope !== 'notes:read';
+
+  return async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    const credential = extractApiKey(authHeader);
+
+    // Keep every non-token case on the API key path, so its messages and behavior are unchanged
+    // (a truthy credential means the header is a string)
+    if (!credential || !authHeader.startsWith('Bearer ') || credential.startsWith(API_KEY_PREFIX)) {
+      return checkApiKey(req, res, next);
+    }
+
+    let decodedToken;
+    try {
+      decodedToken = await getAuth().verifyIdToken(credential, checkRevoked);
+    } catch {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid or expired Firebase ID token'
+      });
+    }
+
+    // Notes are shared by email, so only a verified address may stand in for the owner
+    if (!decodedToken.email || decodedToken.email_verified !== true) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'A verified email address is required'
+      });
+    }
+
+    if (!enforceRateLimit(res, `user:${decodedToken.uid}`)) {
+      return;
+    }
+
+    req.apiKey = {
+      id: null,
+      userId: decodedToken.uid,
+      userEmail: decodedToken.email.toLowerCase(),
+      scopes: FIREBASE_USER_SCOPES,
+      name: decodedToken.name || decodedToken.email.toLowerCase(),
+      authMethod: 'firebase'
+    };
+
+    return next();
   };
 }

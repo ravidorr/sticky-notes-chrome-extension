@@ -208,7 +208,8 @@ Features:
 - URL/domain filtering
 - Works with the site's light/dark theme
 
-Each user enters their own API key, which is stored locally in their browser.
+The dashboard uses Google sign-in (Firebase Auth) and does not store an API key. The local MCP panel below still
+uses an API key.
 
 ### Local Development
 

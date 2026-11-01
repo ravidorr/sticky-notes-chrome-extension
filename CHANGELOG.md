@@ -13,6 +13,22 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+### Security
+
+- The web dashboard (`site/dashboard.html`) signs in with Google through Firebase Auth instead of asking for a
+  long-lived `sk_live_` API key, so it no longer keeps a credential in `localStorage` (code-scanning alert
+  `js/clear-text-storage-of-sensitive-data`). It holds only the Firebase session, whose ID token lasts about an hour
+  and is refreshed by the SDK. A leftover `sticky_notes_api_key` entry is deleted on the first load.
+- The `/notes` and `/notes/:noteId/comments` routes of the Cloud Functions API now accept a Firebase ID token as well
+  as an API key (`apiKeyOrFirebaseAuth`). Existing API key clients are unchanged. A token needs a verified email,
+  is rate limited per user, and is checked for revocation on write requests.
+- The dashboard Content Security Policy now allows the Firebase Auth SDK and Google sign-in sources, the same
+  as the key generation page.
+
+### Changed
+
+- Added unit tests for `functions/middleware/auth.js` and included it in the coverage thresholds
+
 ## [1.20.23] - 2026-11-01
 
 ### Security

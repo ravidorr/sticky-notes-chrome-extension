@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <!-- Content Security Policy (fonts are self-hosted) -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self' https://*.cloudfunctions.net; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self' https://*.cloudfunctions.net https://*.googleapis.com https://*.firebaseio.com; frame-src https://accounts.google.com https://*.firebaseapp.com; base-uri 'self'; form-action 'self';">
     <meta name="google-site-verification" content="7fWtIQvn3-ZOWcEe7M8TU5hVy_uy5guIh3k1uDowdhY" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     
@@ -58,37 +58,31 @@
                         Auto-refresh <span class="refresh-interval">(5s)</span>
                     </label>
                     <span id="lastUpdated" class="last-updated" aria-live="polite"></span>
-                    <button id="settingsBtn" class="btn btn-secondary" title="Change API Key">API Key</button>
+                    <button id="signOutBtn" class="btn btn-secondary" title="Sign out">Sign out</button>
                 </div>
             </header>
 
-            <!-- API Key Setup Section -->
-            <div id="apiKeySection" class="api-key-overlay" style="display: none;">
-                <div class="api-key-card">
-                    <div class="api-key-icon" aria-hidden="true">
+            <!-- Sign-in Section -->
+            <div id="signInSection" class="sign-in-overlay" style="display: none;">
+                <div class="sign-in-card">
+                    <div class="sign-in-icon" aria-hidden="true">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
                         </svg>
                     </div>
-                    <h2>Connect Your Dashboard</h2>
-                    <p>Enter your API key to view and manage notes from all your devices. Your key connects this dashboard to your Sticky Notes account.</p>
-                    <div class="api-key-input-container">
-                        <label for="apiKeyInput" class="sr-only">API Key</label>
-                        <input 
-                            type="password" 
-                            id="apiKeyInput" 
-                            placeholder="sk_live_..."
-                            class="api-key-input"
-                            aria-describedby="apiKeyHint"
-                        >
-                        <button id="saveApiKeyBtn" class="btn btn-primary">Connect</button>
+                    <h2>Sign in to your dashboard</h2>
+                    <p>Sign in with the Google account you use in the extension to view and manage notes from all your devices.</p>
+                    <div class="sign-in-actions">
+                        <button id="signInBtn" class="btn btn-primary">Sign in with Google</button>
                     </div>
-                    <p id="apiKeyHint" class="api-key-hint">Your API key is stored locally and never shared. <a href="generate-key.html">Generate a new key</a> from the extension popup.</p>
+                    <p id="signInError" class="sign-in-error" role="alert" style="display: none;"></p>
+                    <p class="sign-in-hint">Your session is managed by Google and Firebase. This page does not store a password or an API key.</p>
                 </div>
             </div>
 
             <!-- Main Content -->
-            <div id="mainContent">
+            <div id="mainContent" style="display: none;">
                 <!-- Stats Dashboard -->
                 <div id="statsDashboard" class="stats-dashboard">
                     <div class="stat-card stat-total">
@@ -185,7 +179,7 @@
             </div>
 
             <footer class="dashboard-footer">
-                <span id="keyIndicator" class="key-indicator" title="Connected API key" aria-label="API key status"></span>
+                <span id="accountIndicator" class="account-indicator" role="status" aria-label="Signed-in account"></span>
             </footer>
         </div>
 

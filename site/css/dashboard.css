@@ -377,8 +377,8 @@ img {
     display: none;
 }
 
-/* API Key Section */
-.api-key-overlay {
+/* Sign-in Section */
+.sign-in-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -392,7 +392,7 @@ img {
     backdrop-filter: blur(4px);
 }
 
-.api-key-card {
+.sign-in-card {
     background: var(--card-bg);
     border-radius: var(--radius-2xl);
     padding: 2rem;
@@ -402,62 +402,45 @@ img {
     border: 1px solid var(--color-border);
 }
 
-.api-key-icon {
+.sign-in-icon {
     display: flex;
     justify-content: center;
     margin-bottom: 1rem;
     color: var(--c-blue-500);
 }
 
-.api-key-card h2 {
+.sign-in-card h2 {
     margin: 0 0 0.75rem;
     color: var(--color-text);
     font-size: 1.25rem;
     text-align: center;
 }
 
-.api-key-card > p {
+.sign-in-card > p {
     margin: 0 0 1rem;
     color: var(--color-text-secondary);
     font-size: 0.9rem;
     text-align: center;
 }
 
-.api-key-input-container {
+.sign-in-actions {
     display: flex;
-    gap: 0.75rem;
+    justify-content: center;
     margin-bottom: 1rem;
 }
 
-.api-key-input {
-    flex: 1;
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
-    font-family: 'SF Mono', Consolas, monospace;
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    color: var(--color-text);
-    outline: none;
+.sign-in-error {
+    margin: 0 0 1rem;
+    color: var(--color-error, #dc2626);
+    font-size: 0.85rem;
+    text-align: center;
 }
 
-.api-key-input:focus {
-    border-color: var(--c-blue-500);
-}
-
-.api-key-hint {
+.sign-in-hint {
     font-size: 0.75rem;
     color: var(--color-text-muted);
     margin: 0;
-}
-
-.api-key-hint a {
-    color: var(--c-blue-600);
-    text-decoration: underline;
-}
-
-.api-key-hint a:hover {
-    color: var(--c-blue-500);
+    text-align: center;
 }
 
 /* Stats Dashboard */
@@ -1074,8 +1057,7 @@ img {
     text-align: center;
 }
 
-.key-indicator {
-    font-family: 'SF Mono', Consolas, monospace;
+.account-indicator {
     font-size: 0.75rem;
     color: var(--color-text-muted);
     background: var(--color-bg-secondary);

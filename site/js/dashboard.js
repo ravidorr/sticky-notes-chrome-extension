@@ -3,14 +3,16 @@
  * View and manage your sticky notes from any browser
  */
 
-import { API_BASE_URL } from './config.js';
+import { API_BASE_URL, FIREBASE_CONFIG } from './config.js';
 
 // ============================================
 // State
 // ============================================
 
+const LEGACY_API_KEY_STORAGE_KEY = 'sticky_notes_api_key';
+
 const state = {
-    apiKey: null,
+    auth: null,
     currentFilter: 'all',
     refreshInterval: null,
     searchQuery: '',
@@ -197,18 +199,18 @@ function updateLastUpdated() {
  */
 function getDOMElements() {
     return {
-        apiKeySection: document.getElementById('apiKeySection'),
+        signInSection: document.getElementById('signInSection'),
         mainContent: document.getElementById('mainContent'),
-        apiKeyInput: document.getElementById('apiKeyInput'),
-        saveApiKeyBtn: document.getElementById('saveApiKeyBtn'),
-        settingsBtn: document.getElementById('settingsBtn'),
+        signInBtn: document.getElementById('signInBtn'),
+        signInError: document.getElementById('signInError'),
+        signOutBtn: document.getElementById('signOutBtn'),
         urlInput: document.getElementById('urlInput'),
         loadBtn: document.getElementById('loadBtn'),
         notesList: document.getElementById('notesList'),
         status: document.getElementById('status'),
         autoRefreshCheckbox: document.getElementById('autoRefresh'),
         filterTabs: document.querySelectorAll('.filter-tab'),
-        keyIndicator: document.getElementById('keyIndicator'),
+        accountIndicator: document.getElementById('accountIndicator'),
         domainSelect: document.getElementById('domainSelect'),
         userEmailSpan: document.getElementById('userEmail'),
         searchInput: document.getElementById('searchInput'),
@@ -236,43 +238,55 @@ function showStatus(statusElement, message, type) {
 // ============================================
 
 /**
- * Update the key indicator display in the footer
- * @param {HTMLElement} keyIndicator - The key indicator element
- * @param {string} apiKey - The API key
+ * Update the account indicator display in the footer
+ * @param {HTMLElement} accountIndicator - The account indicator element
+ * @param {Object|null} user - The signed-in Firebase user, or null
  */
-function updateKeyIndicator(keyIndicator, apiKey) {
-    if (!keyIndicator) return;
-    if (apiKey && apiKey.length > 16) {
-        keyIndicator.textContent = `Key: ${apiKey.substring(0, 12)}...${apiKey.slice(-4)}`;
-        keyIndicator.style.display = 'inline';
+function updateAccountIndicator(accountIndicator, user) {
+    if (!accountIndicator) return;
+    if (user?.email) {
+        accountIndicator.textContent = `Signed in as ${user.email}`;
+        accountIndicator.style.display = 'inline';
     } else {
-        keyIndicator.style.display = 'none';
+        accountIndicator.textContent = '';
+        accountIndicator.style.display = 'none';
     }
 }
 
 /**
- * Show the API key input overlay
+ * Show the sign-in overlay
  * @param {Object} elements - DOM elements
  */
-function showApiKeySection(elements) {
-    const { apiKeySection, mainContent, apiKeyInput } = elements;
-    if (apiKeySection) apiKeySection.style.display = 'flex';
+function showSignInSection(elements) {
+    const { signInSection, mainContent, signInBtn } = elements;
+    if (signInSection) signInSection.style.display = 'flex';
     if (mainContent) {
         mainContent.style.display = 'none';
     }
-    if (apiKeyInput) apiKeyInput.focus();
+    if (signInBtn) signInBtn.focus();
 }
 
 /**
- * Hide the API key input overlay
+ * Hide the sign-in overlay
  * @param {Object} elements - DOM elements
  */
-function hideApiKeySection(elements) {
-    const { apiKeySection, mainContent } = elements;
-    if (apiKeySection) apiKeySection.style.display = 'none';
+function hideSignInSection(elements) {
+    const { signInSection, mainContent } = elements;
+    if (signInSection) signInSection.style.display = 'none';
     if (mainContent) {
         mainContent.style.display = 'block';
     }
+}
+
+/**
+ * Show or clear the error message on the sign-in overlay
+ * @param {HTMLElement} signInError - The error element
+ * @param {string} message - Message to display, or an empty string to clear it
+ */
+function showSignInError(signInError, message) {
+    if (!signInError) return;
+    signInError.textContent = message;
+    signInError.style.display = message ? 'block' : 'none';
 }
 
 /**
@@ -438,42 +452,118 @@ function renderNotes(notesList, notes, context = {}) {
 // ============================================
 
 /**
- * Save the API key to localStorage and state
- * @param {Object} elements - DOM elements
- * @param {Object} appState - Application state
- * @param {Function} callbacks - Callback functions
+ * Remove the API key that earlier versions of the dashboard kept in localStorage.
+ * The dashboard no longer stores any credential of its own.
  */
-function saveApiKey(elements, appState, callbacks = {}) {
-    const { apiKeyInput } = elements;
-    const key = apiKeyInput?.value?.trim();
-    
-    if (key) {
-        appState.apiKey = key;
-        localStorage.setItem('sticky_notes_api_key', key);
-        updateKeyIndicator(elements.keyIndicator, key);
-        hideApiKeySection(elements);
-        showStatus(elements.status, 'API key saved!', 'success');
-        if (callbacks.onSuccess) callbacks.onSuccess();
-    } else {
-        showStatus(elements.status, 'Please enter a valid API key', 'error');
+function removeLegacyApiKey() {
+    try {
+        localStorage.removeItem(LEGACY_API_KEY_STORAGE_KEY);
+    } catch {
+        // Storage can be blocked (private mode, site settings), and then there is nothing to remove
     }
 }
 
 /**
+ * Message to show when sign-in fails, or null when the user simply dismissed the popup
+ * @param {Error} error - Error thrown by the Firebase sign-in call
+ * @returns {string|null} Message for the sign-in overlay
+ */
+function getSignInErrorMessage(error) {
+    switch (error?.code) {
+        case 'auth/popup-blocked':
+            return 'Popup was blocked. Please allow popups for this site and try again.';
+        case 'auth/popup-closed-by-user':
+        case 'auth/cancelled-popup-request':
+            return null;
+        default:
+            return `Sign in failed: ${error?.message}`;
+    }
+}
+
+/**
+ * Sign in with Google through a Firebase popup
+ * @param {Object} elements - DOM elements
+ * @param {Object} firebase - Firebase auth instance and functions
+ * @returns {Promise<boolean>} True when the user signed in
+ */
+async function signIn(elements, firebase) {
+    const { auth, signInWithPopup, GoogleAuthProvider } = firebase;
+    if (!auth || !signInWithPopup || !GoogleAuthProvider) {
+        showSignInError(elements.signInError, 'Sign in is not available');
+        return false;
+    }
+
+    showSignInError(elements.signInError, '');
+    if (elements.signInBtn) elements.signInBtn.disabled = true;
+
+    try {
+        await signInWithPopup(auth, new GoogleAuthProvider());
+        return true;
+    } catch (error) {
+        const message = getSignInErrorMessage(error);
+        if (message) showSignInError(elements.signInError, message);
+        return false;
+    } finally {
+        if (elements.signInBtn) elements.signInBtn.disabled = false;
+    }
+}
+
+/**
+ * Sign out of Firebase. The auth state listener shows the sign-in overlay.
+ * @param {Object} elements - DOM elements
+ * @param {Object} firebase - Firebase auth instance and functions
+ * @returns {Promise<void>}
+ */
+async function signOutUser(elements, firebase) {
+    const { auth, signOut } = firebase;
+    if (!auth || !signOut) return;
+
+    try {
+        await signOut(auth);
+    } catch (error) {
+        showStatus(elements.status, `Sign out failed: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Fetch an API URL with the signed-in user's Firebase ID token.
+ * getIdToken() returns the cached token until it is about to expire, then the SDK refreshes
+ * it. A 401 means the token was rejected, so refresh once and retry before giving up.
+ * @param {Object|null} auth - Firebase auth instance
+ * @param {string} url - URL to fetch
+ * @returns {Promise<Response|null>} The response, or null when nobody is signed in
+ */
+async function authFetch(auth, url) {
+    const user = auth?.currentUser;
+    if (!user) return null;
+
+    const request = (token) => fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+    const response = await request(await user.getIdToken());
+    if (response.status !== 401) return response;
+
+    let freshToken;
+    try {
+        freshToken = await user.getIdToken(true);
+    } catch {
+        // The session can no longer be refreshed (revoked or disabled), so report the original 401
+        return response;
+    }
+    return request(freshToken);
+}
+
+/**
  * Load statistics from the API
- * @param {string} apiKey - The API key
+ * @param {Object|null} auth - Firebase auth instance
  * @param {Object} elements - DOM elements
  * @returns {Promise<Object|null>} Stats object or null
  */
-async function loadStats(apiKey, elements) {
-    if (!apiKey) return null;
+async function loadStats(auth, elements) {
+    if (!auth?.currentUser) return null;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/notes/stats`, {
-            headers: { 'Authorization': `Bearer ${apiKey}` }
-        });
+        const response = await authFetch(auth, `${API_BASE_URL}/notes/stats`);
         
-        if (!response.ok) return null;
+        if (!response?.ok) return null;
         
         const stats = await response.json();
         
@@ -538,12 +628,6 @@ async function loadStats(apiKey, elements) {
             elements.userEmailSpan.title = `Signed in as ${stats.user.email}`;
         }
         
-        if (stats.user?.email && elements.keyIndicator) {
-            elements.keyIndicator.textContent = stats.user.email;
-            elements.keyIndicator.title = `Connected as ${stats.user.email}`;
-            elements.keyIndicator.style.display = 'inline';
-        }
-        
         // Populate domain dropdown
         if (elements.domainSelect) {
             populateDomainDropdown(elements.domainSelect, stats.domains || []);
@@ -566,14 +650,14 @@ async function loadStats(apiKey, elements) {
  */
 async function loadNotes(options = {}) {
     const { 
-        apiKey, 
+        auth, 
         elements, 
         currentFilter = 'all',
         onUnauthorized
     } = options;
     
-    if (!apiKey) {
-        if (elements) showApiKeySection(elements);
+    if (!auth?.currentUser) {
+        if (elements) showSignInSection(elements);
         return [];
     }
 
@@ -614,15 +698,13 @@ async function loadNotes(options = {}) {
         const queryString = params.toString();
         const fullUrl = queryString ? `${endpoint}?${queryString}` : endpoint;
         
-        const response = await fetch(fullUrl, {
-            headers: { 'Authorization': `Bearer ${apiKey}` }
-        });
+        const response = await authFetch(auth, fullUrl);
 
-        if (!response.ok) {
-            if (response.status === 401) {
-                localStorage.removeItem('sticky_notes_api_key');
+        if (!response?.ok) {
+            // No response means the user signed out while the request was starting
+            if (!response || response.status === 401) {
                 if (elements?.status) {
-                    showStatus(elements.status, 'Invalid API key. Please enter a valid key.', 'error');
+                    showStatus(elements.status, 'Your session has expired. Please sign in again.', 'error');
                 }
                 if (onUnauthorized) onUnauthorized();
                 return [];
@@ -638,9 +720,7 @@ async function loadNotes(options = {}) {
             const notesWithComments = await Promise.all(
                 notes.map(async (note) => {
                     try {
-                        const commentsRes = await fetch(`${API_BASE_URL}/notes/${note.id}/comments`, {
-                            headers: { 'Authorization': `Bearer ${apiKey}` }
-                        });
+                        const commentsRes = await authFetch(auth, `${API_BASE_URL}/notes/${note.id}/comments`);
                         if (commentsRes.ok) {
                             const commentsData = await commentsRes.json();
                             return { ...note, comments: commentsData.comments || [] };
@@ -748,35 +828,25 @@ function clearRefreshInterval(appState) {
     }
 }
 
-/**
- * Open the settings (API key) dialog
- * @param {Object} elements - DOM elements
- * @param {string} apiKey - Current API key
- */
-function openSettings(elements, apiKey) {
-    if (elements.apiKeyInput) {
-        elements.apiKeyInput.value = apiKey || '';
-    }
-    showApiKeySection(elements);
-}
-
 // ============================================
 // Initialization
 // ============================================
 
 /**
- * Check if API key is set and show appropriate UI
+ * Show the dashboard or the sign-in overlay for the current user
  * @param {Object} elements - DOM elements
- * @param {Object} appState - Application state
+ * @param {Object|null} user - The signed-in Firebase user, or null
  * @param {Object} callbacks - Callback functions
  */
-function checkApiKey(elements, appState, callbacks = {}) {
-    updateKeyIndicator(elements.keyIndicator, appState.apiKey);
-    if (!appState.apiKey) {
-        showApiKeySection(elements);
+function applyAuthState(elements, user, callbacks = {}) {
+    updateAccountIndicator(elements.accountIndicator, user);
+    if (!user) {
+        showSignInSection(elements);
+        if (callbacks.onSignedOut) callbacks.onSignedOut();
     } else {
-        hideApiKeySection(elements);
-        if (callbacks.onApiKeyValid) callbacks.onApiKeyValid();
+        hideSignInSection(elements);
+        showSignInError(elements.signInError, '');
+        if (callbacks.onSignedIn) callbacks.onSignedIn();
     }
 }
 
@@ -788,26 +858,20 @@ function checkApiKey(elements, appState, callbacks = {}) {
  */
 function setupEventListeners(elements, appState, handlers = {}) {
     const { 
-        saveApiKeyBtn, 
-        apiKeyInput, 
+        signInBtn, 
         loadBtn, 
         urlInput, 
         domainSelect, 
         filterTabs, 
         autoRefreshCheckbox, 
-        settingsBtn,
+        signOutBtn,
         searchInput,
         notesList
     } = elements;
     
-    // API key events
-    if (saveApiKeyBtn) {
-        saveApiKeyBtn.addEventListener('click', () => handlers.onSaveApiKey?.());
-    }
-    if (apiKeyInput) {
-        apiKeyInput.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') handlers.onSaveApiKey?.();
-        });
+    // Sign-in events
+    if (signInBtn) {
+        signInBtn.addEventListener('click', () => handlers.onSignIn?.());
     }
 
     // Load and filter events
@@ -839,9 +903,9 @@ function setupEventListeners(elements, appState, handlers = {}) {
         });
     }
 
-    // Settings button
-    if (settingsBtn) {
-        settingsBtn.addEventListener('click', () => handlers.onOpenSettings?.());
+    // Sign-out button
+    if (signOutBtn) {
+        signOutBtn.addEventListener('click', () => handlers.onSignOut?.());
     }
     
     // Search input with debouncing
@@ -903,10 +967,10 @@ function setupCleanup(appState) {
             // Page was restored from BFCache
             // Immediately refresh data to avoid showing stale content
             const elements = getDOMElements();
-            if (appState.apiKey) {
-                loadStats(appState.apiKey, elements);
+            if (appState.auth?.currentUser) {
+                loadStats(appState.auth, elements);
                 loadNotes({
-                    apiKey: appState.apiKey,
+                    auth: appState.auth,
                     elements,
                     currentFilter: appState.currentFilter
                 });
@@ -917,9 +981,9 @@ function setupCleanup(appState) {
             if (autoRefreshCheckbox?.checked && !appState.refreshInterval) {
                 appState.refreshInterval = setInterval(() => {
                     const elements = getDOMElements();
-                    loadStats(appState.apiKey, elements);
+                    loadStats(appState.auth, elements);
                     loadNotes({
-                        apiKey: appState.apiKey,
+                        auth: appState.auth,
                         elements,
                         currentFilter: appState.currentFilter
                     });
@@ -1466,64 +1530,148 @@ function setupReportModal() {
 // ============================================
 
 /**
- * Initialize the dashboard
+ * Create the Firebase auth instance, or null when the SDK is missing or fails to start
+ * @param {Object} firebaseModules - Firebase functions loaded from the CDN
+ * @param {Object} elements - DOM elements
+ * @returns {Object|null} Firebase auth instance
  */
-function init() {
-    // Initialize state from localStorage
-    state.apiKey = localStorage.getItem('sticky_notes_api_key');
+function initializeFirebaseAuth(firebaseModules, elements) {
+    const { initializeApp, getAuth } = firebaseModules;
+    if (!initializeApp || !getAuth) return null;
+
+    try {
+        return getAuth(initializeApp(FIREBASE_CONFIG));
+    } catch (error) {
+        showSignInError(elements.signInError, `Firebase initialization failed: ${error.message}`);
+        return null;
+    }
+}
+
+/**
+ * Initialize the dashboard
+ * @param {Object} firebaseModules - Firebase functions loaded from the CDN
+ */
+function init(firebaseModules = {}) {
+    // Earlier versions kept a long-lived API key in localStorage. Nothing reads it any more.
+    removeLegacyApiKey();
     
     const elements = getDOMElements();
+    const auth = initializeFirebaseAuth(firebaseModules, elements);
+    state.auth = auth;
+    const firebase = {
+        auth,
+        signInWithPopup: firebaseModules.signInWithPopup,
+        GoogleAuthProvider: firebaseModules.GoogleAuthProvider,
+        signOut: firebaseModules.signOut
+    };
     
     // Create bound handler functions
     const loadNotesHandler = () => loadNotes({
-        apiKey: state.apiKey,
+        auth: state.auth,
         elements,
         currentFilter: state.currentFilter,
         onUnauthorized: () => {
-            state.apiKey = null;
-            showApiKeySection(elements);
+            // The token was rejected even after a refresh, so end the session
+            signOutUser(elements, firebase);
+            showSignInSection(elements);
         }
     });
     
-    const loadStatsHandler = () => loadStats(state.apiKey, elements);
+    const loadStatsHandler = () => loadStats(state.auth, elements);
     
     const handlers = {
-        onSaveApiKey: () => saveApiKey(elements, state, {
-            onSuccess: () => {
-                loadStatsHandler();
-                loadNotesHandler();
-            }
-        }),
+        onSignIn: () => signIn(elements, firebase),
+        onSignOut: () => signOutUser(elements, firebase),
         onLoadNotes: loadNotesHandler,
         onDomainChange: () => handleDomainSelectChange(elements, loadNotesHandler),
         onRefresh: () => {
             loadStatsHandler();
             loadNotesHandler();
-        },
-        onOpenSettings: () => openSettings(elements, state.apiKey)
+        }
     };
     
     handleUrlParams(elements);
     setupEventListeners(elements, state, handlers);
     setupReportModal();
     setupCleanup(state);
-    checkApiKey(elements, state, {
-        onApiKeyValid: () => {
-            loadStatsHandler();
-            loadNotesHandler();
+    
+    if (!auth) {
+        showSignInSection(elements);
+        if (!elements.signInError?.textContent) {
+            showSignInError(elements.signInError, 'Sign in is not available. Reload the page to try again.');
         }
+        return;
+    }
+    
+    // Fires once with the restored session (or null) and again on every sign-in and sign-out
+    firebaseModules.onAuthStateChanged(auth, (user) => {
+        applyAuthState(elements, user, {
+            onSignedIn: () => {
+                loadStatsHandler();
+                loadNotesHandler();
+            },
+            onSignedOut: () => resetSignedOutState(elements, state)
+        });
     });
+}
+
+/**
+ * Drop everything that belongs to the previous user after a sign-out
+ * @param {Object} elements - DOM elements
+ * @param {Object} appState - Application state
+ */
+function resetSignedOutState(elements, appState) {
+    clearRefreshInterval(appState);
+    if (elements.autoRefreshCheckbox) elements.autoRefreshCheckbox.checked = false;
+    appState.allNotes = [];
+    appState.displayedNotes = [];
+    if (elements.notesList) elements.notesList.innerHTML = '';
 }
 
 // ============================================
 // Auto-initialize (for browser)
 // ============================================
 
+/**
+ * Start the dashboard with the Firebase SDK modules loaded from the CDN
+ * @param {Object[]} modules - The firebase-app and firebase-auth modules
+ */
+function initWithFirebaseModules([appModule, authModule]) {
+    init({
+        initializeApp: appModule.initializeApp,
+        getAuth: authModule.getAuth,
+        onAuthStateChanged: authModule.onAuthStateChanged,
+        signInWithPopup: authModule.signInWithPopup,
+        signOut: authModule.signOut,
+        GoogleAuthProvider: authModule.GoogleAuthProvider
+    });
+}
+
+/**
+ * Start the dashboard without Firebase when the SDK could not load. It shows the sign-in
+ * overlay with an error instead of a blank page.
+ * @param {Error} error - The load error
+ */
+function handleFirebaseLoadError(error) {
+    console.error('Failed to load Firebase:', error);
+    init();
+}
+
+/**
+ * Load the Firebase SDK from the CDN and start the dashboard
+ */
+function start() {
+    Promise.all([
+        import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js')
+    ]).then(initWithFirebaseModules, handleFirebaseLoadError);
+}
+
 if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', start);
     } else {
-        init();
+        start();
     }
 }
 
@@ -1549,25 +1697,34 @@ export {
     getDOMElements,
     showStatus,
     // UI functions
-    updateKeyIndicator,
-    showApiKeySection,
-    hideApiKeySection,
+    updateAccountIndicator,
+    showSignInSection,
+    hideSignInSection,
+    showSignInError,
     handleUrlParams,
     handleDomainSelectChange,
     populateDomainDropdown,
     // Rendering
     renderNotes,
+    // Auth functions
+    removeLegacyApiKey,
+    getSignInErrorMessage,
+    signIn,
+    signOutUser,
+    authFetch,
     // API functions
-    saveApiKey,
     loadStats,
     loadNotes,
     // Event handlers
     handleFilterTabClick,
     handleAutoRefreshChange,
     clearRefreshInterval,
-    openSettings,
     // Initialization
-    checkApiKey,
+    applyAuthState,
+    initializeFirebaseAuth,
+    resetSignedOutState,
+    initWithFirebaseModules,
+    start,
     setupEventListeners,
     setupCleanup,
     init,

@@ -9,12 +9,14 @@ export default {
   transform: {},
   moduleNameMapper: {
     '^firebase-admin/firestore$': '<rootDir>/tests/mocks/firebaseAdminFirestore.js',
+    '^firebase-admin/auth$': '<rootDir>/tests/mocks/firebaseAdminAuth.js',
     '^(\\.{1,2}/.*)\\.js$': '$1'
   },
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   collectCoverageFrom: [
     'src/**/*.js',
     'site/**/*.js',
+    'functions/middleware/auth.js',
     'functions/lib/email.js',
     'functions/lib/mailSender.js',
     'functions/lib/mailTrigger.js',

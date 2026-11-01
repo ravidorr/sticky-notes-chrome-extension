@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { apiKeyAuth } from '../middleware/auth.js';
+import { apiKeyOrFirebaseAuth } from '../middleware/auth.js';
 
 const router = Router();
 const NOTES_COLLECTION = 'notes';
@@ -39,7 +39,7 @@ async function checkNoteAccess(db, noteId, userId, userEmail) {
  * GET /api/notes/:noteId/comments
  * List all comments for a note
  */
-router.get('/:noteId/comments', apiKeyAuth({ requiredScope: 'notes:read' }), async (req, res) => {
+router.get('/:noteId/comments', apiKeyOrFirebaseAuth({ requiredScope: 'notes:read' }), async (req, res) => {
   try {
     const { userId, userEmail } = req.apiKey;
     const { noteId } = req.params;
@@ -88,7 +88,7 @@ router.get('/:noteId/comments', apiKeyAuth({ requiredScope: 'notes:read' }), asy
  * POST /api/notes/:noteId/comments
  * Add a comment to a note
  */
-router.post('/:noteId/comments', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.post('/:noteId/comments', apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId, userEmail } = req.apiKey;
     const { noteId } = req.params;
@@ -187,7 +187,7 @@ router.post('/:noteId/comments', apiKeyAuth({ requiredScope: 'notes:write' }), a
  * PUT /api/notes/:noteId/comments/:commentId
  * Update a comment
  */
-router.put('/:noteId/comments/:commentId', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.put('/:noteId/comments/:commentId', apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId } = req.apiKey;
     const { noteId, commentId } = req.params;
@@ -256,7 +256,7 @@ router.put('/:noteId/comments/:commentId', apiKeyAuth({ requiredScope: 'notes:wr
  * DELETE /api/notes/:noteId/comments/:commentId
  * Delete a comment
  */
-router.delete('/:noteId/comments/:commentId', apiKeyAuth({ requiredScope: 'notes:write' }), async (req, res) => {
+router.delete('/:noteId/comments/:commentId', apiKeyOrFirebaseAuth({ requiredScope: 'notes:write' }), async (req, res) => {
   try {
     const { userId } = req.apiKey;
     const { noteId, commentId } = req.params;
