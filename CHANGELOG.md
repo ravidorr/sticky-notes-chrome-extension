@@ -13,6 +13,13 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.22] - 2026-11-01
+
+### Changed
+
+- Updated npm dependencies in the extension and the MCP server (Dependabot group update,
+  including `markdownlint-cli2` and `@modelcontextprotocol/sdk`)
+
 ### Security
 
 - API key management routes (`/keys`) are rate limited to 100 requests per 15 minutes per client
