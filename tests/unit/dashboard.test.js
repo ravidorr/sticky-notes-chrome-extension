@@ -3105,6 +3105,20 @@ describe('site/js/dashboard.js', () => {
             expect(state.allNotes).toEqual([]);
         });
 
+        it('should ignore a stale 401 when a different account signed in meanwhile', async () => {
+            const auth = createAuth();
+            const onUnauthorized = jest.fn();
+            global.fetch.mockImplementationOnce(() => {
+                auth.currentUser = { email: 'other@example.com', getIdToken: jest.fn().mockResolvedValue('t') };
+                return Promise.resolve(jsonResponse({}, false, 401));
+            });
+
+            const notes = await loadNotes({ auth, elements: localThis.elements, onUnauthorized });
+
+            expect(notes).toEqual([]);
+            expect(onUnauthorized).not.toHaveBeenCalled();
+        });
+
         it('should handle a 401 response without status element or callback', async () => {
             global.fetch.mockResolvedValueOnce(jsonResponse({}, false, 401));
 

@@ -30,6 +30,10 @@ bump is listed under the next version bump after it.
   (`gstatic.com`, `apis.google.com`, `identitytoolkit.googleapis.com`, `securetoken.googleapis.com`, and the
   `accounts.google.com` and project `firebaseapp.com` frames).
 
+- The dashboard page requests its script and stylesheet with a `?v=firebase-auth` query, so returning visitors do not
+  run a cached copy of the old API key dashboard (those files are served as immutable for a year).
+- A delayed 401 or 403 from a previous account no longer signs out the account that signed in afterwards.
+
 ### Changed
 
 - Added unit tests for `functions/middleware/auth.js` and included it in the coverage thresholds

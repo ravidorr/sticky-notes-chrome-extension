@@ -731,6 +731,8 @@ async function loadNotes(options = {}) {
         const response = await authFetch(auth, fullUrl);
 
         if (!response?.ok) {
+            // Another account signed in while the request was running, so this failure is stale
+            if (auth.currentUser !== user) return [];
             // No response means the user signed out while the request was starting
             if (!response || response.status === 401 || response.status === 403) {
                 const message = response?.status === 403 ? UNVERIFIED_EMAIL_MESSAGE : SESSION_EXPIRED_MESSAGE;
