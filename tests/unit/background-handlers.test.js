@@ -3043,6 +3043,124 @@ describe('Background Handlers', () => {
         });
       });
 
+      describe('releaseTab', () => {
+        beforeEach(() => {
+          localThis.commentSubscriptions = new Map();
+          localThis.build4 = (extra = {}) => localThis.build2({
+            commentSubscriptions: localThis.commentSubscriptions,
+            subscribeToComments: localThis.deps.subscribeToComments,
+            ...extra
+          });
+        });
+
+        it('should release the note and comment subscriptions of every frame of the tab only', async () => {
+          const unsubs = {
+            tab0: jest.fn(), tab1: jest.fn(), other: jest.fn(),
+            c1: jest.fn(), c2: jest.fn(), cOther: jest.fn()
+          };
+          localThis.noteSubscriptions.set('123-0', { unsubscribe: unsubs.tab0 });
+          localThis.noteSubscriptions.set('123-1', { unsubscribe: unsubs.tab1 });
+          localThis.noteSubscriptions.set('1234-0', { unsubscribe: unsubs.other });
+          localThis.commentSubscriptions.set('123-note-1', unsubs.c1);
+          localThis.commentSubscriptions.set('123-note-2', unsubs.c2);
+          localThis.commentSubscriptions.set('12-note-1', unsubs.cOther);
+
+          localThis.build4().releaseTab(123);
+
+          for (const key of ['tab0', 'tab1', 'c1', 'c2']) {
+            expect(unsubs[key]).toHaveBeenCalledTimes(1);
+          }
+          expect(unsubs.other).not.toHaveBeenCalled();
+          expect(unsubs.cOther).not.toHaveBeenCalled();
+          expect([...localThis.noteSubscriptions.keys()]).toEqual(['1234-0']);
+          expect([...localThis.commentSubscriptions.keys()]).toEqual(['12-note-1']);
+        });
+
+        it('should log a failing release and still release the rest', async () => {
+          const failing = jest.fn(() => { throw new Error('release failed'); });
+          const healthy = jest.fn();
+          localThis.noteSubscriptions.set('123-0', { unsubscribe: failing });
+          localThis.noteSubscriptions.set('123-1', { unsubscribe: healthy });
+          localThis.commentSubscriptions.set('123-note-1', failing);
+          localThis.commentSubscriptions.set('123-note-2', healthy);
+
+          localThis.build4().releaseTab(123);
+
+          expect(healthy).toHaveBeenCalledTimes(2);
+          expect(localThis.noteSubscriptions.size).toBe(0);
+          expect(localThis.commentSubscriptions.size).toBe(0);
+          expect(localThis.mockLog.error).toHaveBeenCalledWith(
+            expect.stringContaining('note subscription'), '123-0', expect.any(Error)
+          );
+          expect(localThis.mockLog.error).toHaveBeenCalledWith(
+            expect.stringContaining('comment subscription'), '123-note-1', expect.any(Error)
+          );
+        });
+
+        it('should cancel a note subscribe that is still starting when the tab closes', async () => {
+          const started = deferred();
+          const lateUnsubscribe = jest.fn();
+          const handlers = localThis.build4({ subscribeToNotesForUrl: jest.fn(() => started.promise) });
+
+          const pending = handlers.subscribeNotes('https://example.com', SENDER);
+          await flush();
+          handlers.releaseTab(123);
+          started.resolve(lateUnsubscribe);
+
+          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(lateUnsubscribe).toHaveBeenCalledTimes(1);
+          expect(localThis.noteSubscriptions.size).toBe(0);
+        });
+
+        it('should cancel a comment subscribe that is still starting when the tab closes', async () => {
+          const started = deferred();
+          const lateUnsubscribe = jest.fn();
+          const handlers = localThis.build4({ subscribeToComments: jest.fn(() => started.promise) });
+
+          const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
+          await flush();
+          handlers.releaseTab(123);
+          started.resolve(lateUnsubscribe);
+
+          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(lateUnsubscribe).toHaveBeenCalledTimes(1);
+          expect(localThis.commentSubscriptions.size).toBe(0);
+        });
+
+        it('should cancel a subscribe that is still looking up the user when the tab closes', async () => {
+          const user = deferred();
+          localThis.deps.getCurrentUser.mockImplementation(() => user.promise);
+          const handlers = localThis.build4();
+
+          const pending = handlers.subscribeNotes('https://example.com', SENDER);
+          await flush();
+          handlers.releaseTab(123);
+          user.resolve(localThis.mockUser);
+
+          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(localThis.deps.subscribeToNotesForUrl).not.toHaveBeenCalled();
+        });
+
+        it('should not affect a subscribe of another tab', async () => {
+          const started = deferred();
+          const unsubscribe = jest.fn();
+          const handlers = localThis.build4({ subscribeToNotesForUrl: jest.fn(() => started.promise) });
+
+          const pending = handlers.subscribeNotes('https://example.com', SENDER);
+          await flush();
+          handlers.releaseTab(456);
+          started.resolve(unsubscribe);
+
+          expect(await pending).toEqual({ success: true });
+          expect(unsubscribe).not.toHaveBeenCalled();
+          expect(localThis.noteSubscriptions.has('123-0')).toBe(true);
+        });
+
+        it('should do nothing for a tab without subscriptions', () => {
+          expect(() => localThis.build4().releaseTab(999)).not.toThrow();
+        });
+      });
+
       it('should clean up the subscription when the tab cannot be reached', async () => {
         const unsubscribe = jest.fn();
         let onNotes;

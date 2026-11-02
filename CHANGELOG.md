@@ -13,6 +13,15 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.26] - 2026-11-02
+
+### Fixed
+
+- Closing a tab now releases the real-time note listeners of all its frames. The cleanup looked the subscription up
+  by tab ID while the subscriptions are stored per tab and frame, so it never matched and the listeners stayed open
+  until the next snapshot failed to reach the closed tab. A subscribe that is still starting when its tab closes is
+  now cancelled, and the worker no longer keeps a subscription generation entry for every tab that ever subscribed.
+
 ## [1.20.25] - 2026-11-02
 
 ### Fixed

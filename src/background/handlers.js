@@ -1476,6 +1476,49 @@ export function createHandlers(deps = {}) {
     }
   }
 
+  /**
+   * Release every note and comment subscription of a closed tab, in all of its frames, and
+   * forget its generations so a subscribe still starting for it is cancelled
+   * @param {number} tabId - ID of the closed tab
+   */
+  function releaseTab(tabId) {
+    const prefix = `${tabId}-`;
+    
+    for (const [subKey, sub] of [...noteSubscriptions.entries()]) {
+      if (subKey.startsWith(prefix)) {
+        try {
+          sub.unsubscribe();
+        } catch (error) {
+          log.error('Error cleaning up note subscription:', subKey, error);
+        }
+        noteSubscriptions.delete(subKey);
+        log.debug('Cleaned up note subscription', subKey);
+      }
+    }
+    
+    for (const [subKey, unsubscribe] of [...commentSubscriptions.entries()]) {
+      if (subKey.startsWith(prefix)) {
+        try {
+          unsubscribe();
+        } catch (error) {
+          log.error('Error cleaning up comment subscription:', subKey, error);
+        }
+        commentSubscriptions.delete(subKey);
+        log.debug('Cleaned up comment subscription', subKey);
+      }
+    }
+    
+    // An in-flight subscribe compares its generation with the stored one, so removing the entry
+    // cancels it, and the maps do not keep an entry for every tab that ever subscribed
+    for (const generations of [noteSubGenerations, commentSubGenerations]) {
+      for (const subKey of [...generations.keys()]) {
+        if (subKey.startsWith(prefix)) {
+          generations.delete(subKey);
+        }
+      }
+    }
+  }
+
   return {
     handleMessage,
     handleLogin,
@@ -1499,6 +1542,7 @@ export function createHandlers(deps = {}) {
     unsubscribeNotes,
     subscribeCommentsHandler,
     unsubscribeCommentsHandler,
+    releaseTab,
     // Badge management
     updateOrphanedBadge,
     // Iframe support
