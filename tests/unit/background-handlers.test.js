@@ -2892,16 +2892,103 @@ describe('Background Handlers', () => {
 
           await expect(handlers.subscribeNotes('https://example.com', SENDER)).resolves.toEqual({ success: true });
           await expect(handlers.unsubscribeNotes(SENDER)).resolves.toEqual({ success: true });
-          await expect(handlers.getRealtimeSyncStatus()).resolves.toEqual({ success: true, degraded: false });
+          await expect(handlers.getRealtimeSyncStatus())
+            .resolves.toEqual({ success: true, degraded: false, restorable: false });
         });
 
         it('should report whether real-time sync is degraded', async () => {
           localThis.store.isDegraded.mockResolvedValue(true);
           const handlers = localThis.build5();
 
-          await expect(handlers.getRealtimeSyncStatus()).resolves.toEqual({ success: true, degraded: true });
+          await expect(handlers.getRealtimeSyncStatus())
+            .resolves.toEqual({ success: true, degraded: true, restorable: true });
           await expect(handlers.handleMessage({ action: 'getRealtimeSyncStatus' }, SENDER))
-            .resolves.toEqual({ success: true, degraded: true });
+            .resolves.toEqual({ success: true, degraded: true, restorable: true });
+        });
+      });
+
+      describe('restore claims', () => {
+        beforeEach(() => {
+          localThis.commentSubscriptions = new Map();
+          localThis.deps.subscribeToComments = jest.fn().mockReturnValue(jest.fn());
+          localThis.build6 = (extra = {}) => localThis.build2({
+            commentSubscriptions: localThis.commentSubscriptions,
+            subscribeToComments: localThis.deps.subscribeToComments,
+            ...extra
+          });
+        });
+
+        it('should claim a key nobody has touched, and refuse it afterwards', () => {
+          const handlers = localThis.build6();
+
+          const first = handlers.claimRestore('note', '123-0');
+
+          expect(typeof first).toBe('number');
+          expect(handlers.claimRestore('note', '123-0')).toBeNull();
+          expect(handlers.claimRestore('comment', '123-note-1')).not.toBeNull();
+          expect(handlers.claimRestore('comment', '123-note-1')).toBeNull();
+        });
+
+        it('should refuse to claim a key a content script already subscribed or unsubscribed', async () => {
+          const handlers = localThis.build6();
+
+          await handlers.subscribeNotes('https://example.com', SENDER);
+          await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+
+          expect(handlers.claimRestore('note', '123-0')).toBeNull();
+          expect(handlers.claimRestore('comment', '123-note-1')).toBeNull();
+        });
+
+        it('should subscribe with the claimed generation', async () => {
+          const handlers = localThis.build6();
+          const noteGeneration = handlers.claimRestore('note', '123-0');
+          const commentGeneration = handlers.claimRestore('comment', '123-note-1');
+
+          const notes = await handlers.subscribeNotes('https://example.com', SENDER, noteGeneration);
+          const comments = await handlers.subscribeCommentsHandler('note-1', SENDER, commentGeneration);
+
+          expect(notes).toEqual({ success: true });
+          expect(comments).toEqual({ success: true });
+          expect(localThis.noteSubscriptions.has('123-0')).toBe(true);
+          expect(localThis.commentSubscriptions.has('123-note-1')).toBe(true);
+        });
+
+        it('should cancel a restore when a content script acted after the claim, on every retry', async () => {
+          const handlers = localThis.build6();
+          const noteGeneration = handlers.claimRestore('note', '123-0');
+          const commentGeneration = handlers.claimRestore('comment', '123-note-1');
+
+          await handlers.unsubscribeNotes(SENDER);
+          await handlers.subscribeCommentsHandler('note-1', SENDER);
+          const notes = await handlers.subscribeNotes('https://example.com/old', SENDER, noteGeneration);
+          const comments = await handlers.subscribeCommentsHandler('note-1', SENDER, commentGeneration);
+
+          expect(notes).toEqual({ success: true, cancelled: true });
+          expect(comments).toEqual({ success: true, cancelled: true });
+          expect(localThis.deps.subscribeToNotesForUrl).not.toHaveBeenCalled();
+          expect(localThis.noteSubscriptions.size).toBe(0);
+        });
+
+        it('should not create a generation entry when a closed tab unsubscribes', async () => {
+          const handlers = localThis.build6();
+
+          handlers.releaseTab(123);
+          await handlers.unsubscribeNotes(SENDER);
+          await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+
+          expect(handlers.claimRestore('note', '123-0')).not.toBeNull();
+          expect(handlers.claimRestore('comment', '123-note-1')).not.toBeNull();
+        });
+
+        it('should keep the second oldest closed tab when the limit is passed', async () => {
+          const handlers = localThis.build6();
+
+          for (let tabId = 1; tabId <= 501; tabId += 1) {
+            handlers.releaseTab(tabId);
+          }
+
+          expect(await handlers.subscribeNotes('https://example.com', { tab: { id: 2 }, frameId: 0 }))
+            .toEqual({ success: true, cancelled: true });
         });
       });
 

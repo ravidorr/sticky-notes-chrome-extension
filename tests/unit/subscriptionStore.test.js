@@ -10,7 +10,7 @@ function makeArea(initial = {}) {
   return {
     data,
     get: jest.fn(async (keys) => Object.fromEntries(keys.filter((key) => key in data).map((key) => [key, data[key]]))),
-    set: jest.fn(async (items) => { Object.assign(data, items); })
+    set: jest.fn(async (items) => { Object.assign(data, JSON.parse(JSON.stringify(items))); })
   };
 }
 
@@ -21,7 +21,7 @@ describe('subscription store', () => {
 
   beforeEach(() => {
     area = makeArea();
-    log = { warn: jest.fn() };
+    log = { error: jest.fn() };
     store = createSubscriptionStore(area, log);
   });
 
@@ -118,9 +118,9 @@ describe('subscription store', () => {
     expect(await store.isDegraded()).toBe(false);
   });
 
-  it('logs and carries on when storage fails', async () => {
+  it('logs and carries on when storage fails, and returns null when it cannot be read', async () => {
     area.get.mockRejectedValueOnce(new Error('read failed'));
-    expect(await store.load()).toEqual({ notes: [], comments: [] });
+    expect(await store.load()).toBeNull();
 
     area.set.mockRejectedValueOnce(new Error('write failed'));
     await expect(store.saveNote('1-0', { tabId: 1, frameId: 0, url: 'a' })).resolves.toBeUndefined();
@@ -128,6 +128,16 @@ describe('subscription store', () => {
 
     area.get.mockRejectedValueOnce(new Error('read failed'));
     expect(await store.isDegraded()).toBe(false);
-    expect(log.warn).toHaveBeenCalledTimes(3);
+    expect(log.error).toHaveBeenCalledTimes(3);
+  });
+
+  it('reads storage again after a failed write instead of trusting its cache', async () => {
+    await store.saveNote('1-0', { tabId: 1, frameId: 0, url: 'a' });
+    area.set.mockRejectedValueOnce(new Error('write failed'));
+
+    await store.saveNote('1-1', { tabId: 1, frameId: 1, url: 'b' });
+    const loaded = await store.load();
+
+    expect(loaded.notes.map((note) => note.subKey)).toEqual(['1-0']);
   });
 });

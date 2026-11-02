@@ -28,8 +28,8 @@ export class RealtimeSync {
   
   /**
    * Subscribe to real-time note updates
-   * The background worker restores the subscription by itself if Chrome stops it, so nothing is
-   * tracked here.
+   * The background worker restores note and comment subscriptions by itself if Chrome stops it, so
+   * this class keeps no restore state.
    * @param {string} url - Current page URL
    */
   async subscribeToNotes(url) {

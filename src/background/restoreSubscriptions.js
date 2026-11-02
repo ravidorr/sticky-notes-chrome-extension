@@ -10,89 +10,175 @@ const BASE_DELAY_MS = 1000;
 const defaultWait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Ask which tabs and frames still exist
- * @param {Object} deps - { tabs, webNavigation }
- * @param {number[]} tabIds - Tab IDs to check
- * @returns {Promise<Map<number, Set<number>>>} Frame IDs of every tab that still exists
+ * Look up the signed-in user, retrying while the lookup itself fails (the worker has just started,
+ * so the Firebase SDK may not be ready)
+ * @param {Object} handlers - Background handlers
+ * @param {Function} wait - Delay function
+ * @returns {Promise<{ ok: boolean, user?: Object|null }>} ok is false if the lookup never worked
  */
-async function findLiveFrames({ tabs, webNavigation }, tabIds) {
-  const live = new Map();
+async function lookupUser(handlers, wait) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    let result;
+    try {
+      result = await handlers.getUser();
+    } catch (error) {
+      result = { success: false, error: error.message };
+    }
+    if (result?.success === true) {
+      return { ok: true, user: result.user || null };
+    }
+    if (attempt < MAX_ATTEMPTS - 1) {
+      await wait(BASE_DELAY_MS * 2 ** attempt);
+    }
+  }
+  return { ok: false };
+}
+
+/**
+ * Ask which tabs and frames still exist. A tab Chrome says does not exist is 'closed'; any other
+ * failure leaves the tab 'unknown', and its subscriptions are kept for the next start.
+ * @param {Object} deps - { tabs, webNavigation, log }
+ * @param {number[]} tabIds - Tab IDs to check
+ * @returns {Promise<Map<number, { status: string, frames: Set<number> }>>} State per tab
+ */
+async function findLiveFrames({ tabs, webNavigation, log }, tabIds) {
+  const states = new Map();
   await Promise.all(tabIds.map(async (tabId) => {
     try {
       await tabs.get(tabId);
-    } catch (_error) {
+    } catch (error) {
+      const closed = /no tab with id/i.test(error?.message || '');
+      if (!closed) {
+        log.error('Could not check tab', tabId, error);
+      }
+      states.set(tabId, { status: closed ? 'closed' : 'unknown', frames: new Set() });
       return;
     }
-    let frames = [];
     try {
-      frames = (await webNavigation.getAllFrames({ tabId })) || [];
-    } catch (_error) {
-      // Without frame information a tab's notes subscriptions cannot be validated, so they are dropped
+      const frames = await webNavigation.getAllFrames({ tabId });
+      if (!Array.isArray(frames)) {
+        throw new Error('No frame information');
+      }
+      states.set(tabId, { status: 'live', frames: new Set(frames.map((frame) => frame.frameId)) });
+    } catch (error) {
+      log.error('Could not list the frames of tab', tabId, error);
+      states.set(tabId, { status: 'unknown', frames: new Set() });
     }
-    live.set(tabId, new Set(frames.map((frame) => frame.frameId)));
   }));
-  return live;
+  return states;
 }
 
 /**
  * Restore the stored subscriptions
- * Descriptors of closed tabs and frames are dropped, and so are all of them when nobody is signed
- * in. A failed subscribe is retried with a growing delay; subscriptions that still fail are kept
- * (the next worker start tries again) and real-time sync is flagged as degraded.
+ * Every key is claimed from the handlers before anything is awaited, so a content script that
+ * subscribes or unsubscribes in the meantime wins: a claim fails (and the key is skipped) when the
+ * content script was first, and a restore that was claimed first is cancelled by a later request,
+ * on its first attempt and on every retry. Descriptors of closed tabs, and of frames that no longer
+ * exist, are dropped, and so are all of them when nobody is signed in. Anything that fails is
+ * retried with a growing delay, kept for the next worker start, and flags sync as degraded.
+ * A subscribe that comes back cancelled counts as done.
  * @param {Object} deps - { store, handlers, tabs, webNavigation, log, wait }
  * @returns {Promise<{ restored: number, failed: number, dropped: number }>} What happened
  */
 export async function restoreSubscriptions(deps) {
   const { store, handlers, log, wait = defaultWait } = deps;
   const saved = await store.load();
-  const total = saved.notes.length + saved.comments.length;
-  if (total === 0) {
+  if (!saved) {
+    await store.setDegraded(true);
+    log.error('Could not read the stored subscriptions; sync is degraded');
     return { restored: 0, failed: 0, dropped: 0 };
   }
 
-  const userResult = await handlers.getUser();
-  if (!userResult?.user) {
-    await store.clear();
-    return { restored: 0, failed: 0, dropped: total };
+  const total = saved.notes.length + saved.comments.length;
+  if (total === 0) {
+    await store.setDegraded(false);
+    return { restored: 0, failed: 0, dropped: 0 };
   }
 
-  const tabIds = [...new Set([...saved.notes, ...saved.comments].map((descriptor) => descriptor.tabId))];
-  const live = await findLiveFrames(deps, tabIds);
-
-  const jobs = [];
+  const claims = [];
   for (const note of saved.notes) {
-    if (live.get(note.tabId)?.has(note.frameId)) {
-      jobs.push({
-        run: () => handlers.subscribeNotes(note.url, { tab: { id: note.tabId }, frameId: note.frameId })
-      });
-    } else {
-      await store.removeNote(note.subKey);
+    const generation = handlers.claimRestore('note', note.subKey);
+    if (generation !== null) {
+      claims.push({ kind: 'note', descriptor: note, generation });
     }
   }
   for (const comment of saved.comments) {
-    if (live.has(comment.tabId)) {
-      jobs.push({
-        run: () => handlers.subscribeCommentsHandler(comment.noteId, { tab: { id: comment.tabId } })
-      });
-    } else {
-      await store.removeComment(comment.subKey);
+    const generation = handlers.claimRestore('comment', comment.subKey);
+    if (generation !== null) {
+      claims.push({ kind: 'comment', descriptor: comment, generation });
     }
   }
-  const dropped = total - jobs.length;
+  // Keys a content script already handled are not restored and not counted as dropped
+  const skipped = total - claims.length;
+
+  const user = await lookupUser(handlers, wait);
+  if (!user.ok) {
+    await store.setDegraded(true);
+    log.error(`Could not look up the user; ${claims.length} real-time subscription(s) not restored`);
+    return { restored: 0, failed: claims.length, dropped: 0 };
+  }
+  if (!user.user) {
+    await store.clear();
+    await store.setDegraded(false);
+    return { restored: 0, failed: 0, dropped: total - skipped };
+  }
+
+  const tabIds = [...new Set(claims.map((claim) => claim.descriptor.tabId))];
+  const states = await findLiveFrames(deps, tabIds);
+
+  const jobs = [];
+  let dropped = 0;
+  let unresolved = 0;
+  for (const { kind, descriptor, generation } of claims) {
+    const state = states.get(descriptor.tabId);
+    if (state.status === 'unknown') {
+      unresolved += 1;
+    } else if (state.status === 'closed') {
+      handlers.releaseTab(descriptor.tabId);
+      dropped += 1;
+    } else if (kind === 'note' && !state.frames.has(descriptor.frameId)) {
+      await store.removeNote(descriptor.subKey);
+      dropped += 1;
+    } else if (kind === 'note') {
+      jobs.push({
+        label: `note ${descriptor.subKey}`,
+        run: () => handlers.subscribeNotes(
+          descriptor.url, { tab: { id: descriptor.tabId }, frameId: descriptor.frameId }, generation
+        )
+      });
+    } else {
+      jobs.push({
+        label: `comment ${descriptor.subKey}`,
+        run: () => handlers.subscribeCommentsHandler(
+          descriptor.noteId, { tab: { id: descriptor.tabId } }, generation
+        )
+      });
+    }
+  }
 
   let pending = jobs;
+  let errors = [];
   for (let attempt = 0; attempt < MAX_ATTEMPTS && pending.length > 0; attempt += 1) {
-    const results = await Promise.all(pending.map((job) => job.run()));
-    pending = pending.filter((job, index) => results[index]?.success !== true);
+    const results = await Promise.all(pending.map((job) => job.run().catch((error) => ({
+      success: false,
+      error: error?.message
+    }))));
+    errors = pending.map((job, index) => ({ job, result: results[index] }))
+      .filter(({ result }) => result?.success !== true);
+    pending = errors.map(({ job }) => job);
     if (pending.length > 0 && attempt < MAX_ATTEMPTS - 1) {
       await wait(BASE_DELAY_MS * 2 ** attempt);
     }
   }
 
-  await store.setDegraded(pending.length > 0);
-  if (pending.length > 0) {
-    log.error(`Could not restore ${pending.length} real-time subscription(s); sync is degraded`);
+  const failed = pending.length + unresolved;
+  await store.setDegraded(failed > 0);
+  for (const { job, result } of errors) {
+    log.error(`Could not restore ${job.label}:`, result?.error);
+  }
+  if (failed > 0) {
+    log.error(`Could not restore ${failed} real-time subscription(s); sync is degraded`);
   }
 
-  return { restored: jobs.length - pending.length, failed: pending.length, dropped };
+  return { restored: jobs.length - pending.length, failed, dropped };
 }

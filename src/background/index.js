@@ -54,6 +54,9 @@ const sharedNotesSubscription = { current: null };
 const subscriptionStore = chrome.storage.session
   ? createSubscriptionStore(chrome.storage.session, log)
   : null;
+if (!subscriptionStore) {
+  log.warn('chrome.storage.session is not available: real-time subscriptions cannot be restored');
+}
 
 // Create handlers with lazy-loaded dependencies
 // These wrappers ensure Firebase is only loaded when actually used
@@ -345,7 +348,8 @@ export function bootstrap() {
   // Set up service worker keep-alive to prevent cold starts
   // This keeps the service worker warm, reducing popup opening delay. If Chrome stops the worker
   // anyway, the next alarm starts it again and the subscriptions it held are restored below.
-  chrome.alarms.create('keepAlive', { periodInMinutes: 0.4 }); // Every 24 seconds
+  // Chrome may fire alarms no more often than every 30 seconds.
+  chrome.alarms.create('keepAlive', { periodInMinutes: 0.4 });
   
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'keepAlive') {

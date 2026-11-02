@@ -3,7 +3,8 @@
  * Keeps a description of the real-time subscriptions the background worker holds, in
  * chrome.storage.session, so a worker that Chrome stopped (which drops its Firestore listeners)
  * can restore them when it starts again. The session area survives a worker restart but is
- * cleared when the browser restarts, which is right: tab IDs are not valid after that.
+ * cleared when the browser restarts and when the extension is reloaded, updated or disabled,
+ * which is right: tab IDs are not valid after any of those.
  */
 
 const SUBSCRIPTIONS_KEY = 'subscriptions';
@@ -25,9 +26,10 @@ function normalize(stored) {
 /**
  * Create a subscription store
  * Every operation runs through one queue, in call order, so callers can fire and forget without
- * two writes overtaking each other, and no operation ever rejects (failures are logged).
+ * two writes overtaking each other, and no operation ever rejects: failures are logged, and a
+ * failed read makes load() return null.
  * @param {{ get: Function, set: Function }} area - A chrome.storage area (session)
- * @param {{ warn: Function }} log - Logger
+ * @param {{ error: Function }} log - Logger
  * @returns {Object} The store
  */
 export function createSubscriptionStore(area, log) {
@@ -42,13 +44,16 @@ export function createSubscriptionStore(area, log) {
    */
   function enqueue(task, fallback) {
     const run = chain.then(task).catch((error) => {
-      log.warn('Subscription store operation failed:', error);
+      log.error('Subscription store operation failed:', error);
       return fallback;
     });
     chain = run;
     return run;
   }
 
+  /**
+   * Read the stored descriptors once
+   */
   async function ensureLoaded() {
     if (!state) {
       const stored = await area.get([SUBSCRIPTIONS_KEY]);
@@ -56,6 +61,9 @@ export function createSubscriptionStore(area, log) {
     }
   }
 
+  /**
+   * Write the cached descriptors
+   */
   async function save() {
     await area.set({ [SUBSCRIPTIONS_KEY]: state });
   }
@@ -69,35 +77,58 @@ export function createSubscriptionStore(area, log) {
     return enqueue(async () => {
       await ensureLoaded();
       change(state);
-      await save();
+      try {
+        await save();
+      } catch (error) {
+        // The cached state holds a change that was not written: read storage again next time
+        state = null;
+        throw error;
+      }
     });
   }
 
   return {
     /**
      * Read every stored descriptor
-     * @returns {Promise<{ notes: Object[], comments: Object[] }>} Descriptors, each with its subKey
+     * @returns {Promise<{ notes: Object[], comments: Object[] }|null>} Descriptors, each with its
+     *   subKey, or null if storage could not be read
      */
     load() {
       return enqueue(async () => {
         await ensureLoaded();
         const withKey = (descriptors) => Object.entries(descriptors).map(([subKey, descriptor]) => ({ subKey, ...descriptor }));
         return { notes: withKey(state.notes), comments: withKey(state.comments) };
-      }, { notes: [], comments: [] });
+      }, null);
     },
 
+    /**
+     * Store a note subscription
+     * @param {string} subKey - `${tabId}-${frameId}`
+     * @param {{ tabId: number, frameId: number, url: string }} descriptor - What restore needs
+     */
     saveNote(subKey, descriptor) {
       return update((current) => { current.notes[subKey] = descriptor; });
     },
 
+    /**
+     * @param {string} subKey - `${tabId}-${frameId}`
+     */
     removeNote(subKey) {
       return update((current) => { delete current.notes[subKey]; });
     },
 
+    /**
+     * Store a comment subscription
+     * @param {string} subKey - `${tabId}-${noteId}`
+     * @param {{ tabId: number, noteId: string }} descriptor - What restore needs
+     */
     saveComment(subKey, descriptor) {
       return update((current) => { current.comments[subKey] = descriptor; });
     },
 
+    /**
+     * @param {string} subKey - `${tabId}-${noteId}`
+     */
     removeComment(subKey) {
       return update((current) => { delete current.comments[subKey]; });
     },
@@ -117,6 +148,9 @@ export function createSubscriptionStore(area, log) {
       });
     },
 
+    /**
+     * Forget every descriptor
+     */
     clear() {
       return update((current) => {
         current.notes = {};
@@ -125,7 +159,7 @@ export function createSubscriptionStore(area, log) {
     },
 
     /**
-     * Record whether the last restore left subscriptions that could not be restored
+     * Record whether the last restore that had work to do left subscriptions unrestored
      * @param {boolean} degraded - True when real-time sync is degraded
      */
     setDegraded(degraded) {

@@ -19,13 +19,20 @@ bump is listed under the next version bump after it.
 
 - Real-time notes and comments now recover when Chrome stops the background service worker, which drops its
   Firestore listeners. The worker keeps a description of its subscriptions in `chrome.storage.session` and, when it
-  starts again (the keep-alive alarm wakes it), restores them for the tabs and frames that still exist, retrying
-  with a growing delay. This replaces the per-frame port and retry timers in the content script, so every frame is
-  restored at once and nothing depends on timers in the page. Descriptors are dropped when nobody is signed in.
-- If some subscriptions still cannot be restored after the retries, the worker keeps them for the next start and
-  flags real-time sync as degraded; the new `getRealtimeSyncStatus` message reports `{ degraded }`.
-- A subscribe that reaches the worker after its tab was closed now registers no listener and is reported as
-  `cancelled`.
+  starts again (the keep-alive alarm wakes it), restores them: note subscriptions for frames that still exist and
+  comment subscriptions for tabs that still exist, retrying failures with a growing delay. This replaces the
+  per-frame port and retry timers in the content script, so every frame is restored at once and nothing depends on
+  timers in the page.
+- A restore never overrides the page. It claims every stored key before anything is awaited, so a content script
+  that subscribes or unsubscribes in the meantime wins, including over a retry. Descriptors are dropped when nobody
+  is signed in, when the tab was closed, or when a frame no longer exists; a failed user lookup, or a tab or frame
+  list that cannot be read, keeps them for the next start instead.
+- If some subscriptions still cannot be restored after the retries, the worker keeps them and flags real-time sync
+  as degraded. The new `getRealtimeSyncStatus` message reports `{ success, degraded, restorable }`, where `degraded`
+  refers to the last restore that had work to do and `restorable` is false when `chrome.storage.session` is not
+  available. Nothing in the popup shows this yet.
+- Within one worker run, a subscribe that reaches the worker after its tab was closed now registers no listener and
+  is reported as `cancelled`.
 
 ## [1.20.27] - 2026-11-02
 
