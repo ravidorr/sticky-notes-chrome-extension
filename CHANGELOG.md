@@ -30,6 +30,9 @@ bump is listed under the next version bump after it.
   Firestore listeners. The content script keeps a port open to the worker, and when it disconnects it resubscribes
   (with backoff, up to 5 attempts) instead of staying silent until the page is reloaded. It stops when the
   subscription was cancelled or the extension was reloaded.
+- A note subscription that finishes starting in the background worker after it was cancelled, or replaced by a newer
+  one for the same tab and frame, now releases its Firestore listener instead of overwriting the newer one or
+  outliving the unsubscribe.
 
 ### Security
 
