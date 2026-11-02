@@ -160,4 +160,16 @@ describe('restore with the real handlers and store', () => {
     expect(noteSubscriptions.get('7-0').url).toBe('https://new.test');
     expect(await store.isDegraded()).toBe(false);
   });
+
+  it('is not degraded when a content-script subscribe already settled a key before the restore loaded', async () => {
+    await handlers.subscribeNotes('https://new.test', { tab: { id: 7 }, frameId: 0 });
+    await handlers.subscribeCommentsHandler('n1', { tab: { id: 7 } });
+
+    const result = await restore();
+    await flush();
+
+    expect(result).toEqual({ restored: 0, failed: 0, dropped: 0 });
+    expect(await store.isDegraded()).toBe(false);
+    expect(noteSubscriptions.get('7-0').url).toBe('https://new.test');
+  });
 });

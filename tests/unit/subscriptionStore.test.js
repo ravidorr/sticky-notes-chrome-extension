@@ -130,6 +130,52 @@ describe('subscription store', () => {
     expect(await store.isDegraded()).toBe(false);
   });
 
+  describe('loadAndClaim', () => {
+    it('gives the claim the stored descriptors with their keys and stores the skipped keys', async () => {
+      await store.saveNote('1-0', { tabId: 1, frameId: 0, url: 'a' });
+      await store.saveComment('1-n1', { tabId: 1, noteId: 'n1' });
+      const claim = jest.fn(() => ({ skippedKeys: ['comment:1-n1'], extra: 42 }));
+
+      const result = await store.loadAndClaim(claim);
+
+      expect(claim).toHaveBeenCalledWith({
+        notes: [{ subKey: '1-0', tabId: 1, frameId: 0, url: 'a' }],
+        comments: [{ subKey: '1-n1', tabId: 1, noteId: 'n1' }]
+      });
+      expect(result).toEqual({ skippedKeys: ['comment:1-n1'], extra: 42 });
+      expect(await store.isDegraded()).toBe(true);
+      expect(area.data.subscriptions.failed).toEqual(['comment:1-n1']);
+    });
+
+    it('replaces the failed list of an earlier run', async () => {
+      await store.setFailed(['note:9-0']);
+
+      await store.loadAndClaim(() => ({ skippedKeys: [] }));
+
+      expect(await store.isDegraded()).toBe(false);
+    });
+
+    it('sees what was queued before it, and what is queued after it cannot be undone by its list', async () => {
+      store.saveNote('1-0', { tabId: 1, frameId: 0, url: 'before' });
+      const claim = jest.fn(() => ({ skippedKeys: ['note:1-0'] }));
+
+      const claiming = store.loadAndClaim(claim);
+      store.saveNote('1-0', { tabId: 1, frameId: 0, url: 'after' });
+      await claiming;
+
+      expect(claim.mock.calls[0][0].notes[0].url).toBe('before');
+      expect(await store.isDegraded()).toBe(false);
+    });
+
+    it('returns null when storage cannot be read or written', async () => {
+      area.get.mockRejectedValueOnce(new Error('read failed'));
+      expect(await store.loadAndClaim(() => ({ skippedKeys: [] }))).toBeNull();
+
+      area.set.mockRejectedValueOnce(new Error('write failed'));
+      expect(await store.loadAndClaim(() => ({ skippedKeys: [] }))).toBeNull();
+    });
+  });
+
   it('adds failed keys without losing the ones already there', async () => {
     await store.setFailed(['note:1-0']);
 

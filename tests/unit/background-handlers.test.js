@@ -2929,6 +2929,19 @@ describe('Background Handlers', () => {
           expect(handlers.claimRestore('comment', '123-note-1')).toBeNull();
         });
 
+        it('should report whether a subscription is registered', async () => {
+          const handlers = localThis.build6();
+
+          expect(handlers.isSubscribed('note', '123-0')).toBe(false);
+          expect(handlers.isSubscribed('comment', '123-note-1')).toBe(false);
+
+          await handlers.subscribeNotes('https://example.com', SENDER);
+          await handlers.subscribeCommentsHandler('note-1', SENDER);
+
+          expect(handlers.isSubscribed('note', '123-0')).toBe(true);
+          expect(handlers.isSubscribed('comment', '123-note-1')).toBe(true);
+        });
+
         it('should refuse to claim a key a content script already subscribed or unsubscribed', async () => {
           const handlers = localThis.build6();
 

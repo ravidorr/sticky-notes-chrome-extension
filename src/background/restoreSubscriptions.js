@@ -80,50 +80,43 @@ async function findLiveFrames({ tabs, webNavigation, log }, tabIds) {
  * retried with a growing delay, kept for the next worker start, and recorded as failed: sync is
  * degraded until a content script or a later restore subscribes or unsubscribes for those keys.
  * Keys a content script claimed first are recorded the same way until its request settles them,
- * because that request may fail and nothing retries it.
+ * because that request may fail and nothing retries it (unless it already succeeded).
  * A subscribe that comes back cancelled counts as done.
  * @param {Object} deps - { store, handlers, tabs, webNavigation, log, wait }
  * @returns {Promise<{ restored: number, failed: number, dropped: number }>} What happened
  */
 export async function restoreSubscriptions(deps) {
   const { store, handlers, log, wait = defaultWait } = deps;
-  const saved = await store.load();
-  if (!saved) {
+  // Load, claim and record the skipped keys in one store step (see loadAndClaim)
+  const loaded = await store.loadAndClaim((saved) => {
+    const claimed = { claims: [], skippedKeys: [], total: saved.notes.length + saved.comments.length };
+    const claim = (kind, descriptor) => {
+      const generation = handlers.claimRestore(kind, descriptor.subKey);
+      if (generation !== null) {
+        claimed.claims.push({ kind, descriptor, generation });
+      } else if (!handlers.isSubscribed(kind, descriptor.subKey)) {
+        // A key a content script already handled is not restored and not counted as dropped. Unless
+        // its request already succeeded, that request may still fail, and nothing retries it, so
+        // the key stays in the failed list until the request subscribes or unsubscribes for it
+        // (which removes it from the list).
+        claimed.skippedKeys.push(failedKey({ kind, descriptor }));
+      }
+    };
+    saved.notes.forEach((note) => claim('note', note));
+    saved.comments.forEach((comment) => claim('comment', comment));
+    return claimed;
+  });
+  if (!loaded) {
     log.error('Could not read the stored subscriptions; real-time sync cannot be restored');
     return { restored: 0, failed: 0, dropped: 0 };
   }
 
-  const total = saved.notes.length + saved.comments.length;
+  const { claims, total } = loaded;
   if (total === 0) {
-    await store.setFailed([]);
     return { restored: 0, failed: 0, dropped: 0 };
   }
-
-  const claims = [];
-  const skippedKeys = [];
-  for (const note of saved.notes) {
-    const generation = handlers.claimRestore('note', note.subKey);
-    if (generation !== null) {
-      claims.push({ kind: 'note', descriptor: note, generation });
-    } else {
-      skippedKeys.push(failedKey({ kind: 'note', descriptor: note }));
-    }
-  }
-  for (const comment of saved.comments) {
-    const generation = handlers.claimRestore('comment', comment.subKey);
-    if (generation !== null) {
-      claims.push({ kind: 'comment', descriptor: comment, generation });
-    } else {
-      skippedKeys.push(failedKey({ kind: 'comment', descriptor: comment }));
-    }
-  }
-  // A key a content script already handled is not restored and not counted as dropped. Its
-  // request may still fail, and nothing retries it, so it stays in the failed list until that
-  // request subscribes or unsubscribes for the key (which removes it from the list). The list is
-  // replaced now, in the store's queue ahead of anything such a request does later, so a request
-  // that settles while the restore is still working is not undone by the restore's last write.
-  await store.setFailed(skippedKeys);
-  const skipped = skippedKeys.length;
+  // Keys a content script handled are neither restored nor dropped by this run
+  const skipped = total - claims.length;
 
   const user = await lookupUser(handlers, wait);
   if (!user.ok) {

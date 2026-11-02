@@ -974,6 +974,16 @@ export function createHandlers(deps = {}) {
   }
   
   /**
+   * Report whether a subscription is registered right now
+   * @param {string} kind - 'note' or 'comment'
+   * @param {string} subKey - Subscription key
+   * @returns {boolean} True if the worker holds a listener for the key
+   */
+  function isSubscribed(kind, subKey) {
+    return (kind === 'note' ? noteSubscriptions : commentSubscriptions).has(subKey);
+  }
+  
+  /**
    * Release a listener. Never throws: a missing unsubscribe function or a failing release is
    * logged and swallowed. Does not touch any subscription map, so the caller drops the entry
    * (a throwing unsubscribe is not worth retrying, and a stale entry would wedge its key).
@@ -1636,6 +1646,7 @@ export function createHandlers(deps = {}) {
     unsubscribeCommentsHandler,
     releaseTab,
     claimRestore,
+    isSubscribed,
     getRealtimeSyncStatus,
     // Badge management
     updateOrphanedBadge,

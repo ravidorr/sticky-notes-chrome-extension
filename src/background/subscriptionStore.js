@@ -66,7 +66,13 @@ export function createSubscriptionStore(area, log) {
    * Write the cached descriptors
    */
   async function save() {
-    await area.set({ [SUBSCRIPTIONS_KEY]: state });
+    try {
+      await area.set({ [SUBSCRIPTIONS_KEY]: state });
+    } catch (error) {
+      // The cached state holds a change that was not written: read storage again next time
+      state = null;
+      throw error;
+    }
   }
 
   /**
@@ -78,13 +84,7 @@ export function createSubscriptionStore(area, log) {
     return enqueue(async () => {
       await ensureLoaded();
       change(state);
-      try {
-        await save();
-      } catch (error) {
-        // The cached state holds a change that was not written: read storage again next time
-        state = null;
-        throw error;
-      }
+      await save();
     });
   }
 
@@ -99,6 +99,26 @@ export function createSubscriptionStore(area, log) {
         await ensureLoaded();
         const withKey = (descriptors) => Object.entries(descriptors).map(([subKey, descriptor]) => ({ subKey, ...descriptor }));
         return { notes: withKey(state.notes), comments: withKey(state.comments) };
+      }, null);
+    },
+
+    /**
+     * Read every stored descriptor, let the caller claim them, and record the keys it skipped as the
+     * failed list, all in one queue step. Operations queued before this one are in the snapshot, and
+     * operations queued after it (a content script that subscribes or unsubscribes meanwhile) run
+     * after the failed list was written, so none of them can be undone by it.
+     * @param {Function} claim - Called with the snapshot ({ notes, comments }, descriptors with their
+     *   subKey); returns an object with skippedKeys (`note:${subKey}` and `comment:${subKey}`)
+     * @returns {Promise<Object|null>} What claim returned, or null if storage could not be read or written
+     */
+    loadAndClaim(claim) {
+      return enqueue(async () => {
+        await ensureLoaded();
+        const withKey = (descriptors) => Object.entries(descriptors).map(([subKey, descriptor]) => ({ subKey, ...descriptor }));
+        const claimed = claim({ notes: withKey(state.notes), comments: withKey(state.comments) });
+        state.failed = [...claimed.skippedKeys];
+        await save();
+        return claimed;
       }, null);
     },
 
