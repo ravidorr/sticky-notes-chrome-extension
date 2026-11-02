@@ -1389,5 +1389,37 @@
         "example": "50000"
       }
     }
+  },
+  "settingsTroubleshooting": {
+    "message": "פתרון בעיות",
+    "description": "Troubleshooting settings section title"
+  },
+  "settingsLogLevel": {
+    "message": "רישום ביומן",
+    "description": "Log level setting label"
+  },
+  "settingsLogLevelDesc": {
+    "message": "בחרו מה התוסף כותב לקונסולת הדפדפן. השאירו כבוי אלא אם אתם מדווחים על בעיה.",
+    "description": "Log level setting description"
+  },
+  "logLevelSilent": {
+    "message": "כבוי (ברירת מחדל)",
+    "description": "Log level option: nothing is logged"
+  },
+  "logLevelError": {
+    "message": "שגיאות בלבד",
+    "description": "Log level option: errors only"
+  },
+  "logLevelWarn": {
+    "message": "אזהרות ושגיאות",
+    "description": "Log level option: warnings and errors"
+  },
+  "logLevelInfo": {
+    "message": "מידע",
+    "description": "Log level option: info and above"
+  },
+  "logLevelDebug": {
+    "message": "ניפוי באגים (מפורט)",
+    "description": "Log level option: everything"
   }
 }

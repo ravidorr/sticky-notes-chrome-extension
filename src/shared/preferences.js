@@ -5,6 +5,7 @@
  */
 
 import { VALID_THEMES } from './utils.js';
+import { LOG_LEVEL_NAMES } from './logger.js';
 
 /**
  * Valid position options for notes
@@ -37,6 +38,11 @@ export const FONT_SIZE_VALUES = {
 };
 
 /**
+ * Valid log levels for the extension and the Firestore SDK ('silent' logs nothing)
+ */
+export const VALID_LOG_LEVELS = LOG_LEVEL_NAMES;
+
+/**
  * Default preferences for new installations
  */
 export const DEFAULT_PREFERENCES = {
@@ -44,8 +50,18 @@ export const DEFAULT_PREFERENCES = {
   defaultPosition: 'top-right',
   noteWidth: 280,
   fontSize: 'medium',
-  notesVisibleByDefault: true
+  notesVisibleByDefault: true,
+  logLevel: 'silent'
 };
+
+/**
+ * Return a valid log level, falling back to the default
+ * @param {*} level - Stored or received value
+ * @returns {string} A valid log level name
+ */
+export function normalizeLogLevel(level) {
+  return VALID_LOG_LEVELS.includes(level) ? level : DEFAULT_PREFERENCES.logLevel;
+}
 
 /**
  * Storage key for preferences
@@ -80,7 +96,8 @@ export async function getPreferences(deps = {}) {
         : DEFAULT_PREFERENCES.fontSize,
       notesVisibleByDefault: typeof stored.notesVisibleByDefault === 'boolean'
         ? stored.notesVisibleByDefault
-        : DEFAULT_PREFERENCES.notesVisibleByDefault
+        : DEFAULT_PREFERENCES.notesVisibleByDefault,
+      logLevel: normalizeLogLevel(stored.logLevel)
     };
   } catch (error) {
     // Return defaults if storage access fails
@@ -132,6 +149,12 @@ export async function setPreferences(prefs, deps = {}) {
     if (prefs.notesVisibleByDefault !== undefined) {
       if (typeof prefs.notesVisibleByDefault === 'boolean') {
         updated.notesVisibleByDefault = prefs.notesVisibleByDefault;
+      }
+    }
+    
+    if (prefs.logLevel !== undefined) {
+      if (VALID_LOG_LEVELS.includes(prefs.logLevel)) {
+        updated.logLevel = prefs.logLevel;
       }
     }
     

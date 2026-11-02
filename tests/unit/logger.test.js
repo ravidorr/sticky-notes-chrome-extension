@@ -16,7 +16,11 @@ import {
   backgroundLogger,
   contentLogger,
   firestoreLogger,
-  popupLogger
+  popupLogger,
+  setLogLevel,
+  getLogLevelName,
+  onLogLevelChange,
+  LOG_LEVEL_NAMES
 } from '../../src/shared/logger.js';
 
 // Store original console methods
@@ -392,6 +396,153 @@ describe('Logger', () => {
     it('should use correct namespace prefix for popupLogger', () => {
       popupLogger.debug('test');
       expect(localThis.mockLog).toHaveBeenCalledWith('[Popup]', 'test');
+    });
+  });
+
+  describe('runtime log level', () => {
+    afterEach(() => {
+      setLogLevel(null);
+    });
+
+    it('should have no override by default', () => {
+      expect(getLogLevelName()).toBeNull();
+    });
+
+    it('should silence every method when the level is silent', () => {
+      const logger = createLogger('App');
+      setLogLevel('silent');
+
+      logger.debug('d');
+      logger.info('i');
+      logger.warn('w');
+      logger.error('e');
+      logger.log('error', 'e2');
+
+      expect(localThis.mockLog).not.toHaveBeenCalled();
+      expect(localThis.mockInfo).not.toHaveBeenCalled();
+      expect(localThis.mockWarn).not.toHaveBeenCalled();
+      expect(localThis.mockError).not.toHaveBeenCalled();
+    });
+
+    it('should show only errors at the error level', () => {
+      const logger = createLogger('App');
+      setLogLevel('error');
+
+      logger.warn('w');
+      logger.error('e');
+
+      expect(localThis.mockWarn).not.toHaveBeenCalled();
+      expect(localThis.mockError).toHaveBeenCalledWith('[App]', 'e');
+    });
+
+    it('should show everything at the debug level even when debug mode is off', () => {
+      setDebugMode(false);
+      const logger = createLogger('App');
+      setLogLevel('debug');
+
+      logger.debug('d');
+
+      expect(localThis.mockLog).toHaveBeenCalledWith('[App]', 'd');
+    });
+
+    it('should leave loggers with an explicit debugMode alone', () => {
+      const logger = createLogger('App', { debugMode: false });
+      setLogLevel('silent');
+
+      logger.error('e');
+
+      expect(localThis.mockError).toHaveBeenCalledWith('[App]', 'e');
+    });
+
+    it('should clear the override for an unknown level', () => {
+      setLogLevel('silent');
+      setLogLevel('verbose');
+
+      expect(getLogLevelName()).toBeNull();
+    });
+
+    it('should show warnings but not info or debug at the warn level', () => {
+      const logger = createLogger('App');
+      setLogLevel('warn');
+
+      logger.debug('d');
+      logger.info('i');
+      logger.warn('w');
+
+      expect(localThis.mockLog).not.toHaveBeenCalled();
+      expect(localThis.mockInfo).not.toHaveBeenCalled();
+      expect(localThis.mockWarn).toHaveBeenCalledWith('[App]', 'w');
+    });
+
+    it('should show info but not debug at the info level', () => {
+      const logger = createLogger('App');
+      setLogLevel('info');
+
+      logger.debug('d');
+      logger.info('i');
+
+      expect(localThis.mockLog).not.toHaveBeenCalled();
+      expect(localThis.mockInfo).toHaveBeenCalledWith('[App]', 'i');
+    });
+
+    it('should gate group and timers by the runtime level', () => {
+      const logger = createLogger('App');
+      setLogLevel('silent');
+      logger.group('g');
+      logger.groupEnd();
+      logger.time('t');
+      logger.timeEnd('t');
+      expect(localThis.mockGroup).not.toHaveBeenCalled();
+      expect(localThis.mockTime).not.toHaveBeenCalled();
+
+      setDebugMode(false);
+      setLogLevel('debug');
+      logger.group('g');
+      logger.time('t');
+      expect(localThis.mockGroup).toHaveBeenCalledWith('[App] g');
+      expect(localThis.mockTime).toHaveBeenCalledWith('[App] t');
+    });
+
+    it('should silence the logger in debug mode when the level is silent', () => {
+      setDebugMode(true);
+      const logger = createLogger('App');
+      setLogLevel('silent');
+
+      logger.debug('d');
+      logger.error('e');
+
+      expect(localThis.mockLog).not.toHaveBeenCalled();
+      expect(localThis.mockError).not.toHaveBeenCalled();
+    });
+
+    it('should keep notifying other listeners when one throws', () => {
+      const failing = jest.fn(() => { throw new Error('listener failed'); });
+      const healthy = jest.fn();
+      const stopFailing = onLogLevelChange(failing);
+      const stopHealthy = onLogLevelChange(healthy);
+
+      setLogLevel('warn');
+
+      expect(healthy).toHaveBeenCalledWith('warn');
+      expect(localThis.mockError).toHaveBeenCalledWith('[Logger] Log level listener failed:', expect.any(Error));
+      stopFailing();
+      stopHealthy();
+    });
+
+    it('should expose the valid level names', () => {
+      expect(LOG_LEVEL_NAMES).toEqual(['silent', 'error', 'warn', 'info', 'debug']);
+    });
+
+    it('should notify listeners until they unsubscribe', () => {
+      const listener = jest.fn();
+      const unsubscribe = onLogLevelChange(listener);
+
+      setLogLevel('warn');
+      unsubscribe();
+      setLogLevel('error');
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith('warn');
     });
   });
 });

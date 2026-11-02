@@ -6,6 +6,7 @@
 
 import { StickyNotesApp } from './app/StickyNotesApp.js';
 import { contentLogger as log } from '../shared/logger.js';
+import { initLogLevel } from '../shared/logLevel.js';
 
 /**
  * Check if the content script should initialize in this frame
@@ -52,6 +53,7 @@ function initStickyNotes() {
     }
     
     window.__stickyNotesInitialized = true;
+    initLogLevel();
     
     const isTopFrame = window.self === window.top;
     log.debug(' Creating StickyNotesApp instance...', isTopFrame ? '(main frame)' : '(iframe)');

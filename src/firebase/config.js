@@ -15,16 +15,21 @@
  * to avoid blocking extension startup with SDK parsing.
  */
 
-import { firestoreLogger as log } from '../shared/logger.js';
+import { firestoreLogger as log, getLogLevelName, onLogLevelChange } from '../shared/logger.js';
 import { getFirebaseConfig, isConfigValid, isFirebaseConfigured } from './config-env.js';
 
 // Firebase configuration - loaded from environment variables
 const firebaseConfig = getFirebaseConfig();
 
+// Firestore SDK log level used while no logLevel is applied (before the preference loads, or
+// after the runtime level is cleared). The extension's own logger falls back to debug mode instead.
+const FIRESTORE_DEFAULT_LOG_LEVEL = 'silent';
+
 // Initialize Firebase
 let app = null;
 let auth = null;
 let db = null;
+let stopLogLevelSync = null;
 
 /**
  * Detect if running in a service worker context
@@ -57,6 +62,14 @@ export async function initializeFirebase(options = {}) {
     const deps = options.deps || await loadFirebaseDeps();
 
     app = deps.initializeApp(config);
+
+    // The SDK logs transport errors (e.g. offline Listen streams) with console.error, which
+    // Chrome lists under the extension's errors. Follow the logLevel preference instead.
+    if (deps.setLogLevel) {
+      const applyLogLevel = (level) => deps.setLogLevel(level || FIRESTORE_DEFAULT_LOG_LEVEL);
+      applyLogLevel(getLogLevelName());
+      stopLogLevelSync = onLogLevelChange(applyLogLevel);
+    }
 
     // Use initializeAuth with explicit persistence for faster startup
     // Service workers use indexedDB only; browser contexts can use both
@@ -135,6 +148,7 @@ async function loadFirebaseDeps() {
     browserLocalPersistence: authModule.browserLocalPersistence,
     initializeFirestore: firestoreModule.initializeFirestore,
     getFirestore: firestoreModule.getFirestore,
+    setLogLevel: firestoreModule.setLogLevel,
     persistentLocalCache: firestoreModule.persistentLocalCache,
     persistentSingleTabManager: firestoreModule.persistentSingleTabManager,
     memoryLocalCache: firestoreModule.memoryLocalCache
@@ -145,6 +159,10 @@ async function loadFirebaseDeps() {
  * Reset Firebase instances (primarily for testing)
  */
 export function resetFirebase() {
+  if (stopLogLevelSync) {
+    stopLogLevelSync();
+    stopLogLevelSync = null;
+  }
   app = null;
   auth = null;
   db = null;

@@ -5,6 +5,7 @@
 
 import { createPopupHandlers } from './handlers.js';
 import { initializeI18n, t } from '../shared/i18n.js';
+import { initLogLevel } from '../shared/logLevel.js';
 import { isRestrictedUrl, stripHtml } from '../shared/utils.js';
 
 /**
@@ -503,6 +504,8 @@ async function onLogout() {
 async function init() {
   // Initialize i18n for HTML elements
   initializeI18n();
+
+  initLogLevel();
 
   initDOMElements();
 

@@ -37,6 +37,7 @@ const {
 } = await import('../../src/firebase/config.js');
 
 const { buildFirebaseConfig } = await import('../../src/firebase/config-env.js');
+const { setLogLevel } = await import('../../src/shared/logger.js');
 
 describe('Firebase Config', () => {
   const localThis = {};
@@ -377,6 +378,66 @@ describe('Firebase Config', () => {
       // Initialize again - should create new instance
       await initializeFirebase({ config, deps: mockDeps });
       expect(mockDeps.initializeApp).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Firestore log level', () => {
+    const makeLogDeps = () => ({
+      initializeApp: jest.fn(() => ({ name: 'app' })),
+      initializeAuth: jest.fn(() => ({ name: 'auth' })),
+      getAuth: jest.fn(() => ({ name: 'auth' })),
+      indexedDBLocalPersistence: { type: 'indexedDB' },
+      browserLocalPersistence: { type: 'local' },
+      initializeFirestore: jest.fn(() => ({ name: 'db' })),
+      getFirestore: jest.fn(),
+      persistentLocalCache: jest.fn(() => ({})),
+      persistentSingleTabManager: jest.fn(() => ({})),
+      memoryLocalCache: jest.fn(() => ({})),
+      setLogLevel: jest.fn()
+    });
+
+    afterEach(() => {
+      setLogLevel(null);
+    });
+
+    it('is silent until the preference is applied, then follows it', async () => {
+      const deps = makeLogDeps();
+
+      await initializeFirebase({ config: { apiKey: 'real-api-key' }, deps });
+      expect(deps.setLogLevel).toHaveBeenLastCalledWith('silent');
+
+      setLogLevel('debug');
+      expect(deps.setLogLevel).toHaveBeenLastCalledWith('debug');
+    });
+
+    it('uses the already applied preference at init', async () => {
+      const deps = makeLogDeps();
+      setLogLevel('error');
+
+      await initializeFirebase({ config: { apiKey: 'real-api-key' }, deps });
+
+      expect(deps.setLogLevel).toHaveBeenCalledWith('error');
+    });
+
+    it('stops following the preference after resetFirebase', async () => {
+      const deps = makeLogDeps();
+      await initializeFirebase({ config: { apiKey: 'real-api-key' }, deps });
+      deps.setLogLevel.mockClear();
+
+      resetFirebase();
+      setLogLevel('debug');
+
+      expect(deps.setLogLevel).not.toHaveBeenCalled();
+    });
+
+    it('falls back to silent when the override is cleared', async () => {
+      const deps = makeLogDeps();
+      await initializeFirebase({ config: { apiKey: 'real-api-key' }, deps });
+
+      setLogLevel('info');
+      setLogLevel(null);
+
+      expect(deps.setLogLevel).toHaveBeenLastCalledWith('silent');
     });
   });
 });

@@ -2666,6 +2666,56 @@ describe('Background Handlers', () => {
         expect(result.success).toBe(true);
       });
 
+      it('should release a listener that finishes starting after an unsubscribe', async () => {
+        const lateUnsubscribe = jest.fn();
+        let finish;
+        const subscribe = jest.fn(() => new Promise(resolve => { finish = () => resolve(lateUnsubscribe); }));
+        const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+
+        const pending = handlers.subscribeNotes('https://example.com', SENDER);
+        await flush();
+        await handlers.unsubscribeNotes(SENDER);
+        finish();
+        const result = await pending;
+
+        expect(result.success).toBe(true);
+        expect(lateUnsubscribe).toHaveBeenCalled();
+        expect(localThis.noteSubscriptions.has('123-0')).toBe(false);
+      });
+
+      it('should keep the newer subscription when an older one finishes starting late', async () => {
+        const oldUnsubscribe = jest.fn();
+        const newUnsubscribe = jest.fn();
+        let finishOld;
+        const subscribe = jest.fn()
+          .mockImplementationOnce(() => new Promise(resolve => { finishOld = () => resolve(oldUnsubscribe); }))
+          .mockReturnValueOnce(newUnsubscribe);
+        const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+
+        const pendingOld = handlers.subscribeNotes('https://example.com/old', SENDER);
+        await flush();
+        await handlers.subscribeNotes('https://example.com/new', SENDER);
+        finishOld();
+        await pendingOld;
+
+        expect(oldUnsubscribe).toHaveBeenCalled();
+        expect(newUnsubscribe).not.toHaveBeenCalled();
+        expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/new');
+      });
+
+      it('should tolerate a late listener that has no unsubscribe function', async () => {
+        let finish;
+        const subscribe = jest.fn(() => new Promise(resolve => { finish = () => resolve(undefined); }));
+        const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+
+        const pending = handlers.subscribeNotes('https://example.com', SENDER);
+        await flush();
+        await handlers.unsubscribeNotes(SENDER);
+        finish();
+
+        await expect(pending).resolves.toEqual({ success: true });
+      });
+
       it('should clean up the subscription when the tab cannot be reached', async () => {
         const unsubscribe = jest.fn();
         let onNotes;

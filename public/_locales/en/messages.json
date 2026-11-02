@@ -1481,5 +1481,37 @@
         "example": "50000"
       }
     }
+  },
+  "settingsTroubleshooting": {
+    "message": "Troubleshooting",
+    "description": "Troubleshooting settings section title"
+  },
+  "settingsLogLevel": {
+    "message": "Logging",
+    "description": "Log level setting label"
+  },
+  "settingsLogLevelDesc": {
+    "message": "Choose what the extension writes to the browser console. Keep it off unless you are reporting a problem.",
+    "description": "Log level setting description"
+  },
+  "logLevelSilent": {
+    "message": "Off (default)",
+    "description": "Log level option: nothing is logged"
+  },
+  "logLevelError": {
+    "message": "Errors only",
+    "description": "Log level option: errors only"
+  },
+  "logLevelWarn": {
+    "message": "Warnings and errors",
+    "description": "Log level option: warnings and errors"
+  },
+  "logLevelInfo": {
+    "message": "Info",
+    "description": "Log level option: info and above"
+  },
+  "logLevelDebug": {
+    "message": "Debug (verbose)",
+    "description": "Log level option: everything"
   }
 }

@@ -48,7 +48,8 @@ describe('DEFAULT_PREFERENCES', () => {
       defaultPosition: 'top-right',
       noteWidth: 280,
       fontSize: 'medium',
-      notesVisibleByDefault: true
+      notesVisibleByDefault: true,
+      logLevel: 'silent'
     });
   });
 });
@@ -143,7 +144,8 @@ describe('getPreferences', () => {
       defaultPosition: 'bottom-left',
       noteWidth: 320,
       fontSize: 'large',
-      notesVisibleByDefault: false
+      notesVisibleByDefault: false,
+      logLevel: 'debug'
     };
     localThis.mockStorage.preferences = storedPrefs;
     
@@ -246,7 +248,8 @@ describe('setPreferences', () => {
       defaultPosition: 'bottom-right',
       noteWidth: 360,
       fontSize: 'small',
-      notesVisibleByDefault: false
+      notesVisibleByDefault: false,
+      logLevel: 'warn'
     };
     
     const result = await setPreferences(newPrefs, { chromeStorage: localThis.mockChromeStorage });
@@ -460,5 +463,64 @@ describe('default chrome.storage fallback and invalid values', () => {
 
     expect(result.success).toBe(true);
     expect(result.preferences.notesVisibleByDefault).toBe(DEFAULT_PREFERENCES.notesVisibleByDefault);
+  });
+});
+
+describe('logLevel preference', () => {
+  it('should fall back to the default for an invalid stored logLevel', async () => {
+    localThis.mockStorage.preferences = { logLevel: 'verbose' };
+    const { getPreferences, DEFAULT_PREFERENCES } = await import('../../src/shared/preferences.js');
+
+    const result = await getPreferences({ chromeStorage: localThis.mockChromeStorage });
+
+    expect(result.logLevel).toBe(DEFAULT_PREFERENCES.logLevel);
+  });
+
+  it('should keep the stored logLevel when an invalid one is saved or none is given', async () => {
+    localThis.mockStorage.preferences = { logLevel: 'debug' };
+    const { setPreferences } = await import('../../src/shared/preferences.js');
+    const deps = { chromeStorage: localThis.mockChromeStorage };
+
+    const invalid = await setPreferences({ logLevel: 'verbose' }, deps);
+    expect(invalid.preferences.logLevel).toBe('debug');
+
+    const omitted = await setPreferences({ fontSize: 'large' }, deps);
+    expect(omitted.preferences.logLevel).toBe('debug');
+    expect(localThis.mockStorage.preferences.logLevel).toBe('debug');
+  });
+
+  it('should round-trip every valid level and reset to silent', async () => {
+    const { setPreferences, getPreferences, resetPreferences, VALID_LOG_LEVELS } = await import('../../src/shared/preferences.js');
+    const deps = { chromeStorage: localThis.mockChromeStorage };
+
+    for (const level of VALID_LOG_LEVELS) {
+      await setPreferences({ logLevel: level }, deps);
+      expect((await getPreferences(deps)).logLevel).toBe(level);
+    }
+
+    const reset = await resetPreferences(deps);
+    expect(reset.preferences.logLevel).toBe('silent');
+  });
+
+  it('should ignore an invalid logLevel in setPreferences', async () => {
+    const { setPreferences, DEFAULT_PREFERENCES } = await import('../../src/shared/preferences.js');
+
+    const result = await setPreferences(
+      { logLevel: 'verbose' },
+      { chromeStorage: localThis.mockChromeStorage }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.preferences.logLevel).toBe(DEFAULT_PREFERENCES.logLevel);
+  });
+});
+
+describe('normalizeLogLevel', () => {
+  it('keeps valid levels and defaults the rest', async () => {
+    const { normalizeLogLevel, DEFAULT_PREFERENCES } = await import('../../src/shared/preferences.js');
+
+    expect(normalizeLogLevel('debug')).toBe('debug');
+    expect(normalizeLogLevel('verbose')).toBe(DEFAULT_PREFERENCES.logLevel);
+    expect(normalizeLogLevel(undefined)).toBe(DEFAULT_PREFERENCES.logLevel);
   });
 });

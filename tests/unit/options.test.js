@@ -35,7 +35,8 @@ describe('Options Page Script', () => {
           defaultPosition: 'top-right',
           noteWidth: 280,
           fontSize: 'medium',
-          notesVisibleByDefault: true
+          notesVisibleByDefault: true,
+          logLevel: 'silent'
         }
       };
       if (callback) callback(result);
@@ -98,6 +99,8 @@ describe('Options Page Script', () => {
         </select>
         
         <input type="checkbox" id="notesVisibleByDefault" checked>
+
+        <select id="logLevel"><option value="silent" selected>Off</option><option value="error">Errors</option><option value="warn">Warnings</option><option value="info">Info</option><option value="debug">Debug</option></select>
         
         <button type="button" id="resetBtn">Reset</button>
         <button type="submit" id="saveBtn">Save</button>
@@ -325,7 +328,8 @@ describe('Options Page Script', () => {
             defaultPosition: 'bottom-left',
             noteWidth: 320,
             fontSize: 'large',
-            notesVisibleByDefault: false
+            notesVisibleByDefault: false,
+            logLevel: 'debug'
           }
         };
         if (callback) callback(result);
@@ -344,6 +348,7 @@ describe('Options Page Script', () => {
       expect(document.getElementById('noteWidth').value).toBe('320');
       expect(document.getElementById('fontSize').value).toBe('large');
       expect(document.getElementById('notesVisibleByDefault').checked).toBe(false);
+      expect(document.getElementById('logLevel').value).toBe('debug');
     });
     
     it('should handle load error gracefully', async () => {
@@ -400,6 +405,7 @@ describe('Options Page Script', () => {
       document.getElementById('noteWidth').value = '360';
       document.getElementById('fontSize').value = 'small';
       document.getElementById('notesVisibleByDefault').checked = false;
+      document.getElementById('logLevel').value = 'warn';
       
       await handleSave(mockEvent);
       
@@ -413,6 +419,7 @@ describe('Options Page Script', () => {
       expect(savedCall.preferences.noteWidth).toBe(360);
       expect(savedCall.preferences.fontSize).toBe('small');
       expect(savedCall.preferences.notesVisibleByDefault).toBe(false);
+      expect(savedCall.preferences.logLevel).toBe('warn');
     });
     
     it('should show success message after saving', async () => {
@@ -476,6 +483,15 @@ describe('Options Page Script', () => {
       
       expect(window.confirm).toHaveBeenCalled();
       expect(chrome.storage.sync.set).toHaveBeenCalled();
+    });
+    
+    it('should reset the logging level to the default', async () => {
+      window.confirm = jest.fn(() => true);
+      document.getElementById('logLevel').value = 'debug';
+
+      await handleReset();
+
+      expect(document.getElementById('logLevel').value).toBe('silent');
     });
     
     it('should not reset when cancelled', async () => {

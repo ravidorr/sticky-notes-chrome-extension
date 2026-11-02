@@ -13,6 +13,27 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.24] - 2026-11-02
+
+### Added
+
+- A "Logging" setting on the options page (Troubleshooting section) sets what the extension writes to the browser
+  console: off (default), errors only, warnings and errors, info, or debug. It applies to the background worker, the
+  content script, the popup and the Firestore SDK, and takes effect without a reload.
+
+### Fixed
+
+- The Firestore SDK no longer logs offline `Listen stream transport errored` messages with `console.error`, which
+  Chrome listed under the extension's errors on `chrome://extensions`. The SDK log level now follows the Logging
+  setting and is silent by default. The extension's own `warn` and `error` logs follow the same setting.
+- Real-time note and comment updates now recover when Chrome stops the background service worker, which drops its
+  Firestore listeners. The content script keeps a port open to the worker, and when it disconnects it resubscribes
+  (with backoff, up to 5 attempts) instead of staying silent until the page is reloaded. It stops when the
+  subscription was cancelled or the extension was reloaded.
+- A note subscription that finishes starting in the background worker after it was cancelled, or replaced by a newer
+  one for the same tab and frame, now releases its Firestore listener instead of overwriting the newer one or
+  outliving the unsubscribe.
+
 ### Security
 
 - The web dashboard (`site/dashboard.html`) signs in with Google through Firebase Auth instead of asking for a
@@ -36,6 +57,9 @@ bump is listed under the next version bump after it.
 
 ### Changed
 
+- The extension's own `error` and `warn` logs, and `VITE_DEBUG_MODE=true` debug logs, are now off until the
+  Logging setting is changed, so development builds need Logging set to Debug on the options page to show
+  `[StickyNotes]` output.
 - Added unit tests for `functions/middleware/auth.js` and included it in the coverage thresholds
 
 ## [1.20.23] - 2026-11-01

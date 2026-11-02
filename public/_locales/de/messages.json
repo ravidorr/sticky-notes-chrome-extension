@@ -1385,5 +1385,37 @@
         "example": "50000"
       }
     }
+  },
+  "settingsTroubleshooting": {
+    "message": "Fehlerbehebung",
+    "description": "Troubleshooting settings section title"
+  },
+  "settingsLogLevel": {
+    "message": "Protokollierung",
+    "description": "Log level setting label"
+  },
+  "settingsLogLevelDesc": {
+    "message": "Legen Sie fest, was die Erweiterung in die Browserkonsole schreibt. Lassen Sie sie ausgeschaltet, außer Sie melden ein Problem.",
+    "description": "Log level setting description"
+  },
+  "logLevelSilent": {
+    "message": "Aus (Standard)",
+    "description": "Log level option: nothing is logged"
+  },
+  "logLevelError": {
+    "message": "Nur Fehler",
+    "description": "Log level option: errors only"
+  },
+  "logLevelWarn": {
+    "message": "Warnungen und Fehler",
+    "description": "Log level option: warnings and errors"
+  },
+  "logLevelInfo": {
+    "message": "Info",
+    "description": "Log level option: info and above"
+  },
+  "logLevelDebug": {
+    "message": "Debug (ausführlich)",
+    "description": "Log level option: everything"
   }
 }

@@ -896,6 +896,10 @@ export function createHandlers(deps = {}) {
    * @param {Object} sender - Message sender (contains tab info)
    * @returns {Promise<Object>} Result
    */
+  // Bumped by every subscribe and unsubscribe for a tab/frame, so a subscribe that finishes
+  // after it was superseded or cancelled can release the listener it just created
+  const noteSubGenerations = new Map();
+  
   async function subscribeNotes(url, sender) {
     try {
       const tabId = sender?.tab?.id;
@@ -920,6 +924,8 @@ export function createHandlers(deps = {}) {
       
       // Use composite key to handle multiple frames (main frame + iframes)
       const subKey = `${tabId}-${frameId}`;
+      const generation = (noteSubGenerations.get(subKey) ?? 0) + 1;
+      noteSubGenerations.set(subKey, generation);
       
       // Clean up existing subscription for this tab/frame
       const existingSub = noteSubscriptions.get(subKey);
@@ -963,6 +969,15 @@ export function createHandlers(deps = {}) {
         }
       );
       
+      // A newer subscribe or an unsubscribe arrived while this one was starting: release this
+      // listener instead of letting it replace the newer one or outlive the unsubscribe
+      if (noteSubGenerations.get(subKey) !== generation) {
+        if (typeof unsubscribe === 'function') {
+          unsubscribe();
+        }
+        return { success: true };
+      }
+      
       noteSubscriptions.set(subKey, { url, frameId, unsubscribe });
       log.debug('Subscribed to notes for tab', tabId, 'frame', frameId, 'url', url);
       
@@ -987,6 +1002,7 @@ export function createHandlers(deps = {}) {
       }
       
       const subKey = `${tabId}-${frameId}`;
+      noteSubGenerations.set(subKey, (noteSubGenerations.get(subKey) ?? 0) + 1);
       const sub = noteSubscriptions.get(subKey);
       if (sub) {
         sub.unsubscribe();
