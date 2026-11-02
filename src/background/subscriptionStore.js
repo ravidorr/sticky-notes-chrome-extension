@@ -203,12 +203,20 @@ export function createSubscriptionStore(area, log) {
     },
 
     /**
-     * Add keys to the failed list (see setFailed). Unlike setFailed this keeps what is there, so a
-     * key that was settled in the meantime is not touched by a caller that only adds its own.
+     * Add keys to the failed list (see setFailed). Unlike setFailed this keeps what is there, and it
+     * only adds keys whose descriptor is still stored: a key that was unsubscribed or whose tab was
+     * closed in the meantime (which removed its descriptor) is not brought back by a caller that
+     * learns of it late.
      * @param {string[]} keys - `note:${subKey}` and `comment:${subKey}` of the failed subscriptions
      */
     addFailed(keys) {
-      return update((current) => { current.failed = [...new Set([...current.failed, ...keys])]; });
+      return update((current) => {
+        const stored = (key) => {
+          const subKey = key.slice(key.indexOf(':') + 1);
+          return key.startsWith('note:') ? subKey in current.notes : subKey in current.comments;
+        };
+        current.failed = [...new Set([...current.failed, ...keys.filter(stored)])];
+      });
     },
 
     /**

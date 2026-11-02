@@ -177,6 +177,8 @@ describe('subscription store', () => {
   });
 
   it('adds failed keys without losing the ones already there', async () => {
+    await store.saveNote('1-0', { tabId: 1, frameId: 0, url: 'a' });
+    await store.saveComment('1-n1', { tabId: 1, noteId: 'n1' });
     await store.setFailed(['note:1-0']);
 
     await store.addFailed(['comment:1-n1', 'note:1-0']);
@@ -184,6 +186,17 @@ describe('subscription store', () => {
     await store.removeNote('1-0');
     expect(await store.isDegraded()).toBe(true);
     await store.removeComment('1-n1');
+    expect(await store.isDegraded()).toBe(false);
+  });
+
+  it('does not add a key whose descriptor is gone', async () => {
+    await store.saveNote('1-0', { tabId: 1, frameId: 0, url: 'a' });
+    await store.removeNote('1-0');
+    await store.saveComment('2-n1', { tabId: 2, noteId: 'n1' });
+    await store.removeTab(2);
+
+    await store.addFailed(['note:1-0', 'comment:2-n1', 'note:3-0', 'comment:3-n1']);
+
     expect(await store.isDegraded()).toBe(false);
   });
 

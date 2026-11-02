@@ -204,4 +204,35 @@ describe('restore with the real handlers and store', () => {
     expect(noteSubscriptions.has('7-0')).toBe(false);
     expect(await store.isDegraded()).toBe(true);
   });
+
+  it('is not degraded when the request that cancelled the restore was an unsubscribe or a tab close', async () => {
+    const slowUser = {};
+    slowUser.promise = new Promise((resolve) => { slowUser.resolve = resolve; });
+    const getCurrentUser = jest.fn()
+      .mockImplementationOnce(() => slowUser.promise)
+      .mockResolvedValue({ uid: 'u1', email: 'a@b.test' });
+    handlers = createHandlers({
+      getCurrentUser,
+      isFirebaseConfigured: () => true,
+      subscribeToNotesForUrl,
+      subscribeToComments: jest.fn(async () => jest.fn()),
+      noteSubscriptions,
+      commentSubscriptions,
+      subscriptionStore: store,
+      log,
+      chromeTabs: { sendMessage: jest.fn().mockResolvedValue({}) },
+      chromeStorage: { local: { get: async () => ({}) } }
+    });
+
+    const restoring = restore();
+    await flush();
+    await handlers.unsubscribeNotes({ tab: { id: 7 }, frameId: 0 });
+    handlers.releaseTab(7);
+    slowUser.resolve({ uid: 'u1', email: 'a@b.test' });
+    await restoring;
+    await flush();
+
+    expect(await store.isDegraded()).toBe(false);
+    expect(await store.load()).toEqual({ notes: [], comments: [] });
+  });
 });
