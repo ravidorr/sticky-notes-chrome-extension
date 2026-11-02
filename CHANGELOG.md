@@ -13,6 +13,15 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.25] - 2026-11-02
+
+### Fixed
+
+- A comment subscription that finishes starting in the background worker after it was cancelled, or replaced by a
+  newer one for the same note, now releases its Firestore listener instead of overwriting the newer one or
+  outliving the unsubscribe. A subscribe (notes or comments) that is cancelled while the worker is still looking up
+  the signed-in user is now cancelled too (#54).
+
 ## [1.20.24] - 2026-11-02
 
 ### Added

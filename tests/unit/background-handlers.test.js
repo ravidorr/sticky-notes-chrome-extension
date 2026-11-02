@@ -2666,6 +2666,97 @@ describe('Background Handlers', () => {
         expect(result.success).toBe(true);
       });
 
+      it('should cancel a notes subscribe when an unsubscribe arrives during the user lookup', async () => {
+        let resolveUser;
+        localThis.deps.getCurrentUser.mockImplementation(() => new Promise(resolve => { resolveUser = resolve; }));
+        const handlers = localThis.build2();
+
+        const pending = handlers.subscribeNotes('https://example.com', SENDER);
+        await flush();
+        await handlers.unsubscribeNotes(SENDER);
+        resolveUser(localThis.mockUser);
+        await pending;
+        await flush();
+
+        expect(localThis.noteSubscriptions.has('123-0')).toBe(false);
+      });
+
+      describe('comment subscriptions', () => {
+        beforeEach(() => {
+          localThis.commentSubscriptions = new Map();
+          localThis.deps.subscribeToComments = jest.fn().mockReturnValue(jest.fn());
+          localThis.build3 = (extra = {}) => localThis.build2({
+            commentSubscriptions: localThis.commentSubscriptions,
+            subscribeToComments: localThis.deps.subscribeToComments,
+            ...extra
+          });
+        });
+
+        it('should release a comment listener that finishes starting after an unsubscribe', async () => {
+          const lateUnsubscribe = jest.fn();
+          let finish;
+          const subscribe = jest.fn(() => new Promise(resolve => { finish = () => resolve(lateUnsubscribe); }));
+          const handlers = localThis.build3({ subscribeToComments: subscribe });
+
+          const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
+          await flush();
+          await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+          finish();
+          const result = await pending;
+
+          expect(result.success).toBe(true);
+          expect(lateUnsubscribe).toHaveBeenCalled();
+          expect(localThis.commentSubscriptions.has('123-note-1')).toBe(false);
+        });
+
+        it('should keep the newer comment subscription when an older one finishes late', async () => {
+          const oldUnsubscribe = jest.fn();
+          const newUnsubscribe = jest.fn();
+          let finishOld;
+          const subscribe = jest.fn()
+            .mockImplementationOnce(() => new Promise(resolve => { finishOld = () => resolve(oldUnsubscribe); }))
+            .mockReturnValueOnce(newUnsubscribe);
+          const handlers = localThis.build3({ subscribeToComments: subscribe });
+
+          const pendingOld = handlers.subscribeCommentsHandler('note-1', SENDER);
+          await flush();
+          await handlers.subscribeCommentsHandler('note-1', SENDER);
+          finishOld();
+          await pendingOld;
+
+          expect(oldUnsubscribe).toHaveBeenCalled();
+          expect(newUnsubscribe).not.toHaveBeenCalled();
+          expect(localThis.commentSubscriptions.get('123-note-1')).toBe(newUnsubscribe);
+        });
+
+        it('should cancel a comment subscribe when an unsubscribe arrives during the user lookup', async () => {
+          let resolveUser;
+          localThis.deps.getCurrentUser.mockImplementation(() => new Promise(resolve => { resolveUser = resolve; }));
+          const handlers = localThis.build3();
+
+          const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
+          await flush();
+          await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+          resolveUser(localThis.mockUser);
+          await pending;
+
+          expect(localThis.commentSubscriptions.has('123-note-1')).toBe(false);
+        });
+
+        it('should tolerate a late comment listener that has no unsubscribe function', async () => {
+          let finish;
+          const subscribe = jest.fn(() => new Promise(resolve => { finish = () => resolve(undefined); }));
+          const handlers = localThis.build3({ subscribeToComments: subscribe });
+
+          const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
+          await flush();
+          await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+          finish();
+
+          await expect(pending).resolves.toEqual({ success: true });
+        });
+      });
+
       it('should release a listener that finishes starting after an unsubscribe', async () => {
         const lateUnsubscribe = jest.fn();
         let finish;
