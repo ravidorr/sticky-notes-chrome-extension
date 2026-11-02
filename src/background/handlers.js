@@ -890,16 +890,50 @@ export function createHandlers(deps = {}) {
     }
   }
 
+  // Every subscribe and unsubscribe bumps the generation of its key (tab and frame for notes, tab
+  // and note for comments). A subscribe that sees a newer generation than the one it took was
+  // superseded or cancelled: it stops, or releases the listener it just created, instead of
+  // registering it. The latest request wins, even when it then fails before creating a listener.
+  const noteSubGenerations = new Map();
+  const commentSubGenerations = new Map();
+  
+  /**
+   * Bump and return the generation for a subscription key
+   * @param {Map<string, number>} generations - Latest generation per subscription key
+   * @param {string} subKey - Subscription key
+   * @returns {number} The new generation
+   */
+  function bumpGeneration(generations, subKey) {
+    const generation = (generations.get(subKey) ?? 0) + 1;
+    generations.set(subKey, generation);
+    return generation;
+  }
+  
+  /**
+   * Release the listener of a subscribe that was superseded or cancelled while it was starting
+   * @param {Function} unsubscribe - Unsubscribe function returned by the subscribe call
+   * @param {string} subKey - Subscription key, for the log
+   */
+  function releaseCancelledListener(unsubscribe, subKey) {
+    if (typeof unsubscribe !== 'function') {
+      log.warn('Cancelled subscription has no unsubscribe function:', subKey);
+      return;
+    }
+    try {
+      unsubscribe();
+      log.debug('Released a subscription cancelled while starting:', subKey);
+    } catch (error) {
+      log.error('Failed to release a cancelled subscription:', subKey, error);
+    }
+  }
+  
   /**
    * Subscribe to real-time note updates for a URL
    * @param {string} url - Page URL
    * @param {Object} sender - Message sender (contains tab info)
-   * @returns {Promise<Object>} Result
+   * @returns {Promise<Object>} Result; cancelled is true when the subscribe was superseded or
+   *   cancelled and holds no listener
    */
-  // Bumped by every subscribe and unsubscribe for a tab/frame, so a subscribe that finishes
-  // after it was superseded or cancelled can release the listener it just created
-  const noteSubGenerations = new Map();
-  
   async function subscribeNotes(url, sender) {
     try {
       const tabId = sender?.tab?.id;
@@ -908,7 +942,18 @@ export function createHandlers(deps = {}) {
         return { success: false, error: 'Tab ID not available' };
       }
       
+      // Use composite key to handle multiple frames (main frame + iframes)
+      const subKey = `${tabId}-${frameId}`;
+      
+      // Take the generation before the first await, so an unsubscribe or a newer subscribe that
+      // arrives while the user lookup is pending cancels this one
+      const generation = bumpGeneration(noteSubGenerations, subKey);
+      
       const user = await getUserIfConfigured();
+      
+      if (noteSubGenerations.get(subKey) !== generation) {
+        return { success: true, cancelled: true };
+      }
       
       if (!user) {
         return { success: false, error: t('mustBeLoggedInForRealtime') };
@@ -922,16 +967,12 @@ export function createHandlers(deps = {}) {
         return { success: false, error: 'Subscription service not available' };
       }
       
-      // Use composite key to handle multiple frames (main frame + iframes)
-      const subKey = `${tabId}-${frameId}`;
-      const generation = (noteSubGenerations.get(subKey) ?? 0) + 1;
-      noteSubGenerations.set(subKey, generation);
-      
       // Clean up existing subscription for this tab/frame
       const existingSub = noteSubscriptions.get(subKey);
       if (existingSub && typeof existingSub.unsubscribe === 'function') {
         existingSub.unsubscribe();
       }
+      noteSubscriptions.delete(subKey);
       
       // Set up new subscription (await since lazy-loaded functions return promises)
       const unsubscribe = await subscribeToNotesForUrl(
@@ -953,7 +994,10 @@ export function createHandlers(deps = {}) {
               } catch (error) {
                 log.error('Error during unsubscribe:', error);
               }
-              noteSubscriptions.delete(subKey);
+              // Only drop the entry if it is still this subscription, not a newer one
+              if (noteSubscriptions.get(subKey)?.unsubscribe === unsubscribe) {
+                noteSubscriptions.delete(subKey);
+              }
             });
           }
         },
@@ -972,10 +1016,8 @@ export function createHandlers(deps = {}) {
       // A newer subscribe or an unsubscribe arrived while this one was starting: release this
       // listener instead of letting it replace the newer one or outlive the unsubscribe
       if (noteSubGenerations.get(subKey) !== generation) {
-        if (typeof unsubscribe === 'function') {
-          unsubscribe();
-        }
-        return { success: true };
+        releaseCancelledListener(unsubscribe, subKey);
+        return { success: true, cancelled: true };
       }
       
       noteSubscriptions.set(subKey, { url, frameId, unsubscribe });
@@ -1002,7 +1044,7 @@ export function createHandlers(deps = {}) {
       }
       
       const subKey = `${tabId}-${frameId}`;
-      noteSubGenerations.set(subKey, (noteSubGenerations.get(subKey) ?? 0) + 1);
+      bumpGeneration(noteSubGenerations, subKey);
       const sub = noteSubscriptions.get(subKey);
       if (sub) {
         sub.unsubscribe();
@@ -1030,7 +1072,16 @@ export function createHandlers(deps = {}) {
         return { success: false, error: 'Tab ID not available' };
       }
       
+      const subKey = `${tabId}-${noteId}`;
+      
+      // Take the generation before the first await (see subscribeNotes)
+      const generation = bumpGeneration(commentSubGenerations, subKey);
+      
       const user = await getUserIfConfigured();
+      
+      if (commentSubGenerations.get(subKey) !== generation) {
+        return { success: true, cancelled: true };
+      }
       
       if (!user) {
         return { success: false, error: t('mustBeLoggedInToComment') };
@@ -1044,13 +1095,12 @@ export function createHandlers(deps = {}) {
         return { success: false, error: 'Subscription service not available' };
       }
       
-      const subKey = `${tabId}-${noteId}`;
-      
       // Clean up existing subscription
       const existingSub = commentSubscriptions.get(subKey);
       if (existingSub && typeof existingSub === 'function') {
         existingSub();
       }
+      commentSubscriptions.delete(subKey);
       
       // Set up new subscription (await since lazy-loaded functions return promises)
       const unsubscribe = await subscribeToComments(
@@ -1072,7 +1122,10 @@ export function createHandlers(deps = {}) {
               } catch (error) {
                 log.error('Error during unsubscribe:', error);
               }
-              commentSubscriptions.delete(subKey);
+              // Only drop the entry if it is still this subscription, not a newer one
+              if (commentSubscriptions.get(subKey) === unsubscribe) {
+                commentSubscriptions.delete(subKey);
+              }
             });
           }
         },
@@ -1088,6 +1141,13 @@ export function createHandlers(deps = {}) {
           }
         }
       );
+      
+      // A newer subscribe or an unsubscribe arrived while this one was starting: release this
+      // listener instead of letting it replace the newer one or outlive the unsubscribe
+      if (commentSubGenerations.get(subKey) !== generation) {
+        releaseCancelledListener(unsubscribe, subKey);
+        return { success: true, cancelled: true };
+      }
       
       commentSubscriptions.set(subKey, unsubscribe);
       log.debug('Subscribed to comments for tab', tabId, 'note', noteId);
@@ -1113,6 +1173,7 @@ export function createHandlers(deps = {}) {
       }
       
       const subKey = `${tabId}-${noteId}`;
+      bumpGeneration(commentSubGenerations, subKey);
       const unsub = commentSubscriptions.get(subKey);
       if (unsub) {
         unsub();
