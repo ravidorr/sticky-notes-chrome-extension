@@ -13,6 +13,15 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.29] - 2026-11-02
+
+### Changed
+
+- The background worker's subscription lifecycle (subscribe, unsubscribe, replace, cancel and tab close) moved out
+  of `handlers.js` into `src/background/subscriptions.js` (`createSubscriptionManager`). The handlers build it and
+  re-export the same functions, so message routing and the restore are unchanged. This is the first step of the
+  subscription reconciler work in #60 and has no behavior change.
+
 ## [1.20.28] - 2026-11-02
 
 ### Changed
