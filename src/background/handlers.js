@@ -49,6 +49,7 @@ export function createHandlers(deps = {}) {
     log = defaultLog,
     chromeStorage = typeof chrome !== 'undefined' ? chrome.storage : null,
     chromeTabs = typeof chrome !== 'undefined' ? chrome.tabs : null,
+    chromeWebNavigation = typeof chrome !== 'undefined' ? chrome.webNavigation : null,
     chromeAction = typeof chrome !== 'undefined' ? chrome.action : null
   } = deps;
 
@@ -355,7 +356,8 @@ export function createHandlers(deps = {}) {
     commentSubscriptions,
     subscriptionStore,
     log,
-    chromeTabs
+    chromeTabs,
+    chromeWebNavigation
   });
   const {
     subscribeNotes,
@@ -364,6 +366,9 @@ export function createHandlers(deps = {}) {
     unsubscribeCommentsHandler,
     releaseTab,
     restore,
+    retryPending,
+    reconcileAll,
+    clearAll,
     getRealtimeSyncStatus
   } = subscriptions;
 
@@ -373,6 +378,9 @@ export function createHandlers(deps = {}) {
   async function handleLogin() {
     try {
       const user = await signInWithGoogle();
+
+      // Start the subscriptions that were kept while nobody was signed in, without holding up the login
+      reconcileAll().catch((error) => log.error('Failed to resume real-time subscriptions:', error));
       
       // Migrate local notes to Firebase after successful login
       const migrationResult = await migrateLocalNotesToFirebase(user);
@@ -399,8 +407,14 @@ export function createHandlers(deps = {}) {
     try {
       // Unsubscribe from global shared notes before logout
       await unsubscribeFromSharedNotesGlobal();
-      
+
       await signOut();
+
+      // Release every per-tab listener and forget the desired state, so nothing outlives the user.
+      // After the sign out: a subscribe that arrives meanwhile is cleared too, and a failed
+      // sign out leaves a user who is still signed in with their subscriptions.
+      await clearAll();
+
       return { success: true };
     } catch (error) {
       log.error('Logout error:', error);
@@ -1232,6 +1246,9 @@ export function createHandlers(deps = {}) {
     unsubscribeCommentsHandler,
     releaseTab,
     restore,
+    retryPending,
+    reconcileAll,
+    clearAll,
     getRealtimeSyncStatus,
     // Badge management
     updateOrphanedBadge,

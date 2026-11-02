@@ -13,6 +13,29 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.31] - 2026-11-02
+
+### Fixed
+
+- A real-time subscription that failed to start in the background worker is now retried on the keep-alive alarm,
+  with a growing delay per entry (after 1, 2 and 4 alarm ticks, then every 8 ticks; at the 30 second alarm floor that
+  is roughly 30 s, 1 min, 2 min and then every 4 min), instead of only at the next worker start. Every retry checks
+  the live tab and frame first, so a retry never subscribes to a page the tab has left. Part of #60.
+- A subscribe that hangs no longer holds back the later requests for its key: each attempt (the user lookup and the
+  subscribe call) gives up after 10 seconds, which counts as a transient failure that is retried. A listener that
+  comes back after its timeout is released instead of registered.
+- Logging out now releases every per-tab note and comment listener, empties the desired subscriptions and clears the
+  stored descriptors after the sign out succeeds, so nothing outlives the user (before, they survived until
+  Firestore rejected them) and a failed sign out keeps them. The logout also waits for the stored descriptors to be
+  cleared and for a startup read of them to finish, so none come back afterwards.
+
+### Changed
+
+- Start failures are classified internally as ok, no-user, not-configured, unavailable or transient. Only transient
+  ones are retried. Nobody signed in pauses the entries until a login starts them again (`handleLogin` resumes
+  them); Firebase not configured and an unavailable subscription service are logged once and tried again only at a
+  worker start or on a new request. No message or locale changed.
+
 ## [1.20.30] - 2026-11-02
 
 ### Changed

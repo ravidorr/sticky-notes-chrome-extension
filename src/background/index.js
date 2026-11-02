@@ -92,6 +92,7 @@ const handlers = createHandlers({
   log,
   chromeStorage: chrome.storage,
   chromeTabs: chrome.tabs,
+  chromeWebNavigation: chrome.webNavigation,
   chromeAction: chrome.action
 });
 
@@ -353,8 +354,10 @@ export function bootstrap() {
   
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'keepAlive') {
-      // Minimal work to keep the service worker alive
-      // This prevents cold start delays when opening popup
+      // Waking the service worker prevents cold start delays when opening the popup. Each tick also
+      // retries the real-time subscriptions that failed to start (with a growing delay per entry).
+      handlers.retryPending()
+        .catch((error) => log.error('Failed to retry real-time subscriptions:', error));
     }
   });
 

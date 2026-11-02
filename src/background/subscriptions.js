@@ -21,6 +21,15 @@ import { checkDescriptor, findLiveFrames } from './restoreSubscriptions.js';
 // tabs.onRemoved registers nothing. Tab IDs are not reused within a browser session.
 const MAX_REMEMBERED_CLOSED_TABS = 500;
 
+// A start (the user lookup or the subscribe call) that takes longer than this counts as a transient
+// failure, so a hung call cannot hold back the later requests for its key
+export const SUBSCRIBE_TIMEOUT_MS = 10000;
+
+// Alarm ticks to wait before the next retry of an entry whose start failed transiently, by the number
+// of failures so far: 1, 2 and 4 ticks, then every 8 ticks (at the 30 second alarm floor that is
+// roughly 30 s, 1 min, 2 min and then every 4 min)
+const RETRY_BACKOFF_TICKS = [1, 2, 4, 8];
+
 /**
  * Create the subscription manager with injected dependencies
  * @param {Object} deps - Dependencies
@@ -36,7 +45,8 @@ export function createSubscriptionManager(deps) {
     commentSubscriptions = new Map(),
     subscriptionStore = null,
     log,
-    chromeTabs = null
+    chromeTabs = null,
+    chromeWebNavigation = null
   } = deps;
 
   const desiredNotes = new Map();
@@ -51,6 +61,11 @@ export function createSubscriptionManager(deps) {
   const startedFor = new Map();
   const chains = new Map();
   const closedTabs = new Set();
+
+  // Entries whose last start failed transiently, with the alarm ticks left before the next retry
+  const retries = new Map();
+  // The permanent outcome last logged per key, so each one is logged once
+  const permanentLogged = new Map();
 
   /**
    * Remember a closed tab, forgetting the oldest one past the limit
@@ -112,6 +127,7 @@ export function createSubscriptionManager(deps) {
    */
   function setDesired(kind, key, descriptor) {
     const entry = { descriptor, confirmed: true };
+    resetOutcome(kind, key);
     kinds[kind].desired.set(key, entry);
     if (kind === 'note') {
       subscriptionStore?.saveNote(key, descriptor);
@@ -127,12 +143,82 @@ export function createSubscriptionManager(deps) {
    * @param {string} key - Subscription key
    */
   function dropDesired(kind, key) {
+    resetOutcome(kind, key);
     kinds[kind].desired.delete(key);
     if (kind === 'note') {
       subscriptionStore?.removeNote(key);
     } else {
       subscriptionStore?.removeComment(key);
     }
+  }
+
+  /**
+   * Forget what is known about the last start of a key: a new request or a removal starts over
+   * @param {string} kind - 'note' or 'comment'
+   * @param {string} key - Subscription key
+   */
+  function resetOutcome(kind, key) {
+    retries.delete(`${kind}:${key}`);
+    permanentLogged.delete(`${kind}:${key}`);
+  }
+
+  /**
+   * Record the outcome of a start. Outcomes: 'ok', 'no-user', 'not-configured', 'unavailable' and
+   * 'transient'. A transient one is retried on the keep-alive alarm with a growing delay. The
+   * others are not retried: 'no-user' waits for a login (reconcileAll), and 'not-configured' and
+   * 'unavailable' for a worker start or a new request. Each is logged once.
+   * @param {string} kind - 'note' or 'comment'
+   * @param {string} key - Subscription key
+   * @param {string} outcome - The outcome
+   */
+  function settle(kind, key, outcome) {
+    const slot = `${kind}:${key}`;
+    if (outcome === 'transient') {
+      const failures = (retries.get(slot)?.failures ?? 0) + 1;
+      const wait = RETRY_BACKOFF_TICKS[Math.min(failures, RETRY_BACKOFF_TICKS.length) - 1];
+      retries.set(slot, { kind, key, failures, wait });
+      return;
+    }
+    retries.delete(slot);
+    if (outcome === 'ok') {
+      permanentLogged.delete(slot);
+    } else if (permanentLogged.get(slot) !== outcome) {
+      permanentLogged.set(slot, outcome);
+      log.warn(`Real-time subscription not started (${outcome}):`, key);
+    }
+  }
+
+  /**
+   * Run a call that may hang, giving up after SUBSCRIBE_TIMEOUT_MS. The abandoned call keeps
+   * running; if it resolves later, onLate gets its value (to release a listener it returns).
+   * @param {Function} call - Starts the call
+   * @param {Function} [onLate] - Called with the value of a call that resolves after the timeout
+   * @returns {Promise<*>} The value of the call; rejects on its error or on the timeout
+   */
+  function withTimeout(call, onLate) {
+    return new Promise((resolve, reject) => {
+      let abandoned = false;
+      const timer = setTimeout(() => {
+        abandoned = true;
+        reject(new Error('Subscription timed out'));
+      }, SUBSCRIBE_TIMEOUT_MS);
+      new Promise((started) => started(call())).then(
+        (value) => {
+          if (abandoned) {
+            onLate?.(value);
+            return;
+          }
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (error) => {
+          if (!abandoned) {
+            clearTimeout(timer);
+            reject(error);
+          }
+        }
+      );
+    });
   }
 
   /**
@@ -193,21 +279,25 @@ export function createSubscriptionManager(deps) {
    */
   async function startNote(key, entry) {
     const { tabId, frameId, url } = entry.descriptor;
-    const user = await getUserIfConfigured();
+    const user = await withTimeout(() => getUserIfConfigured());
     if (desiredNotes.get(key) !== entry) {
       return { success: true, cancelled: true };
     }
     if (!user) {
+      settle('note', key, 'no-user');
       return { success: false, error: t('mustBeLoggedInForRealtime') };
     }
     if (!isFirebaseConfigured()) {
+      settle('note', key, 'not-configured');
       return { success: false, error: t('realtimeSyncRequiresFirebase') };
     }
     if (!subscribeToNotesForUrl) {
+      settle('note', key, 'unavailable');
       return { success: false, error: 'Subscription service not available' };
     }
-    // Set up the subscription (await since lazy-loaded functions return promises)
-    const unsubscribe = await subscribeToNotesForUrl(
+    // Set up the subscription (await since lazy-loaded functions return promises). A listener that
+    // comes back after the timeout is released here: it is never registered.
+    const unsubscribe = await withTimeout(() => subscribeToNotesForUrl(
       url,
       user.uid,
       user.email,
@@ -233,12 +323,13 @@ export function createSubscriptionManager(deps) {
           }, { frameId }).catch(() => {});
         }
       }
-    );
+    ), (late) => releaseListener(late, key, 'late result'));
     // An unsubscribe or a newer request that arrived meanwhile is queued behind this step, and
     // releases or replaces this listener right after it registers
     noteSubscriptions.set(key, { url, frameId, unsubscribe });
     startedFor.set(`note:${key}`, entry);
     log.debug('Subscribed to notes for tab', tabId, 'frame', frameId, 'url', url);
+    settle('note', key, 'ok');
     return desiredNotes.get(key) === entry ? { success: true } : { success: true, cancelled: true };
   }
 
@@ -250,20 +341,23 @@ export function createSubscriptionManager(deps) {
    */
   async function startComment(key, entry) {
     const { tabId, noteId } = entry.descriptor;
-    const user = await getUserIfConfigured();
+    const user = await withTimeout(() => getUserIfConfigured());
     if (desiredComments.get(key) !== entry) {
       return { success: true, cancelled: true };
     }
     if (!user) {
+      settle('comment', key, 'no-user');
       return { success: false, error: t('mustBeLoggedInToComment') };
     }
     if (!isFirebaseConfigured()) {
+      settle('comment', key, 'not-configured');
       return { success: false, error: t('commentsRequireFirebase') };
     }
     if (!subscribeToComments) {
+      settle('comment', key, 'unavailable');
       return { success: false, error: 'Subscription service not available' };
     }
-    const unsubscribe = await subscribeToComments(
+    const unsubscribe = await withTimeout(() => subscribeToComments(
       noteId,
       user,
       (comments) => {
@@ -290,10 +384,11 @@ export function createSubscriptionManager(deps) {
           }).catch(() => {});
         }
       }
-    );
+    ), (late) => releaseListener(late, key, 'late result'));
     commentSubscriptions.set(key, unsubscribe);
     startedFor.set(`comment:${key}`, entry);
     log.debug('Subscribed to comments for tab', tabId, 'note', noteId);
+    settle('comment', key, 'ok');
     return desiredComments.get(key) === entry ? { success: true } : { success: true, cancelled: true };
   }
 
@@ -330,6 +425,11 @@ export function createSubscriptionManager(deps) {
       return await (kind === 'note' ? startNote(key, current) : startComment(key, current));
     } catch (error) {
       log.error(kind === 'note' ? 'Subscribe notes error:' : 'Subscribe comments error:', error);
+      // A request that was replaced meanwhile is superseded, whatever went wrong with it
+      if (entry && kinds[kind].desired.get(key) !== entry) {
+        return { success: true, cancelled: true };
+      }
+      settle(kind, key, 'transient');
       return { success: false, error: error.message };
     }
   }
@@ -491,6 +591,7 @@ export function createSubscriptionManager(deps) {
       const keys = new Set([...desired.keys(), ...actual.keys()]);
       for (const key of keys) {
         if (key.startsWith(prefix)) {
+          resetOutcome(kind, key);
           desired.delete(key);
           releases.push(reconcile(kind, key, { reason: 'tab closed' }));
         }
@@ -500,41 +601,17 @@ export function createSubscriptionManager(deps) {
   }
 
   /**
-   * Restore the subscriptions a stopped worker held, from the entries read back from storage
-   * (confirmed: false) that no page has written since. Closed tabs and frames that no longer
-   * exist, or that navigated, are dropped; what cannot be checked or started is kept, and is tried
-   * again at the next worker start. Nobody signed in keeps the entries too.
-   * @param {Object} deps - { tabs, webNavigation }
+   * Start the given desired entries when nobody just wrote them (a restore, a retry or a login),
+   * after checking what the live tab and frame show. Closed tabs and frames that no longer exist,
+   * or that navigated, are dropped. An entry that cannot be checked or started is kept, and its
+   * failure is recorded so it is retried (see settle). A request that wrote a key during the
+   * lookups wins: its entry replaced the one given here, so that one is skipped.
+   * @param {Object[]} entries - { kind, key, entry } to start
+   * @param {Object} live - { tabs, webNavigation }
    * @returns {Promise<{ restored: number, failed: number, dropped: number }>} What happened
    */
-  async function restore({ tabs, webNavigation }) {
-    await ready();
-    const entries = [];
-    for (const [kind, { desired }] of Object.entries(kinds)) {
-      for (const [key, entry] of desired) {
-        if (!entry.confirmed) {
-          entries.push({ kind, key, entry });
-        }
-      }
-    }
+  async function validateAndStart(entries, { tabs, webNavigation }) {
     const result = { restored: 0, failed: 0, dropped: 0 };
-    if (entries.length === 0) {
-      return result;
-    }
-
-    let user;
-    try {
-      user = await getUserIfConfigured();
-    } catch (error) {
-      log.error(`Could not look up the user; ${entries.length} real-time subscription(s) not restored:`, error);
-      result.failed = entries.length;
-      return result;
-    }
-    if (!user) {
-      log.info('Nobody is signed in: real-time subscriptions are not restored');
-      return result;
-    }
-
     const tabIds = [...new Set(entries.map(({ entry }) => entry.descriptor.tabId))];
     const states = await findLiveFrames({ tabs, webNavigation, log }, tabIds);
 
@@ -553,6 +630,7 @@ export function createSubscriptionManager(deps) {
       }
       const check = state.status === 'live' ? checkDescriptor(kind, entry.descriptor, state) : state.status;
       if (check === 'unknown') {
+        settle(kind, key, 'transient');
         result.failed += 1;
       } else if (check === 'gone') {
         await forget(kind, key, entry);
@@ -574,9 +652,132 @@ export function createSubscriptionManager(deps) {
     }));
 
     if (result.failed > 0) {
-      log.error(`Could not restore ${result.failed} real-time subscription(s); sync is degraded`);
+      log.error(`Could not start ${result.failed} real-time subscription(s); sync is degraded`);
     }
     return result;
+  }
+
+  /**
+   * The tab APIs the background attempts check the live page with
+   * @param {Object} [override] - { tabs, webNavigation } to use instead of the injected ones
+   * @returns {Object} { tabs, webNavigation }
+   */
+  function liveApis(override) {
+    return { tabs: override?.tabs ?? chromeTabs, webNavigation: override?.webNavigation ?? chromeWebNavigation };
+  }
+
+  /**
+   * Restore the subscriptions a stopped worker held, from the entries read back from storage
+   * (confirmed: false) that no page has written since. What cannot be checked or started is kept
+   * and retried on the keep-alive alarm. Nobody signed in keeps the entries and pauses: a login
+   * resumes them (reconcileAll).
+   * @param {Object} apis - { tabs, webNavigation }
+   * @returns {Promise<{ restored: number, failed: number, dropped: number }>} What happened
+   */
+  async function restore(apis) {
+    await ready();
+    const entries = [];
+    for (const [kind, { desired }] of Object.entries(kinds)) {
+      for (const [key, entry] of desired) {
+        if (!entry.confirmed) {
+          entries.push({ kind, key, entry });
+        }
+      }
+    }
+    if (entries.length === 0) {
+      return { restored: 0, failed: 0, dropped: 0 };
+    }
+
+    let user;
+    try {
+      user = await withTimeout(() => getUserIfConfigured());
+    } catch (error) {
+      log.error(`Could not look up the user; ${entries.length} real-time subscription(s) not restored:`, error);
+      entries.forEach(({ kind, key }) => settle(kind, key, 'transient'));
+      return { restored: 0, failed: entries.length, dropped: 0 };
+    }
+    if (!user) {
+      log.info('Nobody is signed in: real-time subscriptions are paused until a login');
+      return { restored: 0, failed: 0, dropped: 0 };
+    }
+    return validateAndStart(entries, liveApis(apis));
+  }
+
+  /**
+   * Retry the entries whose last start failed transiently. Called on every keep-alive alarm tick;
+   * an entry waits 1, 2 and 4 ticks and then 8 ticks between attempts (RETRY_BACKOFF_TICKS). The
+   * others are left alone: see settle.
+   * @returns {Promise<{ restored: number, failed: number, dropped: number }>} What happened
+   */
+  async function retryPending() {
+    const due = [];
+    for (const [slot, state] of [...retries]) {
+      const entry = kinds[state.kind].desired.get(state.key);
+      if (!entry || kinds[state.kind].actual.has(state.key)) {
+        retries.delete(slot);
+      } else if (!state.inFlight) {
+        state.wait -= 1;
+        if (state.wait <= 0) {
+          state.inFlight = true;
+          due.push({ kind: state.kind, key: state.key, entry, state });
+        }
+      }
+    }
+    if (due.length === 0) {
+      return { restored: 0, failed: 0, dropped: 0 };
+    }
+    try {
+      return await validateAndStart(due, liveApis());
+    } finally {
+      // A failure replaced the state (settle). One that is still here was skipped (a request
+      // superseded the attempt), so it is tried again on the next tick
+      due.forEach(({ state }) => {
+        state.inFlight = false;
+        state.wait = 1;
+      });
+    }
+  }
+
+  /**
+   * Start every desired entry that has no listener, whatever its last outcome (a login, after the
+   * entries were kept while nobody was signed in)
+   * @returns {Promise<{ restored: number, failed: number, dropped: number }>} What happened
+   */
+  async function reconcileAll() {
+    await ready();
+    const entries = [];
+    for (const [kind, { desired, actual }] of Object.entries(kinds)) {
+      for (const [key, entry] of desired) {
+        if (!actual.has(key)) {
+          resetOutcome(kind, key);
+          entries.push({ kind, key, entry });
+        }
+      }
+    }
+    if (entries.length === 0) {
+      return { restored: 0, failed: 0, dropped: 0 };
+    }
+    return validateAndStart(entries, liveApis());
+  }
+
+  /**
+   * Forget every subscription (a logout): release every listener, empty the desired state and the
+   * store. A subscribe still starting is released right after it registers.
+   * @returns {Promise<void>} Resolves when the listeners are released; it never rejects
+   */
+  async function clearAll() {
+    // A read of the store still in flight would merge its descriptors back after the clear
+    await ready();
+    const releases = [];
+    for (const [kind, { desired, actual }] of Object.entries(kinds)) {
+      const keys = new Set([...desired.keys(), ...actual.keys()]);
+      desired.clear();
+      for (const key of keys) {
+        resetOutcome(kind, key);
+        releases.push(reconcile(kind, key, { reason: 'logged out' }));
+      }
+    }
+    await Promise.all([...releases, subscriptionStore?.clear()]);
   }
 
   return {
@@ -586,6 +787,9 @@ export function createSubscriptionManager(deps) {
     unsubscribeCommentsHandler,
     releaseTab,
     restore,
+    retryPending,
+    reconcileAll,
+    clearAll,
     getRealtimeSyncStatus
   };
 }
