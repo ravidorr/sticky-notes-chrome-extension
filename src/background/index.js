@@ -12,6 +12,8 @@ import { backgroundLogger as log } from '../shared/logger.js';
 import { initLogLevel } from '../shared/logLevel.js';
 import { createHandlers } from './handlers.js';
 import { registerTabCleanup } from './tabCleanup.js';
+import { createSubscriptionStore } from './subscriptionStore.js';
+import { restoreSubscriptions } from './restoreSubscriptions.js';
 import { getUrlChangedMessageFromHistoryUpdate } from './navigation.js';
 
 // Lazy-loading imports for Firebase (no SDK loaded at import time)
@@ -47,6 +49,12 @@ const commentSubscriptions = new Map(); // `${tabId}-${noteId}` -> unsubscribe F
 // Track global shared notes subscription
 const sharedNotesSubscription = { current: null };
 
+// Describes the subscriptions above in chrome.storage.session, so they can be restored when Chrome
+// stops this worker (its Firestore listeners die with it) and starts it again
+const subscriptionStore = chrome.storage.session
+  ? createSubscriptionStore(chrome.storage.session, log)
+  : null;
+
 // Create handlers with lazy-loaded dependencies
 // These wrappers ensure Firebase is only loaded when actually used
 const handlers = createHandlers({
@@ -75,6 +83,7 @@ const handlers = createHandlers({
   noteSubscriptions,
   commentSubscriptions,
   sharedNotesSubscription,
+  subscriptionStore,
   generateId,
   isValidEmail,
   log,
@@ -333,14 +342,9 @@ export function bootstrap() {
     }
   });
 
-  // Content scripts hold a port while they have real-time subscriptions. Chrome disconnects it
-  // when this worker is stopped (its Firestore listeners die with it), so they can resubscribe.
-  // The listener is intentionally a no-op: it only has to exist so the connection is accepted.
-  // The port does not keep the worker alive; the keepAlive alarm below does that.
-  chrome.runtime.onConnect.addListener(() => {});
-
   // Set up service worker keep-alive to prevent cold starts
-  // This keeps the service worker warm, reducing popup opening delay
+  // This keeps the service worker warm, reducing popup opening delay. If Chrome stops the worker
+  // anyway, the next alarm starts it again and the subscriptions it held are restored below.
   chrome.alarms.create('keepAlive', { periodInMinutes: 0.4 }); // Every 24 seconds
   
   chrome.alarms.onAlarm.addListener((alarm) => {
@@ -349,6 +353,18 @@ export function bootstrap() {
       // This prevents cold start delays when opening popup
     }
   });
+
+  // Restore the real-time subscriptions a stopped worker held (nothing to do, and no Firebase
+  // SDK load, when there are none)
+  if (subscriptionStore) {
+    restoreSubscriptions({
+      store: subscriptionStore,
+      handlers,
+      tabs: chrome.tabs,
+      webNavigation: chrome.webNavigation,
+      log
+    }).catch((error) => log.error('Failed to restore real-time subscriptions:', error));
+  }
 
   // Log when service worker starts
   log.info('Sticky Notes background service worker started');

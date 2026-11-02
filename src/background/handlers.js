@@ -42,6 +42,7 @@ export function createHandlers(deps = {}) {
     noteSubscriptions = new Map(),
     commentSubscriptions = new Map(),
     sharedNotesSubscription = { current: null },
+    subscriptionStore = null,
     generateId = defaultGenerateId,
     isValidEmail = defaultIsValidEmail,
     log = defaultLog,
@@ -122,6 +123,10 @@ export function createHandlers(deps = {}) {
         return unsubscribeCommentsHandler(message.noteId, sender);
       
       // Badge management for orphaned notes
+      // Real-time sync health (set when a worker restart could not restore every subscription)
+      case 'getRealtimeSyncStatus':
+        return getRealtimeSyncStatus();
+      
       case 'updateOrphanedCount':
         return updateOrphanedBadge(message.count, sender);
       
@@ -901,6 +906,30 @@ export function createHandlers(deps = {}) {
   // make a later subscribe reuse the number of an older one that is still starting
   let lastGeneration = 0;
   
+  // Tabs that were closed (the most recent ones), so a subscribe that reaches the worker after
+  // tabs.onRemoved registers nothing. Tab IDs are not reused within a browser session.
+  const MAX_REMEMBERED_CLOSED_TABS = 500;
+  const closedTabs = new Set();
+  
+  /**
+   * Remember a closed tab, forgetting the oldest one past the limit
+   * @param {number} tabId - ID of the closed tab
+   */
+  function rememberClosedTab(tabId) {
+    closedTabs.add(tabId);
+    if (closedTabs.size > MAX_REMEMBERED_CLOSED_TABS) {
+      closedTabs.delete(closedTabs.values().next().value);
+    }
+  }
+  
+  /**
+   * Report whether real-time sync is degraded
+   * @returns {Promise<Object>} { success: true, degraded }
+   */
+  async function getRealtimeSyncStatus() {
+    return { success: true, degraded: subscriptionStore ? await subscriptionStore.isDegraded() : false };
+  }
+  
   /**
    * Take a new generation for a subscription key
    * @param {Map<string, number>} generations - Latest generation per subscription key
@@ -975,6 +1004,11 @@ export function createHandlers(deps = {}) {
         return { success: false, error: 'Tab ID not available' };
       }
       
+      // A subscribe that arrives after its tab closed would register a listener nothing releases
+      if (closedTabs.has(tabId)) {
+        return { success: true, cancelled: true };
+      }
+      
       // Use composite key to handle multiple frames (main frame + iframes)
       const subKey = `${tabId}-${frameId}`;
       
@@ -1024,6 +1058,7 @@ export function createHandlers(deps = {}) {
               // Only drop the entry if it is still this subscription, not a newer one
               if (noteSubscriptions.get(subKey)?.unsubscribe === unsubscribe) {
                 noteSubscriptions.delete(subKey);
+                subscriptionStore?.removeNote(subKey);
               }
             });
           }
@@ -1048,6 +1083,7 @@ export function createHandlers(deps = {}) {
       }
       
       noteSubscriptions.set(subKey, { url, frameId, unsubscribe });
+      subscriptionStore?.saveNote(subKey, { tabId, frameId, url });
       log.debug('Subscribed to notes for tab', tabId, 'frame', frameId, 'url', url);
       
       return { success: true };
@@ -1078,6 +1114,8 @@ export function createHandlers(deps = {}) {
         released = releaseListener(sub.unsubscribe, subKey, 'unsubscribed');
         noteSubscriptions.delete(subKey);
       }
+      // Also when there is no entry: a replacement that was still starting is cancelled here
+      subscriptionStore?.removeNote(subKey);
       
       return withRelease({ success: true }, released);
     } catch (error) {
@@ -1097,6 +1135,10 @@ export function createHandlers(deps = {}) {
       const tabId = sender?.tab?.id;
       if (!tabId) {
         return { success: false, error: 'Tab ID not available' };
+      }
+      
+      if (closedTabs.has(tabId)) {
+        return { success: true, cancelled: true };
       }
       
       const subKey = `${tabId}-${noteId}`;
@@ -1146,6 +1188,7 @@ export function createHandlers(deps = {}) {
               // Only drop the entry if it is still this subscription, not a newer one
               if (commentSubscriptions.get(subKey) === unsubscribe) {
                 commentSubscriptions.delete(subKey);
+                subscriptionStore?.removeComment(subKey);
               }
             });
           }
@@ -1171,6 +1214,7 @@ export function createHandlers(deps = {}) {
       }
       
       commentSubscriptions.set(subKey, unsubscribe);
+      subscriptionStore?.saveComment(subKey, { tabId, noteId });
       log.debug('Subscribed to comments for tab', tabId, 'note', noteId);
       
       return { success: true };
@@ -1201,6 +1245,7 @@ export function createHandlers(deps = {}) {
         released = releaseListener(unsub, subKey, 'unsubscribed');
         commentSubscriptions.delete(subKey);
       }
+      subscriptionStore?.removeComment(subKey);
       
       return withRelease({ success: true }, released);
     } catch (error) {
@@ -1498,12 +1543,15 @@ export function createHandlers(deps = {}) {
   }
 
   /**
-   * Release every note and comment subscription of a closed tab, in all of its frames, and
-   * forget its generations so a subscribe still starting for it is cancelled
+   * Release every note and comment subscription of a closed tab, in all of its frames, forget
+   * its generations so a subscribe still starting for it is cancelled, forget its stored
+   * descriptors, and remember the tab as closed so a later subscribe for it registers nothing
    * @param {number} tabId - ID of the closed tab
    */
   function releaseTab(tabId) {
     const prefix = `${tabId}-`;
+    rememberClosedTab(tabId);
+    subscriptionStore?.removeTab(tabId);
     
     for (const [subKey, sub] of [...noteSubscriptions.entries()]) {
       if (subKey.startsWith(prefix)) {
@@ -1554,6 +1602,7 @@ export function createHandlers(deps = {}) {
     subscribeCommentsHandler,
     unsubscribeCommentsHandler,
     releaseTab,
+    getRealtimeSyncStatus,
     // Badge management
     updateOrphanedBadge,
     // Iframe support

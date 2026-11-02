@@ -13,6 +13,20 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.28] - 2026-11-02
+
+### Fixed
+
+- Real-time notes and comments now recover when Chrome stops the background service worker, which drops its
+  Firestore listeners. The worker keeps a description of its subscriptions in `chrome.storage.session` and, when it
+  starts again (the keep-alive alarm wakes it), restores them for the tabs and frames that still exist, retrying
+  with a growing delay. This replaces the per-frame port and retry timers in the content script, so every frame is
+  restored at once and nothing depends on timers in the page. Descriptors are dropped when nobody is signed in.
+- If some subscriptions still cannot be restored after the retries, the worker keeps them for the next start and
+  flags real-time sync as degraded; the new `getRealtimeSyncStatus` message reports `{ degraded }`.
+- A subscribe that reaches the worker after its tab was closed now registers no listener and is reported as
+  `cancelled`.
+
 ## [1.20.27] - 2026-11-02
 
 ### Fixed
