@@ -26,7 +26,8 @@ bump is listed under the next version bump after it.
 - A restore never overrides the page. It claims every stored key before anything is awaited, so a content script
   that subscribes or unsubscribes in the meantime wins, including over a retry. A key a content script claimed first
   stays recorded as failed until that request subscribes or unsubscribes for it, because a failed request is not
-  retried. Descriptors are dropped when nobody
+  retried. The restore records these keys before it awaits anything and only adds its own failures at the end, so a
+  request that settles a key while the restore is still working is not undone. Descriptors are dropped when nobody
   is signed in, when the tab was closed, or when a frame no longer exists; a failed user lookup, or a tab or frame
   list that cannot be read, keeps them for the next start instead.
 - If some subscriptions still cannot be restored after the retries, the worker keeps them and records which ones

@@ -28,7 +28,8 @@ describe('restoreSubscriptions', () => {
       load: jest.fn(async () => saved),
       clear: jest.fn(async () => {}),
       removeNote: jest.fn(async () => {}),
-      setFailed: jest.fn(async () => {})
+      setFailed: jest.fn(async () => {}),
+      addFailed: jest.fn(async () => {})
     };
     handlers = {
       getUser: jest.fn(async () => ({ success: true, user: { uid: 'u1' } })),
@@ -109,7 +110,8 @@ describe('restoreSubscriptions', () => {
 
       await run();
 
-      expect(store.setFailed).toHaveBeenCalledWith(['note:1-0', 'comment:1-n1']);
+      expect(store.setFailed).toHaveBeenCalledWith(['comment:1-n1']);
+      expect(store.addFailed).toHaveBeenLastCalledWith(['note:1-0']);
     });
 
     it('keeps skipped keys in the failed list when the user lookup keeps failing', async () => {
@@ -118,7 +120,20 @@ describe('restoreSubscriptions', () => {
 
       await run();
 
-      expect(store.setFailed).toHaveBeenCalledWith(['note:1-0', 'comment:1-n1']);
+      expect(store.setFailed).toHaveBeenCalledWith(['comment:1-n1']);
+      expect(store.addFailed).toHaveBeenCalledWith(['note:1-0']);
+    });
+
+    it('replaces the failed list before it awaits anything but the store, so later settles win', async () => {
+      handlers.claimRestore.mockImplementation((kind) => (kind === 'comment' ? null : 11));
+      handlers.getUser.mockImplementation(async () => {
+        expect(store.setFailed).toHaveBeenCalledWith(['comment:1-n1']);
+        return { success: true, user: { uid: 'u1' } };
+      });
+
+      await run();
+
+      expect(store.setFailed).toHaveBeenCalledTimes(1);
     });
 
     it('does not clear descriptors a content script handled when nobody is signed in', async () => {
@@ -133,6 +148,7 @@ describe('restoreSubscriptions', () => {
     it('restores note and comment subscriptions for a signed-in user', async () => {
       expect(await run()).toEqual({ restored: 2, failed: 0, dropped: 0 });
       expect(store.setFailed).toHaveBeenCalledWith([]);
+      expect(store.addFailed).toHaveBeenCalledWith([]);
       expect(log.error).not.toHaveBeenCalled();
     });
 
@@ -151,7 +167,7 @@ describe('restoreSubscriptions', () => {
       expect(handlers.getUser).toHaveBeenCalledTimes(5);
       expect(wait.mock.calls.map((call) => call[0])).toEqual([1000, 2000, 4000, 8000]);
       expect(store.clear).not.toHaveBeenCalled();
-      expect(store.setFailed).toHaveBeenCalledWith(['note:1-0', 'comment:1-n1']);
+      expect(store.addFailed).toHaveBeenCalledWith(['note:1-0', 'comment:1-n1']);
     });
 
     it('recovers when the user lookup works on a retry', async () => {
@@ -178,7 +194,7 @@ describe('restoreSubscriptions', () => {
 
       expect(await run()).toEqual({ restored: 0, failed: 2, dropped: 0 });
       expect(handlers.releaseTab).not.toHaveBeenCalled();
-      expect(store.setFailed).toHaveBeenCalledWith(['note:1-0', 'comment:1-n1']);
+      expect(store.addFailed).toHaveBeenCalledWith(['note:1-0', 'comment:1-n1']);
       expect(log.error).toHaveBeenCalledWith('Could not check tab', 1, expect.any(Error));
     });
 
@@ -237,7 +253,7 @@ describe('restoreSubscriptions', () => {
       expect(await run()).toEqual({ restored: 1, failed: 1, dropped: 0 });
       expect(handlers.subscribeNotes).toHaveBeenCalledTimes(5);
       expect(wait.mock.calls.map((call) => call[0])).toEqual([1000, 2000, 4000, 8000]);
-      expect(store.setFailed).toHaveBeenCalledWith(['note:1-0']);
+      expect(store.addFailed).toHaveBeenCalledWith(['note:1-0']);
       expect(store.removeNote).not.toHaveBeenCalled();
       expect(log.error).toHaveBeenCalledWith('Could not restore note 1-0:', 'down');
       expect(log.error).toHaveBeenCalledTimes(2);

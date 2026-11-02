@@ -119,12 +119,15 @@ export async function restoreSubscriptions(deps) {
   }
   // A key a content script already handled is not restored and not counted as dropped. Its
   // request may still fail, and nothing retries it, so it stays in the failed list until that
-  // request subscribes or unsubscribes for the key (which removes it from the list).
+  // request subscribes or unsubscribes for the key (which removes it from the list). The list is
+  // replaced now, in the store's queue ahead of anything such a request does later, so a request
+  // that settles while the restore is still working is not undone by the restore's last write.
+  await store.setFailed(skippedKeys);
   const skipped = skippedKeys.length;
 
   const user = await lookupUser(handlers, wait);
   if (!user.ok) {
-    await store.setFailed([...claims.map(failedKey), ...skippedKeys]);
+    await store.addFailed(claims.map(failedKey));
     log.error(`Could not look up the user; ${claims.length} real-time subscription(s) not restored`);
     return { restored: 0, failed: claims.length, dropped: 0 };
   }
@@ -184,7 +187,7 @@ export async function restoreSubscriptions(deps) {
   }
 
   const failed = pending.length + unresolvedKeys.length;
-  await store.setFailed([...pending.map((job) => job.key), ...unresolvedKeys, ...skippedKeys]);
+  await store.addFailed([...pending.map((job) => job.key), ...unresolvedKeys]);
   for (const { job, result } of errors) {
     log.error(`Could not restore ${job.label}:`, result?.error);
   }

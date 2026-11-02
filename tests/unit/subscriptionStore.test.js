@@ -130,6 +130,17 @@ describe('subscription store', () => {
     expect(await store.isDegraded()).toBe(false);
   });
 
+  it('adds failed keys without losing the ones already there', async () => {
+    await store.setFailed(['note:1-0']);
+
+    await store.addFailed(['comment:1-n1', 'note:1-0']);
+
+    await store.removeNote('1-0');
+    expect(await store.isDegraded()).toBe(true);
+    await store.removeComment('1-n1');
+    expect(await store.isDegraded()).toBe(false);
+  });
+
   it('also clears a failed comment by subscribing to it, and everything by clearing', async () => {
     await store.setFailed(['comment:1-n1', 'note:2-0']);
 

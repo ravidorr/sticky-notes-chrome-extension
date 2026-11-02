@@ -183,6 +183,15 @@ export function createSubscriptionStore(area, log) {
     },
 
     /**
+     * Add keys to the failed list (see setFailed). Unlike setFailed this keeps what is there, so a
+     * key that was settled in the meantime is not touched by a caller that only adds its own.
+     * @param {string[]} keys - `note:${subKey}` and `comment:${subKey}` of the failed subscriptions
+     */
+    addFailed(keys) {
+      return update((current) => { current.failed = [...new Set([...current.failed, ...keys])]; });
+    },
+
+    /**
      * @returns {Promise<boolean>} True while some subscription the last restore could not restore
      *   is still unrestored
      */
