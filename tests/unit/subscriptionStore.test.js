@@ -108,14 +108,54 @@ describe('subscription store', () => {
     expect(area.set).toHaveBeenCalledTimes(2);
   });
 
-  it('tracks the degraded flag', async () => {
+  it('is degraded while a failed subscription is left', async () => {
     expect(await store.isDegraded()).toBe(false);
 
-    await store.setDegraded(true);
+    await store.setFailed(['note:1-0', 'comment:1-n1']);
     expect(await store.isDegraded()).toBe(true);
 
-    await store.setDegraded(false);
+    await store.setFailed([]);
     expect(await store.isDegraded()).toBe(false);
+  });
+
+  it('is no longer degraded once every failed key was handled', async () => {
+    await store.setFailed(['note:1-0', 'comment:1-n1', 'note:2-0', 'comment:2-n1', 'note:3-0']);
+
+    await store.saveNote('1-0', { tabId: 1, frameId: 0, url: 'a' });
+    await store.removeComment('1-n1');
+    await store.removeTab(2);
+    expect(await store.isDegraded()).toBe(true);
+
+    await store.removeNote('3-0');
+    expect(await store.isDegraded()).toBe(false);
+  });
+
+  it('also clears a failed comment by subscribing to it, and everything by clearing', async () => {
+    await store.setFailed(['comment:1-n1', 'note:2-0']);
+
+    await store.saveComment('1-n1', { tabId: 1, noteId: 'n1' });
+    expect(await store.isDegraded()).toBe(true);
+
+    await store.clear();
+    expect(await store.isDegraded()).toBe(false);
+  });
+
+  it('keeps unrelated failed keys of other tabs when a tab is removed', async () => {
+    await store.setFailed(['note:12-0', 'comment:12-n1', 'note:123-0']);
+
+    await store.removeTab(123);
+
+    expect(await store.isDegraded()).toBe(true);
+    await store.removeTab(12);
+    expect(await store.isDegraded()).toBe(false);
+  });
+
+  it('ignores failed values of the wrong shape in storage', async () => {
+    store = createSubscriptionStore(makeArea({ subscriptions: { failed: 'x' } }), log);
+    expect(await store.isDegraded()).toBe(false);
+
+    store = createSubscriptionStore(makeArea({ subscriptions: { failed: [1, 'note:1-0', null] } }), log);
+    expect(await store.isDegraded()).toBe(true);
   });
 
   it('logs and carries on when storage fails, and returns null when it cannot be read', async () => {
@@ -124,9 +164,10 @@ describe('subscription store', () => {
 
     area.set.mockRejectedValueOnce(new Error('write failed'));
     await expect(store.saveNote('1-0', { tabId: 1, frameId: 0, url: 'a' })).resolves.toBeUndefined();
-    await expect(store.setDegraded(true)).resolves.toBeUndefined();
+    await expect(store.setFailed(['note:1-0'])).resolves.toBeUndefined();
 
     area.get.mockRejectedValueOnce(new Error('read failed'));
+    store = createSubscriptionStore(area, log);
     expect(await store.isDegraded()).toBe(false);
     expect(log.error).toHaveBeenCalledTimes(3);
   });

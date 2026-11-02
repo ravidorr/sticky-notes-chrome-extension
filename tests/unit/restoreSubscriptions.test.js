@@ -28,7 +28,7 @@ describe('restoreSubscriptions', () => {
       load: jest.fn(async () => saved),
       clear: jest.fn(async () => {}),
       removeNote: jest.fn(async () => {}),
-      setDegraded: jest.fn(async () => {})
+      setFailed: jest.fn(async () => {})
     };
     handlers = {
       getUser: jest.fn(async () => ({ success: true, user: { uid: 'u1' } })),
@@ -48,21 +48,21 @@ describe('restoreSubscriptions', () => {
   });
 
   describe('what is stored', () => {
-    it('does nothing, and clears a stale degraded flag, when nothing was stored', async () => {
+    it('does nothing, and clears the failed list, when nothing was stored', async () => {
       saved = { notes: [], comments: [] };
 
       expect(await run()).toEqual({ restored: 0, failed: 0, dropped: 0 });
-      expect(store.setDegraded).toHaveBeenCalledWith(false);
+      expect(store.setFailed).toHaveBeenCalledWith([]);
       expect(handlers.getUser).not.toHaveBeenCalled();
     });
 
-    it('flags sync as degraded when the stored subscriptions cannot be read', async () => {
+    it('logs when the stored subscriptions cannot be read', async () => {
       store.load.mockResolvedValue(null);
 
       expect(await run()).toEqual({ restored: 0, failed: 0, dropped: 0 });
-      expect(store.setDegraded).toHaveBeenCalledWith(true);
       expect(log.error).toHaveBeenCalledTimes(1);
       expect(handlers.claimRestore).not.toHaveBeenCalled();
+      expect(store.setFailed).not.toHaveBeenCalled();
     });
   });
 
@@ -112,16 +112,15 @@ describe('restoreSubscriptions', () => {
   describe('the user', () => {
     it('restores note and comment subscriptions for a signed-in user', async () => {
       expect(await run()).toEqual({ restored: 2, failed: 0, dropped: 0 });
-      expect(store.setDegraded).toHaveBeenCalledWith(false);
+      expect(store.setFailed).toHaveBeenCalledWith([]);
       expect(log.error).not.toHaveBeenCalled();
     });
 
-    it('drops everything and clears the flag when nobody is signed in', async () => {
+    it('drops everything when nobody is signed in', async () => {
       handlers.getUser.mockResolvedValue({ success: true, user: null });
 
       expect(await run()).toEqual({ restored: 0, failed: 0, dropped: 2 });
       expect(store.clear).toHaveBeenCalledTimes(1);
-      expect(store.setDegraded).toHaveBeenCalledWith(false);
       expect(handlers.subscribeNotes).not.toHaveBeenCalled();
     });
 
@@ -132,7 +131,7 @@ describe('restoreSubscriptions', () => {
       expect(handlers.getUser).toHaveBeenCalledTimes(5);
       expect(wait.mock.calls.map((call) => call[0])).toEqual([1000, 2000, 4000, 8000]);
       expect(store.clear).not.toHaveBeenCalled();
-      expect(store.setDegraded).toHaveBeenCalledWith(true);
+      expect(store.setFailed).toHaveBeenCalledWith(['note:1-0', 'comment:1-n1']);
     });
 
     it('recovers when the user lookup works on a retry', async () => {
@@ -159,7 +158,7 @@ describe('restoreSubscriptions', () => {
 
       expect(await run()).toEqual({ restored: 0, failed: 2, dropped: 0 });
       expect(handlers.releaseTab).not.toHaveBeenCalled();
-      expect(store.setDegraded).toHaveBeenCalledWith(true);
+      expect(store.setFailed).toHaveBeenCalledWith(['note:1-0', 'comment:1-n1']);
       expect(log.error).toHaveBeenCalledWith('Could not check tab', 1, expect.any(Error));
     });
 
@@ -200,7 +199,7 @@ describe('restoreSubscriptions', () => {
       expect(handlers.subscribeNotes).toHaveBeenCalledTimes(3);
       expect(handlers.subscribeCommentsHandler).toHaveBeenCalledTimes(1);
       expect(wait.mock.calls.map((call) => call[0])).toEqual([1000, 2000]);
-      expect(store.setDegraded).toHaveBeenCalledWith(false);
+      expect(store.setFailed).toHaveBeenCalledWith([]);
     });
 
     it('retries with the generation it claimed, so a newer request cancels the retry', async () => {
@@ -212,13 +211,13 @@ describe('restoreSubscriptions', () => {
       expect(handlers.subscribeNotes.mock.calls.map((call) => call[2])).toEqual([11, 11]);
     });
 
-    it('flags sync as degraded, keeps the descriptors and logs every failure', async () => {
+    it('records the failed subscriptions, keeps the descriptors and logs every failure', async () => {
       handlers.subscribeNotes.mockResolvedValue({ success: false, error: 'down' });
 
       expect(await run()).toEqual({ restored: 1, failed: 1, dropped: 0 });
       expect(handlers.subscribeNotes).toHaveBeenCalledTimes(5);
       expect(wait.mock.calls.map((call) => call[0])).toEqual([1000, 2000, 4000, 8000]);
-      expect(store.setDegraded).toHaveBeenCalledWith(true);
+      expect(store.setFailed).toHaveBeenCalledWith(['note:1-0']);
       expect(store.removeNote).not.toHaveBeenCalled();
       expect(log.error).toHaveBeenCalledWith('Could not restore note 1-0:', 'down');
       expect(log.error).toHaveBeenCalledTimes(2);

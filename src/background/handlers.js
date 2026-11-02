@@ -924,8 +924,8 @@ export function createHandlers(deps = {}) {
   
   /**
    * Report whether real-time sync is degraded, and whether subscriptions can be restored at all
-   * @returns {Promise<Object>} { success: true, degraded, restorable }; degraded is true when the
-   *   last restore that had work to do left subscriptions unrestored
+   * @returns {Promise<Object>} { success: true, degraded, restorable }; degraded is true while a
+   *   subscription the last restore could not restore is still unrestored
    */
   async function getRealtimeSyncStatus() {
     return {

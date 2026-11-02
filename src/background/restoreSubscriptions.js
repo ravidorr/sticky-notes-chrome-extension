@@ -7,6 +7,8 @@
 const MAX_ATTEMPTS = 5;
 const BASE_DELAY_MS = 1000;
 
+const failedKey = ({ kind, descriptor }) => `${kind}:${descriptor.subKey}`;
+
 const defaultWait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -75,7 +77,7 @@ async function findLiveFrames({ tabs, webNavigation, log }, tabIds) {
  * content script was first, and a restore that was claimed first is cancelled by a later request,
  * on its first attempt and on every retry. Descriptors of closed tabs, and of frames that no longer
  * exist, are dropped, and so are all of them when nobody is signed in. Anything that fails is
- * retried with a growing delay, kept for the next worker start, and flags sync as degraded.
+ * retried with a growing delay, kept for the next worker start, and flags those keys as failed (sync is degraded while any is left).
  * A subscribe that comes back cancelled counts as done.
  * @param {Object} deps - { store, handlers, tabs, webNavigation, log, wait }
  * @returns {Promise<{ restored: number, failed: number, dropped: number }>} What happened
@@ -84,14 +86,13 @@ export async function restoreSubscriptions(deps) {
   const { store, handlers, log, wait = defaultWait } = deps;
   const saved = await store.load();
   if (!saved) {
-    await store.setDegraded(true);
-    log.error('Could not read the stored subscriptions; sync is degraded');
+    log.error('Could not read the stored subscriptions; real-time sync cannot be restored');
     return { restored: 0, failed: 0, dropped: 0 };
   }
 
   const total = saved.notes.length + saved.comments.length;
   if (total === 0) {
-    await store.setDegraded(false);
+    await store.setFailed([]);
     return { restored: 0, failed: 0, dropped: 0 };
   }
 
@@ -113,13 +114,12 @@ export async function restoreSubscriptions(deps) {
 
   const user = await lookupUser(handlers, wait);
   if (!user.ok) {
-    await store.setDegraded(true);
+    await store.setFailed(claims.map(failedKey));
     log.error(`Could not look up the user; ${claims.length} real-time subscription(s) not restored`);
     return { restored: 0, failed: claims.length, dropped: 0 };
   }
   if (!user.user) {
     await store.clear();
-    await store.setDegraded(false);
     return { restored: 0, failed: 0, dropped: total - skipped };
   }
 
@@ -128,11 +128,11 @@ export async function restoreSubscriptions(deps) {
 
   const jobs = [];
   let dropped = 0;
-  let unresolved = 0;
+  const unresolvedKeys = [];
   for (const { kind, descriptor, generation } of claims) {
     const state = states.get(descriptor.tabId);
     if (state.status === 'unknown') {
-      unresolved += 1;
+      unresolvedKeys.push(failedKey({ kind, descriptor }));
     } else if (state.status === 'closed') {
       handlers.releaseTab(descriptor.tabId);
       dropped += 1;
@@ -141,6 +141,7 @@ export async function restoreSubscriptions(deps) {
       dropped += 1;
     } else if (kind === 'note') {
       jobs.push({
+        key: failedKey({ kind, descriptor }),
         label: `note ${descriptor.subKey}`,
         run: () => handlers.subscribeNotes(
           descriptor.url, { tab: { id: descriptor.tabId }, frameId: descriptor.frameId }, generation
@@ -148,6 +149,7 @@ export async function restoreSubscriptions(deps) {
       });
     } else {
       jobs.push({
+        key: failedKey({ kind, descriptor }),
         label: `comment ${descriptor.subKey}`,
         run: () => handlers.subscribeCommentsHandler(
           descriptor.noteId, { tab: { id: descriptor.tabId } }, generation
@@ -171,8 +173,8 @@ export async function restoreSubscriptions(deps) {
     }
   }
 
-  const failed = pending.length + unresolved;
-  await store.setDegraded(failed > 0);
+  const failed = pending.length + unresolvedKeys.length;
+  await store.setFailed([...pending.map((job) => job.key), ...unresolvedKeys]);
   for (const { job, result } of errors) {
     log.error(`Could not restore ${job.label}:`, result?.error);
   }

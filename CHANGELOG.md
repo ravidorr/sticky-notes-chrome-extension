@@ -27,10 +27,11 @@ bump is listed under the next version bump after it.
   that subscribes or unsubscribes in the meantime wins, including over a retry. Descriptors are dropped when nobody
   is signed in, when the tab was closed, or when a frame no longer exists; a failed user lookup, or a tab or frame
   list that cannot be read, keeps them for the next start instead.
-- If some subscriptions still cannot be restored after the retries, the worker keeps them and flags real-time sync
-  as degraded. The new `getRealtimeSyncStatus` message reports `{ success, degraded, restorable }`, where `degraded`
-  refers to the last restore that had work to do and `restorable` is false when `chrome.storage.session` is not
-  available. Nothing in the popup shows this yet.
+- If some subscriptions still cannot be restored after the retries, the worker keeps them and records which ones
+  failed. The new `getRealtimeSyncStatus` message reports `{ success, degraded, restorable }`: `degraded` is true
+  while any of those subscriptions is still unrestored (it clears as soon as a content script or a later restore
+  subscribes or unsubscribes for them), and `restorable` is false when `chrome.storage.session` is not available.
+  Nothing in the popup shows this yet.
 - Within one worker run, a subscribe that reaches the worker after its tab was closed now registers no listener and
   is reported as `cancelled`.
 

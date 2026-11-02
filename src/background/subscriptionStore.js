@@ -8,18 +8,19 @@
  */
 
 const SUBSCRIPTIONS_KEY = 'subscriptions';
-const STATUS_KEY = 'realtimeSyncStatus';
 
 /**
  * Normalize what was read from storage
  * @param {*} stored - Stored value
- * @returns {{ notes: Object, comments: Object }} Subscription descriptors by subscription key
+ * @returns {{ notes: Object, comments: Object, failed: string[] }} Subscription descriptors by
+ *   subscription key, and the keys the last restore could not restore
  */
 function normalize(stored) {
   const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
   return {
     notes: isObject(stored?.notes) ? { ...stored.notes } : {},
-    comments: isObject(stored?.comments) ? { ...stored.comments } : {}
+    comments: isObject(stored?.comments) ? { ...stored.comments } : {},
+    failed: Array.isArray(stored?.failed) ? stored.failed.filter((key) => typeof key === 'string') : []
   };
 }
 
@@ -107,14 +108,20 @@ export function createSubscriptionStore(area, log) {
      * @param {{ tabId: number, frameId: number, url: string }} descriptor - What restore needs
      */
     saveNote(subKey, descriptor) {
-      return update((current) => { current.notes[subKey] = descriptor; });
+      return update((current) => {
+        current.notes[subKey] = descriptor;
+        current.failed = current.failed.filter((key) => key !== `note:${subKey}`);
+      });
     },
 
     /**
      * @param {string} subKey - `${tabId}-${frameId}`
      */
     removeNote(subKey) {
-      return update((current) => { delete current.notes[subKey]; });
+      return update((current) => {
+        delete current.notes[subKey];
+        current.failed = current.failed.filter((key) => key !== `note:${subKey}`);
+      });
     },
 
     /**
@@ -123,14 +130,20 @@ export function createSubscriptionStore(area, log) {
      * @param {{ tabId: number, noteId: string }} descriptor - What restore needs
      */
     saveComment(subKey, descriptor) {
-      return update((current) => { current.comments[subKey] = descriptor; });
+      return update((current) => {
+        current.comments[subKey] = descriptor;
+        current.failed = current.failed.filter((key) => key !== `comment:${subKey}`);
+      });
     },
 
     /**
      * @param {string} subKey - `${tabId}-${noteId}`
      */
     removeComment(subKey) {
-      return update((current) => { delete current.comments[subKey]; });
+      return update((current) => {
+        delete current.comments[subKey];
+        current.failed = current.failed.filter((key) => key !== `comment:${subKey}`);
+      });
     },
 
     /**
@@ -145,6 +158,7 @@ export function createSubscriptionStore(area, log) {
       return update((current) => {
         current.notes = without(current.notes);
         current.comments = without(current.comments);
+        current.failed = current.failed.filter((key) => !key.slice(key.indexOf(':') + 1).startsWith(prefix));
       });
     },
 
@@ -155,24 +169,27 @@ export function createSubscriptionStore(area, log) {
       return update((current) => {
         current.notes = {};
         current.comments = {};
+        current.failed = [];
       });
     },
 
     /**
-     * Record whether the last restore that had work to do left subscriptions unrestored
-     * @param {boolean} degraded - True when real-time sync is degraded
+     * Record the subscriptions the last restore could not restore. The list shrinks by itself when
+     * a content script (or a later restore) subscribes or unsubscribes for one of those keys.
+     * @param {string[]} keys - `note:${subKey}` and `comment:${subKey}` of the failed subscriptions
      */
-    setDegraded(degraded) {
-      return enqueue(() => area.set({ [STATUS_KEY]: { degraded: Boolean(degraded) } }));
+    setFailed(keys) {
+      return update((current) => { current.failed = [...keys]; });
     },
 
     /**
-     * @returns {Promise<boolean>} True when the last restore left subscriptions unrestored
+     * @returns {Promise<boolean>} True while some subscription the last restore could not restore
+     *   is still unrestored
      */
     isDegraded() {
       return enqueue(async () => {
-        const stored = await area.get([STATUS_KEY]);
-        return stored?.[STATUS_KEY]?.degraded === true;
+        await ensureLoaded();
+        return state.failed.length > 0;
       }, false);
     }
   };
