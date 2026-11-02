@@ -93,7 +93,7 @@ describe('restoreSubscriptions', () => {
       await run();
 
       expect(handlers.subscribeNotes).toHaveBeenCalledWith('https://a.test/', { tab: { id: 1 }, frameId: 0 }, 11);
-      expect(handlers.subscribeCommentsHandler).toHaveBeenCalledWith('n1', { tab: { id: 1 } }, 12);
+      expect(handlers.subscribeCommentsHandler).toHaveBeenCalledWith('n1', { tab: { id: 1, url: 'https://a.test/' } }, 12);
     });
 
     it('skips keys a content script already handled, without dropping them, and keeps them in the failed list', async () => {
@@ -259,6 +259,15 @@ describe('restoreSubscriptions', () => {
       expect(await run()).toEqual({ restored: 1, failed: 0, dropped: 1 });
       expect(handlers.subscribeNotes).toHaveBeenCalledTimes(1);
       expect(store.removeNote).toHaveBeenCalledWith('1-3');
+    });
+
+    it('stores the current tab URL again when it restores a comment', async () => {
+      saved = { notes: [], comments: [{ subKey: '1-n1', tabId: 1, noteId: 'n1' }] };
+      tabs.get.mockResolvedValue({ id: 1, url: 'https://a.test/page' });
+
+      await run();
+
+      expect(handlers.subscribeCommentsHandler).toHaveBeenCalledWith('n1', { tab: { id: 1, url: 'https://a.test/page' } }, 11);
     });
 
     it('keeps a comment descriptor stored without a tab URL', async () => {

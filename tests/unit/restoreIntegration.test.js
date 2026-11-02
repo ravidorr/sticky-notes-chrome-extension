@@ -69,6 +69,7 @@ describe('restore with the real handlers and store', () => {
     expect(noteSubscriptions.get('7-0').url).toBe('https://old.test/');
     expect(commentSubscriptions.has('7-n1')).toBe(true);
     expect((await store.load()).notes).toHaveLength(1);
+    expect((await store.load()).comments[0].tabUrl).toBe('https://old.test/');
   });
 
   it('leaves a newer content-script subscribe alone', async () => {

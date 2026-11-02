@@ -204,7 +204,8 @@ export async function restoreSubscriptions(deps) {
         key: failedKey({ kind, descriptor }),
         label: `comment ${descriptor.subKey}`,
         run: () => handlers.subscribeCommentsHandler(
-          descriptor.noteId, { tab: { id: descriptor.tabId } }, generation
+          // The tab URL is stored with the descriptor again, so the navigation check keeps working
+          descriptor.noteId, { tab: { id: descriptor.tabId, url: state.tabUrl } }, generation
         )
       });
     }
