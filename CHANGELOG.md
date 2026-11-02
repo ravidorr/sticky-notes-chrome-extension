@@ -15,6 +15,13 @@ bump is listed under the next version bump after it.
 
 ## [1.20.28] - 2026-11-02
 
+### Changed
+
+- The minimum supported browser version is now Chrome and Edge 102 (`minimum_chrome_version` in the manifests, and
+  the README), because the background worker keeps its subscription descriptors in `chrome.storage.session`, which
+  older versions do not have. Without it a stopped worker could not restore its subscriptions, now that the per-frame
+  retry in the content script is gone.
+
 ### Fixed
 
 - Real-time notes and comments now recover when Chrome stops the background service worker, which drops its

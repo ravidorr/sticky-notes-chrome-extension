@@ -337,8 +337,9 @@ The extension uses an optional permission model for better performance:
 
 ## Browser Compatibility
 
-- Chrome 88+ (Manifest V3 support)
-- Edge 88+ (Chromium-based)
+- Chrome 102+ (Manifest V3, and `chrome.storage.session`, which the background worker uses to restore
+  real-time subscriptions after Chrome stops it)
+- Edge 102+ (Chromium-based)
 
 ## Roadmap
 
