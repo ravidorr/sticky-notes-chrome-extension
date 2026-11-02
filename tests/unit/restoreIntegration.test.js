@@ -172,4 +172,36 @@ describe('restore with the real handlers and store', () => {
     expect(await store.isDegraded()).toBe(false);
     expect(noteSubscriptions.get('7-0').url).toBe('https://new.test');
   });
+
+  it('stays degraded when a content-script subscribe replaced the restore and then failed', async () => {
+    const slowUser = {};
+    slowUser.promise = new Promise((resolve) => { slowUser.resolve = resolve; });
+    const getCurrentUser = jest.fn()
+      .mockImplementationOnce(() => slowUser.promise)
+      .mockResolvedValue({ uid: 'u1', email: 'a@b.test' });
+    subscribeToNotesForUrl.mockRejectedValueOnce(new Error('listener failed'));
+    handlers = createHandlers({
+      getCurrentUser,
+      isFirebaseConfigured: () => true,
+      subscribeToNotesForUrl,
+      subscribeToComments: jest.fn(async () => jest.fn()),
+      noteSubscriptions,
+      commentSubscriptions,
+      subscriptionStore: store,
+      log,
+      chromeTabs: { sendMessage: jest.fn().mockResolvedValue({}) },
+      chromeStorage: { local: { get: async () => ({}) } }
+    });
+
+    const restoring = restore();
+    await flush();
+    const content = await handlers.subscribeNotes('https://new.test', { tab: { id: 7 }, frameId: 0 });
+    slowUser.resolve({ uid: 'u1', email: 'a@b.test' });
+    await restoring;
+    await flush();
+
+    expect(content.success).toBe(false);
+    expect(noteSubscriptions.has('7-0')).toBe(false);
+    expect(await store.isDegraded()).toBe(true);
+  });
 });

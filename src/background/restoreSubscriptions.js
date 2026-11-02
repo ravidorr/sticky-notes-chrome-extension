@@ -81,7 +81,8 @@ async function findLiveFrames({ tabs, webNavigation, log }, tabIds) {
  * degraded until a content script or a later restore subscribes or unsubscribes for those keys.
  * Keys a content script claimed first are recorded the same way until its request settles them,
  * because that request may fail and nothing retries it (unless it already succeeded).
- * A subscribe that comes back cancelled counts as done.
+ * A subscribe that comes back cancelled counts as done, but its key is recorded as failed until the
+ * request that cancelled it has registered a listener or unsubscribed.
  * @param {Object} deps - { store, handlers, tabs, webNavigation, log, wait }
  * @returns {Promise<{ restored: number, failed: number, dropped: number }>} What happened
  */
@@ -147,6 +148,8 @@ export async function restoreSubscriptions(deps) {
       dropped += 1;
     } else if (kind === 'note') {
       jobs.push({
+        kind,
+        subKey: descriptor.subKey,
         key: failedKey({ kind, descriptor }),
         label: `note ${descriptor.subKey}`,
         run: () => handlers.subscribeNotes(
@@ -155,6 +158,8 @@ export async function restoreSubscriptions(deps) {
       });
     } else {
       jobs.push({
+        kind,
+        subKey: descriptor.subKey,
         key: failedKey({ kind, descriptor }),
         label: `comment ${descriptor.subKey}`,
         run: () => handlers.subscribeCommentsHandler(
@@ -166,11 +171,17 @@ export async function restoreSubscriptions(deps) {
 
   let pending = jobs;
   let errors = [];
+  const superseded = [];
   for (let attempt = 0; attempt < MAX_ATTEMPTS && pending.length > 0; attempt += 1) {
     const results = await Promise.all(pending.map((job) => job.run().catch((error) => ({
       success: false,
       error: error?.message
     }))));
+    pending.forEach((job, index) => {
+      if (results[index]?.cancelled === true) {
+        superseded.push(job);
+      }
+    });
     errors = pending.map((job, index) => ({ job, result: results[index] }))
       .filter(({ result }) => result?.success !== true);
     pending = errors.map(({ job }) => job);
@@ -179,8 +190,16 @@ export async function restoreSubscriptions(deps) {
     }
   }
 
+  // A restore that a newer request cancelled counts as done, but that request may still fail, so
+  // the key stays recorded until it registers a listener or unsubscribes (which removes it from
+  // the list). Checked and queued in the same step, so a request that registers in between
+  // is either seen here or prunes the key after it was added.
+  const unsettled = superseded
+    .filter((job) => !handlers.isSubscribed(job.kind, job.subKey))
+    .map((job) => job.key);
+
   const failed = pending.length + unresolvedKeys.length;
-  await store.addFailed([...pending.map((job) => job.key), ...unresolvedKeys]);
+  await store.addFailed([...pending.map((job) => job.key), ...unresolvedKeys, ...unsettled]);
   for (const { job, result } of errors) {
     log.error(`Could not restore ${job.label}:`, result?.error);
   }

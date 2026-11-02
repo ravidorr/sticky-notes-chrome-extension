@@ -28,7 +28,8 @@ bump is listed under the next version bump after it.
   stays recorded as failed until that request subscribes or unsubscribes for it, because a failed request is not
   retried. The restore loads the stored subscriptions, claims them and records those keys in one storage step, and only
   adds its own failures at the end, so a request that settles a key before or while the restore is working is not
-  undone (a key whose request already succeeded is not recorded at all). Descriptors are dropped when nobody
+  undone (a key whose request already succeeded is not recorded at all). A restore that a newer request cancelled is
+  recorded the same way until that request registers a listener or unsubscribes. Descriptors are dropped when nobody
   is signed in, when the tab was closed, or when a frame no longer exists; a failed user lookup, or a tab or frame
   list that cannot be read, keeps them for the next start instead.
 - If some subscriptions still cannot be restored after the retries, the worker keeps them and records which ones

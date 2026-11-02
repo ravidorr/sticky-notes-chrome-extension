@@ -277,6 +277,24 @@ describe('restoreSubscriptions', () => {
       expect(log.error).toHaveBeenCalledWith('Could not restore note 1-0:', 'boom');
     });
 
+    it('records a cancelled restore as failed until the request that replaced it registers a listener', async () => {
+      handlers.subscribeNotes.mockResolvedValue({ success: true, cancelled: true });
+      handlers.isSubscribed.mockReturnValue(false);
+
+      expect(await run()).toEqual({ restored: 2, failed: 0, dropped: 0 });
+      expect(store.addFailed).toHaveBeenCalledWith(['note:1-0']);
+    });
+
+    it('does not record a cancelled restore whose replacing request already registered a listener', async () => {
+      handlers.subscribeNotes.mockResolvedValue({ success: true, cancelled: true });
+      handlers.isSubscribed.mockReturnValue(true);
+
+      await run();
+
+      expect(store.addFailed).toHaveBeenCalledWith([]);
+      expect(handlers.isSubscribed).toHaveBeenCalledWith('note', '1-0');
+    });
+
     it('treats a cancelled subscribe as done and an empty result as a failure', async () => {
       handlers.subscribeNotes.mockResolvedValue({ success: true, cancelled: true });
       handlers.subscribeCommentsHandler.mockResolvedValue(undefined);
