@@ -419,6 +419,17 @@ describe('Firebase Config', () => {
       expect(deps.setLogLevel).toHaveBeenCalledWith('error');
     });
 
+    it('stops following the preference after resetFirebase', async () => {
+      const deps = makeLogDeps();
+      await initializeFirebase({ config: { apiKey: 'real-api-key' }, deps });
+      deps.setLogLevel.mockClear();
+
+      resetFirebase();
+      setLogLevel('debug');
+
+      expect(deps.setLogLevel).not.toHaveBeenCalled();
+    });
+
     it('falls back to silent when the override is cleared', async () => {
       const deps = makeLogDeps();
       await initializeFirebase({ config: { apiKey: 'real-api-key' }, deps });

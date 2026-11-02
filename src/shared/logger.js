@@ -36,10 +36,21 @@ export function detectDebugMode() {
 let _debugMode = detectDebugMode();
 
 /**
- * Valid log level names, as stored in the logLevel preference.
- * They match the names accepted by the Firestore SDK's setLogLevel().
+ * Runtime log level names (as stored in the logLevel preference) mapped to LOG_LEVELS values.
+ * The names match the ones accepted by the Firestore SDK's setLogLevel().
  */
-export const LOG_LEVEL_NAMES = ['silent', 'error', 'warn', 'info', 'debug'];
+const RUNTIME_LEVEL_VALUES = {
+  silent: LOG_LEVELS.NONE,
+  error: LOG_LEVELS.ERROR,
+  warn: LOG_LEVELS.WARN,
+  info: LOG_LEVELS.INFO,
+  debug: LOG_LEVELS.DEBUG
+};
+
+/**
+ * Valid log level names
+ */
+export const LOG_LEVEL_NAMES = Object.keys(RUNTIME_LEVEL_VALUES);
 
 // Runtime override set from the logLevel preference (null = use debug mode)
 let _runtimeLevel = null;
@@ -71,14 +82,6 @@ export function onLogLevelChange(listener) {
   _levelListeners.add(listener);
   return () => _levelListeners.delete(listener);
 }
-
-const RUNTIME_LEVEL_VALUES = {
-  silent: 4,
-  error: 3,
-  warn: 2,
-  info: 1,
-  debug: 0
-};
 
 /**
  * Set debug mode (primarily for testing)

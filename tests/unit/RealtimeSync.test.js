@@ -365,6 +365,51 @@ describe('RealtimeSync', () => {
       expect(realtimeSync.resubscribeAttempts).toBe(0);
     });
 
+    it('does not track a subscription cancelled while the request was in flight', async () => {
+      let resolveSubscribe;
+      mockSendMessage.mockImplementationOnce(() => new Promise(resolve => { resolveSubscribe = resolve; }));
+
+      const pending = realtimeSync.subscribeToNotes('url1');
+      await realtimeSync.unsubscribeFromNotes();
+      resolveSubscribe({ success: true });
+
+      expect(await pending).toBe(true);
+      expect(realtimeSync.notesUrl).toBeNull();
+      expect(mockConnect).not.toHaveBeenCalled();
+    });
+
+    it('stops restoring when unsubscribed while a resubscribe is in flight', async () => {
+      await realtimeSync.subscribeToNotes('url1');
+      notes.set('n1', { id: 'n1', commentSubscribed: true });
+      let resolveSubscribe;
+      mockSendMessage.mockClear();
+      mockSendMessage.mockImplementationOnce(() => new Promise(resolve => { resolveSubscribe = resolve; }));
+
+      dropPort();
+      await jest.advanceTimersByTimeAsync(1000);
+      await realtimeSync.unsubscribeFromNotes();
+      resolveSubscribe({ success: false, error: 'no' });
+      await jest.advanceTimersByTimeAsync(60000);
+
+      expect(mockSendMessage.mock.calls.map(c => c[0].action)).toEqual([
+        'subscribeToNotes',
+        'unsubscribeFromNotes'
+      ]);
+    });
+
+    it('stops retrying when the extension context is invalidated', async () => {
+      await realtimeSync.subscribeToNotes('url1');
+      mockSendMessage.mockClear();
+      mockSendMessage.mockRejectedValue(new Error('Extension context invalidated.'));
+      mockIsContextInvalidatedError.mockReturnValue(true);
+
+      dropPort();
+      await jest.advanceTimersByTimeAsync(60000);
+
+      expect(mockSendMessage).toHaveBeenCalledTimes(1);
+      expect(realtimeSync.notesUrl).toBeNull();
+    });
+
     it('tolerates a port that throws on disconnect', async () => {
       await realtimeSync.subscribeToNotes('url1');
       ports[0].disconnect.mockImplementation(() => { throw new Error('closed'); });

@@ -38,6 +38,8 @@ export class RealtimeSync {
     this.notesUrl = null;
     this.resubscribeTimer = null;
     this.resubscribeAttempts = 0;
+    // Bumped by unsubscribeFromNotes so an in-flight subscribe can tell it was cancelled
+    this.generation = 0;
   }
   
   /**
@@ -99,6 +101,8 @@ export class RealtimeSync {
   
   async _resubscribe() {
     const restored = await this.subscribeToNotes(this.notesUrl);
+    // Cancelled, or the extension context is gone, while the request was in flight
+    if (!this.notesUrl) return;
     if (!restored) {
       this.resubscribeAttempts += 1;
       if (this.resubscribeAttempts < MAX_RESUBSCRIBE_ATTEMPTS) {
@@ -122,6 +126,7 @@ export class RealtimeSync {
    * @returns {Promise<boolean>} True when the background worker holds the subscription
    */
   async subscribeToNotes(url) {
+    const generation = this.generation;
     try {
       const response = await this.sendMessage({
         action: 'subscribeToNotes',
@@ -130,13 +135,20 @@ export class RealtimeSync {
       
       if (response.success) {
         log.debug('Subscribed to real-time note updates');
-        this.notesUrl = url;
-        this._openPort();
+        // Do not track a subscription that was cancelled while the request was in flight
+        if (generation === this.generation) {
+          this.notesUrl = url;
+          this._openPort();
+        }
         return true;
       }
       log.warn('Failed to subscribe to notes:', response.error);
     } catch (error) {
-      if (!this.isContextInvalidatedError(error)) {
+      if (this.isContextInvalidatedError(error)) {
+        // The extension was reloaded: this script is orphaned, so stop restoring anything
+        this.notesUrl = null;
+        this._closePort();
+      } else {
         log.error('Failed to subscribe to notes:', error);
       }
     }
@@ -147,6 +159,7 @@ export class RealtimeSync {
    * Unsubscribe from real-time note updates
    */
   async unsubscribeFromNotes() {
+    this.generation += 1;
     this.notesUrl = null;
     this._closePort();
     try {

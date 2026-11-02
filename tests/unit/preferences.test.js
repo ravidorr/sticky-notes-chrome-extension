@@ -488,3 +488,13 @@ describe('logLevel preference', () => {
     expect(result.preferences.logLevel).toBe(DEFAULT_PREFERENCES.logLevel);
   });
 });
+
+describe('normalizeLogLevel', () => {
+  it('keeps valid levels and defaults the rest', async () => {
+    const { normalizeLogLevel, DEFAULT_PREFERENCES } = await import('../../src/shared/preferences.js');
+
+    expect(normalizeLogLevel('debug')).toBe('debug');
+    expect(normalizeLogLevel('verbose')).toBe(DEFAULT_PREFERENCES.logLevel);
+    expect(normalizeLogLevel(undefined)).toBe(DEFAULT_PREFERENCES.logLevel);
+  });
+});

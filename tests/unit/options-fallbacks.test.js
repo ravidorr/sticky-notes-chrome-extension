@@ -19,6 +19,7 @@ jest.unstable_mockModule('../src/shared/preferences.js', () => ({
   getPreferences: mockGetPreferences,
   setPreferences: mockSetPreferences,
   resetPreferences: mockResetPreferences,
+  normalizeLogLevel: (level) => level,
   DEFAULT_PREFERENCES: {
     defaultTheme: 'yellow',
     defaultPosition: 'top-right',

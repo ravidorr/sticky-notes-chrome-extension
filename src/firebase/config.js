@@ -28,6 +28,7 @@ const FIRESTORE_DEFAULT_LOG_LEVEL = 'silent';
 let app = null;
 let auth = null;
 let db = null;
+let stopLogLevelSync = null;
 
 /**
  * Detect if running in a service worker context
@@ -66,7 +67,7 @@ export async function initializeFirebase(options = {}) {
     if (deps.setLogLevel) {
       const applyLogLevel = (level) => deps.setLogLevel(level || FIRESTORE_DEFAULT_LOG_LEVEL);
       applyLogLevel(getLogLevelName());
-      onLogLevelChange(applyLogLevel);
+      stopLogLevelSync = onLogLevelChange(applyLogLevel);
     }
 
     // Use initializeAuth with explicit persistence for faster startup
@@ -157,6 +158,10 @@ async function loadFirebaseDeps() {
  * Reset Firebase instances (primarily for testing)
  */
 export function resetFirebase() {
+  if (stopLogLevelSync) {
+    stopLogLevelSync();
+    stopLogLevelSync = null;
+  }
   app = null;
   auth = null;
   db = null;

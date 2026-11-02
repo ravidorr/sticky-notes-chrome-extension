@@ -58,14 +58,37 @@ describe('initLogLevel', () => {
     expect(getLogLevelName()).toBe('warn');
   });
 
-  it('clears the override when the preference is removed', async () => {
-    const storage = makeStorage({ logLevel: 'warn' });
+  it('uses the default when a change lacks logLevel (older build on another device)', async () => {
+    const storage = makeStorage({ logLevel: 'debug' });
     await initLogLevel({ chromeStorage: storage });
     const listener = storage.onChanged.addListener.mock.calls[0][0];
 
-    listener({ preferences: {} }, 'sync');
+    listener({ preferences: { newValue: { fontSize: 'large' } } }, 'sync');
+    expect(getLogLevelName()).toBe('silent');
 
-    expect(getLogLevelName()).toBeNull();
+    listener({ preferences: { newValue: { logLevel: 'verbose' } } }, 'sync');
+    expect(getLogLevelName()).toBe('silent');
+
+    listener({ preferences: {} }, 'sync');
+    expect(getLogLevelName()).toBe('silent');
+  });
+
+  it('applies the default synchronously while the preference loads', async () => {
+    setLogLevel('debug');
+    const storage = makeStorage({ logLevel: 'debug' });
+
+    const pending = initLogLevel({ chromeStorage: storage });
+    expect(getLogLevelName()).toBe('silent');
+
+    await pending;
+    expect(getLogLevelName()).toBe('debug');
+  });
+
+  it('does not reject when the change listener cannot be registered', async () => {
+    const storage = makeStorage({ logLevel: 'debug' });
+    storage.onChanged.addListener.mockImplementation(() => { throw new Error('no listener'); });
+
+    await expect(initLogLevel({ chromeStorage: storage })).resolves.toBe('silent');
   });
 
   it('works when onChanged is unavailable', async () => {
