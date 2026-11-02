@@ -3,7 +3,6 @@
  * logout and login, and the per-attempt subscribe timeout.
  */
 
-import { readFileSync } from 'node:fs';
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { createSubscriptionManager, SUBSCRIBE_TIMEOUT_MS } from '../../src/background/subscriptions.js';
 import { createHandlers } from '../../src/background/handlers.js';
@@ -719,15 +718,5 @@ describe('logout and login through the handlers', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(log.error).toHaveBeenCalledWith('Failed to resume real-time subscriptions:', expect.any(Error));
-  });
-});
-
-describe('background wiring', () => {
-  // src/background/index.js is excluded from coverage and only bootstraps outside Jest
-  it('retries the pending subscriptions on the keep-alive alarm', () => {
-    const source = readFileSync(new URL('../../src/background/index.js', import.meta.url), 'utf8');
-
-    expect(source).toMatch(/alarm\.name === 'keepAlive'[\s\S]*handlers\.retryPending\(\)/);
-    expect(source).toMatch(/chromeWebNavigation: chrome\.webNavigation/);
   });
 });

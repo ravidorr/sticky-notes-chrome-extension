@@ -44,8 +44,13 @@ npm run lint:md          # Markdownlint only
 ```text
 src/
 ├── background/           # Service worker (ES module with code splitting)
-│   ├── index.js          # Entry point, sets up listeners
+│   ├── index.js          # Entry point, sets up listeners (excluded from coverage)
+│   ├── runtime.js        # createBackgroundRuntime: store, handlers, tab cleanup, alarm, restore
 │   ├── handlers.js       # Message handlers for all actions
+│   ├── subscriptions.js  # Subscription manager: desired state, reconciler, restore, retry
+│   ├── subscriptionStore.js  # Desired subscriptions in chrome.storage.session
+│   ├── restoreSubscriptions.js  # Live tab and frame checks for restore, retry and login
+│   ├── tabCleanup.js     # Releases the subscriptions of a closed tab
 │   └── navigation.js     # URL change detection for SPAs
 ├── content/              # Content script (IIFE bundle)
 │   ├── index.js          # Entry point
@@ -148,6 +153,24 @@ Notes in iframes use composite URLs to associate with the parent page:
 // Format: "tabUrl|frameUrl" for iframes, just "tabUrl" for top frame
 const compositeUrl = createCompositeUrl(tabUrl, frameUrl, isTopFrame);
 ```
+
+### 5. Desired vs Actual Subscription State
+
+The background worker keeps the real-time subscriptions it wants (desired) apart from the Firestore
+listeners it holds (actual). Never start or release a listener from a handler: change the desired entry
+and reconcile it. See `docs/SUBSCRIPTIONS.md`.
+
+```javascript
+// subscriptions.js: a request replaces or deletes the desired entry, then queues a reconcile
+const entry = setDesired('note', key, { tabId, frameId, url });
+return await reconcile('note', key, { entry });
+```
+
+### 6. Wiring in runtime.js
+
+`src/background/index.js` is excluded from coverage and only bootstraps outside Jest. Put wiring that
+needs a test in `createBackgroundRuntime` (`runtime.js`) and call it with fake dependencies in tests.
+Do not add tests that read the source text of `index.js`.
 
 ## Code Style and Conventions
 
@@ -388,5 +411,6 @@ GitHub Actions (`.github/workflows/ci.yml`):
 - `docs/FIREBASE_SETUP.md` - Firebase configuration guide
 - `docs/CHROME_WEB_STORE_PUBLISHING.md` - Automatic Chrome Web Store submissions
 - `docs/EDGE_ADDONS_PUBLISHING.md` - Automatic Edge Add-ons submissions and the credentials to set up
+- `docs/SUBSCRIPTIONS.md` - Desired and actual state of the background real-time subscriptions
 - `docs/ROADMAP.md` - Development roadmap
 - `.cursor/rules/i18n.mdc` - Detailed i18n guidelines
