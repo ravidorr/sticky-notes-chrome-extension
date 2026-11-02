@@ -20,7 +20,8 @@ bump is listed under the next version bump after it.
 - The background worker's wiring (the subscription store, the handlers, the tab cleanup, the keep-alive alarm and
   the restore on start) moved from `index.js` into `createBackgroundRuntime` in `src/background/runtime.js`, which
   takes the chrome and Firebase dependencies. `index.js` is now a thin caller, and the wiring is tested by calling
-  the runtime with fakes instead of by reading the source text of `index.js`. No behavior change.
+  the runtime with fakes instead of by reading the source text of `index.js`. It starts right after the message
+  listener is registered (before, the tab cleanup, the alarm and the restore came after the context menu setup).
 - Added `docs/SUBSCRIPTIONS.md` (desired versus actual subscription state, requests, restore, retry and logout) and
   updated the architecture sections of `CLAUDE.md`. Closes #60.
 

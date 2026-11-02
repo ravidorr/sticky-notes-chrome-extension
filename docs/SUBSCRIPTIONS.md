@@ -9,7 +9,8 @@ makes the second match the first.
 - **Desired**: an in-memory `Map` per kind (notes, comments) of entries `{ descriptor, confirmed }` by
   key. Note keys are `${tabId}-${frameId}`, comment keys are `${tabId}-${noteId}`. `confirmed` is true for an
   entry a page just wrote and false for one read back from storage. It is hydrated once from
-  `chrome.storage.session` and written through to it (`subscriptionStore.js`). The store is never read again.
+  `chrome.storage.session` and written through to it (`subscriptionStore.js`). The store is read once; a failed
+  read is retried later (see Storage failures), and a successful one is never repeated.
 - **Actual**: the `noteSubscriptions` and `commentSubscriptions` maps of listeners.
 
 `degraded` (from `getRealtimeSyncStatus`) is derived: any desired key that has no listener. Nothing is
@@ -51,7 +52,8 @@ A start ends with one of `ok`, `no-user`, `not-configured`, `unavailable` or `tr
   subscribe call) is retried on the `keepAlive` alarm after 1, 2 and 4 ticks and then every 8 ticks. A listener
   that resolves after its timeout is released and never registered.
 - `no-user` pauses the entry. A login starts it again (`handleLogin` calls `reconcileAll`).
-- `not-configured` and `unavailable` are logged once and tried again only at a worker start or on a new request.
+- `not-configured` and `unavailable` are logged once and tried again only at a worker start, on a login
+  (`reconcileAll` starts every entry without a listener) or on a new request.
 
 A logout (`handleLogout`) calls `clearAll` after the sign out succeeds: it releases every listener, empties the
 desired maps and clears the store.

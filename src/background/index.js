@@ -95,6 +95,10 @@ export function bootstrap() {
     return true;
   });
 
+  // Register the tab cleanup and the keep-alive alarm, and restore the subscriptions a stopped worker
+  // held. Early, so a failure in the setup below cannot leave closed tabs holding their listeners.
+  runtime.start();
+
   // Context menus are created in onInstalled (see below) - they persist across sessions
 
   /**
@@ -319,9 +323,6 @@ export function bootstrap() {
       }
     }
   });
-
-  // Register the tab cleanup and the keep-alive alarm, and restore the subscriptions a stopped worker held
-  runtime.start();
 
   // Log when service worker starts
   log.info('Sticky Notes background service worker started');

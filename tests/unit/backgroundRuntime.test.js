@@ -126,7 +126,20 @@ describe('createBackgroundRuntime', () => {
       expect(unsubscribe).toHaveBeenCalledTimes(1);
     });
 
-    it('creates the keep-alive alarm at the 30 second floor', () => {
+    it('registers its listeners once, however often it is called', () => {
+      const restore = jest.fn().mockResolvedValue({});
+      const runtime = build({ createHandlers: () => ({ retryPending: jest.fn(), restore }) });
+
+      runtime.start();
+      runtime.start();
+
+      expect(chromeFake.tabs.onRemoved.addListener).toHaveBeenCalledTimes(1);
+      expect(chromeFake.alarms.onAlarm.addListener).toHaveBeenCalledTimes(1);
+      expect(chromeFake.alarms.create).toHaveBeenCalledTimes(1);
+      expect(restore).toHaveBeenCalledTimes(1);
+    });
+
+    it('creates the keep-alive alarm (Chrome raises the period to its 30 second floor)', () => {
       build().start();
 
       expect(chromeFake.alarms.create).toHaveBeenCalledWith('keepAlive', { periodInMinutes: 0.4 });

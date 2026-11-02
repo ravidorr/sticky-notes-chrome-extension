@@ -13,7 +13,7 @@ import { restoreSubscriptions } from './restoreSubscriptions.js';
 
 const KEEP_ALIVE_ALARM = 'keepAlive';
 
-// Chrome may fire alarms no more often than every 30 seconds
+// Chrome may fire alarms no more often than every 30 seconds, and raises a shorter period to that
 const KEEP_ALIVE_PERIOD_MINUTES = 0.4;
 
 /**
@@ -59,7 +59,14 @@ export function createBackgroundRuntime({ chrome, handlerDeps, log, createHandle
   /**
    * Register the listeners and restore the subscriptions a stopped worker held
    */
+  let started = false;
   function start() {
+    // Listeners registered twice would release and retry twice per event
+    if (started) {
+      return;
+    }
+    started = true;
+
     // Clean up subscriptions when a tab is closed
     registerTabCleanup(chrome.tabs, handlers, log);
 
