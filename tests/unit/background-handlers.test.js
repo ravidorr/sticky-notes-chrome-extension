@@ -2722,6 +2722,90 @@ describe('Background Handlers', () => {
         });
       });
 
+      describe('missing unsubscribe functions and pending replacements', () => {
+        it('should warn and replace a note entry without an unsubscribe function', async () => {
+          localThis.noteSubscriptions.set('123-0', { url: 'https://example.com/old' });
+          const handlers = localThis.build2();
+
+          const result = await handlers.subscribeNotes('https://example.com/new', SENDER);
+
+          expect(result).toEqual({ success: true });
+          expect(localThis.mockLog.warn).toHaveBeenCalledWith(expect.any(String), '123-0');
+          expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/new');
+        });
+
+        it('should drop a note entry without an unsubscribe function and say it was not released', async () => {
+          localThis.noteSubscriptions.set('123-0', {});
+
+          const result = await localThis.build2().unsubscribeNotes(SENDER);
+
+          expect(result).toEqual({ success: true, released: false });
+          expect(localThis.noteSubscriptions.size).toBe(0);
+        });
+
+        it('should drop a non-function comment entry and say it was not released', async () => {
+          const commentSubscriptions = new Map([['123-note-1', {}]]);
+
+          const result = await localThis.build2({ commentSubscriptions })
+            .unsubscribeCommentsHandler('note-1', SENDER);
+
+          expect(result).toEqual({ success: true, released: false });
+          expect(commentSubscriptions.size).toBe(0);
+        });
+
+        it('should release the old and the new note listener once when unsubscribed while replacing', async () => {
+          const oldUnsubscribe = jest.fn();
+          const newUnsubscribe = jest.fn();
+          const started = deferred();
+          localThis.noteSubscriptions.set('123-0', { unsubscribe: oldUnsubscribe });
+          const handlers = localThis.build2({ subscribeToNotesForUrl: jest.fn(() => started.promise) });
+
+          const pending = handlers.subscribeNotes('https://example.com', SENDER);
+          await flush();
+          await handlers.unsubscribeNotes(SENDER);
+          started.resolve(newUnsubscribe);
+
+          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
+          expect(newUnsubscribe).toHaveBeenCalledTimes(1);
+          expect(localThis.noteSubscriptions.size).toBe(0);
+        });
+
+        it('should release the old and the new comment listener once when unsubscribed while replacing', async () => {
+          const oldUnsubscribe = jest.fn();
+          const newUnsubscribe = jest.fn();
+          const started = deferred();
+          const commentSubscriptions = new Map([['123-note-1', oldUnsubscribe]]);
+          const handlers = localThis.build2({
+            commentSubscriptions,
+            subscribeToComments: jest.fn(() => started.promise)
+          });
+
+          const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
+          await flush();
+          await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+          started.resolve(newUnsubscribe);
+
+          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
+          expect(newUnsubscribe).toHaveBeenCalledTimes(1);
+          expect(commentSubscriptions.size).toBe(0);
+        });
+
+        it('should not keep the old entry when its release throws and the new subscribe fails', async () => {
+          const throwing = jest.fn(() => { throw new Error('release failed'); });
+          localThis.noteSubscriptions.set('123-0', { unsubscribe: throwing });
+          const handlers = localThis.build2({
+            subscribeToNotesForUrl: jest.fn().mockRejectedValue(new Error('subscribe failed'))
+          });
+
+          const result = await handlers.subscribeNotes('https://example.com', SENDER);
+
+          expect(result).toEqual({ success: false, error: 'subscribe failed' });
+          expect(localThis.noteSubscriptions.has('123-0')).toBe(false);
+        });
+      });
+
       describe('cancelled note subscribes', () => {
         it('should stop before subscribing when an unsubscribe arrives during the user lookup', async () => {
           const user = deferred();
@@ -2853,7 +2937,7 @@ describe('Background Handlers', () => {
           await handlers.unsubscribeNotes(SENDER);
           started.resolve(failing);
 
-          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(await pending).toEqual({ success: true, cancelled: true, released: false });
           expect(localThis.mockLog.error).toHaveBeenCalledWith(
             expect.stringContaining('Failed to release a subscription'),
             '123-0',
@@ -2870,7 +2954,7 @@ describe('Background Handlers', () => {
           await handlers.unsubscribeNotes(SENDER);
           started.resolve(undefined);
 
-          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(await pending).toEqual({ success: true, cancelled: true, released: false });
           expect(localThis.mockLog.warn).toHaveBeenCalledWith(
             expect.stringContaining('no unsubscribe function'),
             '123-0'
@@ -3022,7 +3106,7 @@ describe('Background Handlers', () => {
             await handlers.unsubscribeCommentsHandler('note-1', SENDER);
             started.resolve(late);
 
-            expect(await pending).toEqual({ success: true, cancelled: true });
+            expect(await pending).toEqual({ success: true, cancelled: true, released: false });
           }
           expect(localThis.mockLog.error).toHaveBeenCalledWith(
             expect.stringContaining('Failed to release a subscription'),
@@ -3317,7 +3401,7 @@ describe('Background Handlers', () => {
         await handlers.subscribeNotes('https://example.com', SENDER);
         onNotes([]);
         await flush();
-        expect(localThis.mockLog.error).toHaveBeenCalledWith('Error during unsubscribe:', expect.any(Error));
+        expect(localThis.mockLog.error).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(Error));
 
         returned = undefined;
         localThis.mockLog.error.mockClear();
@@ -3422,7 +3506,7 @@ describe('Background Handlers', () => {
         await handlers.subscribeCommentsHandler('note-1', SENDER);
         onComments([]);
         await flush();
-        expect(localThis.mockLog.error).toHaveBeenCalledWith('Error during unsubscribe:', expect.any(Error));
+        expect(localThis.mockLog.error).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(Error));
 
         returned = undefined;
         localThis.mockLog.error.mockClear();
@@ -3508,8 +3592,8 @@ describe('Background Handlers', () => {
         const commentSubscriptions = new Map([['123-note-1', throwing]]);
         const handlers = localThis.build({ noteSubscriptions, commentSubscriptions });
 
-        await expect(handlers.unsubscribeNotes(SENDER)).resolves.toEqual({ success: true });
-        await expect(handlers.unsubscribeCommentsHandler('note-1', SENDER)).resolves.toEqual({ success: true });
+        await expect(handlers.unsubscribeNotes(SENDER)).resolves.toEqual({ success: true, released: false });
+        await expect(handlers.unsubscribeCommentsHandler('note-1', SENDER)).resolves.toEqual({ success: true, released: false });
 
         expect(noteSubscriptions.size).toBe(0);
         expect(commentSubscriptions.size).toBe(0);

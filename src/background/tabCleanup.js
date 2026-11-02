@@ -1,14 +1,16 @@
 /**
  * Tab cleanup wiring
- * Releases the subscriptions of a tab when it closes. Kept out of index.js (which is not covered
- * by the unit tests) so that the wiring itself is tested.
+ * Releases the subscriptions of a tab when it closes. Kept out of index.js (which is excluded
+ * from coverage in jest.config.js) so that the wiring itself is tested.
  */
 
 /**
- * Release a closed tab's subscriptions through the handlers
- * @param {Object} tabs - chrome.tabs (or a compatible object with onRemoved)
- * @param {Object} handlers - Background handlers (needs releaseTab)
- * @param {Object} log - Logger
+ * Release a closed tab's subscriptions through the handlers.
+ * releaseTab is not expected to throw (releaseListener swallows listener errors); the catch only
+ * keeps an unexpected error from escaping the event listener.
+ * @param {{ onRemoved: { addListener: Function } }} tabs - chrome.tabs or a compatible object
+ * @param {{ releaseTab: Function }} handlers - Background handlers
+ * @param {{ error: Function }} log - Logger
  */
 export function registerTabCleanup(tabs, handlers, log) {
   tabs.onRemoved.addListener((tabId) => {
