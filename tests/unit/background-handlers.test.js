@@ -2666,22 +2666,221 @@ describe('Background Handlers', () => {
         expect(result.success).toBe(true);
       });
 
-      it('should cancel a notes subscribe when an unsubscribe arrives during the user lookup', async () => {
-        let resolveUser;
-        localThis.deps.getCurrentUser.mockImplementation(() => new Promise(resolve => { resolveUser = resolve; }));
-        const handlers = localThis.build2();
+      const deferred = () => {
+        const d = {};
+        d.promise = new Promise(resolve => { d.resolve = resolve; });
+        return d;
+      };
 
-        const pending = handlers.subscribeNotes('https://example.com', SENDER);
-        await flush();
-        await handlers.unsubscribeNotes(SENDER);
-        resolveUser(localThis.mockUser);
-        await pending;
-        await flush();
+      describe('cancelled note subscribes', () => {
+        it('should stop before subscribing when an unsubscribe arrives during the user lookup', async () => {
+          const user = deferred();
+          localThis.deps.getCurrentUser.mockImplementation(() => user.promise);
+          const handlers = localThis.build2();
 
-        expect(localThis.noteSubscriptions.has('123-0')).toBe(false);
+          const pending = handlers.subscribeNotes('https://example.com', SENDER);
+          await flush();
+          await handlers.unsubscribeNotes(SENDER);
+          user.resolve(localThis.mockUser);
+
+          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(localThis.deps.subscribeToNotesForUrl).not.toHaveBeenCalled();
+          expect(localThis.noteSubscriptions.has('123-0')).toBe(false);
+        });
+
+        it('should not unsubscribe a newer subscription when an older one resumes after its lookup', async () => {
+          const user = deferred();
+          const newUnsubscribe = jest.fn();
+          localThis.deps.getCurrentUser
+            .mockImplementationOnce(() => user.promise)
+            .mockResolvedValue(localThis.mockUser);
+          const subscribe = jest.fn().mockReturnValue(newUnsubscribe);
+          const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+
+          const pendingOld = handlers.subscribeNotes('https://example.com/old', SENDER);
+          await flush();
+          await handlers.subscribeNotes('https://example.com/new', SENDER);
+          user.resolve(localThis.mockUser);
+
+          expect(await pendingOld).toEqual({ success: true, cancelled: true });
+          expect(subscribe).toHaveBeenCalledTimes(1);
+          expect(newUnsubscribe).not.toHaveBeenCalled();
+          expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/new');
+        });
+
+        it('should release a listener that finishes starting after an unsubscribe', async () => {
+          const lateUnsubscribe = jest.fn();
+          const started = deferred();
+          const subscribe = jest.fn(() => started.promise);
+          const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+
+          const pending = handlers.subscribeNotes('https://example.com', SENDER);
+          await flush();
+          await handlers.unsubscribeNotes(SENDER);
+          started.resolve(lateUnsubscribe);
+
+          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(lateUnsubscribe).toHaveBeenCalledTimes(1);
+          expect(localThis.noteSubscriptions.has('123-0')).toBe(false);
+        });
+
+        it('should keep the newer subscription when an older one finishes starting late', async () => {
+          const oldUnsubscribe = jest.fn();
+          const newUnsubscribe = jest.fn();
+          const oldStarted = deferred();
+          const subscribe = jest.fn()
+            .mockImplementationOnce(() => oldStarted.promise)
+            .mockReturnValueOnce(newUnsubscribe);
+          const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+
+          const pendingOld = handlers.subscribeNotes('https://example.com/old', SENDER);
+          await flush();
+          await handlers.subscribeNotes('https://example.com/new', SENDER);
+          oldStarted.resolve(oldUnsubscribe);
+
+          expect(await pendingOld).toEqual({ success: true, cancelled: true });
+          expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
+          expect(newUnsubscribe).not.toHaveBeenCalled();
+          expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/new');
+        });
+
+        it('should release an older listener at once when a newer subscribe already finished', async () => {
+          const oldUnsubscribe = jest.fn();
+          const oldStarted = deferred();
+          const subscribe = jest.fn()
+            .mockImplementationOnce(() => oldStarted.promise)
+            .mockReturnValue(jest.fn());
+          const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+
+          const pendingOld = handlers.subscribeNotes('https://example.com/a', SENDER);
+          await flush();
+          await handlers.subscribeNotes('https://example.com/b', SENDER);
+          await handlers.subscribeNotes('https://example.com/c', SENDER);
+          oldStarted.resolve(oldUnsubscribe);
+          await pendingOld;
+
+          expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
+          expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/c');
+        });
+
+        it('should subscribe normally again after a cancel on the same key', async () => {
+          const handlers = localThis.build2();
+
+          await handlers.subscribeNotes('https://example.com', SENDER);
+          await handlers.unsubscribeNotes(SENDER);
+          const result = await handlers.subscribeNotes('https://example.com', SENDER);
+
+          expect(result).toEqual({ success: true });
+          expect(localThis.noteSubscriptions.has('123-0')).toBe(true);
+        });
+
+        it('should report a cancel even when the newer subscribe fails fast', async () => {
+          const started = deferred();
+          const oldUnsubscribe = jest.fn();
+          localThis.deps.getCurrentUser
+            .mockResolvedValueOnce(localThis.mockUser)
+            .mockResolvedValueOnce(null);
+          const subscribe = jest.fn(() => started.promise);
+          const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+
+          const pendingOld = handlers.subscribeNotes('https://example.com/old', SENDER);
+          await flush();
+          const newer = await handlers.subscribeNotes('https://example.com/new', SENDER);
+          started.resolve(oldUnsubscribe);
+
+          expect(newer.success).toBe(false);
+          expect(await pendingOld).toEqual({ success: true, cancelled: true });
+          expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
+        });
+
+        it('should log a failing release instead of failing the subscribe', async () => {
+          const started = deferred();
+          const failing = jest.fn(() => { throw new Error('release failed'); });
+          const handlers = localThis.build2({ subscribeToNotesForUrl: jest.fn(() => started.promise) });
+
+          const pending = handlers.subscribeNotes('https://example.com', SENDER);
+          await flush();
+          await handlers.unsubscribeNotes(SENDER);
+          started.resolve(failing);
+
+          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(localThis.mockLog.error).toHaveBeenCalledWith(
+            expect.stringContaining('Failed to release a cancelled subscription'),
+            '123-0',
+            expect.any(Error)
+          );
+        });
+
+        it('should warn when a cancelled listener has no unsubscribe function', async () => {
+          const started = deferred();
+          const handlers = localThis.build2({ subscribeToNotesForUrl: jest.fn(() => started.promise) });
+
+          const pending = handlers.subscribeNotes('https://example.com', SENDER);
+          await flush();
+          await handlers.unsubscribeNotes(SENDER);
+          started.resolve(undefined);
+
+          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(localThis.mockLog.warn).toHaveBeenCalledWith(
+            expect.stringContaining('no unsubscribe function'),
+            '123-0'
+          );
+        });
+
+        it('should not let a late callback of a replaced listener remove the newer entry', async () => {
+          const callbacks = [];
+          const subscribe = jest.fn((url, uid, email, onNotes) => {
+            callbacks.push(onNotes);
+            return jest.fn();
+          });
+          localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('navigating'));
+          const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+
+          await handlers.subscribeNotes('https://example.com/a', SENDER);
+          await handlers.subscribeNotes('https://example.com/b', SENDER);
+          callbacks[0]([]);
+          await flush();
+
+          expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/b');
+        });
+
+        it('should replace a registered subscription without unsubscribing it twice', async () => {
+          const first = jest.fn();
+          const second = deferred();
+          const subscribe = jest.fn()
+            .mockReturnValueOnce(first)
+            .mockImplementationOnce(() => second.promise);
+          const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+
+          await handlers.subscribeNotes('https://example.com/a', SENDER);
+          const pending = handlers.subscribeNotes('https://example.com/b', SENDER);
+          await flush();
+          await handlers.unsubscribeNotes(SENDER);
+          second.resolve(jest.fn());
+          await pending;
+
+          expect(first).toHaveBeenCalledTimes(1);
+          expect(localThis.noteSubscriptions.has('123-0')).toBe(false);
+        });
+
+        it('should only cancel the subscribe of its own tab and frame', async () => {
+          const started = deferred();
+          const unsubscribe = jest.fn();
+          const handlers = localThis.build2({ subscribeToNotesForUrl: jest.fn(() => started.promise) });
+
+          const pending = handlers.subscribeNotes('https://example.com', SENDER);
+          await flush();
+          await handlers.unsubscribeNotes({ tab: { id: 123 }, frameId: 1 });
+          await handlers.unsubscribeNotes({ tab: { id: 456 }, frameId: 0 });
+          started.resolve(unsubscribe);
+
+          expect(await pending).toEqual({ success: true });
+          expect(unsubscribe).not.toHaveBeenCalled();
+          expect(localThis.noteSubscriptions.has('123-0')).toBe(true);
+        });
       });
 
-      describe('comment subscriptions', () => {
+      describe('cancelled comment subscribes', () => {
         beforeEach(() => {
           localThis.commentSubscriptions = new Map();
           localThis.deps.subscribeToComments = jest.fn().mockReturnValue(jest.fn());
@@ -2692,119 +2891,156 @@ describe('Background Handlers', () => {
           });
         });
 
-        it('should release a comment listener that finishes starting after an unsubscribe', async () => {
-          const lateUnsubscribe = jest.fn();
-          let finish;
-          const subscribe = jest.fn(() => new Promise(resolve => { finish = () => resolve(lateUnsubscribe); }));
-          const handlers = localThis.build3({ subscribeToComments: subscribe });
+        it('should stop before subscribing when an unsubscribe arrives during the user lookup', async () => {
+          const user = deferred();
+          localThis.deps.getCurrentUser.mockImplementation(() => user.promise);
+          const handlers = localThis.build3();
 
           const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
           await flush();
           await handlers.unsubscribeCommentsHandler('note-1', SENDER);
-          finish();
-          const result = await pending;
+          user.resolve(localThis.mockUser);
 
-          expect(result.success).toBe(true);
-          expect(lateUnsubscribe).toHaveBeenCalled();
+          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(localThis.deps.subscribeToComments).not.toHaveBeenCalled();
+          expect(localThis.commentSubscriptions.has('123-note-1')).toBe(false);
+        });
+
+        it('should not unsubscribe a newer subscription when an older one resumes after its lookup', async () => {
+          const user = deferred();
+          const newUnsubscribe = jest.fn();
+          localThis.deps.getCurrentUser
+            .mockImplementationOnce(() => user.promise)
+            .mockResolvedValue(localThis.mockUser);
+          const subscribe = jest.fn().mockReturnValue(newUnsubscribe);
+          const handlers = localThis.build3({ subscribeToComments: subscribe });
+
+          const pendingOld = handlers.subscribeCommentsHandler('note-1', SENDER);
+          await flush();
+          await handlers.subscribeCommentsHandler('note-1', SENDER);
+          user.resolve(localThis.mockUser);
+
+          expect(await pendingOld).toEqual({ success: true, cancelled: true });
+          expect(subscribe).toHaveBeenCalledTimes(1);
+          expect(newUnsubscribe).not.toHaveBeenCalled();
+          expect(localThis.commentSubscriptions.get('123-note-1')).toBe(newUnsubscribe);
+        });
+
+        it('should release a comment listener that finishes starting after an unsubscribe', async () => {
+          const lateUnsubscribe = jest.fn();
+          const started = deferred();
+          const handlers = localThis.build3({ subscribeToComments: jest.fn(() => started.promise) });
+
+          const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
+          await flush();
+          await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+          started.resolve(lateUnsubscribe);
+
+          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(lateUnsubscribe).toHaveBeenCalledTimes(1);
           expect(localThis.commentSubscriptions.has('123-note-1')).toBe(false);
         });
 
         it('should keep the newer comment subscription when an older one finishes late', async () => {
           const oldUnsubscribe = jest.fn();
           const newUnsubscribe = jest.fn();
-          let finishOld;
+          const oldStarted = deferred();
           const subscribe = jest.fn()
-            .mockImplementationOnce(() => new Promise(resolve => { finishOld = () => resolve(oldUnsubscribe); }))
+            .mockImplementationOnce(() => oldStarted.promise)
             .mockReturnValueOnce(newUnsubscribe);
           const handlers = localThis.build3({ subscribeToComments: subscribe });
 
           const pendingOld = handlers.subscribeCommentsHandler('note-1', SENDER);
           await flush();
           await handlers.subscribeCommentsHandler('note-1', SENDER);
-          finishOld();
-          await pendingOld;
+          oldStarted.resolve(oldUnsubscribe);
 
-          expect(oldUnsubscribe).toHaveBeenCalled();
+          expect(await pendingOld).toEqual({ success: true, cancelled: true });
+          expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
           expect(newUnsubscribe).not.toHaveBeenCalled();
           expect(localThis.commentSubscriptions.get('123-note-1')).toBe(newUnsubscribe);
         });
 
-        it('should cancel a comment subscribe when an unsubscribe arrives during the user lookup', async () => {
-          let resolveUser;
-          localThis.deps.getCurrentUser.mockImplementation(() => new Promise(resolve => { resolveUser = resolve; }));
-          const handlers = localThis.build3();
+        it('should log a failing release and warn about a missing unsubscribe function', async () => {
+          const failing = jest.fn(() => { throw new Error('release failed'); });
+          for (const late of [failing, undefined]) {
+            const started = deferred();
+            const handlers = localThis.build3({ subscribeToComments: jest.fn(() => started.promise) });
 
+            const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
+            await flush();
+            await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+            started.resolve(late);
+
+            expect(await pending).toEqual({ success: true, cancelled: true });
+          }
+          expect(localThis.mockLog.error).toHaveBeenCalledWith(
+            expect.stringContaining('Failed to release a cancelled subscription'),
+            '123-note-1',
+            expect.any(Error)
+          );
+          expect(localThis.mockLog.warn).toHaveBeenCalledWith(
+            expect.stringContaining('no unsubscribe function'),
+            '123-note-1'
+          );
+        });
+
+        it('should not let a late callback of a replaced listener remove the newer entry', async () => {
+          const callbacks = [];
+          const newUnsubscribe = jest.fn();
+          const subscribe = jest.fn()
+            .mockImplementationOnce((noteId, user, onComments) => {
+              callbacks.push(onComments);
+              return jest.fn();
+            })
+            .mockReturnValueOnce(newUnsubscribe);
+          localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('navigating'));
+          const handlers = localThis.build3({ subscribeToComments: subscribe });
+
+          await handlers.subscribeCommentsHandler('note-1', SENDER);
+          await handlers.subscribeCommentsHandler('note-1', SENDER);
+          callbacks[0]([]);
+          await flush();
+
+          expect(localThis.commentSubscriptions.get('123-note-1')).toBe(newUnsubscribe);
+          expect(newUnsubscribe).not.toHaveBeenCalled();
+        });
+
+        it('should replace a registered comment subscription without unsubscribing it twice', async () => {
+          const first = jest.fn();
+          const second = deferred();
+          const subscribe = jest.fn()
+            .mockReturnValueOnce(first)
+            .mockImplementationOnce(() => second.promise);
+          const handlers = localThis.build3({ subscribeToComments: subscribe });
+
+          await handlers.subscribeCommentsHandler('note-1', SENDER);
           const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
           await flush();
           await handlers.unsubscribeCommentsHandler('note-1', SENDER);
-          resolveUser(localThis.mockUser);
+          second.resolve(jest.fn());
           await pending;
 
+          expect(first).toHaveBeenCalledTimes(1);
           expect(localThis.commentSubscriptions.has('123-note-1')).toBe(false);
         });
 
-        it('should tolerate a late comment listener that has no unsubscribe function', async () => {
-          let finish;
-          const subscribe = jest.fn(() => new Promise(resolve => { finish = () => resolve(undefined); }));
-          const handlers = localThis.build3({ subscribeToComments: subscribe });
+        it('should only cancel the subscribe of its own tab and note', async () => {
+          const started = deferred();
+          const unsubscribe = jest.fn();
+          const handlers = localThis.build3({ subscribeToComments: jest.fn(() => started.promise) });
 
           const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
           await flush();
-          await handlers.unsubscribeCommentsHandler('note-1', SENDER);
-          finish();
+          await handlers.unsubscribeCommentsHandler('note-2', SENDER);
+          await handlers.unsubscribeCommentsHandler('note-1', { tab: { id: 456 }, frameId: 0 });
+          await handlers.unsubscribeNotes(SENDER);
+          started.resolve(unsubscribe);
 
-          await expect(pending).resolves.toEqual({ success: true });
+          expect(await pending).toEqual({ success: true });
+          expect(unsubscribe).not.toHaveBeenCalled();
+          expect(localThis.commentSubscriptions.has('123-note-1')).toBe(true);
         });
-      });
-
-      it('should release a listener that finishes starting after an unsubscribe', async () => {
-        const lateUnsubscribe = jest.fn();
-        let finish;
-        const subscribe = jest.fn(() => new Promise(resolve => { finish = () => resolve(lateUnsubscribe); }));
-        const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
-
-        const pending = handlers.subscribeNotes('https://example.com', SENDER);
-        await flush();
-        await handlers.unsubscribeNotes(SENDER);
-        finish();
-        const result = await pending;
-
-        expect(result.success).toBe(true);
-        expect(lateUnsubscribe).toHaveBeenCalled();
-        expect(localThis.noteSubscriptions.has('123-0')).toBe(false);
-      });
-
-      it('should keep the newer subscription when an older one finishes starting late', async () => {
-        const oldUnsubscribe = jest.fn();
-        const newUnsubscribe = jest.fn();
-        let finishOld;
-        const subscribe = jest.fn()
-          .mockImplementationOnce(() => new Promise(resolve => { finishOld = () => resolve(oldUnsubscribe); }))
-          .mockReturnValueOnce(newUnsubscribe);
-        const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
-
-        const pendingOld = handlers.subscribeNotes('https://example.com/old', SENDER);
-        await flush();
-        await handlers.subscribeNotes('https://example.com/new', SENDER);
-        finishOld();
-        await pendingOld;
-
-        expect(oldUnsubscribe).toHaveBeenCalled();
-        expect(newUnsubscribe).not.toHaveBeenCalled();
-        expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/new');
-      });
-
-      it('should tolerate a late listener that has no unsubscribe function', async () => {
-        let finish;
-        const subscribe = jest.fn(() => new Promise(resolve => { finish = () => resolve(undefined); }));
-        const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
-
-        const pending = handlers.subscribeNotes('https://example.com', SENDER);
-        await flush();
-        await handlers.unsubscribeNotes(SENDER);
-        finish();
-
-        await expect(pending).resolves.toEqual({ success: true });
       });
 
       it('should clean up the subscription when the tab cannot be reached', async () => {

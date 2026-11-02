@@ -25,6 +25,18 @@ describe('RealtimeSync', () => {
     });
   });
 
+  describe('cancelled comment subscriptions', () => {
+    it('does not mark a note as subscribed when the worker reports a cancel', async () => {
+      const note = { id: 'n1', commentSubscribed: false };
+      mockGetNotes.mockReturnValue(new Map([['n1', note]]));
+      mockSendMessage.mockResolvedValue({ success: true, cancelled: true });
+
+      await realtimeSync.subscribeToComments('n1');
+
+      expect(note.commentSubscribed).toBe(false);
+    });
+  });
+
   describe('subscribeToNotes', () => {
     it('should send subscribeToNotes message', async () => {
       mockSendMessage.mockResolvedValue({ success: true });
@@ -477,6 +489,15 @@ describe('RealtimeSync', () => {
       await jest.advanceTimersByTimeAsync(1000);
 
       expect(mockSendMessage).toHaveBeenCalled();
+    });
+
+    it('does not track a note subscription the worker reports as cancelled', async () => {
+      mockSendMessage.mockResolvedValue({ success: true, cancelled: true });
+
+      expect(await realtimeSync.subscribeToNotes('url1')).toBe(false);
+
+      expect(realtimeSync.notesUrl).toBeNull();
+      expect(mockConnect).not.toHaveBeenCalled();
     });
 
     it('tolerates a port that throws on disconnect', async () => {

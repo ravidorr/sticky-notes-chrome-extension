@@ -146,6 +146,11 @@ export class RealtimeSync {
         url
       });
       
+      if (response.cancelled) {
+        log.debug('Note subscription was cancelled in the background worker');
+        return false;
+      }
+      
       if (response.success) {
         log.debug('Subscribed to real-time note updates');
         // Do not track a subscription that was cancelled while the request was in flight
@@ -196,6 +201,11 @@ export class RealtimeSync {
         action: 'subscribeToComments',
         noteId
       });
+      
+      if (response.cancelled) {
+        log.debug('Comment subscription was cancelled in the background worker:', noteId);
+        return;
+      }
       
       if (response.success) {
         const notes = this.getNotes();
