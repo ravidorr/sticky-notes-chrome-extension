@@ -986,10 +986,10 @@ export function createHandlers(deps = {}) {
       
       // Clean up existing subscription for this tab/frame
       const existingSub = noteSubscriptions.get(subKey);
-      if (existingSub && typeof existingSub.unsubscribe === 'function') {
-        existingSub.unsubscribe();
+      if (existingSub) {
+        releaseListener(existingSub.unsubscribe, subKey, 'replaced');
+        noteSubscriptions.delete(subKey);
       }
-      noteSubscriptions.delete(subKey);
       
       // Set up new subscription (await since lazy-loaded functions return promises)
       const unsubscribe = await subscribeToNotesForUrl(
@@ -1064,9 +1064,8 @@ export function createHandlers(deps = {}) {
       cancelPendingSubscribe(noteSubGenerations, subKey);
       const sub = noteSubscriptions.get(subKey);
       if (sub) {
-        sub.unsubscribe();
+        releaseListener(sub.unsubscribe, subKey, 'unsubscribed');
         noteSubscriptions.delete(subKey);
-        log.debug('Unsubscribed from notes for tab', tabId, 'frame', frameId);
       }
       
       return { success: true };
@@ -1114,10 +1113,10 @@ export function createHandlers(deps = {}) {
       
       // Clean up existing subscription
       const existingSub = commentSubscriptions.get(subKey);
-      if (existingSub && typeof existingSub === 'function') {
-        existingSub();
+      if (existingSub) {
+        releaseListener(existingSub, subKey, 'replaced');
+        commentSubscriptions.delete(subKey);
       }
-      commentSubscriptions.delete(subKey);
       
       // Set up new subscription (await since lazy-loaded functions return promises)
       const unsubscribe = await subscribeToComments(
@@ -1193,9 +1192,8 @@ export function createHandlers(deps = {}) {
       cancelPendingSubscribe(commentSubGenerations, subKey);
       const unsub = commentSubscriptions.get(subKey);
       if (unsub) {
-        unsub();
+        releaseListener(unsub, subKey, 'unsubscribed');
         commentSubscriptions.delete(subKey);
-        log.debug('Unsubscribed from comments for tab', tabId, 'note', noteId);
       }
       
       return { success: true };
