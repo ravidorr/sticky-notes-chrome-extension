@@ -121,7 +121,8 @@ export class StickyNotesApp {
         isContextInvalidatedError: (err) => this.isContextInvalidatedError(err),
         onNotesUpdate: (notes) => this.noteManager.handleRealtimeNotesUpdate(notes),
         onCommentsUpdate: (noteId, comments) => this.noteManager.handleRealtimeCommentsUpdate(noteId, comments),
-        getNotes: () => this.notes
+        getNotes: () => this.notes,
+        connect: (info) => chrome.runtime.connect(info)
       });
       
       // Initialize Note Manager

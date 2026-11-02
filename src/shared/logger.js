@@ -36,6 +36,51 @@ export function detectDebugMode() {
 let _debugMode = detectDebugMode();
 
 /**
+ * Valid log level names, as stored in the logLevel preference.
+ * They match the names accepted by the Firestore SDK's setLogLevel().
+ */
+export const LOG_LEVEL_NAMES = ['silent', 'error', 'warn', 'info', 'debug'];
+
+// Runtime override set from the logLevel preference (null = use debug mode)
+let _runtimeLevel = null;
+const _levelListeners = new Set();
+
+/**
+ * Set the runtime log level for every logger (except ones created with an explicit debugMode)
+ * @param {string} name - One of LOG_LEVEL_NAMES; anything else clears the override
+ */
+export function setLogLevel(name) {
+  _runtimeLevel = LOG_LEVEL_NAMES.includes(name) ? name : null;
+  _levelListeners.forEach(listener => listener(_runtimeLevel));
+}
+
+/**
+ * Get the runtime log level name
+ * @returns {string|null} Level name, or null when no override is set
+ */
+export function getLogLevelName() {
+  return _runtimeLevel;
+}
+
+/**
+ * Subscribe to runtime log level changes
+ * @param {Function} listener - Called with the new level name (or null)
+ * @returns {Function} Unsubscribe function
+ */
+export function onLogLevelChange(listener) {
+  _levelListeners.add(listener);
+  return () => _levelListeners.delete(listener);
+}
+
+const RUNTIME_LEVEL_VALUES = {
+  silent: 4,
+  error: 3,
+  warn: 2,
+  info: 1,
+  debug: 0
+};
+
+/**
  * Set debug mode (primarily for testing)
  * @param {boolean} enabled - Whether debug mode is enabled
  */
@@ -61,8 +106,12 @@ export function getLogLevel(debugMode = _debugMode) {
  */
 export function createLogger(namespace, options = {}) {
   const prefix = `[${namespace}]`;
-  const useDebugMode = options.debugMode !== undefined ? options.debugMode : _debugMode;
-  const currentLevel = getLogLevel(useDebugMode);
+  const explicitLevel = options.debugMode !== undefined ? getLogLevel(options.debugMode) : null;
+  // Read the level on every call so a runtime change applies to existing loggers
+  const activeLevel = () => {
+    if (explicitLevel !== null) return explicitLevel;
+    return _runtimeLevel !== null ? RUNTIME_LEVEL_VALUES[_runtimeLevel] : getLogLevel(_debugMode);
+  };
   
   return {
     /**
@@ -70,7 +119,7 @@ export function createLogger(namespace, options = {}) {
      * @param  {...any} args - Arguments to log
      */
     debug(...args) {
-      if (currentLevel <= LOG_LEVELS.DEBUG) {
+      if (activeLevel() <= LOG_LEVELS.DEBUG) {
         console.log(prefix, ...args);
       }
     },
@@ -80,7 +129,7 @@ export function createLogger(namespace, options = {}) {
      * @param  {...any} args - Arguments to log
      */
     info(...args) {
-      if (currentLevel <= LOG_LEVELS.INFO) {
+      if (activeLevel() <= LOG_LEVELS.INFO) {
         console.info(prefix, ...args);
       }
     },
@@ -90,15 +139,19 @@ export function createLogger(namespace, options = {}) {
      * @param  {...any} args - Arguments to log
      */
     warn(...args) {
-      console.warn(prefix, ...args);
+      if (activeLevel() <= LOG_LEVELS.WARN) {
+        console.warn(prefix, ...args);
+      }
     },
     
     /**
-     * Error log - always shown
+     * Error log - shown unless the level is silent
      * @param  {...any} args - Arguments to log
      */
     error(...args) {
-      console.error(prefix, ...args);
+      if (activeLevel() <= LOG_LEVELS.ERROR) {
+        console.error(prefix, ...args);
+      }
     },
     
     /**
@@ -108,7 +161,7 @@ export function createLogger(namespace, options = {}) {
      */
     log(level, ...args) {
       const levelValue = LOG_LEVELS[level.toUpperCase()] ?? LOG_LEVELS.DEBUG;
-      if (currentLevel <= levelValue) {
+      if (activeLevel() <= levelValue) {
         const method = level.toLowerCase();
         if (console[method]) {
           console[method](prefix, ...args);
@@ -123,7 +176,7 @@ export function createLogger(namespace, options = {}) {
      * @param {string} label - Group label
      */
     group(label) {
-      if (currentLevel <= LOG_LEVELS.DEBUG) {
+      if (activeLevel() <= LOG_LEVELS.DEBUG) {
         console.group(`${prefix} ${label}`);
       }
     },
@@ -132,7 +185,7 @@ export function createLogger(namespace, options = {}) {
      * End log group
      */
     groupEnd() {
-      if (currentLevel <= LOG_LEVELS.DEBUG) {
+      if (activeLevel() <= LOG_LEVELS.DEBUG) {
         console.groupEnd();
       }
     },
@@ -142,7 +195,7 @@ export function createLogger(namespace, options = {}) {
      * @param {string} label - Timer label
      */
     time(label) {
-      if (currentLevel <= LOG_LEVELS.DEBUG) {
+      if (activeLevel() <= LOG_LEVELS.DEBUG) {
         console.time(`${prefix} ${label}`);
       }
     },
@@ -152,7 +205,7 @@ export function createLogger(namespace, options = {}) {
      * @param {string} label - Timer label
      */
     timeEnd(label) {
-      if (currentLevel <= LOG_LEVELS.DEBUG) {
+      if (activeLevel() <= LOG_LEVELS.DEBUG) {
         console.timeEnd(`${prefix} ${label}`);
       }
     }

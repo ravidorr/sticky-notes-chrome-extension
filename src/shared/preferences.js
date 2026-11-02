@@ -37,6 +37,11 @@ export const FONT_SIZE_VALUES = {
 };
 
 /**
+ * Valid log levels for the extension and the Firestore SDK ('silent' logs nothing)
+ */
+export const VALID_LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'];
+
+/**
  * Default preferences for new installations
  */
 export const DEFAULT_PREFERENCES = {
@@ -44,7 +49,8 @@ export const DEFAULT_PREFERENCES = {
   defaultPosition: 'top-right',
   noteWidth: 280,
   fontSize: 'medium',
-  notesVisibleByDefault: true
+  notesVisibleByDefault: true,
+  logLevel: 'silent'
 };
 
 /**
@@ -80,7 +86,10 @@ export async function getPreferences(deps = {}) {
         : DEFAULT_PREFERENCES.fontSize,
       notesVisibleByDefault: typeof stored.notesVisibleByDefault === 'boolean'
         ? stored.notesVisibleByDefault
-        : DEFAULT_PREFERENCES.notesVisibleByDefault
+        : DEFAULT_PREFERENCES.notesVisibleByDefault,
+      logLevel: VALID_LOG_LEVELS.includes(stored.logLevel)
+        ? stored.logLevel
+        : DEFAULT_PREFERENCES.logLevel
     };
   } catch (error) {
     // Return defaults if storage access fails
@@ -132,6 +141,12 @@ export async function setPreferences(prefs, deps = {}) {
     if (prefs.notesVisibleByDefault !== undefined) {
       if (typeof prefs.notesVisibleByDefault === 'boolean') {
         updated.notesVisibleByDefault = prefs.notesVisibleByDefault;
+      }
+    }
+    
+    if (prefs.logLevel !== undefined) {
+      if (VALID_LOG_LEVELS.includes(prefs.logLevel)) {
+        updated.logLevel = prefs.logLevel;
       }
     }
     

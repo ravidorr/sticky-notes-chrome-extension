@@ -13,6 +13,21 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+### Added
+
+- A "Logging" setting on the options page (Troubleshooting section) sets what the extension writes to the browser
+  console: off (default), errors only, warnings and errors, info, or debug. It applies to the background worker, the
+  content script, the popup and the Firestore SDK, and takes effect without a reload.
+
+### Fixed
+
+- The Firestore SDK no longer logs offline `Listen stream transport errored` messages with `console.error`, which
+  Chrome listed under the extension's errors on `chrome://extensions`. The SDK log level now follows the Logging
+  setting and is silent by default. The extension's own `warn` and `error` logs follow the same setting.
+- Real-time note and comment updates now recover when Chrome stops the background service worker, which drops its
+  Firestore listeners. The content script keeps a port open to the worker, and when it disconnects it resubscribes
+  (with backoff, up to 5 attempts) instead of staying silent until the page is reloaded.
+
 ### Security
 
 - The web dashboard (`site/dashboard.html`) signs in with Google through Firebase Auth instead of asking for a

@@ -9,6 +9,7 @@
 // Lightweight imports only - no Firebase SDK at startup
 import { generateId, isValidEmail } from '../shared/utils.js';
 import { backgroundLogger as log } from '../shared/logger.js';
+import { initLogLevel } from '../shared/logLevel.js';
 import { createHandlers } from './handlers.js';
 import { getUrlChangedMessageFromHistoryUpdate } from './navigation.js';
 
@@ -34,6 +35,9 @@ import {
   deleteCommentLazy,
   subscribeToCommentsLazy
 } from '../firebase/lazy.js';
+
+// Apply the logLevel preference (fire and forget; getPreferences falls back to defaults)
+initLogLevel();
 
 // Track active subscriptions by tab ID
 const noteSubscriptions = new Map(); // tabId -> { url: string, unsubscribe: Function }
@@ -352,6 +356,10 @@ export function bootstrap() {
       }
     }
   });
+
+  // Content scripts hold a port while they have real-time subscriptions. Chrome disconnects it
+  // when this worker is stopped (its Firestore listeners die with it), so they can resubscribe.
+  chrome.runtime.onConnect.addListener(() => {});
 
   // Set up service worker keep-alive to prevent cold starts
   // This keeps the service worker warm, reducing popup opening delay

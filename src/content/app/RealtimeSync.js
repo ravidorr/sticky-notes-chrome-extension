@@ -5,6 +5,13 @@
 
 import { contentLogger as log } from '../../shared/logger.js';
 
+// Port name the background worker accepts; it disconnects when the worker is stopped
+export const REALTIME_PORT_NAME = 'realtimeSync';
+
+// Delay before resubscribing after the worker stops, doubled on each failed attempt
+const RESUBSCRIBE_BASE_DELAY_MS = 1000;
+const MAX_RESUBSCRIBE_ATTEMPTS = 5;
+
 /**
  * Manages real-time subscriptions for notes and comments
  */
@@ -17,6 +24,8 @@ export class RealtimeSync {
    * @param {Function} options.onNotesUpdate - Callback when notes are updated
    * @param {Function} options.onCommentsUpdate - Callback when comments are updated
    * @param {Function} options.getNotes - Function to get notes map
+   * @param {Function} [options.connect] - Opens a runtime port; when set, a stopped background
+   *   worker (which drops its Firestore listeners) is detected and the subscriptions are restored
    */
   constructor(options) {
     this.sendMessage = options.sendMessage;
@@ -24,11 +33,93 @@ export class RealtimeSync {
     this.onNotesUpdate = options.onNotesUpdate;
     this.onCommentsUpdate = options.onCommentsUpdate;
     this.getNotes = options.getNotes;
+    this.connect = options.connect;
+    this.port = null;
+    this.notesUrl = null;
+    this.resubscribeTimer = null;
+    this.resubscribeAttempts = 0;
+  }
+  
+  /**
+   * Open a port to the background worker. Chrome disconnects it when the worker is stopped,
+   * which is the signal that the worker's Firestore listeners are gone.
+   */
+  _openPort() {
+    if (!this.connect || this.port) return;
+    try {
+      const port = this.connect({ name: REALTIME_PORT_NAME });
+      this.port = port;
+      port.onDisconnect.addListener(() => this._handlePortDisconnect(port));
+    } catch (error) {
+      this.port = null;
+      if (!this.isContextInvalidatedError(error)) {
+        log.warn('Failed to open realtime port:', error);
+      }
+    }
+  }
+  
+  /**
+   * Close the port without triggering a resubscribe
+   */
+  _closePort() {
+    clearTimeout(this.resubscribeTimer);
+    this.resubscribeTimer = null;
+    this.resubscribeAttempts = 0;
+    if (!this.port) return;
+    const port = this.port;
+    this.port = null;
+    try {
+      port.disconnect();
+    } catch (_error) {
+      // Already disconnected
+    }
+  }
+  
+  /**
+   * The background worker stopped: restore the subscriptions it held for this frame
+   * @param {Object} port - The port that disconnected
+   */
+  _handlePortDisconnect(port) {
+    if (this.port !== port) return;
+    this.port = null;
+    if (this.notesUrl) {
+      log.debug('Background worker stopped, resubscribing');
+      this._scheduleResubscribe();
+    }
+  }
+  
+  _scheduleResubscribe() {
+    if (this.resubscribeTimer) return;
+    const delay = RESUBSCRIBE_BASE_DELAY_MS * 2 ** this.resubscribeAttempts;
+    this.resubscribeTimer = setTimeout(() => {
+      this.resubscribeTimer = null;
+      this._resubscribe();
+    }, delay);
+  }
+  
+  async _resubscribe() {
+    const restored = await this.subscribeToNotes(this.notesUrl);
+    if (!restored) {
+      this.resubscribeAttempts += 1;
+      if (this.resubscribeAttempts < MAX_RESUBSCRIBE_ATTEMPTS) {
+        this._scheduleResubscribe();
+      } else {
+        log.warn('Giving up on restoring real-time sync');
+      }
+      return;
+    }
+    this.resubscribeAttempts = 0;
+    for (const note of this.getNotes().values()) {
+      if (note.commentSubscribed) {
+        await this.subscribeToComments(note.id);
+      }
+    }
   }
   
   /**
    * Subscribe to real-time note updates
    * @param {string} url - Current page URL
+   * @returns {Promise<boolean>} True when the background worker holds the subscription
    */
   async subscribeToNotes(url) {
     try {
@@ -39,20 +130,25 @@ export class RealtimeSync {
       
       if (response.success) {
         log.debug('Subscribed to real-time note updates');
-      } else {
-        log.warn('Failed to subscribe to notes:', response.error);
+        this.notesUrl = url;
+        this._openPort();
+        return true;
       }
+      log.warn('Failed to subscribe to notes:', response.error);
     } catch (error) {
       if (!this.isContextInvalidatedError(error)) {
         log.error('Failed to subscribe to notes:', error);
       }
     }
+    return false;
   }
   
   /**
    * Unsubscribe from real-time note updates
    */
   async unsubscribeFromNotes() {
+    this.notesUrl = null;
+    this._closePort();
     try {
       await this.sendMessage({ action: 'unsubscribeFromNotes' });
       log.debug('Unsubscribed from real-time note updates');

@@ -1385,5 +1385,37 @@
         "example": "50000"
       }
     }
+  },
+  "settingsTroubleshooting": {
+    "message": "Dépannage",
+    "description": "Troubleshooting settings section title"
+  },
+  "settingsLogLevel": {
+    "message": "Journalisation",
+    "description": "Log level setting label"
+  },
+  "settingsLogLevelDesc": {
+    "message": "Choisissez ce que l'extension écrit dans la console du navigateur. Laissez désactivé sauf pour signaler un problème.",
+    "description": "Log level setting description"
+  },
+  "logLevelSilent": {
+    "message": "Désactivée (par défaut)",
+    "description": "Log level option: nothing is logged"
+  },
+  "logLevelError": {
+    "message": "Erreurs uniquement",
+    "description": "Log level option: errors only"
+  },
+  "logLevelWarn": {
+    "message": "Avertissements et erreurs",
+    "description": "Log level option: warnings and errors"
+  },
+  "logLevelInfo": {
+    "message": "Infos",
+    "description": "Log level option: info and above"
+  },
+  "logLevelDebug": {
+    "message": "Débogage (détaillé)",
+    "description": "Log level option: everything"
   }
 }

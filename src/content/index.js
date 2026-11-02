@@ -6,6 +6,9 @@
 
 import { StickyNotesApp } from './app/StickyNotesApp.js';
 import { contentLogger as log } from '../shared/logger.js';
+import { initLogLevel } from '../shared/logLevel.js';
+
+initLogLevel();
 
 /**
  * Check if the content script should initialize in this frame

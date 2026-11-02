@@ -24,7 +24,8 @@ jest.unstable_mockModule('../src/shared/preferences.js', () => ({
     defaultPosition: 'top-right',
     noteWidth: 280,
     fontSize: 'medium',
-    notesVisibleByDefault: false
+    notesVisibleByDefault: false,
+    logLevel: 'silent'
   }
 }));
 
@@ -46,6 +47,7 @@ const DOM = `
     <select id="noteWidth"><option value="280" selected>280</option></select>
     <select id="fontSize"><option value="medium" selected>Medium</option></select>
     <input type="checkbox" id="notesVisibleByDefault">
+    <select id="logLevel"><option value="silent" selected>Off</option><option value="error">Errors</option><option value="warn">Warnings</option><option value="info">Info</option><option value="debug">Debug</option></select>
     <button type="button" id="resetBtn">Reset</button>
     <button type="submit" id="saveBtn">Save</button>
   </form>

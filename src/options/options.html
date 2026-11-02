@@ -156,6 +156,24 @@
           </div>
         </section>
 
+        <!-- Troubleshooting Section -->
+        <section class="settings-section">
+          <h2 class="section-title" data-i18n="settingsTroubleshooting">Troubleshooting</h2>
+
+          <!-- Log Level -->
+          <div class="setting-group">
+            <label class="setting-label" for="logLevel" data-i18n="settingsLogLevel">Logging</label>
+            <p class="setting-description" data-i18n="settingsLogLevelDesc">Choose what the extension writes to the browser console. Keep it off unless you are reporting a problem.</p>
+            <select name="logLevel" id="logLevel" class="setting-select">
+              <option value="silent" selected data-i18n="logLevelSilent">Off (default)</option>
+              <option value="error" data-i18n="logLevelError">Errors only</option>
+              <option value="warn" data-i18n="logLevelWarn">Warnings and errors</option>
+              <option value="info" data-i18n="logLevelInfo">Info</option>
+              <option value="debug" data-i18n="logLevelDebug">Debug (verbose)</option>
+            </select>
+          </div>
+        </section>
+
         <!-- Position Section -->
         <section class="settings-section">
           <h2 class="section-title" data-i18n="settingsPosition">Position</h2>

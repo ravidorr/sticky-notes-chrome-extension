@@ -48,7 +48,8 @@ describe('DEFAULT_PREFERENCES', () => {
       defaultPosition: 'top-right',
       noteWidth: 280,
       fontSize: 'medium',
-      notesVisibleByDefault: true
+      notesVisibleByDefault: true,
+      logLevel: 'silent'
     });
   });
 });
@@ -143,7 +144,8 @@ describe('getPreferences', () => {
       defaultPosition: 'bottom-left',
       noteWidth: 320,
       fontSize: 'large',
-      notesVisibleByDefault: false
+      notesVisibleByDefault: false,
+      logLevel: 'debug'
     };
     localThis.mockStorage.preferences = storedPrefs;
     
@@ -246,7 +248,8 @@ describe('setPreferences', () => {
       defaultPosition: 'bottom-right',
       noteWidth: 360,
       fontSize: 'small',
-      notesVisibleByDefault: false
+      notesVisibleByDefault: false,
+      logLevel: 'warn'
     };
     
     const result = await setPreferences(newPrefs, { chromeStorage: localThis.mockChromeStorage });
@@ -460,5 +463,28 @@ describe('default chrome.storage fallback and invalid values', () => {
 
     expect(result.success).toBe(true);
     expect(result.preferences.notesVisibleByDefault).toBe(DEFAULT_PREFERENCES.notesVisibleByDefault);
+  });
+});
+
+describe('logLevel preference', () => {
+  it('should fall back to the default for an invalid stored logLevel', async () => {
+    localThis.mockStorage.preferences = { logLevel: 'verbose' };
+    const { getPreferences, DEFAULT_PREFERENCES } = await import('../../src/shared/preferences.js');
+
+    const result = await getPreferences({ chromeStorage: localThis.mockChromeStorage });
+
+    expect(result.logLevel).toBe(DEFAULT_PREFERENCES.logLevel);
+  });
+
+  it('should ignore an invalid logLevel in setPreferences', async () => {
+    const { setPreferences, DEFAULT_PREFERENCES } = await import('../../src/shared/preferences.js');
+
+    const result = await setPreferences(
+      { logLevel: 'verbose' },
+      { chromeStorage: localThis.mockChromeStorage }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.preferences.logLevel).toBe(DEFAULT_PREFERENCES.logLevel);
   });
 });

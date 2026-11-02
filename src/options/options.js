@@ -5,6 +5,7 @@
 
 import { getPreferences, setPreferences, resetPreferences, DEFAULT_PREFERENCES } from '../shared/preferences.js';
 import { initializeI18n, t } from '../shared/i18n.js';
+import { initLogLevel } from '../shared/logLevel.js';
 
 // DOM Elements
 let settingsForm;
@@ -14,6 +15,7 @@ let defaultThemeInput;
 let defaultPositionInput;
 let noteWidthSelect;
 let fontSizeSelect;
+let logLevelSelect;
 let notesVisibleCheckbox;
 let resetBtn;
 let saveBtn;
@@ -36,6 +38,7 @@ function initDOMElements() {
   defaultPositionInput = document.getElementById('defaultPosition');
   noteWidthSelect = document.getElementById('noteWidth');
   fontSizeSelect = document.getElementById('fontSize');
+  logLevelSelect = document.getElementById('logLevel');
   notesVisibleCheckbox = document.getElementById('notesVisibleByDefault');
   resetBtn = document.getElementById('resetBtn');
   saveBtn = document.getElementById('saveBtn');
@@ -81,6 +84,9 @@ async function loadPreferences() {
     // Set font size
     fontSizeSelect.value = prefs.fontSize;
     
+    // Set log level
+    logLevelSelect.value = prefs.logLevel;
+
     // Set visibility
     notesVisibleCheckbox.checked = prefs.notesVisibleByDefault;
     notesVisibleCheckbox.setAttribute('aria-checked', prefs.notesVisibleByDefault ? 'true' : 'false');
@@ -241,7 +247,8 @@ async function handleSave(event) {
       defaultPosition: defaultPositionInput.value,
       noteWidth: parseInt(noteWidthSelect.value, 10),
       fontSize: fontSizeSelect.value,
-      notesVisibleByDefault: notesVisibleCheckbox.checked
+      notesVisibleByDefault: notesVisibleCheckbox.checked,
+      logLevel: logLevelSelect.value
     };
     
     const result = await setPreferences(prefs);
@@ -277,6 +284,7 @@ async function handleReset() {
       selectPosition(DEFAULT_PREFERENCES.defaultPosition);
       noteWidthSelect.value = DEFAULT_PREFERENCES.noteWidth.toString();
       fontSizeSelect.value = DEFAULT_PREFERENCES.fontSize;
+      logLevelSelect.value = DEFAULT_PREFERENCES.logLevel;
       notesVisibleCheckbox.checked = DEFAULT_PREFERENCES.notesVisibleByDefault;
       notesVisibleCheckbox.setAttribute('aria-checked', DEFAULT_PREFERENCES.notesVisibleByDefault ? 'true' : 'false');
       
@@ -315,6 +323,8 @@ async function init() {
 
   // Initialize DOM elements
   initDOMElements();
+
+  initLogLevel();
 
   // Display version
   displayVersion();
