@@ -10,10 +10,7 @@
 import { generateId, isValidEmail } from '../shared/utils.js';
 import { backgroundLogger as log } from '../shared/logger.js';
 import { initLogLevel } from '../shared/logLevel.js';
-import { createHandlers } from './handlers.js';
-import { registerTabCleanup } from './tabCleanup.js';
-import { createSubscriptionStore } from './subscriptionStore.js';
-import { restoreSubscriptions } from './restoreSubscriptions.js';
+import { createBackgroundRuntime } from './runtime.js';
 import { getUrlChangedMessageFromHistoryUpdate } from './navigation.js';
 
 // Lazy-loading imports for Firebase (no SDK loaded at import time)
@@ -42,59 +39,39 @@ import {
 // Apply the logLevel preference (fire and forget; initLogLevel never rejects)
 initLogLevel();
 
-// Track active subscriptions, keyed per tab and frame (notes) or per tab and note (comments)
-const noteSubscriptions = new Map(); // `${tabId}-${frameId}` -> { url, frameId, unsubscribe }
-const commentSubscriptions = new Map(); // `${tabId}-${noteId}` -> unsubscribe Function
-
-// Track global shared notes subscription
-const sharedNotesSubscription = { current: null };
-
-// Describes the subscriptions above in chrome.storage.session, so they can be restored when Chrome
-// stops this worker (its Firestore listeners die with it) and starts it again
-const subscriptionStore = chrome.storage.session
-  ? createSubscriptionStore(chrome.storage.session, log)
-  : null;
-if (!subscriptionStore) {
-  log.warn('chrome.storage.session is not available: real-time subscriptions cannot be restored');
-}
-
-// Create handlers with lazy-loaded dependencies
-// These wrappers ensure Firebase is only loaded when actually used
-const handlers = createHandlers({
-  signInWithGoogle: signInWithGoogleLazy,
-  signOut: signOutLazy,
-  getCurrentUser: getCurrentUserLazy,
-  createNote: createNoteLazy,
-  getNotesForUrl: getNotesForUrlLazy,
-  updateNoteInFirestore: updateNoteLazy,
-  deleteNoteFromFirestore: deleteNoteLazy,
-  shareNoteInFirestore: shareNoteLazy,
-  unshareNoteInFirestore: unshareNoteLazy,
-  leaveSharedNoteInFirestore: leaveSharedNoteLazy,
-  isFirebaseConfigured: isFirebaseConfiguredSync,
-  // Comment service functions
-  createCommentInFirestore: createCommentLazy,
-  getCommentsForNoteFromFirestore: getCommentsForNoteLazy,
-  updateCommentInFirestore: updateCommentLazy,
-  deleteCommentFromFirestore: deleteCommentLazy,
-  // Real-time subscription functions
-  subscribeToNotesForUrl: subscribeToNotesForUrlLazy,
-  subscribeToComments: subscribeToCommentsLazy,
-  // Global shared notes subscription
-  subscribeToSharedNotes: subscribeToSharedNotesLazy,
-  getSharedNotesForUser: getSharedNotesForUserLazy,
-  noteSubscriptions,
-  commentSubscriptions,
-  sharedNotesSubscription,
-  subscriptionStore,
-  generateId,
-  isValidEmail,
+// Wire the store, the handlers, the tab cleanup, the keep-alive alarm and the restore (see runtime.js).
+// The handlers get the lazy-loaded Firebase wrappers, so Firebase is only loaded when actually used.
+const runtime = createBackgroundRuntime({
+  chrome,
   log,
-  chromeStorage: chrome.storage,
-  chromeTabs: chrome.tabs,
-  chromeWebNavigation: chrome.webNavigation,
-  chromeAction: chrome.action
+  handlerDeps: {
+    signInWithGoogle: signInWithGoogleLazy,
+    signOut: signOutLazy,
+    getCurrentUser: getCurrentUserLazy,
+    createNote: createNoteLazy,
+    getNotesForUrl: getNotesForUrlLazy,
+    updateNoteInFirestore: updateNoteLazy,
+    deleteNoteFromFirestore: deleteNoteLazy,
+    shareNoteInFirestore: shareNoteLazy,
+    unshareNoteInFirestore: unshareNoteLazy,
+    leaveSharedNoteInFirestore: leaveSharedNoteLazy,
+    isFirebaseConfigured: isFirebaseConfiguredSync,
+    // Comment service functions
+    createCommentInFirestore: createCommentLazy,
+    getCommentsForNoteFromFirestore: getCommentsForNoteLazy,
+    updateCommentInFirestore: updateCommentLazy,
+    deleteCommentFromFirestore: deleteCommentLazy,
+    // Real-time subscription functions
+    subscribeToNotesForUrl: subscribeToNotesForUrlLazy,
+    subscribeToComments: subscribeToCommentsLazy,
+    // Global shared notes subscription
+    subscribeToSharedNotes: subscribeToSharedNotesLazy,
+    getSharedNotesForUser: getSharedNotesForUserLazy,
+    generateId,
+    isValidEmail
+  }
 });
+const { handlers } = runtime;
 
 const { handleMessage } = handlers;
 
@@ -293,9 +270,6 @@ export function bootstrap() {
     });
   });
 
-  // Clean up subscriptions when tab is closed
-  registerTabCleanup(chrome.tabs, handlers, log);
-
   // Create context menus on every service worker startup
   // Context menus can get lost when the extension is disabled/enabled, reloaded, 
   // or after browser updates, so we recreate them on every startup
@@ -346,30 +320,8 @@ export function bootstrap() {
     }
   });
 
-  // Set up service worker keep-alive to prevent cold starts
-  // This keeps the service worker warm, reducing popup opening delay. If Chrome stops the worker
-  // anyway, the next alarm starts it again and the subscriptions it held are restored below.
-  // Chrome may fire alarms no more often than every 30 seconds.
-  chrome.alarms.create('keepAlive', { periodInMinutes: 0.4 });
-  
-  chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === 'keepAlive') {
-      // Waking the service worker prevents cold start delays when opening the popup. Each tick also
-      // retries the real-time subscriptions that failed to start (with a growing delay per entry).
-      handlers.retryPending()
-        .catch((error) => log.error('Failed to retry real-time subscriptions:', error));
-    }
-  });
-
-  // Restore the real-time subscriptions a stopped worker held (nothing to do, and no Firebase
-  // SDK load, when there are none)
-  if (subscriptionStore) {
-    restoreSubscriptions({
-      handlers,
-      tabs: chrome.tabs,
-      webNavigation: chrome.webNavigation
-    }).catch((error) => log.error('Failed to restore real-time subscriptions:', error));
-  }
+  // Register the tab cleanup and the keep-alive alarm, and restore the subscriptions a stopped worker held
+  runtime.start();
 
   // Log when service worker starts
   log.info('Sticky Notes background service worker started');

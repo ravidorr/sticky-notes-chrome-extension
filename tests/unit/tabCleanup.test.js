@@ -2,7 +2,6 @@
  * Tab cleanup wiring unit tests
  */
 
-import { readFileSync } from 'node:fs';
 import { jest, describe, it, expect } from '@jest/globals';
 import { registerTabCleanup } from '../../src/background/tabCleanup.js';
 
@@ -35,16 +34,5 @@ describe('registerTabCleanup', () => {
 
     expect(() => listener(7)).not.toThrow();
     expect(log.error).toHaveBeenCalledWith(expect.any(String), 7, failure);
-  });
-});
-
-describe('background bootstrap wiring', () => {
-  // src/background/index.js is excluded from coverage and only bootstraps outside Jest, so this
-  // guards the one line that connects the tab listener to the handlers (and its argument order)
-  it('calls registerTabCleanup with chrome.tabs, the handlers and the logger', () => {
-    const source = readFileSync(new URL('../../src/background/index.js', import.meta.url), 'utf8');
-
-    expect(source).toMatch(/import \{ registerTabCleanup \} from '\.\/tabCleanup\.js';/);
-    expect(source).toMatch(/registerTabCleanup\(chrome\.tabs, handlers, log\);/);
   });
 });

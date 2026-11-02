@@ -4,7 +4,6 @@
  * with a fake store, controllable Firestore subscriptions and fake tab APIs.
  */
 
-import { readFileSync } from 'node:fs';
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { createSubscriptionManager } from '../../src/background/subscriptions.js';
 import { restoreSubscriptions, checkDescriptor } from '../../src/background/restoreSubscriptions.js';
@@ -360,16 +359,5 @@ describe('restore', () => {
       expect(await request).toEqual({ success: true });
       expect(await restoring).toEqual({ restored: 1, failed: 0, dropped: 0 });
     });
-  });
-
-  it('keeps wiring the store, the handlers and the restore in index.js', () => {
-    // src/background/index.js is excluded from coverage and only bootstraps outside Jest, so this
-    // guards the lines that connect the store, the handlers and the restore on worker start
-    const source = readFileSync(new URL('../../src/background/index.js', import.meta.url), 'utf8');
-
-    expect(source).toMatch(/createSubscriptionStore\(chrome\.storage\.session, log\)/);
-    expect(source).toMatch(/sharedNotesSubscription,\s+subscriptionStore,/);
-    expect(source).toMatch(/restoreSubscriptions\(\{\s+handlers,\s+tabs: chrome\.tabs,\s+webNavigation: chrome\.webNavigation/);
-    expect(source).not.toMatch(/onConnect/);
   });
 });

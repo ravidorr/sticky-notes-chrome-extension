@@ -13,6 +13,17 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.32] - 2026-11-02
+
+### Changed
+
+- The background worker's wiring (the subscription store, the handlers, the tab cleanup, the keep-alive alarm and
+  the restore on start) moved from `index.js` into `createBackgroundRuntime` in `src/background/runtime.js`, which
+  takes the chrome and Firebase dependencies. `index.js` is now a thin caller, and the wiring is tested by calling
+  the runtime with fakes instead of by reading the source text of `index.js`. No behavior change.
+- Added `docs/SUBSCRIPTIONS.md` (desired versus actual subscription state, requests, restore, retry and logout) and
+  updated the architecture sections of `CLAUDE.md`. Closes #60.
+
 ## [1.20.31] - 2026-11-02
 
 ### Fixed
