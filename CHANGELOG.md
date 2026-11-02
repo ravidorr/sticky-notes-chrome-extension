@@ -13,6 +13,21 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.27] - 2026-11-02
+
+### Fixed
+
+- A throwing unsubscribe no longer leaves a stale entry behind. `unsubscribeNotes`, `unsubscribeCommentsHandler` and
+  the replace-existing step of the subscribe handlers now release the listener through the same helper as the tab
+  cleanup, log a failing or missing unsubscribe function, and always drop the entry. A failing release of the old
+  listener no longer aborts the new subscription. Unsubscribing now succeeds even if the release failed; the
+  response then carries `released: false` so the caller can tell.
+
+### Changed
+
+- The `chrome.tabs.onRemoved` wiring moved from `src/background/index.js` into `src/background/tabCleanup.js`, so it
+  is covered by the unit tests.
+
 ## [1.20.26] - 2026-11-02
 
 ### Fixed

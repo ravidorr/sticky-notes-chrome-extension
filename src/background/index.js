@@ -11,6 +11,7 @@ import { generateId, isValidEmail } from '../shared/utils.js';
 import { backgroundLogger as log } from '../shared/logger.js';
 import { initLogLevel } from '../shared/logLevel.js';
 import { createHandlers } from './handlers.js';
+import { registerTabCleanup } from './tabCleanup.js';
 import { getUrlChangedMessageFromHistoryUpdate } from './navigation.js';
 
 // Lazy-loading imports for Firebase (no SDK loaded at import time)
@@ -280,13 +281,7 @@ export function bootstrap() {
   });
 
   // Clean up subscriptions when tab is closed
-  chrome.tabs.onRemoved.addListener((tabId) => {
-    try {
-      handlers.releaseTab(tabId);
-    } catch (error) {
-      log.error('Failed to release the subscriptions of tab', tabId, error);
-    }
-  });
+  registerTabCleanup(chrome.tabs, handlers, log);
 
   // Create context menus on every service worker startup
   // Context menus can get lost when the extension is disabled/enabled, reloaded, 

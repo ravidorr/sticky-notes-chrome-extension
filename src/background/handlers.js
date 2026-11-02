@@ -926,22 +926,38 @@ export function createHandlers(deps = {}) {
   }
   
   /**
-   * Release a listener, logging a missing unsubscribe function or a failing release
-   * @param {Function} unsubscribe - Unsubscribe function of the listener
+   * Release a listener. Never throws: a missing unsubscribe function or a failing release is
+   * logged and swallowed. Does not touch any subscription map, so the caller drops the entry
+   * (a throwing unsubscribe is not worth retrying, and a stale entry would wedge its key).
+   * @param {Function|undefined} unsubscribe - Unsubscribe function of the listener, if any
    * @param {string} subKey - Subscription key, for the log
    * @param {string} reason - Why the listener is released, for the log
+   * @returns {boolean} True if the listener was released
    */
   function releaseListener(unsubscribe, subKey, reason) {
     if (typeof unsubscribe !== 'function') {
       log.warn(`Subscription has no unsubscribe function (${reason}):`, subKey);
-      return;
+      return false;
     }
     try {
       unsubscribe();
       log.debug(`Released a subscription (${reason}):`, subKey);
+      return true;
     } catch (error) {
       log.error(`Failed to release a subscription (${reason}):`, subKey, error);
+      return false;
     }
+  }
+  
+  /**
+   * Add released: false to a successful result when the listener could not be released, so the
+   * caller can tell (it is only logged otherwise, and logging is off by default)
+   * @param {Object} result - Result to return
+   * @param {boolean} released - Whether the listener was released
+   * @returns {Object} The result, with released: false added on a failed release
+   */
+  function withRelease(result, released) {
+    return released ? result : { ...result, released: false };
   }
   
   /**
@@ -949,7 +965,7 @@ export function createHandlers(deps = {}) {
    * @param {string} url - Page URL
    * @param {Object} sender - Message sender (contains tab info)
    * @returns {Promise<Object>} Result; cancelled is true when the subscribe was superseded or
-   *   cancelled and holds no listener
+   *   cancelled and holds no listener (released is false if its listener could not be released)
    */
   async function subscribeNotes(url, sender) {
     try {
@@ -986,10 +1002,10 @@ export function createHandlers(deps = {}) {
       
       // Clean up existing subscription for this tab/frame
       const existingSub = noteSubscriptions.get(subKey);
-      if (existingSub && typeof existingSub.unsubscribe === 'function') {
-        existingSub.unsubscribe();
+      if (existingSub) {
+        releaseListener(existingSub.unsubscribe, subKey, 'replaced');
+        noteSubscriptions.delete(subKey);
       }
-      noteSubscriptions.delete(subKey);
       
       // Set up new subscription (await since lazy-loaded functions return promises)
       const unsubscribe = await subscribeToNotesForUrl(
@@ -1004,13 +1020,7 @@ export function createHandlers(deps = {}) {
               notes
             }, { frameId }).catch(() => {
               // Tab/frame might be closed, clean up subscription
-              try {
-                if (typeof unsubscribe === 'function') {
-                  unsubscribe();
-                }
-              } catch (error) {
-                log.error('Error during unsubscribe:', error);
-              }
+              releaseListener(unsubscribe, subKey, 'tab unreachable');
               // Only drop the entry if it is still this subscription, not a newer one
               if (noteSubscriptions.get(subKey)?.unsubscribe === unsubscribe) {
                 noteSubscriptions.delete(subKey);
@@ -1033,8 +1043,8 @@ export function createHandlers(deps = {}) {
       // A newer subscribe or an unsubscribe arrived while this one was starting: release this
       // listener instead of letting it replace the newer one or outlive the unsubscribe
       if (noteSubGenerations.get(subKey) !== generation) {
-        releaseListener(unsubscribe, subKey, 'cancelled while starting');
-        return { success: true, cancelled: true };
+        const released = releaseListener(unsubscribe, subKey, 'cancelled while starting');
+        return withRelease({ success: true, cancelled: true }, released);
       }
       
       noteSubscriptions.set(subKey, { url, frameId, unsubscribe });
@@ -1063,13 +1073,13 @@ export function createHandlers(deps = {}) {
       const subKey = `${tabId}-${frameId}`;
       cancelPendingSubscribe(noteSubGenerations, subKey);
       const sub = noteSubscriptions.get(subKey);
+      let released = true;
       if (sub) {
-        sub.unsubscribe();
+        released = releaseListener(sub.unsubscribe, subKey, 'unsubscribed');
         noteSubscriptions.delete(subKey);
-        log.debug('Unsubscribed from notes for tab', tabId, 'frame', frameId);
       }
       
-      return { success: true };
+      return withRelease({ success: true }, released);
     } catch (error) {
       log.error('Unsubscribe notes error:', error);
       return { success: false, error: error.message };
@@ -1114,10 +1124,10 @@ export function createHandlers(deps = {}) {
       
       // Clean up existing subscription
       const existingSub = commentSubscriptions.get(subKey);
-      if (existingSub && typeof existingSub === 'function') {
-        existingSub();
+      if (existingSub) {
+        releaseListener(existingSub, subKey, 'replaced');
+        commentSubscriptions.delete(subKey);
       }
-      commentSubscriptions.delete(subKey);
       
       // Set up new subscription (await since lazy-loaded functions return promises)
       const unsubscribe = await subscribeToComments(
@@ -1132,13 +1142,7 @@ export function createHandlers(deps = {}) {
               comments
             }).catch(() => {
               // Tab might be closed, clean up subscription
-              try {
-                if (typeof unsubscribe === 'function') {
-                  unsubscribe();
-                }
-              } catch (error) {
-                log.error('Error during unsubscribe:', error);
-              }
+              releaseListener(unsubscribe, subKey, 'tab unreachable');
               // Only drop the entry if it is still this subscription, not a newer one
               if (commentSubscriptions.get(subKey) === unsubscribe) {
                 commentSubscriptions.delete(subKey);
@@ -1162,8 +1166,8 @@ export function createHandlers(deps = {}) {
       // A newer subscribe or an unsubscribe arrived while this one was starting: release this
       // listener instead of letting it replace the newer one or outlive the unsubscribe
       if (commentSubGenerations.get(subKey) !== generation) {
-        releaseListener(unsubscribe, subKey, 'cancelled while starting');
-        return { success: true, cancelled: true };
+        const released = releaseListener(unsubscribe, subKey, 'cancelled while starting');
+        return withRelease({ success: true, cancelled: true }, released);
       }
       
       commentSubscriptions.set(subKey, unsubscribe);
@@ -1192,13 +1196,13 @@ export function createHandlers(deps = {}) {
       const subKey = `${tabId}-${noteId}`;
       cancelPendingSubscribe(commentSubGenerations, subKey);
       const unsub = commentSubscriptions.get(subKey);
+      let released = true;
       if (unsub) {
-        unsub();
+        released = releaseListener(unsub, subKey, 'unsubscribed');
         commentSubscriptions.delete(subKey);
-        log.debug('Unsubscribed from comments for tab', tabId, 'note', noteId);
       }
       
-      return { success: true };
+      return withRelease({ success: true }, released);
     } catch (error) {
       log.error('Unsubscribe comments error:', error);
       return { success: false, error: error.message };
