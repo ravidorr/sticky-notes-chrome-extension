@@ -25,7 +25,8 @@ bump is listed under the next version bump after it.
   subscribe call) gives up after 10 seconds, which counts as a transient failure that is retried. A listener that
   comes back after its timeout is released instead of registered.
 - Logging out now releases every per-tab note and comment listener, empties the desired subscriptions and clears the
-  stored descriptors, so nothing outlives the user (before, they survived until Firestore rejected them).
+  stored descriptors after the sign out succeeds, so nothing outlives the user (before, they survived until
+  Firestore rejected them) and a failed sign out keeps them.
 
 ### Changed
 

@@ -408,10 +408,13 @@ export function createHandlers(deps = {}) {
       // Unsubscribe from global shared notes before logout
       await unsubscribeFromSharedNotesGlobal();
 
-      // Release every per-tab listener and forget the desired state, so nothing outlives the user
-      await clearAll();
-      
       await signOut();
+
+      // Release every per-tab listener and forget the desired state, so nothing outlives the user.
+      // After the sign out: a subscribe that arrives meanwhile is cleared too, and a failed
+      // sign out leaves a user who is still signed in with their subscriptions.
+      await clearAll();
+
       return { success: true };
     } catch (error) {
       log.error('Logout error:', error);

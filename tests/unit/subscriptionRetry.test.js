@@ -198,6 +198,47 @@ describe('retry and outcomes', () => {
       expect(await manager.retryPending()).toEqual({ restored: 1, failed: 0, dropped: 0 });
     });
 
+    it('does not start a second attempt while one is still running, and does not skip a backoff step', async () => {
+      const slow = deferred();
+      subscribeToNotesForUrl.mockRejectedValueOnce(new Error('down'));
+      await manager.subscribeNotes(PAGE, SENDER);
+      subscribeToNotesForUrl.mockClear();
+      subscribeToNotesForUrl.mockImplementationOnce(() => slow.promise);
+
+      const first = manager.retryPending();
+      await flush();
+      expect(await manager.retryPending()).toEqual({ restored: 0, failed: 0, dropped: 0 });
+      expect(subscribeToNotesForUrl).toHaveBeenCalledTimes(1);
+
+      slow.reject(new Error('still down'));
+      expect(await first).toEqual({ restored: 0, failed: 1, dropped: 0 });
+
+      // Two failures so far: the next attempt comes after 2 ticks
+      subscribeToNotesForUrl.mockRejectedValue(new Error('still down'));
+      subscribeToNotesForUrl.mockClear();
+      await manager.retryPending();
+      expect(subscribeToNotesForUrl).not.toHaveBeenCalled();
+      await manager.retryPending();
+      expect(subscribeToNotesForUrl).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips an attempt that a request superseded while it ran', async () => {
+      const lookup = deferred();
+      subscribeToNotesForUrl.mockRejectedValueOnce(new Error('down'));
+      await manager.subscribeNotes(PAGE, SENDER);
+      subscribeToNotesForUrl.mockClear();
+      chromeTabs.get.mockImplementationOnce(() => lookup.promise);
+
+      const attempt = manager.retryPending();
+      await flush();
+      expect(await manager.subscribeNotes(PAGE, SENDER)).toEqual({ success: true });
+      lookup.resolve({ id: 1, url: PAGE });
+
+      expect(await attempt).toEqual({ restored: 0, failed: 0, dropped: 0 });
+      expect(subscribeToNotesForUrl).toHaveBeenCalledTimes(1);
+      expect(noteSubscriptions.has('1-0')).toBe(true);
+    });
+
     it('drops a stale page instead of subscribing to it when the retry runs', async () => {
       subscribeToNotesForUrl.mockRejectedValueOnce(new Error('down'));
       await manager.subscribeNotes(PAGE, SENDER);
@@ -360,6 +401,19 @@ describe('retry and outcomes', () => {
       expect(noteSubscriptions.size).toBe(0);
     });
 
+    it('waits for the store to be read, so a read in flight cannot bring entries back after the clear', async () => {
+      const read = deferred();
+      store.hydrate.mockReturnValue(read.promise);
+
+      const clearing = manager.clearAll();
+      await flush();
+      read.resolve({ notes: [{ subKey: '1-0', tabId: 1, frameId: 0, url: PAGE }], comments: [] });
+      await clearing;
+
+      expect(await manager.getRealtimeSyncStatus()).toMatchObject({ degraded: false });
+      expect(store.clear).toHaveBeenCalledTimes(1);
+    });
+
     it('works without a store', async () => {
       manager = build({ subscriptionStore: null });
       await manager.subscribeNotes(PAGE, SENDER);
@@ -466,6 +520,22 @@ describe('retry and outcomes', () => {
       expect(commentSubscriptions.size).toBe(0);
     });
 
+    it('times out the user lookup of a restore and retries the entries on a tick', async () => {
+      store.hydrate.mockResolvedValue({
+        notes: [{ subKey: '1-0', tabId: 1, frameId: 0, url: PAGE }],
+        comments: []
+      });
+      let hang = true;
+      manager = build({ getUserIfConfigured: () => (hang ? new Promise(() => {}) : Promise.resolve(user)) });
+
+      const restoring = manager.restore({ tabs: chromeTabs, webNavigation: chromeWebNavigation });
+      await jest.advanceTimersByTimeAsync(SUBSCRIBE_TIMEOUT_MS);
+      expect(await restoring).toEqual({ restored: 0, failed: 1, dropped: 0 });
+
+      hang = false;
+      expect(await manager.retryPending()).toEqual({ restored: 1, failed: 0, dropped: 0 });
+    });
+
     it('times out a user lookup that hangs, and ignores its late result', async () => {
       const lookup = deferred();
       manager = build({ getUserIfConfigured: () => lookup.promise });
@@ -566,6 +636,31 @@ describe('logout and login through the handlers', () => {
     expect(commentSubscriptions.size).toBe(0);
     expect(area.data.subscriptions).toEqual({ notes: {}, comments: {} });
     expect(await handlers.getRealtimeSyncStatus()).toMatchObject({ degraded: false });
+  });
+
+  it('a failed sign out keeps the subscriptions of the user who is still signed in', async () => {
+    await handlers.restore({ tabs: { get: tabs.get }, webNavigation: { getAllFrames: async () => [{ frameId: 0, url: 'https://old.test/' }] } });
+    signOut.mockRejectedValueOnce(new Error('network'));
+
+    expect(await handlers.handleLogout()).toEqual({ success: false, error: 'network' });
+
+    expect(noteSubscriptions.has('7-0')).toBe(true);
+    expect(area.data.subscriptions.notes['7-0']).toBeDefined();
+  });
+
+  it('clears a subscribe that arrives while the sign out is running', async () => {
+    let finishSignOut;
+    signOut.mockImplementationOnce(() => new Promise((resolve) => { finishSignOut = () => { user = null; resolve(); }; }));
+
+    const loggingOut = handlers.handleLogout();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await handlers.subscribeNotes('https://old.test/', { tab: { id: 8 }, frameId: 0 });
+    expect(noteSubscriptions.has('8-0')).toBe(true);
+    finishSignOut();
+    await loggingOut;
+
+    expect(noteSubscriptions.size).toBe(0);
+    expect(area.data.subscriptions).toEqual({ notes: {}, comments: {} });
   });
 
   it('after a logout, a login subscribes nothing stale: only the pages subscribe again', async () => {

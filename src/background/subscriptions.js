@@ -690,7 +690,7 @@ export function createSubscriptionManager(deps) {
 
     let user;
     try {
-      user = await getUserIfConfigured();
+      user = await withTimeout(() => getUserIfConfigured());
     } catch (error) {
       log.error(`Could not look up the user; ${entries.length} real-time subscription(s) not restored:`, error);
       entries.forEach(({ kind, key }) => settle(kind, key, 'transient'));
@@ -715,17 +715,27 @@ export function createSubscriptionManager(deps) {
       const entry = kinds[state.kind].desired.get(state.key);
       if (!entry || kinds[state.kind].actual.has(state.key)) {
         retries.delete(slot);
-      } else {
+      } else if (!state.inFlight) {
         state.wait -= 1;
         if (state.wait <= 0) {
-          due.push({ kind: state.kind, key: state.key, entry });
+          state.inFlight = true;
+          due.push({ kind: state.kind, key: state.key, entry, state });
         }
       }
     }
     if (due.length === 0) {
       return { restored: 0, failed: 0, dropped: 0 };
     }
-    return validateAndStart(due, liveApis());
+    try {
+      return await validateAndStart(due, liveApis());
+    } finally {
+      // A failure replaced the state (settle). One that is still here was skipped (a request
+      // superseded the attempt), so it is tried again on the next tick
+      due.forEach(({ state }) => {
+        state.inFlight = false;
+        state.wait = 1;
+      });
+    }
   }
 
   /**
@@ -755,7 +765,9 @@ export function createSubscriptionManager(deps) {
    * store. A subscribe still starting is released right after it registers.
    * @returns {Promise<void>} Resolves when the listeners are released; it never rejects
    */
-  function clearAll() {
+  async function clearAll() {
+    // A read of the store still in flight would merge its descriptors back after the clear
+    await ready();
     const releases = [];
     for (const [kind, { desired, actual }] of Object.entries(kinds)) {
       const keys = new Set([...desired.keys(), ...actual.keys()]);
@@ -766,7 +778,7 @@ export function createSubscriptionManager(deps) {
       }
     }
     subscriptionStore?.clear();
-    return Promise.all(releases).then(() => undefined);
+    await Promise.all(releases);
   }
 
   return {
