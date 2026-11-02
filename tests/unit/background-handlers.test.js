@@ -2805,7 +2805,7 @@ describe('Background Handlers', () => {
 
           expect(await pending).toEqual({ success: true, cancelled: true });
           expect(localThis.mockLog.error).toHaveBeenCalledWith(
-            expect.stringContaining('Failed to release a cancelled subscription'),
+            expect.stringContaining('Failed to release a subscription'),
             '123-0',
             expect.any(Error)
           );
@@ -2975,7 +2975,7 @@ describe('Background Handlers', () => {
             expect(await pending).toEqual({ success: true, cancelled: true });
           }
           expect(localThis.mockLog.error).toHaveBeenCalledWith(
-            expect.stringContaining('Failed to release a cancelled subscription'),
+            expect.stringContaining('Failed to release a subscription'),
             '123-note-1',
             expect.any(Error)
           );
@@ -3090,10 +3090,10 @@ describe('Background Handlers', () => {
           expect(localThis.noteSubscriptions.size).toBe(0);
           expect(localThis.commentSubscriptions.size).toBe(0);
           expect(localThis.mockLog.error).toHaveBeenCalledWith(
-            expect.stringContaining('note subscription'), '123-0', expect.any(Error)
+            expect.stringContaining('Failed to release a subscription'), '123-0', expect.any(Error)
           );
           expect(localThis.mockLog.error).toHaveBeenCalledWith(
-            expect.stringContaining('comment subscription'), '123-note-1', expect.any(Error)
+            expect.stringContaining('Failed to release a subscription'), '123-note-1', expect.any(Error)
           );
         });
 
@@ -3154,6 +3154,80 @@ describe('Background Handlers', () => {
           expect(await pending).toEqual({ success: true });
           expect(unsubscribe).not.toHaveBeenCalled();
           expect(localThis.noteSubscriptions.has('123-0')).toBe(true);
+        });
+
+        it('should cancel a subscribe that is starting when the tab closes even if the same key subscribes again', async () => {
+          const oldStarted = deferred();
+          const oldUnsubscribe = jest.fn();
+          const newUnsubscribe = jest.fn();
+          const subscribe = jest.fn()
+            .mockImplementationOnce(() => oldStarted.promise)
+            .mockReturnValueOnce(newUnsubscribe);
+          const handlers = localThis.build4({ subscribeToNotesForUrl: subscribe });
+
+          const pendingOld = handlers.subscribeNotes('https://example.com/old', SENDER);
+          await flush();
+          handlers.releaseTab(123);
+          await handlers.subscribeNotes('https://example.com/new', SENDER);
+          oldStarted.resolve(oldUnsubscribe);
+
+          expect(await pendingOld).toEqual({ success: true, cancelled: true });
+          expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
+          expect(newUnsubscribe).not.toHaveBeenCalled();
+          expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/new');
+        });
+
+        it('should keep a subscribe that is starting for a tab whose id is a prefix match', async () => {
+          const started = deferred();
+          const unsubscribe = jest.fn();
+          const handlers = localThis.build4({ subscribeToNotesForUrl: jest.fn(() => started.promise) });
+
+          const pending = handlers.subscribeNotes('https://example.com', { tab: { id: 1234 }, frameId: 0 });
+          await flush();
+          handlers.releaseTab(12);
+          handlers.releaseTab(123);
+          started.resolve(unsubscribe);
+
+          expect(await pending).toEqual({ success: true });
+          expect(unsubscribe).not.toHaveBeenCalled();
+          expect(localThis.noteSubscriptions.has('1234-0')).toBe(true);
+        });
+
+        it('should subscribe normally after the tab was released and release only once', async () => {
+          const unsubscribe = jest.fn();
+          localThis.noteSubscriptions.set('123-0', { unsubscribe });
+          const handlers = localThis.build4();
+
+          handlers.releaseTab(123);
+          handlers.releaseTab(123);
+          const result = await handlers.subscribeNotes('https://example.com', SENDER);
+
+          expect(unsubscribe).toHaveBeenCalledTimes(1);
+          expect(result).toEqual({ success: true });
+          expect(localThis.noteSubscriptions.has('123-0')).toBe(true);
+        });
+
+        it('should warn about entries without an unsubscribe function and still drop them', () => {
+          localThis.noteSubscriptions.set('123-0', {});
+          localThis.noteSubscriptions.set('123-1', null);
+          localThis.commentSubscriptions.set('123-note-1', undefined);
+
+          localThis.build4().releaseTab(123);
+
+          expect(localThis.mockLog.warn).toHaveBeenCalledWith(expect.stringContaining('no unsubscribe function'), '123-0');
+          expect(localThis.mockLog.warn).toHaveBeenCalledWith(expect.stringContaining('no unsubscribe function'), '123-1');
+          expect(localThis.mockLog.warn).toHaveBeenCalledWith(expect.stringContaining('no unsubscribe function'), '123-note-1');
+          expect(localThis.noteSubscriptions.size).toBe(0);
+          expect(localThis.commentSubscriptions.size).toBe(0);
+          expect(localThis.mockLog.error).not.toHaveBeenCalled();
+        });
+
+        it('should not log a release as done when the unsubscribe throws', () => {
+          localThis.noteSubscriptions.set('123-0', { unsubscribe: () => { throw new Error('boom'); } });
+
+          localThis.build4().releaseTab(123);
+
+          expect(localThis.mockLog.debug).not.toHaveBeenCalledWith(expect.stringContaining('Released a subscription'), '123-0');
         });
 
         it('should do nothing for a tab without subscriptions', () => {

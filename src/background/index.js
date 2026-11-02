@@ -39,8 +39,8 @@ import {
 // Apply the logLevel preference (fire and forget; initLogLevel never rejects)
 initLogLevel();
 
-// Track active subscriptions by tab ID
-const noteSubscriptions = new Map(); // tabId -> { url: string, unsubscribe: Function }
+// Track active subscriptions, keyed per tab and frame (notes) or per tab and note (comments)
+const noteSubscriptions = new Map(); // `${tabId}-${frameId}` -> { url, frameId, unsubscribe }
 const commentSubscriptions = new Map(); // `${tabId}-${noteId}` -> unsubscribe Function
 
 // Track global shared notes subscription
@@ -281,7 +281,11 @@ export function bootstrap() {
 
   // Clean up subscriptions when tab is closed
   chrome.tabs.onRemoved.addListener((tabId) => {
-    handlers.releaseTab(tabId);
+    try {
+      handlers.releaseTab(tabId);
+    } catch (error) {
+      log.error('Failed to release the subscriptions of tab', tabId, error);
+    }
   });
 
   // Create context menus on every service worker startup
