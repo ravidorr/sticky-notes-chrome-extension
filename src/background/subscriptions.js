@@ -777,8 +777,7 @@ export function createSubscriptionManager(deps) {
         releases.push(reconcile(kind, key, { reason: 'logged out' }));
       }
     }
-    subscriptionStore?.clear();
-    await Promise.all(releases);
+    await Promise.all([...releases, subscriptionStore?.clear()]);
   }
 
   return {

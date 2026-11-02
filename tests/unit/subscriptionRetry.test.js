@@ -385,6 +385,20 @@ describe('retry and outcomes', () => {
       expect(await manager.retryPending()).toEqual({ restored: 0, failed: 0, dropped: 0 });
     });
 
+    it('waits for the store to be cleared before it resolves', async () => {
+      const cleared = deferred();
+      store.clear.mockReturnValue(cleared.promise);
+      let done = false;
+
+      const clearing = manager.clearAll().then(() => { done = true; });
+      await flush();
+      expect(done).toBe(false);
+      cleared.resolve();
+      await clearing;
+
+      expect(done).toBe(true);
+    });
+
     it('releases a listener that is still starting when the logout clears everything', async () => {
       const started = deferred();
       const late = jest.fn();

@@ -26,7 +26,8 @@ bump is listed under the next version bump after it.
   comes back after its timeout is released instead of registered.
 - Logging out now releases every per-tab note and comment listener, empties the desired subscriptions and clears the
   stored descriptors after the sign out succeeds, so nothing outlives the user (before, they survived until
-  Firestore rejected them) and a failed sign out keeps them.
+  Firestore rejected them) and a failed sign out keeps them. The logout also waits for the stored descriptors to be
+  cleared and for a startup read of them to finish, so none come back afterwards.
 
 ### Changed
 
