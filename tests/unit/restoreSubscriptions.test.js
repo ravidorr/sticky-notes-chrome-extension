@@ -218,7 +218,7 @@ describe('restoreSubscriptions', () => {
       webNavigation.getAllFrames.mockResolvedValue([{ frameId: 5, url: 'https://a.test/' }]);
 
       expect(await run()).toEqual({ restored: 1, failed: 0, dropped: 1 });
-      expect(store.removeNote).toHaveBeenCalledWith('1-0');
+      expect(store.removeNote).toHaveBeenCalledWith('1-0', saved.notes[0]);
       expect(handlers.subscribeCommentsHandler).toHaveBeenCalledTimes(1);
     });
 
@@ -238,8 +238,8 @@ describe('restoreSubscriptions', () => {
       webNavigation.getAllFrames.mockResolvedValue([{ frameId: 0, url: 'https://other.test/page' }]);
 
       expect(await run()).toEqual({ restored: 0, failed: 0, dropped: 2 });
-      expect(store.removeNote).toHaveBeenCalledWith('1-0');
-      expect(store.removeComment).toHaveBeenCalledWith('1-n1');
+      expect(store.removeNote).toHaveBeenCalledWith('1-0', saved.notes[0]);
+      expect(store.removeComment).toHaveBeenCalledWith('1-n1', saved.comments[0]);
       expect(handlers.subscribeNotes).not.toHaveBeenCalled();
     });
 
@@ -258,7 +258,7 @@ describe('restoreSubscriptions', () => {
 
       expect(await run()).toEqual({ restored: 1, failed: 0, dropped: 1 });
       expect(handlers.subscribeNotes).toHaveBeenCalledTimes(1);
-      expect(store.removeNote).toHaveBeenCalledWith('1-3');
+      expect(store.removeNote).toHaveBeenCalledWith('1-3', saved.notes[1]);
     });
 
     it('stores the current tab URL again when it restores a comment', async () => {

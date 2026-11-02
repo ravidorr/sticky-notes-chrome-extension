@@ -40,7 +40,8 @@ bump is listed under the next version bump after it.
   its tab closed in the meantime. Descriptors are dropped when nobody
   is signed in, when the tab was closed, when a frame no longer exists, or when the tab or frame navigated to
   another page while the worker was stopped (the worker compares the stored URL with what the tab shows, keeps
-  it stored when it restores a comment, and the new page subscribes for itself); a failed user lookup, or a tab or frame
+  it stored when it restores a comment, drops a descriptor only if it is still the one it loaded, and the new
+  page subscribes for itself); a failed user lookup, or a tab or frame
   list that cannot be read, keeps them for the next start instead.
 - If some subscriptions still cannot be restored after the retries, the worker keeps them and records which ones
   failed. The new `getRealtimeSyncStatus` message reports `{ success, degraded, restorable }`: `degraded` is true

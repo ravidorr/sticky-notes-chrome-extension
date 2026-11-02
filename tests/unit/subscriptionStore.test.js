@@ -68,6 +68,33 @@ describe('subscription store', () => {
     });
   });
 
+  it('removes a descriptor only if it is still the one the caller saw, when asked to', async () => {
+    await store.saveNote('1-0', { tabId: 1, frameId: 0, url: 'old' });
+    await store.saveComment('1-n1', { tabId: 1, noteId: 'n1', tabUrl: 'old' });
+    const seenNote = { subKey: '1-0', tabId: 1, frameId: 0, url: 'old' };
+    const seenComment = { subKey: '1-n1', tabId: 1, noteId: 'n1', tabUrl: 'old' };
+
+    await store.saveNote('1-0', { tabId: 1, frameId: 0, url: 'new' });
+    await store.saveComment('1-n1', { tabId: 1, noteId: 'n1', tabUrl: 'new' });
+    await store.removeNote('1-0', seenNote);
+    await store.removeComment('1-n1', seenComment);
+
+    const kept = await store.load();
+    expect(kept.notes.map((note) => note.url)).toEqual(['new']);
+    expect(kept.comments.map((comment) => comment.tabUrl)).toEqual(['new']);
+
+    await store.removeNote('1-0', { subKey: '1-0', tabId: 1, frameId: 0, url: 'new' });
+    await store.removeComment('1-n1', { subKey: '1-n1', tabId: 1, noteId: 'n1', tabUrl: 'new' });
+    expect(await store.load()).toEqual({ notes: [], comments: [] });
+  });
+
+  it('does nothing when a conditional removal finds no descriptor', async () => {
+    await store.removeNote('9-0', { subKey: '9-0', tabId: 9, frameId: 0, url: 'x' });
+    await store.removeComment('9-n1', { subKey: '9-n1', tabId: 9, noteId: 'n1' });
+
+    expect(await store.load()).toEqual({ notes: [], comments: [] });
+  });
+
   it('removes every descriptor of a tab and only that tab', async () => {
     await store.saveNote('12-0', { tabId: 12, frameId: 0, url: 'a' });
     await store.saveNote('123-0', { tabId: 123, frameId: 0, url: 'b' });

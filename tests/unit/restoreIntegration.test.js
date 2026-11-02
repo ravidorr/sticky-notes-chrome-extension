@@ -248,4 +248,38 @@ describe('restore with the real handlers and store', () => {
     expect(noteSubscriptions.size).toBe(0);
     expect(await store.load()).toEqual({ notes: [], comments: [] });
   });
+
+  it('keeps the descriptor a new page saved while the restore was dropping the stale one', async () => {
+    const slowUser = {};
+    slowUser.promise = new Promise((resolve) => { slowUser.resolve = resolve; });
+    const getCurrentUser = jest.fn()
+      .mockImplementationOnce(() => slowUser.promise)
+      .mockResolvedValue({ uid: 'u1', email: 'a@b.test' });
+    handlers = createHandlers({
+      getCurrentUser,
+      isFirebaseConfigured: () => true,
+      subscribeToNotesForUrl,
+      subscribeToComments: jest.fn(async () => jest.fn()),
+      noteSubscriptions,
+      commentSubscriptions,
+      subscriptionStore: store,
+      log,
+      chromeTabs: { sendMessage: jest.fn().mockResolvedValue({}) },
+      chromeStorage: { local: { get: async () => ({}) } }
+    });
+    tabs.get.mockResolvedValue({ id: 7, url: 'https://new.test/' });
+    webNavigation.getAllFrames.mockResolvedValue([{ frameId: 0, url: 'https://new.test/' }]);
+
+    const restoring = restore();
+    await flush();
+    await handlers.subscribeNotes('https://new.test/', { tab: { id: 7 }, frameId: 0 });
+    await handlers.subscribeCommentsHandler('n1', { tab: { id: 7, url: 'https://new.test/' } });
+    slowUser.resolve({ uid: 'u1', email: 'a@b.test' });
+    await restoring;
+    await flush();
+
+    const stored = await store.load();
+    expect(stored.notes.map((note) => note.url)).toEqual(['https://new.test/']);
+    expect(stored.comments.map((comment) => comment.tabUrl)).toEqual(['https://new.test/']);
+  });
 });

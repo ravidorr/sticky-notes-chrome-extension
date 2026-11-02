@@ -25,6 +25,16 @@ function normalize(stored) {
 }
 
 /**
+ * Check that a stored descriptor is still the one a caller saw
+ * @param {Object|undefined} stored - Descriptor in the store
+ * @param {Object} expected - Descriptor the caller loaded earlier (may carry extra fields, such as subKey)
+ * @returns {boolean} True if every stored field has the expected value
+ */
+function isSameDescriptor(stored, expected) {
+  return Boolean(stored) && Object.keys(stored).every((field) => stored[field] === expected[field]);
+}
+
+/**
  * Create a subscription store
  * Every operation runs through one queue, in call order, so callers can fire and forget without
  * two writes overtaking each other, and no operation ever rejects: failures are logged, and a
@@ -136,9 +146,14 @@ export function createSubscriptionStore(area, log) {
 
     /**
      * @param {string} subKey - `${tabId}-${frameId}`
+     * @param {Object} [expected] - If given, remove only when the stored descriptor still equals it,
+     *   so a newer descriptor saved under the same key in the meantime is kept
      */
-    removeNote(subKey) {
+    removeNote(subKey, expected) {
       return update((current) => {
+        if (expected && !isSameDescriptor(current.notes[subKey], expected)) {
+          return;
+        }
         delete current.notes[subKey];
         current.failed = current.failed.filter((key) => key !== `note:${subKey}`);
       });
@@ -158,9 +173,13 @@ export function createSubscriptionStore(area, log) {
 
     /**
      * @param {string} subKey - `${tabId}-${noteId}`
+     * @param {Object} [expected] - If given, remove only when the stored descriptor still equals it
      */
-    removeComment(subKey) {
+    removeComment(subKey, expected) {
       return update((current) => {
+        if (expected && !isSameDescriptor(current.comments[subKey], expected)) {
+          return;
+        }
         delete current.comments[subKey];
         current.failed = current.failed.filter((key) => key !== `comment:${subKey}`);
       });

@@ -185,7 +185,10 @@ export async function restoreSubscriptions(deps) {
       handlers.releaseTab(descriptor.tabId);
       dropped += 1;
     } else if (check === 'gone') {
-      await (kind === 'note' ? store.removeNote(descriptor.subKey) : store.removeComment(descriptor.subKey));
+      // Only if the stored descriptor is still the one loaded: the new page may have replaced it
+      await (kind === 'note'
+        ? store.removeNote(descriptor.subKey, descriptor)
+        : store.removeComment(descriptor.subKey, descriptor));
       dropped += 1;
     } else if (kind === 'note') {
       jobs.push({
