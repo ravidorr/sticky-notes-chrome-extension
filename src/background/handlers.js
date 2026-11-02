@@ -42,6 +42,7 @@ export function createHandlers(deps = {}) {
     noteSubscriptions = new Map(),
     commentSubscriptions = new Map(),
     sharedNotesSubscription = { current: null },
+    subscriptionStore = null,
     generateId = defaultGenerateId,
     isValidEmail = defaultIsValidEmail,
     log = defaultLog,
@@ -120,6 +121,10 @@ export function createHandlers(deps = {}) {
       
       case 'unsubscribeFromComments':
         return unsubscribeCommentsHandler(message.noteId, sender);
+      
+      // Real-time sync health (set when a worker restart could not restore every subscription)
+      case 'getRealtimeSyncStatus':
+        return getRealtimeSyncStatus();
       
       // Badge management for orphaned notes
       case 'updateOrphanedCount':
@@ -901,6 +906,35 @@ export function createHandlers(deps = {}) {
   // make a later subscribe reuse the number of an older one that is still starting
   let lastGeneration = 0;
   
+  // Tabs that were closed (the most recent ones), so a subscribe that reaches the worker after
+  // tabs.onRemoved registers nothing. Tab IDs are not reused within a browser session.
+  const MAX_REMEMBERED_CLOSED_TABS = 500;
+  const closedTabs = new Set();
+  
+  /**
+   * Remember a closed tab, forgetting the oldest one past the limit
+   * @param {number} tabId - ID of the closed tab
+   */
+  function rememberClosedTab(tabId) {
+    closedTabs.add(tabId);
+    if (closedTabs.size > MAX_REMEMBERED_CLOSED_TABS) {
+      closedTabs.delete(closedTabs.values().next().value);
+    }
+  }
+  
+  /**
+   * Report whether real-time sync is degraded, and whether subscriptions can be restored at all
+   * @returns {Promise<Object>} { success: true, degraded, restorable }; degraded is true while a
+   *   subscription the last restore could not restore is still unrestored
+   */
+  async function getRealtimeSyncStatus() {
+    return {
+      success: true,
+      degraded: subscriptionStore ? await subscriptionStore.isDegraded() : false,
+      restorable: Boolean(subscriptionStore)
+    };
+  }
+  
   /**
    * Take a new generation for a subscription key
    * @param {Map<string, number>} generations - Latest generation per subscription key
@@ -914,15 +948,39 @@ export function createHandlers(deps = {}) {
   }
   
   /**
-   * Cancel a subscribe that is still starting for a key, if there is one. A key that never
-   * subscribed (or was released with its tab) has nothing to cancel, so it gets no entry.
+   * Cancel a subscribe that is still starting for a key, and mark the key as touched so a restore
+   * that has not claimed it yet leaves it alone. A closed tab gets no entry.
    * @param {Map<string, number>} generations - Latest generation per subscription key
    * @param {string} subKey - Subscription key
+   * @param {number} tabId - ID of the tab the key belongs to
    */
-  function cancelPendingSubscribe(generations, subKey) {
-    if (generations.has(subKey)) {
+  function cancelSubscribe(generations, subKey, tabId) {
+    if (!closedTabs.has(tabId)) {
       bumpGeneration(generations, subKey);
     }
+  }
+  
+  /**
+   * Claim a key for a restore after a worker restart, before anything is awaited. Returns null
+   * when a content script already subscribed or unsubscribed for the key since the worker
+   * started: that request is newer than the stored descriptor, so the restore must skip the key.
+   * @param {string} kind - 'note' or 'comment'
+   * @param {string} subKey - Subscription key
+   * @returns {number|null} The generation the restore subscribes with, or null to skip the key
+   */
+  function claimRestore(kind, subKey) {
+    const generations = kind === 'note' ? noteSubGenerations : commentSubGenerations;
+    return generations.has(subKey) ? null : bumpGeneration(generations, subKey);
+  }
+  
+  /**
+   * Report whether a subscription is registered right now
+   * @param {string} kind - 'note' or 'comment'
+   * @param {string} subKey - Subscription key
+   * @returns {boolean} True if the worker holds a listener for the key
+   */
+  function isSubscribed(kind, subKey) {
+    return (kind === 'note' ? noteSubscriptions : commentSubscriptions).has(subKey);
   }
   
   /**
@@ -964,10 +1022,11 @@ export function createHandlers(deps = {}) {
    * Subscribe to real-time note updates for a URL
    * @param {string} url - Page URL
    * @param {Object} sender - Message sender (contains tab info)
+   * @param {number} [claimedGeneration] - Generation claimed by a restore; a normal request takes a new one
    * @returns {Promise<Object>} Result; cancelled is true when the subscribe was superseded or
    *   cancelled and holds no listener (released is false if its listener could not be released)
    */
-  async function subscribeNotes(url, sender) {
+  async function subscribeNotes(url, sender, claimedGeneration) {
     try {
       const tabId = sender?.tab?.id;
       const frameId = sender?.frameId ?? 0;
@@ -975,12 +1034,23 @@ export function createHandlers(deps = {}) {
         return { success: false, error: 'Tab ID not available' };
       }
       
+      // A subscribe that arrives after its tab closed would register a listener nothing releases
+      if (closedTabs.has(tabId)) {
+        return { success: true, cancelled: true };
+      }
+      
       // Use composite key to handle multiple frames (main frame + iframes)
       const subKey = `${tabId}-${frameId}`;
       
       // Take the generation before the first await, so an unsubscribe or a newer subscribe that
-      // arrives while the user lookup is pending cancels this one
-      const generation = bumpGeneration(noteSubGenerations, subKey);
+      // arrives while the user lookup is pending cancels this one. A restore claimed its generation
+      // earlier and keeps it for every retry, so any request that came in since cancels the restore.
+      let generation = claimedGeneration;
+      if (generation === undefined) {
+        generation = bumpGeneration(noteSubGenerations, subKey);
+      } else if (noteSubGenerations.get(subKey) !== generation) {
+        return { success: true, cancelled: true };
+      }
       
       const user = await getUserIfConfigured();
       
@@ -1024,6 +1094,7 @@ export function createHandlers(deps = {}) {
               // Only drop the entry if it is still this subscription, not a newer one
               if (noteSubscriptions.get(subKey)?.unsubscribe === unsubscribe) {
                 noteSubscriptions.delete(subKey);
+                subscriptionStore?.removeNote(subKey);
               }
             });
           }
@@ -1048,6 +1119,7 @@ export function createHandlers(deps = {}) {
       }
       
       noteSubscriptions.set(subKey, { url, frameId, unsubscribe });
+      subscriptionStore?.saveNote(subKey, { tabId, frameId, url });
       log.debug('Subscribed to notes for tab', tabId, 'frame', frameId, 'url', url);
       
       return { success: true };
@@ -1071,13 +1143,15 @@ export function createHandlers(deps = {}) {
       }
       
       const subKey = `${tabId}-${frameId}`;
-      cancelPendingSubscribe(noteSubGenerations, subKey);
+      cancelSubscribe(noteSubGenerations, subKey, tabId);
       const sub = noteSubscriptions.get(subKey);
       let released = true;
       if (sub) {
         released = releaseListener(sub.unsubscribe, subKey, 'unsubscribed');
         noteSubscriptions.delete(subKey);
       }
+      // Also when there is no entry: a replacement that was still starting is cancelled here
+      subscriptionStore?.removeNote(subKey);
       
       return withRelease({ success: true }, released);
     } catch (error) {
@@ -1090,19 +1164,30 @@ export function createHandlers(deps = {}) {
    * Subscribe to real-time comment updates for a note
    * @param {string} noteId - Note ID
    * @param {Object} sender - Message sender (contains tab info)
-   * @returns {Promise<Object>} Result
+   * @param {number} [claimedGeneration] - Generation claimed by a restore; a normal request takes a new one
+   * @returns {Promise<Object>} Result; cancelled is true when the subscribe was superseded or
+   *   cancelled and holds no listener (released is false if its listener could not be released)
    */
-  async function subscribeCommentsHandler(noteId, sender) {
+  async function subscribeCommentsHandler(noteId, sender, claimedGeneration) {
     try {
       const tabId = sender?.tab?.id;
       if (!tabId) {
         return { success: false, error: 'Tab ID not available' };
       }
       
+      if (closedTabs.has(tabId)) {
+        return { success: true, cancelled: true };
+      }
+      
       const subKey = `${tabId}-${noteId}`;
       
       // Take the generation before the first await (see subscribeNotes)
-      const generation = bumpGeneration(commentSubGenerations, subKey);
+      let generation = claimedGeneration;
+      if (generation === undefined) {
+        generation = bumpGeneration(commentSubGenerations, subKey);
+      } else if (commentSubGenerations.get(subKey) !== generation) {
+        return { success: true, cancelled: true };
+      }
       
       const user = await getUserIfConfigured();
       
@@ -1146,6 +1231,7 @@ export function createHandlers(deps = {}) {
               // Only drop the entry if it is still this subscription, not a newer one
               if (commentSubscriptions.get(subKey) === unsubscribe) {
                 commentSubscriptions.delete(subKey);
+                subscriptionStore?.removeComment(subKey);
               }
             });
           }
@@ -1171,6 +1257,7 @@ export function createHandlers(deps = {}) {
       }
       
       commentSubscriptions.set(subKey, unsubscribe);
+      subscriptionStore?.saveComment(subKey, { tabId, noteId, tabUrl: sender?.tab?.url });
       log.debug('Subscribed to comments for tab', tabId, 'note', noteId);
       
       return { success: true };
@@ -1194,13 +1281,14 @@ export function createHandlers(deps = {}) {
       }
       
       const subKey = `${tabId}-${noteId}`;
-      cancelPendingSubscribe(commentSubGenerations, subKey);
+      cancelSubscribe(commentSubGenerations, subKey, tabId);
       const unsub = commentSubscriptions.get(subKey);
       let released = true;
       if (unsub) {
         released = releaseListener(unsub, subKey, 'unsubscribed');
         commentSubscriptions.delete(subKey);
       }
+      subscriptionStore?.removeComment(subKey);
       
       return withRelease({ success: true }, released);
     } catch (error) {
@@ -1498,12 +1586,15 @@ export function createHandlers(deps = {}) {
   }
 
   /**
-   * Release every note and comment subscription of a closed tab, in all of its frames, and
-   * forget its generations so a subscribe still starting for it is cancelled
+   * Release every note and comment subscription of a closed tab, in all of its frames, forget
+   * its generations so a subscribe still starting for it is cancelled, forget its stored
+   * descriptors, and remember the tab as closed so a later subscribe for it registers nothing
    * @param {number} tabId - ID of the closed tab
    */
   function releaseTab(tabId) {
     const prefix = `${tabId}-`;
+    rememberClosedTab(tabId);
+    subscriptionStore?.removeTab(tabId);
     
     for (const [subKey, sub] of [...noteSubscriptions.entries()]) {
       if (subKey.startsWith(prefix)) {
@@ -1554,6 +1645,9 @@ export function createHandlers(deps = {}) {
     subscribeCommentsHandler,
     unsubscribeCommentsHandler,
     releaseTab,
+    claimRestore,
+    isSubscribed,
+    getRealtimeSyncStatus,
     // Badge management
     updateOrphanedBadge,
     // Iframe support

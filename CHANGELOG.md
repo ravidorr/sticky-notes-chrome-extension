@@ -13,6 +13,44 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.28] - 2026-11-02
+
+### Changed
+
+- The minimum supported browser version is now Chrome and Edge 102 (`minimum_chrome_version` in the manifests, and
+  the README), because the background worker keeps its subscription descriptors in `chrome.storage.session`, which
+  older versions do not have. Without it a stopped worker could not restore its subscriptions, now that the per-frame
+  retry in the content script is gone.
+
+### Fixed
+
+- Real-time notes and comments now recover when Chrome stops the background service worker, which drops its
+  Firestore listeners. The worker keeps a description of its subscriptions in `chrome.storage.session` and, when it
+  starts again (the keep-alive alarm wakes it), restores them: note subscriptions for frames that still exist and
+  comment subscriptions for tabs that still exist, retrying failures with a growing delay. This replaces the
+  per-frame port and retry timers in the content script, so every frame is restored at once and nothing depends on
+  timers in the page.
+- A restore never overrides the page. It claims every stored key before anything is awaited, so a content script
+  that subscribes or unsubscribes in the meantime wins, including over a retry. A key a content script claimed first
+  stays recorded as failed until that request subscribes or unsubscribes for it, because a failed request is not
+  retried. The restore loads the stored subscriptions, claims them and records those keys in one storage step, and only
+  adds its own failures at the end, so a request that settles a key before or while the restore is working is not
+  undone (a key whose request already succeeded is not recorded at all). A restore that a newer request cancelled is
+  recorded the same way until that request registers a listener or unsubscribes, unless the key was unsubscribed or
+  its tab closed in the meantime. Descriptors are dropped when nobody
+  is signed in, when the tab was closed, when a frame no longer exists, or when the tab or frame navigated to
+  another page while the worker was stopped (the worker compares the stored URL with what the tab shows, keeps
+  it stored when it restores a comment, drops a descriptor only if it is still the one it loaded, and the new
+  page subscribes for itself); a failed user lookup, or a tab or frame
+  list that cannot be read, keeps them for the next start instead.
+- If some subscriptions still cannot be restored after the retries, the worker keeps them and records which ones
+  failed. The new `getRealtimeSyncStatus` message reports `{ success, degraded, restorable }`: `degraded` is true
+  while any of those subscriptions is still unrestored (it clears as soon as a content script or a later restore
+  subscribes or unsubscribes for them), and `restorable` is false when `chrome.storage.session` is not available.
+  Nothing in the popup shows this yet.
+- Within one worker run, a subscribe that reaches the worker after its tab was closed now registers no listener and
+  is reported as `cancelled`.
+
 ## [1.20.27] - 2026-11-02
 
 ### Fixed
