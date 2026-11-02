@@ -410,6 +410,75 @@ describe('RealtimeSync', () => {
       expect(realtimeSync.notesUrl).toBeNull();
     });
 
+    it('gets the full retry budget again after giving up and subscribing successfully', async () => {
+      await realtimeSync.subscribeToNotes('url1');
+      mockSendMessage.mockResolvedValue({ success: false, error: 'no' });
+      dropPort();
+      await jest.advanceTimersByTimeAsync(1000 + 2000 + 4000 + 8000 + 16000);
+      expect(realtimeSync.resubscribeAttempts).toBe(5);
+
+      mockSendMessage.mockResolvedValue({ success: true });
+      await realtimeSync.subscribeToNotes('url1');
+      mockSendMessage.mockClear();
+      dropPort();
+      await jest.advanceTimersByTimeAsync(1000);
+
+      expect(mockSendMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a stale resubscribe when a new subscription replaced the cancelled one', async () => {
+      await realtimeSync.subscribeToNotes('url1');
+      notes.set('n1', { id: 'n1', commentSubscribed: true });
+      let resolveStale;
+      mockSendMessage.mockClear();
+      mockSendMessage.mockImplementationOnce(() => new Promise(resolve => { resolveStale = resolve; }));
+
+      dropPort();
+      await jest.advanceTimersByTimeAsync(1000);
+      await realtimeSync.unsubscribeFromNotes();
+      mockSendMessage.mockResolvedValue({ success: true });
+      await realtimeSync.subscribeToNotes('url2');
+      mockSendMessage.mockClear();
+      resolveStale({ success: true });
+      await jest.advanceTimersByTimeAsync(60000);
+
+      expect(mockSendMessage).not.toHaveBeenCalled();
+      expect(realtimeSync.notesUrl).toBe('url2');
+    });
+
+    it('stops subscribing comments when cancelled in the middle of the loop', async () => {
+      await realtimeSync.subscribeToNotes('url1');
+      notes.set('n1', { id: 'n1', commentSubscribed: true });
+      notes.set('n2', { id: 'n2', commentSubscribed: true });
+      let resolveFirst;
+      mockSendMessage.mockClear();
+      mockSendMessage
+        .mockResolvedValueOnce({ success: true })
+        .mockImplementationOnce(() => new Promise(resolve => { resolveFirst = resolve; }));
+
+      dropPort();
+      await jest.advanceTimersByTimeAsync(1000);
+      await realtimeSync.unsubscribeFromNotes();
+      resolveFirst({ success: true });
+      await jest.advanceTimersByTimeAsync(1000);
+
+      expect(mockSendMessage.mock.calls.map(c => c[0].action)).toEqual([
+        'subscribeToNotes',
+        'subscribeToComments',
+        'unsubscribeFromNotes'
+      ]);
+    });
+
+    it('does not throw out of the timer when restoring fails unexpectedly', async () => {
+      await realtimeSync.subscribeToNotes('url1');
+      mockGetNotes.mockImplementation(() => { throw new Error('torn down'); });
+
+      dropPort();
+      await jest.advanceTimersByTimeAsync(1000);
+
+      expect(mockSendMessage).toHaveBeenCalled();
+    });
+
     it('tolerates a port that throws on disconnect', async () => {
       await realtimeSync.subscribeToNotes('url1');
       ports[0].disconnect.mockImplementation(() => { throw new Error('closed'); });

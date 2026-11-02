@@ -21,7 +21,8 @@ import { getFirebaseConfig, isConfigValid, isFirebaseConfigured } from './config
 // Firebase configuration - loaded from environment variables
 const firebaseConfig = getFirebaseConfig();
 
-// Firestore SDK log level used until the logLevel preference has been applied
+// Firestore SDK log level used while no logLevel is applied (before the preference loads, or
+// after the runtime level is cleared). The extension's own logger falls back to debug mode instead.
 const FIRESTORE_DEFAULT_LOG_LEVEL = 'silent';
 
 // Initialize Firebase

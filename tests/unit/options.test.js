@@ -485,6 +485,15 @@ describe('Options Page Script', () => {
       expect(chrome.storage.sync.set).toHaveBeenCalled();
     });
     
+    it('should reset the logging level to the default', async () => {
+      window.confirm = jest.fn(() => true);
+      document.getElementById('logLevel').value = 'debug';
+
+      await handleReset();
+
+      expect(document.getElementById('logLevel').value).toBe('silent');
+    });
+    
     it('should not reset when cancelled', async () => {
       // Mock window.confirm to return false
       window.confirm = jest.fn(() => false);

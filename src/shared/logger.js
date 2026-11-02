@@ -1,6 +1,9 @@
 /**
  * Debug Logger
- * Conditional logging that can be disabled in production
+ * Conditional logging that can be disabled in production.
+ *
+ * The effective level of a logger is, in order: its explicit debugMode option, the runtime level
+ * set from the logLevel preference (setLogLevel), then the build-time debug mode.
  */
 
 // Log levels
@@ -62,7 +65,14 @@ const _levelListeners = new Set();
  */
 export function setLogLevel(name) {
   _runtimeLevel = LOG_LEVEL_NAMES.includes(name) ? name : null;
-  _levelListeners.forEach(listener => listener(_runtimeLevel));
+  _levelListeners.forEach(listener => {
+    try {
+      listener(_runtimeLevel);
+    } catch (error) {
+      // One failing listener must not stop the others from seeing the new level
+      console.error('[Logger] Log level listener failed:', error);
+    }
+  });
 }
 
 /**
@@ -118,7 +128,7 @@ export function createLogger(namespace, options = {}) {
   
   return {
     /**
-     * Debug log - only in debug mode
+     * Debug log - only when the effective level is debug
      * @param  {...any} args - Arguments to log
      */
     debug(...args) {
@@ -175,7 +185,7 @@ export function createLogger(namespace, options = {}) {
     },
     
     /**
-     * Group logs (only in debug mode)
+     * Group logs (only when the effective level is debug)
      * @param {string} label - Group label
      */
     group(label) {
@@ -194,7 +204,7 @@ export function createLogger(namespace, options = {}) {
     },
     
     /**
-     * Time a operation (only in debug mode)
+     * Time an operation (only when the effective level is debug)
      * @param {string} label - Timer label
      */
     time(label) {

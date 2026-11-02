@@ -54,6 +54,9 @@ bump is listed under the next version bump after it.
 
 ### Changed
 
+- The extension's own `error` and `warn` logs, and `VITE_DEBUG_MODE=true` debug logs, are now off until the
+  Logging setting is changed, so development builds need Logging set to Debug on the options page to show
+  `[StickyNotes]` output.
 - Added unit tests for `functions/middleware/auth.js` and included it in the coverage thresholds
 
 ## [1.20.23] - 2026-11-01

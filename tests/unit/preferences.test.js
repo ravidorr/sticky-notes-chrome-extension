@@ -476,6 +476,32 @@ describe('logLevel preference', () => {
     expect(result.logLevel).toBe(DEFAULT_PREFERENCES.logLevel);
   });
 
+  it('should keep the stored logLevel when an invalid one is saved or none is given', async () => {
+    localThis.mockStorage.preferences = { logLevel: 'debug' };
+    const { setPreferences } = await import('../../src/shared/preferences.js');
+    const deps = { chromeStorage: localThis.mockChromeStorage };
+
+    const invalid = await setPreferences({ logLevel: 'verbose' }, deps);
+    expect(invalid.preferences.logLevel).toBe('debug');
+
+    const omitted = await setPreferences({ fontSize: 'large' }, deps);
+    expect(omitted.preferences.logLevel).toBe('debug');
+    expect(localThis.mockStorage.preferences.logLevel).toBe('debug');
+  });
+
+  it('should round-trip every valid level and reset to silent', async () => {
+    const { setPreferences, getPreferences, resetPreferences, VALID_LOG_LEVELS } = await import('../../src/shared/preferences.js');
+    const deps = { chromeStorage: localThis.mockChromeStorage };
+
+    for (const level of VALID_LOG_LEVELS) {
+      await setPreferences({ logLevel: level }, deps);
+      expect((await getPreferences(deps)).logLevel).toBe(level);
+    }
+
+    const reset = await resetPreferences(deps);
+    expect(reset.preferences.logLevel).toBe('silent');
+  });
+
   it('should ignore an invalid logLevel in setPreferences', async () => {
     const { setPreferences, DEFAULT_PREFERENCES } = await import('../../src/shared/preferences.js');
 

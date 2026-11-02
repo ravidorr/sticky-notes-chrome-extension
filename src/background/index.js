@@ -36,7 +36,7 @@ import {
   subscribeToCommentsLazy
 } from '../firebase/lazy.js';
 
-// Apply the logLevel preference (fire and forget; getPreferences falls back to defaults)
+// Apply the logLevel preference (fire and forget; initLogLevel never rejects)
 initLogLevel();
 
 // Track active subscriptions by tab ID
@@ -359,6 +359,8 @@ export function bootstrap() {
 
   // Content scripts hold a port while they have real-time subscriptions. Chrome disconnects it
   // when this worker is stopped (its Firestore listeners die with it), so they can resubscribe.
+  // The listener is intentionally a no-op: it only has to exist so the connection is accepted.
+  // The port does not keep the worker alive; the keepAlive alarm below does that.
   chrome.runtime.onConnect.addListener(() => {});
 
   // Set up service worker keep-alive to prevent cold starts

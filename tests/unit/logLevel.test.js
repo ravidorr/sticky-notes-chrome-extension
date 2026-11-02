@@ -88,7 +88,24 @@ describe('initLogLevel', () => {
     const storage = makeStorage({ logLevel: 'debug' });
     storage.onChanged.addListener.mockImplementation(() => { throw new Error('no listener'); });
 
-    await expect(initLogLevel({ chromeStorage: storage })).resolves.toBe('silent');
+    await expect(initLogLevel({ chromeStorage: storage })).resolves.toBe('debug');
+    expect(getLogLevelName()).toBe('debug');
+  });
+
+  it('keeps a change that arrives while the preference is loading', async () => {
+    const storage = makeStorage({ logLevel: 'debug' });
+    let release;
+    storage.sync.get.mockImplementation(() => new Promise(resolve => {
+      release = () => resolve({ preferences: { logLevel: 'debug' } });
+    }));
+
+    const pending = initLogLevel({ chromeStorage: storage });
+    const listener = storage.onChanged.addListener.mock.calls[0][0];
+    listener({ preferences: { newValue: { logLevel: 'error' } } }, 'sync');
+    release();
+
+    await pending;
+    expect(getLogLevelName()).toBe('error');
   });
 
   it('works when onChanged is unavailable', async () => {

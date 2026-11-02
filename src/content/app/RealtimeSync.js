@@ -5,7 +5,8 @@
 
 import { contentLogger as log } from '../../shared/logger.js';
 
-// Port name the background worker accepts; it disconnects when the worker is stopped
+// Name the content script gives its port. The worker does not inspect it: it only has to accept
+// the connection so that Chrome disconnects the port when the worker is stopped.
 export const REALTIME_PORT_NAME = 'realtimeSync';
 
 // Delay before resubscribing after the worker stops, doubled on each failed attempt
@@ -90,6 +91,9 @@ export class RealtimeSync {
     }
   }
   
+  /**
+   * Schedule a resubscribe with exponential backoff (1s, 2s, 4s, 8s, 16s)
+   */
   _scheduleResubscribe() {
     if (this.resubscribeTimer) return;
     const delay = RESUBSCRIBE_BASE_DELAY_MS * 2 ** this.resubscribeAttempts;
@@ -99,24 +103,33 @@ export class RealtimeSync {
     }, delay);
   }
   
+  /**
+   * Restore the notes subscription, then the comment subscriptions of the notes that had one.
+   * A failed comment subscription is not retried.
+   */
   async _resubscribe() {
-    const restored = await this.subscribeToNotes(this.notesUrl);
-    // Cancelled, or the extension context is gone, while the request was in flight
-    if (!this.notesUrl) return;
-    if (!restored) {
-      this.resubscribeAttempts += 1;
-      if (this.resubscribeAttempts < MAX_RESUBSCRIBE_ATTEMPTS) {
-        this._scheduleResubscribe();
-      } else {
-        log.warn('Giving up on restoring real-time sync');
+    const generation = this.generation;
+    try {
+      const restored = await this.subscribeToNotes(this.notesUrl);
+      // Cancelled (even if a new subscription followed) or the extension context is gone
+      if (generation !== this.generation || !this.notesUrl) return;
+      if (!restored) {
+        this.resubscribeAttempts += 1;
+        if (this.resubscribeAttempts < MAX_RESUBSCRIBE_ATTEMPTS) {
+          this._scheduleResubscribe();
+        } else {
+          log.error('Giving up on restoring real-time sync');
+        }
+        return;
       }
-      return;
-    }
-    this.resubscribeAttempts = 0;
-    for (const note of this.getNotes().values()) {
-      if (note.commentSubscribed) {
-        await this.subscribeToComments(note.id);
+      for (const note of [...this.getNotes().values()]) {
+        if (generation !== this.generation) return;
+        if (note.commentSubscribed) {
+          await this.subscribeToComments(note.id);
+        }
       }
+    } catch (error) {
+      log.error('Failed to restore real-time sync:', error);
     }
   }
   
@@ -138,6 +151,7 @@ export class RealtimeSync {
         // Do not track a subscription that was cancelled while the request was in flight
         if (generation === this.generation) {
           this.notesUrl = url;
+          this.resubscribeAttempts = 0;
           this._openPort();
         }
         return true;
