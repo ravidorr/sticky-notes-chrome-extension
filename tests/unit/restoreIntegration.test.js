@@ -104,4 +104,24 @@ describe('restore with the real handlers and store', () => {
     expect(await handlers.subscribeNotes('https://late.test', { tab: { id: 7 }, frameId: 0 }))
       .toEqual({ success: true, cancelled: true });
   });
+
+  it('stays degraded when the content-script subscribe that claimed a key first fails, until the key is settled', async () => {
+    let fail;
+    subscribeToNotesForUrl.mockImplementationOnce(() => new Promise((resolve, reject) => { fail = reject; }));
+
+    const contentSubscribe = handlers.subscribeNotes('https://new.test', { tab: { id: 7 }, frameId: 0 });
+    await flush();
+    await restore();
+    fail(new Error('listener failed'));
+    expect((await contentSubscribe).success).toBe(false);
+
+    expect(await store.isDegraded()).toBe(true);
+    expect(noteSubscriptions.has('7-0')).toBe(false);
+
+    await handlers.subscribeNotes('https://new.test', { tab: { id: 7 }, frameId: 0 });
+    await handlers.subscribeCommentsHandler('n1', { tab: { id: 7 } });
+    await flush();
+
+    expect(await store.isDegraded()).toBe(false);
+  });
 });

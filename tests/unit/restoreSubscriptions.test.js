@@ -86,19 +86,39 @@ describe('restoreSubscriptions', () => {
       expect(handlers.subscribeCommentsHandler).toHaveBeenCalledWith('n1', { tab: { id: 1 } }, 12);
     });
 
-    it('skips keys a content script already handled, without dropping them', async () => {
+    it('skips keys a content script already handled, without dropping them, and keeps them in the failed list', async () => {
       handlers.claimRestore.mockImplementation((kind) => (kind === 'note' ? null : 12));
 
       expect(await run()).toEqual({ restored: 1, failed: 0, dropped: 0 });
       expect(handlers.subscribeNotes).not.toHaveBeenCalled();
       expect(store.removeNote).not.toHaveBeenCalled();
+      expect(store.setFailed).toHaveBeenCalledWith(['note:1-0']);
     });
 
-    it('skips comment keys a content script already handled', async () => {
+    it('skips comment keys a content script already handled and keeps them in the failed list', async () => {
       handlers.claimRestore.mockImplementation((kind) => (kind === 'comment' ? null : 11));
 
       expect(await run()).toEqual({ restored: 1, failed: 0, dropped: 0 });
       expect(handlers.subscribeCommentsHandler).not.toHaveBeenCalled();
+      expect(store.setFailed).toHaveBeenCalledWith(['comment:1-n1']);
+    });
+
+    it('keeps skipped keys in the failed list next to the ones that failed', async () => {
+      handlers.claimRestore.mockImplementation((kind) => (kind === 'comment' ? null : 11));
+      handlers.subscribeNotes.mockResolvedValue({ success: false, error: 'down' });
+
+      await run();
+
+      expect(store.setFailed).toHaveBeenCalledWith(['note:1-0', 'comment:1-n1']);
+    });
+
+    it('keeps skipped keys in the failed list when the user lookup keeps failing', async () => {
+      handlers.claimRestore.mockImplementation((kind) => (kind === 'comment' ? null : 11));
+      handlers.getUser.mockResolvedValue({ success: false });
+
+      await run();
+
+      expect(store.setFailed).toHaveBeenCalledWith(['note:1-0', 'comment:1-n1']);
     });
 
     it('does not clear descriptors a content script handled when nobody is signed in', async () => {

@@ -77,7 +77,10 @@ async function findLiveFrames({ tabs, webNavigation, log }, tabIds) {
  * content script was first, and a restore that was claimed first is cancelled by a later request,
  * on its first attempt and on every retry. Descriptors of closed tabs, and of frames that no longer
  * exist, are dropped, and so are all of them when nobody is signed in. Anything that fails is
- * retried with a growing delay, kept for the next worker start, and flags those keys as failed (sync is degraded while any is left).
+ * retried with a growing delay, kept for the next worker start, and recorded as failed: sync is
+ * degraded until a content script or a later restore subscribes or unsubscribes for those keys.
+ * Keys a content script claimed first are recorded the same way until its request settles them,
+ * because that request may fail and nothing retries it.
  * A subscribe that comes back cancelled counts as done.
  * @param {Object} deps - { store, handlers, tabs, webNavigation, log, wait }
  * @returns {Promise<{ restored: number, failed: number, dropped: number }>} What happened
@@ -97,24 +100,31 @@ export async function restoreSubscriptions(deps) {
   }
 
   const claims = [];
+  const skippedKeys = [];
   for (const note of saved.notes) {
     const generation = handlers.claimRestore('note', note.subKey);
     if (generation !== null) {
       claims.push({ kind: 'note', descriptor: note, generation });
+    } else {
+      skippedKeys.push(failedKey({ kind: 'note', descriptor: note }));
     }
   }
   for (const comment of saved.comments) {
     const generation = handlers.claimRestore('comment', comment.subKey);
     if (generation !== null) {
       claims.push({ kind: 'comment', descriptor: comment, generation });
+    } else {
+      skippedKeys.push(failedKey({ kind: 'comment', descriptor: comment }));
     }
   }
-  // Keys a content script already handled are not restored and not counted as dropped
-  const skipped = total - claims.length;
+  // A key a content script already handled is not restored and not counted as dropped. Its
+  // request may still fail, and nothing retries it, so it stays in the failed list until that
+  // request subscribes or unsubscribes for the key (which removes it from the list).
+  const skipped = skippedKeys.length;
 
   const user = await lookupUser(handlers, wait);
   if (!user.ok) {
-    await store.setFailed(claims.map(failedKey));
+    await store.setFailed([...claims.map(failedKey), ...skippedKeys]);
     log.error(`Could not look up the user; ${claims.length} real-time subscription(s) not restored`);
     return { restored: 0, failed: claims.length, dropped: 0 };
   }
@@ -174,7 +184,7 @@ export async function restoreSubscriptions(deps) {
   }
 
   const failed = pending.length + unresolvedKeys.length;
-  await store.setFailed([...pending.map((job) => job.key), ...unresolvedKeys]);
+  await store.setFailed([...pending.map((job) => job.key), ...unresolvedKeys, ...skippedKeys]);
   for (const { job, result } of errors) {
     log.error(`Could not restore ${job.label}:`, result?.error);
   }
