@@ -2831,7 +2831,10 @@ describe('Background Handlers', () => {
         it('should store a comment subscription once it is registered', async () => {
           await localThis.build5().subscribeCommentsHandler('note-1', SENDER);
 
-          expect(localThis.store.saveComment).toHaveBeenCalledWith('123-note-1', { tabId: 123, noteId: 'note-1' });
+          expect(localThis.store.saveComment).toHaveBeenCalledWith('123-note-1', { tabId: 123, noteId: 'note-1', tabUrl: undefined });
+
+          await localThis.build5().subscribeCommentsHandler('note-2', { tab: { id: 123, url: 'https://example.com/page' } });
+          expect(localThis.store.saveComment).toHaveBeenCalledWith('123-note-2', { tabId: 123, noteId: 'note-2', tabUrl: 'https://example.com/page' });
         });
 
         it('should not store a cancelled subscribe', async () => {

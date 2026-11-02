@@ -21,8 +21,8 @@ describe('restoreSubscriptions', () => {
 
   beforeEach(() => {
     saved = {
-      notes: [{ subKey: '1-0', tabId: 1, frameId: 0, url: 'https://a.test' }],
-      comments: [{ subKey: '1-n1', tabId: 1, noteId: 'n1' }]
+      notes: [{ subKey: '1-0', tabId: 1, frameId: 0, url: 'https://a.test/' }],
+      comments: [{ subKey: '1-n1', tabId: 1, noteId: 'n1', tabUrl: 'https://a.test/' }]
     };
     nextGeneration = 10;
     store = {
@@ -32,6 +32,7 @@ describe('restoreSubscriptions', () => {
       }),
       clear: jest.fn(async () => {}),
       removeNote: jest.fn(async () => {}),
+      removeComment: jest.fn(async () => {}),
       addFailed: jest.fn(async () => {})
     };
     handlers = {
@@ -42,8 +43,13 @@ describe('restoreSubscriptions', () => {
       subscribeNotes: jest.fn(async () => ({ success: true })),
       subscribeCommentsHandler: jest.fn(async () => ({ success: true }))
     };
-    tabs = { get: jest.fn(async (tabId) => ({ id: tabId })) };
-    webNavigation = { getAllFrames: jest.fn(async () => [{ frameId: 0 }, { frameId: 2 }]) };
+    tabs = { get: jest.fn(async (tabId) => ({ id: tabId, url: 'https://a.test/' })) };
+    webNavigation = {
+      getAllFrames: jest.fn(async () => [
+        { frameId: 0, url: 'https://a.test/' },
+        { frameId: 2, url: 'https://frame.test/x' }
+      ])
+    };
     log = { error: jest.fn() };
     wait = jest.fn(async () => {});
   });
@@ -86,7 +92,7 @@ describe('restoreSubscriptions', () => {
     it('subscribes with the claimed generation', async () => {
       await run();
 
-      expect(handlers.subscribeNotes).toHaveBeenCalledWith('https://a.test', { tab: { id: 1 }, frameId: 0 }, 11);
+      expect(handlers.subscribeNotes).toHaveBeenCalledWith('https://a.test/', { tab: { id: 1 }, frameId: 0 }, 11);
       expect(handlers.subscribeCommentsHandler).toHaveBeenCalledWith('n1', { tab: { id: 1 } }, 12);
     });
 
@@ -209,7 +215,7 @@ describe('restoreSubscriptions', () => {
     });
 
     it('drops note descriptors of frames that no longer exist but keeps the tab comments', async () => {
-      webNavigation.getAllFrames.mockResolvedValue([{ frameId: 5 }]);
+      webNavigation.getAllFrames.mockResolvedValue([{ frameId: 5, url: 'https://a.test/' }]);
 
       expect(await run()).toEqual({ restored: 1, failed: 0, dropped: 1 });
       expect(store.removeNote).toHaveBeenCalledWith('1-0');
@@ -225,6 +231,52 @@ describe('restoreSubscriptions', () => {
       webNavigation.getAllFrames.mockResolvedValue(null);
       expect((await run()).failed).toBe(2);
       expect(log.error).toHaveBeenCalledWith('Could not list the frames of tab', 1, expect.any(Error));
+    });
+
+    it('drops a note descriptor whose top frame navigated to another page', async () => {
+      tabs.get.mockResolvedValue({ id: 1, url: 'https://other.test/page' });
+      webNavigation.getAllFrames.mockResolvedValue([{ frameId: 0, url: 'https://other.test/page' }]);
+
+      expect(await run()).toEqual({ restored: 0, failed: 0, dropped: 2 });
+      expect(store.removeNote).toHaveBeenCalledWith('1-0');
+      expect(store.removeComment).toHaveBeenCalledWith('1-n1');
+      expect(handlers.subscribeNotes).not.toHaveBeenCalled();
+    });
+
+    it('restores an iframe note whose composite URL still matches, and drops one that navigated', async () => {
+      saved = {
+        notes: [
+          { subKey: '1-2', tabId: 1, frameId: 2, url: 'https://a.test/#iframe:https://frame.test/x' },
+          { subKey: '1-3', tabId: 1, frameId: 3, url: 'https://a.test/#iframe:https://old-frame.test/x' }
+        ],
+        comments: []
+      };
+      webNavigation.getAllFrames.mockResolvedValue([
+        { frameId: 2, url: 'https://frame.test/x?query=1' },
+        { frameId: 3, url: 'https://new-frame.test/x' }
+      ]);
+
+      expect(await run()).toEqual({ restored: 1, failed: 0, dropped: 1 });
+      expect(handlers.subscribeNotes).toHaveBeenCalledTimes(1);
+      expect(store.removeNote).toHaveBeenCalledWith('1-3');
+    });
+
+    it('keeps a comment descriptor stored without a tab URL', async () => {
+      saved = { notes: [], comments: [{ subKey: '1-n1', tabId: 1, noteId: 'n1' }] };
+      tabs.get.mockResolvedValue({ id: 1 });
+
+      expect(await run()).toEqual({ restored: 1, failed: 0, dropped: 0 });
+    });
+
+    it('keeps descriptors it cannot compare because the tab or frame URL is unknown', async () => {
+      tabs.get.mockResolvedValue({ id: 1 });
+
+      expect(await run()).toEqual({ restored: 0, failed: 2, dropped: 0 });
+      expect(store.addFailed).toHaveBeenCalledWith(['note:1-0', 'comment:1-n1']);
+
+      tabs.get.mockResolvedValue({ id: 1, url: 'https://a.test/' });
+      webNavigation.getAllFrames.mockResolvedValue([{ frameId: 0 }]);
+      expect((await run()).failed).toBe(1);
     });
 
     it('tolerates a missing error message when a tab check fails', async () => {

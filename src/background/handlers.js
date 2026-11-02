@@ -1257,7 +1257,7 @@ export function createHandlers(deps = {}) {
       }
       
       commentSubscriptions.set(subKey, unsubscribe);
-      subscriptionStore?.saveComment(subKey, { tabId, noteId });
+      subscriptionStore?.saveComment(subKey, { tabId, noteId, tabUrl: sender?.tab?.url });
       log.debug('Subscribed to comments for tab', tabId, 'note', noteId);
       
       return { success: true };

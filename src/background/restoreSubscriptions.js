@@ -4,6 +4,8 @@
  * the subscription store, through the same handlers the content scripts use.
  */
 
+import { createCompositeUrl, normalizeUrl } from '../shared/utils.js';
+
 const MAX_ATTEMPTS = 5;
 const BASE_DELAY_MS = 1000;
 
@@ -37,23 +39,26 @@ async function lookupUser(handlers, wait) {
 }
 
 /**
- * Ask which tabs and frames still exist. A tab Chrome says does not exist is 'closed'; any other
- * failure leaves the tab 'unknown', and its subscriptions are kept for the next start.
+ * Ask which tabs and frames still exist, and what they show now. A tab Chrome says does not exist
+ * is 'closed'; any other failure leaves the tab 'unknown', and its subscriptions are kept for the
+ * next start.
  * @param {Object} deps - { tabs, webNavigation, log }
  * @param {number[]} tabIds - Tab IDs to check
- * @returns {Promise<Map<number, { status: string, frames: Set<number> }>>} State per tab
+ * @returns {Promise<Map<number, { status: string, tabUrl: string, frames: Map<number, string> }>>}
+ *   State per tab: its URL, and the URL of each of its frames by frame ID
  */
 async function findLiveFrames({ tabs, webNavigation, log }, tabIds) {
   const states = new Map();
   await Promise.all(tabIds.map(async (tabId) => {
+    let tab;
     try {
-      await tabs.get(tabId);
+      tab = await tabs.get(tabId);
     } catch (error) {
       const closed = /no tab with id/i.test(error?.message || '');
       if (!closed) {
         log.error('Could not check tab', tabId, error);
       }
-      states.set(tabId, { status: closed ? 'closed' : 'unknown', frames: new Set() });
+      states.set(tabId, { status: closed ? 'closed' : 'unknown', frames: new Map() });
       return;
     }
     try {
@@ -61,13 +66,48 @@ async function findLiveFrames({ tabs, webNavigation, log }, tabIds) {
       if (!Array.isArray(frames)) {
         throw new Error('No frame information');
       }
-      states.set(tabId, { status: 'live', frames: new Set(frames.map((frame) => frame.frameId)) });
+      states.set(tabId, {
+        status: 'live',
+        tabUrl: tab?.url,
+        frames: new Map(frames.map((frame) => [frame.frameId, frame.url]))
+      });
     } catch (error) {
       log.error('Could not list the frames of tab', tabId, error);
-      states.set(tabId, { status: 'unknown', frames: new Set() });
+      states.set(tabId, { status: 'unknown', frames: new Map() });
     }
   }));
   return states;
+}
+
+/**
+ * Decide whether a stored descriptor still describes what its tab shows. A tab or frame that
+ * navigated while the worker was stopped keeps its ID (the top frame is always 0), but the page
+ * that owned the descriptor is gone and the new page subscribes for itself.
+ * @param {string} kind - 'note' or 'comment'
+ * @param {Object} descriptor - Stored descriptor
+ * @param {{ tabUrl: string, frames: Map<number, string> }} state - What the live tab shows
+ * @returns {string} 'current', 'gone' (frame missing or page navigated) or 'unknown' (no URL to compare)
+ */
+function checkDescriptor(kind, descriptor, state) {
+  if (kind === 'comment') {
+    // Comment descriptors carry the tab URL of the page (older ones do not: keep them)
+    if (typeof descriptor.tabUrl !== 'string') {
+      return 'current';
+    }
+    if (typeof state.tabUrl !== 'string') {
+      return 'unknown';
+    }
+    return normalizeUrl(descriptor.tabUrl) === normalizeUrl(state.tabUrl) ? 'current' : 'gone';
+  }
+  if (!state.frames.has(descriptor.frameId)) {
+    return 'gone';
+  }
+  const frameUrl = state.frames.get(descriptor.frameId);
+  if (typeof state.tabUrl !== 'string' || typeof frameUrl !== 'string') {
+    return 'unknown';
+  }
+  const current = createCompositeUrl(state.tabUrl, frameUrl, descriptor.frameId === 0);
+  return current === descriptor.url ? 'current' : 'gone';
 }
 
 /**
@@ -138,13 +178,14 @@ export async function restoreSubscriptions(deps) {
   const unresolvedKeys = [];
   for (const { kind, descriptor, generation } of claims) {
     const state = states.get(descriptor.tabId);
-    if (state.status === 'unknown') {
+    const check = state.status === 'live' ? checkDescriptor(kind, descriptor, state) : state.status;
+    if (check === 'unknown') {
       unresolvedKeys.push(failedKey({ kind, descriptor }));
-    } else if (state.status === 'closed') {
+    } else if (check === 'closed') {
       handlers.releaseTab(descriptor.tabId);
       dropped += 1;
-    } else if (kind === 'note' && !state.frames.has(descriptor.frameId)) {
-      await store.removeNote(descriptor.subKey);
+    } else if (check === 'gone') {
+      await (kind === 'note' ? store.removeNote(descriptor.subKey) : store.removeComment(descriptor.subKey));
       dropped += 1;
     } else if (kind === 'note') {
       jobs.push({

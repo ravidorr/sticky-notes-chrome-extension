@@ -38,8 +38,8 @@ describe('restore with the real handlers and store', () => {
     jest.clearAllMocks();
     area = makeArea({
       subscriptions: {
-        notes: { '7-0': { tabId: 7, frameId: 0, url: 'https://old.test' } },
-        comments: { '7-n1': { tabId: 7, noteId: 'n1' } }
+        notes: { '7-0': { tabId: 7, frameId: 0, url: 'https://old.test/' } },
+        comments: { '7-n1': { tabId: 7, noteId: 'n1', tabUrl: 'https://old.test/' } }
       }
     });
     store = createSubscriptionStore(area, log);
@@ -58,15 +58,15 @@ describe('restore with the real handlers and store', () => {
       chromeTabs: { sendMessage: jest.fn().mockResolvedValue({}) },
       chromeStorage: { local: { get: async () => ({}) } }
     });
-    tabs = { get: jest.fn(async (tabId) => ({ id: tabId })) };
-    webNavigation = { getAllFrames: jest.fn(async () => [{ frameId: 0 }]) };
+    tabs = { get: jest.fn(async (tabId) => ({ id: tabId, url: 'https://old.test/' })) };
+    webNavigation = { getAllFrames: jest.fn(async () => [{ frameId: 0, url: 'https://old.test/' }]) };
   });
 
   it('restores the stored subscriptions and keeps their descriptors', async () => {
     expect(await restore()).toEqual({ restored: 2, failed: 0, dropped: 0 });
 
-    expect(subscribeToNotesForUrl).toHaveBeenCalledWith('https://old.test', 'u1', 'a@b.test', expect.any(Function), expect.any(Function));
-    expect(noteSubscriptions.get('7-0').url).toBe('https://old.test');
+    expect(subscribeToNotesForUrl).toHaveBeenCalledWith('https://old.test/', 'u1', 'a@b.test', expect.any(Function), expect.any(Function));
+    expect(noteSubscriptions.get('7-0').url).toBe('https://old.test/');
     expect(commentSubscriptions.has('7-n1')).toBe(true);
     expect((await store.load()).notes).toHaveLength(1);
   });
@@ -233,6 +233,18 @@ describe('restore with the real handlers and store', () => {
     await flush();
 
     expect(await store.isDegraded()).toBe(false);
+    expect(await store.load()).toEqual({ notes: [], comments: [] });
+  });
+
+  it('does not subscribe to the previous page when a tab navigated while the worker was stopped', async () => {
+    tabs.get.mockResolvedValue({ id: 7, url: 'https://new.test/page' });
+    webNavigation.getAllFrames.mockResolvedValue([{ frameId: 0, url: 'https://new.test/page' }]);
+
+    expect(await restore()).toEqual({ restored: 0, failed: 0, dropped: 2 });
+    await flush();
+
+    expect(subscribeToNotesForUrl).not.toHaveBeenCalled();
+    expect(noteSubscriptions.size).toBe(0);
     expect(await store.load()).toEqual({ notes: [], comments: [] });
   });
 });

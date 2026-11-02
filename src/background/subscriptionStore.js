@@ -147,7 +147,7 @@ export function createSubscriptionStore(area, log) {
     /**
      * Store a comment subscription
      * @param {string} subKey - `${tabId}-${noteId}`
-     * @param {{ tabId: number, noteId: string }} descriptor - What restore needs
+     * @param {{ tabId: number, noteId: string, tabUrl?: string }} descriptor - What restore needs
      */
     saveComment(subKey, descriptor) {
       return update((current) => {
