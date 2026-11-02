@@ -123,7 +123,7 @@ export function createHandlers(deps = {}) {
       case 'unsubscribeFromComments':
         return unsubscribeCommentsHandler(message.noteId, sender);
       
-      // Real-time sync health (set when a worker restart could not restore every subscription)
+      // Real-time sync health (degraded while a desired subscription has no listener)
       case 'getRealtimeSyncStatus':
         return getRealtimeSyncStatus();
       

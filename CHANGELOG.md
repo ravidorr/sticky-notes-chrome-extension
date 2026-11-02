@@ -25,7 +25,8 @@ bump is listed under the next version bump after it.
   one per-key queue. Part of #60.
 - A page-side subscribe that fails (nobody signed in yet, Firestore still starting) now keeps its desired entry
   instead of being forgotten. After this release alone, such an entry is retried only when the worker starts again:
-  there is no retry timer, no subscribe timeout and no error classification yet.
+  there is no retry timer, no subscribe timeout and no error classification yet. Until those arrive, a subscribe
+  that never settles also holds back later requests for the same key until the worker stops.
 - A worker that starts with nobody signed in now keeps the stored subscriptions instead of clearing them.
   Nothing resumes them after a later login in this release; the content scripts subscribe again on login.
 - The subscription store keeps `{ notes, comments }` only and writes the whole state on every change. If storage
