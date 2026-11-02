@@ -492,10 +492,11 @@ describe('Subscription manager', () => {
 
         const pending = handlers.subscribeNotes('https://example.com', SENDER);
         await flush();
-        await handlers.unsubscribeNotes(SENDER);
+        const unsubscribed = handlers.unsubscribeNotes(SENDER);
         started.resolve(newUnsubscribe);
 
         expect(await pending).toEqual({ success: true, cancelled: true });
+        expect(await unsubscribed).toEqual({ success: true });
         expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
         expect(newUnsubscribe).toHaveBeenCalledTimes(1);
         expect(localThis.noteSubscriptions.size).toBe(0);
@@ -513,10 +514,11 @@ describe('Subscription manager', () => {
 
         const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
         await flush();
-        await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+        const unsubscribed = handlers.unsubscribeCommentsHandler('note-1', SENDER);
         started.resolve(newUnsubscribe);
 
         expect(await pending).toEqual({ success: true, cancelled: true });
+        expect(await unsubscribed).toEqual({ success: true });
         expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
         expect(newUnsubscribe).toHaveBeenCalledTimes(1);
         expect(commentSubscriptions.size).toBe(0);
@@ -536,13 +538,14 @@ describe('Subscription manager', () => {
       });
     });
 
-    describe('subscription store', () => {
+    describe('subscription store and desired state', () => {
       beforeEach(() => {
         localThis.commentSubscriptions = new Map();
         localThis.deps.subscribeToComments = jest.fn().mockReturnValue(jest.fn());
         localThis.store = {
+          hydrate: jest.fn().mockResolvedValue({ notes: [], comments: [] }),
           saveNote: jest.fn(), removeNote: jest.fn(), saveComment: jest.fn(),
-          removeComment: jest.fn(), removeTab: jest.fn(), isDegraded: jest.fn()
+          removeComment: jest.fn(), removeTab: jest.fn()
         };
         localThis.build5 = (extra = {}) => localThis.build2({
           commentSubscriptions: localThis.commentSubscriptions,
@@ -552,13 +555,13 @@ describe('Subscription manager', () => {
         });
       });
 
-      it('should store a note subscription once it is registered', async () => {
+      it('should store the descriptor of a note subscribe request', async () => {
         await localThis.build5().subscribeNotes('https://example.com', SENDER);
 
         expect(localThis.store.saveNote).toHaveBeenCalledWith('123-0', { tabId: 123, frameId: 0, url: 'https://example.com' });
       });
 
-      it('should store a comment subscription once it is registered', async () => {
+      it('should store the descriptor of a comment subscribe request', async () => {
         await localThis.build5().subscribeCommentsHandler('note-1', SENDER);
 
         expect(localThis.store.saveComment).toHaveBeenCalledWith('123-note-1', { tabId: 123, noteId: 'note-1', tabUrl: undefined });
@@ -567,23 +570,19 @@ describe('Subscription manager', () => {
         expect(localThis.store.saveComment).toHaveBeenCalledWith('123-note-2', { tabId: 123, noteId: 'note-2', tabUrl: 'https://example.com/page' });
       });
 
-      it('should not store a cancelled subscribe', async () => {
-        const started = deferred();
-        const handlers = localThis.build5({
-          subscribeToNotesForUrl: jest.fn(() => started.promise),
-          subscribeToComments: jest.fn(() => started.promise)
-        });
+      it('should keep a desired entry when a page-side subscribe fails', async () => {
+        localThis.deps.getCurrentUser.mockResolvedValue(null);
+        const handlers = localThis.build5();
 
-        const notes = handlers.subscribeNotes('https://example.com', SENDER);
-        const comments = handlers.subscribeCommentsHandler('note-1', SENDER);
-        await flush();
-        await handlers.unsubscribeNotes(SENDER);
-        await handlers.unsubscribeCommentsHandler('note-1', SENDER);
-        started.resolve(jest.fn());
-        await Promise.all([notes, comments]);
+        const notes = await handlers.subscribeNotes('https://example.com', SENDER);
+        const comments = await handlers.subscribeCommentsHandler('note-1', SENDER);
 
-        expect(localThis.store.saveNote).not.toHaveBeenCalled();
-        expect(localThis.store.saveComment).not.toHaveBeenCalled();
+        expect(notes.success).toBe(false);
+        expect(comments.success).toBe(false);
+        expect(localThis.store.saveNote).toHaveBeenCalledTimes(1);
+        expect(localThis.store.removeNote).not.toHaveBeenCalled();
+        expect(localThis.store.removeComment).not.toHaveBeenCalled();
+        expect(await handlers.getRealtimeSyncStatus()).toEqual({ success: true, degraded: true, restorable: true });
       });
 
       it('should forget the descriptor on unsubscribe, even with no registered entry', async () => {
@@ -596,18 +595,20 @@ describe('Subscription manager', () => {
         expect(localThis.store.removeComment).toHaveBeenCalledWith('123-note-1');
       });
 
-      it('should forget every descriptor of a closed tab', () => {
-        localThis.build5().releaseTab(123);
+      it('should forget every descriptor of a closed tab', async () => {
+        await localThis.build5().releaseTab(123);
 
         expect(localThis.store.removeTab).toHaveBeenCalledWith(123);
       });
 
-      it('should forget the descriptor when a listener is cleaned up because its tab is unreachable', async () => {
+      it('should remove only its own entry when its tab is unreachable', async () => {
         const callbacks = {};
         localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('closed'));
+        const unsubscribeNote = jest.fn();
+        const unsubscribeComment = jest.fn();
         const handlers = localThis.build5({
-          subscribeToNotesForUrl: jest.fn((url, uid, email, onNotes) => { callbacks.notes = onNotes; return jest.fn(); }),
-          subscribeToComments: jest.fn((noteId, user, onComments) => { callbacks.comments = onComments; return jest.fn(); })
+          subscribeToNotesForUrl: jest.fn((url, uid, email, onNotes) => { callbacks.notes = onNotes; return unsubscribeNote; }),
+          subscribeToComments: jest.fn((noteId, user, onComments) => { callbacks.comments = onComments; return unsubscribeComment; })
         });
 
         await handlers.subscribeNotes('https://example.com', SENDER);
@@ -618,6 +619,25 @@ describe('Subscription manager', () => {
 
         expect(localThis.store.removeNote).toHaveBeenCalledWith('123-0');
         expect(localThis.store.removeComment).toHaveBeenCalledWith('123-note-1');
+        expect(unsubscribeNote).toHaveBeenCalledTimes(1);
+        expect(unsubscribeComment).toHaveBeenCalledTimes(1);
+        expect(await handlers.getRealtimeSyncStatus()).toEqual({ success: true, degraded: false, restorable: true });
+      });
+
+      it('should keep a newer entry when an older listener finds its tab unreachable', async () => {
+        const callbacks = [];
+        localThis.mockChromeTabs.sendMessage.mockRejectedValue(new Error('closed'));
+        const handlers = localThis.build5({
+          subscribeToNotesForUrl: jest.fn((url, uid, email, onNotes) => { callbacks.push(onNotes); return jest.fn(); })
+        });
+
+        await handlers.subscribeNotes('https://example.com/a', SENDER);
+        await handlers.subscribeNotes('https://example.com/b', SENDER);
+        callbacks[0]([]);
+        await flush();
+
+        expect(localThis.store.removeNote).not.toHaveBeenCalled();
+        expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/b');
       });
 
       it('should work without a store', async () => {
@@ -629,103 +649,101 @@ describe('Subscription manager', () => {
           .resolves.toEqual({ success: true, degraded: false, restorable: false });
       });
 
-      it('should report whether real-time sync is degraded', async () => {
-        localThis.store.isDegraded.mockResolvedValue(true);
+      it('should derive degraded from desired entries that have no listener', async () => {
         const handlers = localThis.build5();
 
-        await expect(handlers.getRealtimeSyncStatus())
-          .resolves.toEqual({ success: true, degraded: true, restorable: true });
+        await handlers.subscribeNotes('https://example.com', SENDER);
+        expect((await handlers.getRealtimeSyncStatus()).degraded).toBe(false);
+
+        localThis.noteSubscriptions.clear();
+        expect((await handlers.getRealtimeSyncStatus()).degraded).toBe(true);
+
+        await handlers.unsubscribeNotes(SENDER);
+        await handlers.subscribeCommentsHandler('note-1', SENDER);
+        localThis.commentSubscriptions.clear();
+        expect((await handlers.getRealtimeSyncStatus()).degraded).toBe(true);
+      });
+
+      describe('hydration', () => {
+        it('should finish hydrating before requests, and let the requests win per key', async () => {
+          const hydrated = deferred();
+          localThis.store.hydrate.mockReturnValue(hydrated.promise);
+          const subscribe = jest.fn().mockReturnValue(jest.fn());
+          const handlers = localThis.build5({ subscribeToNotesForUrl: subscribe });
+
+          const request = handlers.subscribeNotes('https://example.com/new', SENDER);
+          await flush();
+          expect(subscribe).not.toHaveBeenCalled();
+
+          hydrated.resolve({
+            notes: [
+              { subKey: '123-0', tabId: 123, frameId: 0, url: 'https://example.com/old' },
+              { subKey: '123-1', tabId: 123, frameId: 1, url: 'https://example.com/frame' }
+            ],
+            comments: [{ subKey: '123-note-9', tabId: 123, noteId: 'note-9' }]
+          });
+
+          expect(await request).toEqual({ success: true });
+          expect(subscribe).toHaveBeenCalledTimes(1);
+          expect(subscribe.mock.calls[0][0]).toBe('https://example.com/new');
+          expect(localThis.store.hydrate).toHaveBeenCalledTimes(1);
+          // The hydrated entries of other keys are desired but have no listener yet
+          expect(await handlers.getRealtimeSyncStatus()).toEqual({ success: true, degraded: true, restorable: true });
+        });
+
+        it('should not bring back the stored entries of a tab that closed while hydrating', async () => {
+          const hydrated = deferred();
+          localThis.store.hydrate.mockReturnValue(hydrated.promise);
+          const handlers = localThis.build5();
+
+          const status = handlers.getRealtimeSyncStatus();
+          await flush();
+          const released = handlers.releaseTab(123);
+          hydrated.resolve({
+            notes: [{ subKey: '123-0', tabId: 123, frameId: 0, url: 'https://example.com/' }],
+            comments: [{ subKey: '123-note-1', tabId: 123, noteId: 'note-1' }]
+          });
+          await released;
+
+          expect(await status).toEqual({ success: true, degraded: false, restorable: true });
+        });
+
+        it('should keep working when the stored subscriptions cannot be read, and read them again later', async () => {
+          localThis.store.hydrate.mockResolvedValueOnce(null);
+          const handlers = localThis.build5();
+
+          await expect(handlers.subscribeNotes('https://example.com', SENDER)).resolves.toEqual({ success: true });
+          expect(localThis.store.hydrate).toHaveBeenCalledTimes(1);
+          expect(localThis.store.saveNote).toHaveBeenCalledWith('123-0', expect.any(Object));
+
+          await handlers.unsubscribeNotes(SENDER);
+          expect(localThis.store.hydrate).toHaveBeenCalledTimes(2);
+        });
+
+        it('should add what a later successful read returns without replacing the requests', async () => {
+          localThis.store.hydrate
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce({
+              notes: [
+                { subKey: '123-0', tabId: 123, frameId: 0, url: 'https://example.com/stale' },
+                { subKey: '123-1', tabId: 123, frameId: 1, url: 'https://example.com/frame' }
+              ],
+              comments: []
+            });
+          const handlers = localThis.build5();
+
+          await handlers.subscribeNotes('https://example.com/page', SENDER);
+          await handlers.getRealtimeSyncStatus();
+
+          expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/page');
+          expect(await handlers.getRealtimeSyncStatus()).toEqual({ success: true, degraded: true, restorable: true });
+        });
       });
     });
 
-    describe('restore claims', () => {
-      beforeEach(() => {
-        localThis.commentSubscriptions = new Map();
-        localThis.deps.subscribeToComments = jest.fn().mockReturnValue(jest.fn());
-        localThis.build6 = (extra = {}) => localThis.build2({
-          commentSubscriptions: localThis.commentSubscriptions,
-          subscribeToComments: localThis.deps.subscribeToComments,
-          ...extra
-        });
-      });
-
-      it('should claim a key nobody has touched, and refuse it afterwards', () => {
-        const handlers = localThis.build6();
-
-        const first = handlers.claimRestore('note', '123-0');
-
-        expect(typeof first).toBe('number');
-        expect(handlers.claimRestore('note', '123-0')).toBeNull();
-        expect(handlers.claimRestore('comment', '123-note-1')).not.toBeNull();
-        expect(handlers.claimRestore('comment', '123-note-1')).toBeNull();
-      });
-
-      it('should report whether a subscription is registered', async () => {
-        const handlers = localThis.build6();
-
-        expect(handlers.isSubscribed('note', '123-0')).toBe(false);
-        expect(handlers.isSubscribed('comment', '123-note-1')).toBe(false);
-
-        await handlers.subscribeNotes('https://example.com', SENDER);
-        await handlers.subscribeCommentsHandler('note-1', SENDER);
-
-        expect(handlers.isSubscribed('note', '123-0')).toBe(true);
-        expect(handlers.isSubscribed('comment', '123-note-1')).toBe(true);
-      });
-
-      it('should refuse to claim a key a content script already subscribed or unsubscribed', async () => {
-        const handlers = localThis.build6();
-
-        await handlers.subscribeNotes('https://example.com', SENDER);
-        await handlers.unsubscribeCommentsHandler('note-1', SENDER);
-
-        expect(handlers.claimRestore('note', '123-0')).toBeNull();
-        expect(handlers.claimRestore('comment', '123-note-1')).toBeNull();
-      });
-
-      it('should subscribe with the claimed generation', async () => {
-        const handlers = localThis.build6();
-        const noteGeneration = handlers.claimRestore('note', '123-0');
-        const commentGeneration = handlers.claimRestore('comment', '123-note-1');
-
-        const notes = await handlers.subscribeNotes('https://example.com', SENDER, noteGeneration);
-        const comments = await handlers.subscribeCommentsHandler('note-1', SENDER, commentGeneration);
-
-        expect(notes).toEqual({ success: true });
-        expect(comments).toEqual({ success: true });
-        expect(localThis.noteSubscriptions.has('123-0')).toBe(true);
-        expect(localThis.commentSubscriptions.has('123-note-1')).toBe(true);
-      });
-
-      it('should cancel a restore when a content script acted after the claim, on every retry', async () => {
-        const handlers = localThis.build6();
-        const noteGeneration = handlers.claimRestore('note', '123-0');
-        const commentGeneration = handlers.claimRestore('comment', '123-note-1');
-
-        await handlers.unsubscribeNotes(SENDER);
-        await handlers.subscribeCommentsHandler('note-1', SENDER);
-        const notes = await handlers.subscribeNotes('https://example.com/old', SENDER, noteGeneration);
-        const comments = await handlers.subscribeCommentsHandler('note-1', SENDER, commentGeneration);
-
-        expect(notes).toEqual({ success: true, cancelled: true });
-        expect(comments).toEqual({ success: true, cancelled: true });
-        expect(localThis.deps.subscribeToNotesForUrl).not.toHaveBeenCalled();
-        expect(localThis.noteSubscriptions.size).toBe(0);
-      });
-
-      it('should not create a generation entry when a closed tab unsubscribes', async () => {
-        const handlers = localThis.build6();
-
-        handlers.releaseTab(123);
-        await handlers.unsubscribeNotes(SENDER);
-        await handlers.unsubscribeCommentsHandler('note-1', SENDER);
-
-        expect(handlers.claimRestore('note', '123-0')).not.toBeNull();
-        expect(handlers.claimRestore('comment', '123-note-1')).not.toBeNull();
-      });
-
+    describe('closed tabs', () => {
       it('should keep the second oldest closed tab when the limit is passed', async () => {
-        const handlers = localThis.build6();
+        const handlers = localThis.build2();
 
         for (let tabId = 1; tabId <= 501; tabId += 1) {
           handlers.releaseTab(tabId);
@@ -744,10 +762,11 @@ describe('Subscription manager', () => {
 
         const pending = handlers.subscribeNotes('https://example.com', SENDER);
         await flush();
-        await handlers.unsubscribeNotes(SENDER);
+        const unsubscribed = handlers.unsubscribeNotes(SENDER);
         user.resolve(localThis.mockUser);
 
         expect(await pending).toEqual({ success: true, cancelled: true });
+        expect(await unsubscribed).toEqual({ success: true });
         expect(localThis.deps.subscribeToNotesForUrl).not.toHaveBeenCalled();
         expect(localThis.noteSubscriptions.has('123-0')).toBe(false);
       });
@@ -763,32 +782,33 @@ describe('Subscription manager', () => {
 
         const pendingOld = handlers.subscribeNotes('https://example.com/old', SENDER);
         await flush();
-        await handlers.subscribeNotes('https://example.com/new', SENDER);
+        const pendingNew = handlers.subscribeNotes('https://example.com/new', SENDER);
         user.resolve(localThis.mockUser);
 
         expect(await pendingOld).toEqual({ success: true, cancelled: true });
+        expect(await pendingNew).toEqual({ success: true });
         expect(subscribe).toHaveBeenCalledTimes(1);
         expect(newUnsubscribe).not.toHaveBeenCalled();
         expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/new');
       });
 
-      it('should release a listener that finishes starting after an unsubscribe', async () => {
+      it('should release the new listener when an unsubscribe arrives during an in-flight subscribe', async () => {
         const lateUnsubscribe = jest.fn();
         const started = deferred();
-        const subscribe = jest.fn(() => started.promise);
-        const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+        const handlers = localThis.build2({ subscribeToNotesForUrl: jest.fn(() => started.promise) });
 
         const pending = handlers.subscribeNotes('https://example.com', SENDER);
         await flush();
-        await handlers.unsubscribeNotes(SENDER);
+        const unsubscribed = handlers.unsubscribeNotes(SENDER);
         started.resolve(lateUnsubscribe);
 
         expect(await pending).toEqual({ success: true, cancelled: true });
+        expect(await unsubscribed).toEqual({ success: true });
         expect(lateUnsubscribe).toHaveBeenCalledTimes(1);
         expect(localThis.noteSubscriptions.has('123-0')).toBe(false);
       });
 
-      it('should keep the newer subscription when an older one finishes starting late', async () => {
+      it('should leave exactly one listener, for the latest request, when a subscribe is replaced in flight', async () => {
         const oldUnsubscribe = jest.fn();
         const newUnsubscribe = jest.fn();
         const oldStarted = deferred();
@@ -799,16 +819,19 @@ describe('Subscription manager', () => {
 
         const pendingOld = handlers.subscribeNotes('https://example.com/old', SENDER);
         await flush();
-        await handlers.subscribeNotes('https://example.com/new', SENDER);
+        const pendingNew = handlers.subscribeNotes('https://example.com/new', SENDER);
         oldStarted.resolve(oldUnsubscribe);
 
         expect(await pendingOld).toEqual({ success: true, cancelled: true });
+        expect(await pendingNew).toEqual({ success: true });
+        expect(subscribe).toHaveBeenCalledTimes(2);
         expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
         expect(newUnsubscribe).not.toHaveBeenCalled();
+        expect(localThis.noteSubscriptions.size).toBe(1);
         expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/new');
       });
 
-      it('should release an older listener at once when a newer subscribe already finished', async () => {
+      it('should start only the latest of several requests queued behind an in-flight subscribe', async () => {
         const oldUnsubscribe = jest.fn();
         const oldStarted = deferred();
         const subscribe = jest.fn()
@@ -818,11 +841,14 @@ describe('Subscription manager', () => {
 
         const pendingOld = handlers.subscribeNotes('https://example.com/a', SENDER);
         await flush();
-        await handlers.subscribeNotes('https://example.com/b', SENDER);
-        await handlers.subscribeNotes('https://example.com/c', SENDER);
+        const second = handlers.subscribeNotes('https://example.com/b', SENDER);
+        const third = handlers.subscribeNotes('https://example.com/c', SENDER);
         oldStarted.resolve(oldUnsubscribe);
-        await pendingOld;
 
+        expect(await pendingOld).toEqual({ success: true, cancelled: true });
+        expect(await second).toEqual({ success: true, cancelled: true });
+        expect(await third).toEqual({ success: true });
+        expect(subscribe).toHaveBeenCalledTimes(2);
         expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
         expect(localThis.noteSubscriptions.get('123-0').url).toBe('https://example.com/c');
       });
@@ -838,23 +864,28 @@ describe('Subscription manager', () => {
         expect(localThis.noteSubscriptions.has('123-0')).toBe(true);
       });
 
-      it('should report a cancel even when the newer subscribe fails fast', async () => {
+      it('should report a cancel when the newer subscribe fails, and keep that entry desired', async () => {
         const started = deferred();
         const oldUnsubscribe = jest.fn();
         localThis.deps.getCurrentUser
           .mockResolvedValueOnce(localThis.mockUser)
           .mockResolvedValueOnce(null);
         const subscribe = jest.fn(() => started.promise);
-        const handlers = localThis.build2({ subscribeToNotesForUrl: subscribe });
+        const handlers = localThis.build2({
+          subscribeToNotesForUrl: subscribe,
+          subscriptionStore: { hydrate: jest.fn().mockResolvedValue({ notes: [], comments: [] }), saveNote: jest.fn(), removeNote: jest.fn() }
+        });
 
         const pendingOld = handlers.subscribeNotes('https://example.com/old', SENDER);
         await flush();
-        const newer = await handlers.subscribeNotes('https://example.com/new', SENDER);
+        const newer = handlers.subscribeNotes('https://example.com/new', SENDER);
         started.resolve(oldUnsubscribe);
 
-        expect(newer.success).toBe(false);
+        expect((await newer).success).toBe(false);
         expect(await pendingOld).toEqual({ success: true, cancelled: true });
         expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
+        expect(localThis.noteSubscriptions.size).toBe(0);
+        expect((await handlers.getRealtimeSyncStatus()).degraded).toBe(true);
       });
 
       it('should log a failing release instead of failing the subscribe', async () => {
@@ -864,10 +895,11 @@ describe('Subscription manager', () => {
 
         const pending = handlers.subscribeNotes('https://example.com', SENDER);
         await flush();
-        await handlers.unsubscribeNotes(SENDER);
+        const unsubscribed = handlers.unsubscribeNotes(SENDER);
         started.resolve(failing);
 
-        expect(await pending).toEqual({ success: true, cancelled: true, released: false });
+        expect(await pending).toEqual({ success: true, cancelled: true });
+        expect(await unsubscribed).toEqual({ success: true, released: false });
         expect(localThis.mockLog.error).toHaveBeenCalledWith(
           expect.stringContaining('Failed to release a subscription'),
           '123-0',
@@ -881,10 +913,11 @@ describe('Subscription manager', () => {
 
         const pending = handlers.subscribeNotes('https://example.com', SENDER);
         await flush();
-        await handlers.unsubscribeNotes(SENDER);
+        const unsubscribed = handlers.unsubscribeNotes(SENDER);
         started.resolve(undefined);
 
-        expect(await pending).toEqual({ success: true, cancelled: true, released: false });
+        expect(await pending).toEqual({ success: true, cancelled: true });
+        expect(await unsubscribed).toEqual({ success: true, released: false });
         expect(localThis.mockLog.warn).toHaveBeenCalledWith(
           expect.stringContaining('no unsubscribe function'),
           '123-0'
@@ -919,9 +952,10 @@ describe('Subscription manager', () => {
         await handlers.subscribeNotes('https://example.com/a', SENDER);
         const pending = handlers.subscribeNotes('https://example.com/b', SENDER);
         await flush();
-        await handlers.unsubscribeNotes(SENDER);
+        const unsubscribed = handlers.unsubscribeNotes(SENDER);
         second.resolve(jest.fn());
         await pending;
+        await unsubscribed;
 
         expect(first).toHaveBeenCalledTimes(1);
         expect(localThis.noteSubscriptions.has('123-0')).toBe(false);
@@ -962,10 +996,11 @@ describe('Subscription manager', () => {
 
         const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
         await flush();
-        await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+        const unsubscribed = handlers.unsubscribeCommentsHandler('note-1', SENDER);
         user.resolve(localThis.mockUser);
 
         expect(await pending).toEqual({ success: true, cancelled: true });
+        expect(await unsubscribed).toEqual({ success: true });
         expect(localThis.deps.subscribeToComments).not.toHaveBeenCalled();
         expect(localThis.commentSubscriptions.has('123-note-1')).toBe(false);
       });
@@ -981,10 +1016,11 @@ describe('Subscription manager', () => {
 
         const pendingOld = handlers.subscribeCommentsHandler('note-1', SENDER);
         await flush();
-        await handlers.subscribeCommentsHandler('note-1', SENDER);
+        const pendingNew = handlers.subscribeCommentsHandler('note-1', SENDER);
         user.resolve(localThis.mockUser);
 
         expect(await pendingOld).toEqual({ success: true, cancelled: true });
+        expect(await pendingNew).toEqual({ success: true });
         expect(subscribe).toHaveBeenCalledTimes(1);
         expect(newUnsubscribe).not.toHaveBeenCalled();
         expect(localThis.commentSubscriptions.get('123-note-1')).toBe(newUnsubscribe);
@@ -997,15 +1033,16 @@ describe('Subscription manager', () => {
 
         const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
         await flush();
-        await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+        const unsubscribed = handlers.unsubscribeCommentsHandler('note-1', SENDER);
         started.resolve(lateUnsubscribe);
 
         expect(await pending).toEqual({ success: true, cancelled: true });
+        expect(await unsubscribed).toEqual({ success: true });
         expect(lateUnsubscribe).toHaveBeenCalledTimes(1);
         expect(localThis.commentSubscriptions.has('123-note-1')).toBe(false);
       });
 
-      it('should keep the newer comment subscription when an older one finishes late', async () => {
+      it('should leave exactly one comment listener when a subscribe is replaced in flight', async () => {
         const oldUnsubscribe = jest.fn();
         const newUnsubscribe = jest.fn();
         const oldStarted = deferred();
@@ -1016,12 +1053,14 @@ describe('Subscription manager', () => {
 
         const pendingOld = handlers.subscribeCommentsHandler('note-1', SENDER);
         await flush();
-        await handlers.subscribeCommentsHandler('note-1', SENDER);
+        const pendingNew = handlers.subscribeCommentsHandler('note-1', SENDER);
         oldStarted.resolve(oldUnsubscribe);
 
         expect(await pendingOld).toEqual({ success: true, cancelled: true });
+        expect(await pendingNew).toEqual({ success: true });
         expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
         expect(newUnsubscribe).not.toHaveBeenCalled();
+        expect(localThis.commentSubscriptions.size).toBe(1);
         expect(localThis.commentSubscriptions.get('123-note-1')).toBe(newUnsubscribe);
       });
 
@@ -1033,10 +1072,11 @@ describe('Subscription manager', () => {
 
           const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
           await flush();
-          await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+          const unsubscribed = handlers.unsubscribeCommentsHandler('note-1', SENDER);
           started.resolve(late);
 
-          expect(await pending).toEqual({ success: true, cancelled: true, released: false });
+          expect(await pending).toEqual({ success: true, cancelled: true });
+          expect(await unsubscribed).toEqual({ success: true, released: false });
         }
         expect(localThis.mockLog.error).toHaveBeenCalledWith(
           expect.stringContaining('Failed to release a subscription'),
@@ -1081,9 +1121,10 @@ describe('Subscription manager', () => {
         await handlers.subscribeCommentsHandler('note-1', SENDER);
         const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
         await flush();
-        await handlers.unsubscribeCommentsHandler('note-1', SENDER);
+        const unsubscribed = handlers.unsubscribeCommentsHandler('note-1', SENDER);
         second.resolve(jest.fn());
         await pending;
+        await unsubscribed;
 
         expect(first).toHaveBeenCalledTimes(1);
         expect(localThis.commentSubscriptions.has('123-note-1')).toBe(false);
@@ -1129,7 +1170,7 @@ describe('Subscription manager', () => {
         localThis.commentSubscriptions.set('123-note-2', unsubs.c2);
         localThis.commentSubscriptions.set('12-note-1', unsubs.cOther);
 
-        localThis.build4().releaseTab(123);
+        await localThis.build4().releaseTab(123);
 
         for (const key of ['tab0', 'tab1', 'c1', 'c2']) {
           expect(unsubs[key]).toHaveBeenCalledTimes(1);
@@ -1148,7 +1189,7 @@ describe('Subscription manager', () => {
         localThis.commentSubscriptions.set('123-note-1', failing);
         localThis.commentSubscriptions.set('123-note-2', healthy);
 
-        localThis.build4().releaseTab(123);
+        await localThis.build4().releaseTab(123);
 
         expect(healthy).toHaveBeenCalledTimes(2);
         expect(localThis.noteSubscriptions.size).toBe(0);
@@ -1168,10 +1209,11 @@ describe('Subscription manager', () => {
 
         const pending = handlers.subscribeNotes('https://example.com', SENDER);
         await flush();
-        handlers.releaseTab(123);
+        const released = handlers.releaseTab(123);
         started.resolve(lateUnsubscribe);
 
         expect(await pending).toEqual({ success: true, cancelled: true });
+        await released;
         expect(lateUnsubscribe).toHaveBeenCalledTimes(1);
         expect(localThis.noteSubscriptions.size).toBe(0);
       });
@@ -1183,10 +1225,11 @@ describe('Subscription manager', () => {
 
         const pending = handlers.subscribeCommentsHandler('note-1', SENDER);
         await flush();
-        handlers.releaseTab(123);
+        const released = handlers.releaseTab(123);
         started.resolve(lateUnsubscribe);
 
         expect(await pending).toEqual({ success: true, cancelled: true });
+        await released;
         expect(lateUnsubscribe).toHaveBeenCalledTimes(1);
         expect(localThis.commentSubscriptions.size).toBe(0);
       });
@@ -1198,10 +1241,11 @@ describe('Subscription manager', () => {
 
         const pending = handlers.subscribeNotes('https://example.com', SENDER);
         await flush();
-        handlers.releaseTab(123);
+        const released = handlers.releaseTab(123);
         user.resolve(localThis.mockUser);
 
         expect(await pending).toEqual({ success: true, cancelled: true });
+        await released;
         expect(localThis.deps.subscribeToNotesForUrl).not.toHaveBeenCalled();
       });
 
@@ -1212,10 +1256,11 @@ describe('Subscription manager', () => {
 
         const pending = handlers.subscribeNotes('https://example.com', SENDER);
         await flush();
-        handlers.releaseTab(456);
+        const released = handlers.releaseTab(456);
         started.resolve(unsubscribe);
 
         expect(await pending).toEqual({ success: true });
+        await released;
         expect(unsubscribe).not.toHaveBeenCalled();
         expect(localThis.noteSubscriptions.has('123-0')).toBe(true);
       });
@@ -1228,12 +1273,13 @@ describe('Subscription manager', () => {
 
         const pendingOld = handlers.subscribeNotes('https://example.com/old', SENDER);
         await flush();
-        handlers.releaseTab(123);
+        const released = handlers.releaseTab(123);
         const late = await handlers.subscribeNotes('https://example.com/new', SENDER);
         oldStarted.resolve(oldUnsubscribe);
 
         expect(late).toEqual({ success: true, cancelled: true });
         expect(await pendingOld).toEqual({ success: true, cancelled: true });
+        await released;
         expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
         expect(subscribe).toHaveBeenCalledTimes(1);
         expect(localThis.noteSubscriptions.size).toBe(0);
@@ -1246,11 +1292,11 @@ describe('Subscription manager', () => {
 
         const pending = handlers.subscribeNotes('https://example.com', { tab: { id: 1234 }, frameId: 0 });
         await flush();
-        handlers.releaseTab(12);
-        handlers.releaseTab(123);
+        const released = Promise.all([handlers.releaseTab(12), handlers.releaseTab(123)]);
         started.resolve(unsubscribe);
 
         expect(await pending).toEqual({ success: true });
+        await released;
         expect(unsubscribe).not.toHaveBeenCalled();
         expect(localThis.noteSubscriptions.has('1234-0')).toBe(true);
       });
@@ -1265,8 +1311,8 @@ describe('Subscription manager', () => {
           subscribeToComments: subscribeComments
         });
 
-        handlers.releaseTab(123);
-        handlers.releaseTab(123);
+        await handlers.releaseTab(123);
+        await handlers.releaseTab(123);
         const notes = await handlers.subscribeNotes('https://example.com', SENDER);
         const comments = await handlers.subscribeCommentsHandler('note-1', SENDER);
 
@@ -1282,7 +1328,7 @@ describe('Subscription manager', () => {
       it('should keep subscribing for other tabs after one closed', async () => {
         const handlers = localThis.build4();
 
-        handlers.releaseTab(123);
+        await handlers.releaseTab(123);
         const result = await handlers.subscribeNotes('https://example.com', { tab: { id: 456 }, frameId: 0 });
 
         expect(result).toEqual({ success: true });
@@ -1302,12 +1348,12 @@ describe('Subscription manager', () => {
         expect(newest).toEqual({ success: true, cancelled: true });
       });
 
-      it('should warn about entries without an unsubscribe function and still drop them', () => {
+      it('should warn about entries without an unsubscribe function and still drop them', async () => {
         localThis.noteSubscriptions.set('123-0', {});
         localThis.noteSubscriptions.set('123-1', null);
         localThis.commentSubscriptions.set('123-note-1', undefined);
 
-        localThis.build4().releaseTab(123);
+        await localThis.build4().releaseTab(123);
 
         expect(localThis.mockLog.warn).toHaveBeenCalledWith(expect.stringContaining('no unsubscribe function'), '123-0');
         expect(localThis.mockLog.warn).toHaveBeenCalledWith(expect.stringContaining('no unsubscribe function'), '123-1');
@@ -1317,16 +1363,16 @@ describe('Subscription manager', () => {
         expect(localThis.mockLog.error).not.toHaveBeenCalled();
       });
 
-      it('should not log a release as done when the unsubscribe throws', () => {
+      it('should not log a release as done when the unsubscribe throws', async () => {
         localThis.noteSubscriptions.set('123-0', { unsubscribe: () => { throw new Error('boom'); } });
 
-        localThis.build4().releaseTab(123);
+        await localThis.build4().releaseTab(123);
 
         expect(localThis.mockLog.debug).not.toHaveBeenCalledWith(expect.stringContaining('Released a subscription'), '123-0');
       });
 
-      it('should do nothing for a tab without subscriptions', () => {
-        expect(() => localThis.build4().releaseTab(999)).not.toThrow();
+      it('should do nothing for a tab without subscriptions', async () => {
+        await expect(localThis.build4().releaseTab(999)).resolves.toBeUndefined();
       });
     });
 
@@ -1514,6 +1560,30 @@ describe('Subscription manager', () => {
   });
 
   describe('error handling', () => {
+    it('should return failures and log them when the store throws while a request is recorded', async () => {
+      const boom = () => { throw new Error('store broke'); };
+      const subscriptionStore = {
+        hydrate: jest.fn().mockResolvedValue({ notes: [], comments: [] }),
+        saveNote: boom, saveComment: boom, removeNote: boom, removeComment: boom, removeTab: jest.fn()
+      };
+      const handlers = localThis.build({
+        subscribeToNotesForUrl: jest.fn(), subscribeToComments: jest.fn(), subscriptionStore
+      });
+
+      await expect(handlers.subscribeNotes('https://example.com', SENDER))
+        .resolves.toEqual({ success: false, error: 'store broke' });
+      await expect(handlers.subscribeCommentsHandler('note-1', SENDER))
+        .resolves.toEqual({ success: false, error: 'store broke' });
+      await expect(handlers.unsubscribeNotes(SENDER))
+        .resolves.toEqual({ success: false, error: 'store broke' });
+      await expect(handlers.unsubscribeCommentsHandler('note-1', SENDER))
+        .resolves.toEqual({ success: false, error: 'store broke' });
+      expect(localThis.mockLog.error).toHaveBeenCalledWith('Subscribe notes error:', expect.any(Error));
+      expect(localThis.mockLog.error).toHaveBeenCalledWith('Subscribe comments error:', expect.any(Error));
+      expect(localThis.mockLog.error).toHaveBeenCalledWith('Unsubscribe notes error:', expect.any(Error));
+      expect(localThis.mockLog.error).toHaveBeenCalledWith('Unsubscribe comments error:', expect.any(Error));
+    });
+
   it('should return failures when the user cannot be determined for subscriptions', async () => {
     localThis.deps.getCurrentUser.mockRejectedValue(new Error('auth down'));
     localThis.deps.subscribeToNotesForUrl = jest.fn();

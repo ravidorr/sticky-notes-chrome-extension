@@ -1339,7 +1339,7 @@ describe('Background Handlers', () => {
 
     it('should expose the manager functions', () => {
       for (const name of ['subscribeNotes', 'unsubscribeNotes', 'subscribeCommentsHandler',
-        'unsubscribeCommentsHandler', 'releaseTab', 'claimRestore', 'isSubscribed', 'getRealtimeSyncStatus']) {
+        'unsubscribeCommentsHandler', 'releaseTab', 'restore', 'getRealtimeSyncStatus']) {
         expect(typeof localThis.subscriptionHandlers[name]).toBe('function');
       }
     });

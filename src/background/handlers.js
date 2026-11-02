@@ -363,8 +363,7 @@ export function createHandlers(deps = {}) {
     subscribeCommentsHandler,
     unsubscribeCommentsHandler,
     releaseTab,
-    claimRestore,
-    isSubscribed,
+    restore,
     getRealtimeSyncStatus
   } = subscriptions;
 
@@ -1232,8 +1231,7 @@ export function createHandlers(deps = {}) {
     subscribeCommentsHandler,
     unsubscribeCommentsHandler,
     releaseTab,
-    claimRestore,
-    isSubscribed,
+    restore,
     getRealtimeSyncStatus,
     // Badge management
     updateOrphanedBadge,
