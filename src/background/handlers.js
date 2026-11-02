@@ -891,39 +891,56 @@ export function createHandlers(deps = {}) {
   }
 
   // Every subscribe and unsubscribe bumps the generation of its key (tab and frame for notes, tab
-  // and note for comments). A subscribe that sees a newer generation than the one it took was
+  // and note for comments). A subscribe that sees a different generation than the one it took was
   // superseded or cancelled: it stops, or releases the listener it just created, instead of
   // registering it. The latest request wins, even when it then fails before creating a listener.
   const noteSubGenerations = new Map();
   const commentSubGenerations = new Map();
   
+  // Generations come from one counter that never repeats, so removing a key (releaseTab) can never
+  // make a later subscribe reuse the number of an older one that is still starting
+  let lastGeneration = 0;
+  
   /**
-   * Bump and return the generation for a subscription key
+   * Take a new generation for a subscription key
    * @param {Map<string, number>} generations - Latest generation per subscription key
    * @param {string} subKey - Subscription key
    * @returns {number} The new generation
    */
   function bumpGeneration(generations, subKey) {
-    const generation = (generations.get(subKey) ?? 0) + 1;
-    generations.set(subKey, generation);
-    return generation;
+    lastGeneration += 1;
+    generations.set(subKey, lastGeneration);
+    return lastGeneration;
   }
   
   /**
-   * Release the listener of a subscribe that was superseded or cancelled while it was starting
-   * @param {Function} unsubscribe - Unsubscribe function returned by the subscribe call
-   * @param {string} subKey - Subscription key, for the log
+   * Cancel a subscribe that is still starting for a key, if there is one. A key that never
+   * subscribed (or was released with its tab) has nothing to cancel, so it gets no entry.
+   * @param {Map<string, number>} generations - Latest generation per subscription key
+   * @param {string} subKey - Subscription key
    */
-  function releaseCancelledListener(unsubscribe, subKey) {
+  function cancelPendingSubscribe(generations, subKey) {
+    if (generations.has(subKey)) {
+      bumpGeneration(generations, subKey);
+    }
+  }
+  
+  /**
+   * Release a listener, logging a missing unsubscribe function or a failing release
+   * @param {Function} unsubscribe - Unsubscribe function of the listener
+   * @param {string} subKey - Subscription key, for the log
+   * @param {string} reason - Why the listener is released, for the log
+   */
+  function releaseListener(unsubscribe, subKey, reason) {
     if (typeof unsubscribe !== 'function') {
-      log.warn('Cancelled subscription has no unsubscribe function:', subKey);
+      log.warn(`Subscription has no unsubscribe function (${reason}):`, subKey);
       return;
     }
     try {
       unsubscribe();
-      log.debug('Released a subscription cancelled while starting:', subKey);
+      log.debug(`Released a subscription (${reason}):`, subKey);
     } catch (error) {
-      log.error('Failed to release a cancelled subscription:', subKey, error);
+      log.error(`Failed to release a subscription (${reason}):`, subKey, error);
     }
   }
   
@@ -1016,7 +1033,7 @@ export function createHandlers(deps = {}) {
       // A newer subscribe or an unsubscribe arrived while this one was starting: release this
       // listener instead of letting it replace the newer one or outlive the unsubscribe
       if (noteSubGenerations.get(subKey) !== generation) {
-        releaseCancelledListener(unsubscribe, subKey);
+        releaseListener(unsubscribe, subKey, 'cancelled while starting');
         return { success: true, cancelled: true };
       }
       
@@ -1044,7 +1061,7 @@ export function createHandlers(deps = {}) {
       }
       
       const subKey = `${tabId}-${frameId}`;
-      bumpGeneration(noteSubGenerations, subKey);
+      cancelPendingSubscribe(noteSubGenerations, subKey);
       const sub = noteSubscriptions.get(subKey);
       if (sub) {
         sub.unsubscribe();
@@ -1145,7 +1162,7 @@ export function createHandlers(deps = {}) {
       // A newer subscribe or an unsubscribe arrived while this one was starting: release this
       // listener instead of letting it replace the newer one or outlive the unsubscribe
       if (commentSubGenerations.get(subKey) !== generation) {
-        releaseCancelledListener(unsubscribe, subKey);
+        releaseListener(unsubscribe, subKey, 'cancelled while starting');
         return { success: true, cancelled: true };
       }
       
@@ -1173,7 +1190,7 @@ export function createHandlers(deps = {}) {
       }
       
       const subKey = `${tabId}-${noteId}`;
-      bumpGeneration(commentSubGenerations, subKey);
+      cancelPendingSubscribe(commentSubGenerations, subKey);
       const unsub = commentSubscriptions.get(subKey);
       if (unsub) {
         unsub();
@@ -1476,6 +1493,39 @@ export function createHandlers(deps = {}) {
     }
   }
 
+  /**
+   * Release every note and comment subscription of a closed tab, in all of its frames, and
+   * forget its generations so a subscribe still starting for it is cancelled
+   * @param {number} tabId - ID of the closed tab
+   */
+  function releaseTab(tabId) {
+    const prefix = `${tabId}-`;
+    
+    for (const [subKey, sub] of [...noteSubscriptions.entries()]) {
+      if (subKey.startsWith(prefix)) {
+        releaseListener(sub?.unsubscribe, subKey, 'tab closed');
+        noteSubscriptions.delete(subKey);
+      }
+    }
+    
+    for (const [subKey, unsubscribe] of [...commentSubscriptions.entries()]) {
+      if (subKey.startsWith(prefix)) {
+        releaseListener(unsubscribe, subKey, 'tab closed');
+        commentSubscriptions.delete(subKey);
+      }
+    }
+    
+    // An in-flight subscribe compares its generation with the stored one, so removing the entry
+    // cancels it, and the maps do not keep an entry for every tab that ever subscribed
+    for (const generations of [noteSubGenerations, commentSubGenerations]) {
+      for (const subKey of [...generations.keys()]) {
+        if (subKey.startsWith(prefix)) {
+          generations.delete(subKey);
+        }
+      }
+    }
+  }
+
   return {
     handleMessage,
     handleLogin,
@@ -1499,6 +1549,7 @@ export function createHandlers(deps = {}) {
     unsubscribeNotes,
     subscribeCommentsHandler,
     unsubscribeCommentsHandler,
+    releaseTab,
     // Badge management
     updateOrphanedBadge,
     // Iframe support

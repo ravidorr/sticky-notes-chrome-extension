@@ -39,8 +39,8 @@ import {
 // Apply the logLevel preference (fire and forget; initLogLevel never rejects)
 initLogLevel();
 
-// Track active subscriptions by tab ID
-const noteSubscriptions = new Map(); // tabId -> { url: string, unsubscribe: Function }
+// Track active subscriptions, keyed per tab and frame (notes) or per tab and note (comments)
+const noteSubscriptions = new Map(); // `${tabId}-${frameId}` -> { url, frameId, unsubscribe }
 const commentSubscriptions = new Map(); // `${tabId}-${noteId}` -> unsubscribe Function
 
 // Track global shared notes subscription
@@ -281,29 +281,10 @@ export function bootstrap() {
 
   // Clean up subscriptions when tab is closed
   chrome.tabs.onRemoved.addListener((tabId) => {
-    // Clean up note subscriptions for this tab
-    const noteSub = noteSubscriptions.get(tabId);
-    if (noteSub) {
-      try {
-        noteSub.unsubscribe();
-      } catch (error) {
-        log.error('Error cleaning up note subscription:', error);
-      }
-      noteSubscriptions.delete(tabId);
-      log.debug('Cleaned up note subscription for tab', tabId);
-    }
-    
-    // Clean up comment subscriptions for this tab
-    for (const [key, unsubscribe] of commentSubscriptions.entries()) {
-      if (key.startsWith(`${tabId}-`)) {
-        try {
-          unsubscribe();
-        } catch (error) {
-          log.error('Error cleaning up comment subscription:', key, error);
-        }
-        commentSubscriptions.delete(key);
-        log.debug('Cleaned up comment subscription', key);
-      }
+    try {
+      handlers.releaseTab(tabId);
+    } catch (error) {
+      log.error('Failed to release the subscriptions of tab', tabId, error);
     }
   });
 
