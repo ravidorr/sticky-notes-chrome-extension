@@ -362,11 +362,9 @@ export function bootstrap() {
   // SDK load, when there are none)
   if (subscriptionStore) {
     restoreSubscriptions({
-      store: subscriptionStore,
       handlers,
       tabs: chrome.tabs,
-      webNavigation: chrome.webNavigation,
-      log
+      webNavigation: chrome.webNavigation
     }).catch((error) => log.error('Failed to restore real-time subscriptions:', error));
   }
 

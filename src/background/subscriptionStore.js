@@ -1,10 +1,14 @@
 /**
  * Subscription store
- * Keeps a description of the real-time subscriptions the background worker holds, in
- * chrome.storage.session, so a worker that Chrome stopped (which drops its Firestore listeners)
- * can restore them when it starts again. The session area survives a worker restart but is
- * cleared when the browser restarts and when the extension is reloaded, updated or disabled,
- * which is right: tab IDs are not valid after any of those.
+ * Keeps a description of the real-time subscriptions the background worker wants (see
+ * subscriptions.js), in chrome.storage.session, so a worker that Chrome stopped (which drops its
+ * Firestore listeners) can restore them when it starts again. The session area survives a worker
+ * restart but is cleared when the browser restarts and when the extension is reloaded, updated or
+ * disabled, which is right: tab IDs are not valid after any of those.
+ *
+ * Every change writes the whole state, so a failed write is fixed by the next write. The state is
+ * read once (hydrate). If that read fails, changes are kept in memory and nothing is written
+ * until a later read works, so the stored state that could not be read is never overwritten.
  */
 
 const SUBSCRIPTIONS_KEY = 'subscriptions';
@@ -12,39 +16,29 @@ const SUBSCRIPTIONS_KEY = 'subscriptions';
 /**
  * Normalize what was read from storage
  * @param {*} stored - Stored value
- * @returns {{ notes: Object, comments: Object, failed: string[] }} Subscription descriptors by
- *   subscription key, and the keys the last restore could not restore
+ * @returns {{ notes: Object, comments: Object }} Subscription descriptors by subscription key
  */
 function normalize(stored) {
   const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
   return {
     notes: isObject(stored?.notes) ? { ...stored.notes } : {},
-    comments: isObject(stored?.comments) ? { ...stored.comments } : {},
-    failed: Array.isArray(stored?.failed) ? stored.failed.filter((key) => typeof key === 'string') : []
+    comments: isObject(stored?.comments) ? { ...stored.comments } : {}
   };
-}
-
-/**
- * Check that a stored descriptor is still the one a caller saw
- * @param {Object|undefined} stored - Descriptor in the store
- * @param {Object} expected - Descriptor the caller loaded earlier (may carry extra fields, such as subKey)
- * @returns {boolean} True if every stored field has the expected value
- */
-function isSameDescriptor(stored, expected) {
-  return Boolean(stored) && Object.keys(stored).every((field) => stored[field] === expected[field]);
 }
 
 /**
  * Create a subscription store
  * Every operation runs through one queue, in call order, so callers can fire and forget without
- * two writes overtaking each other, and no operation ever rejects: failures are logged, and a
- * failed read makes load() return null.
+ * two writes overtaking each other, and no operation ever rejects: failures are logged.
  * @param {{ get: Function, set: Function }} area - A chrome.storage area (session)
  * @param {{ error: Function }} log - Logger
  * @returns {Object} The store
  */
 export function createSubscriptionStore(area, log) {
-  let state = null;
+  let state = { notes: {}, comments: {} };
+  let loaded = false;
+  // Changes made while the stored state could not be read, applied on top of it once it can be
+  let pending = [];
   let chain = Promise.resolve();
 
   /**
@@ -63,26 +57,40 @@ export function createSubscriptionStore(area, log) {
   }
 
   /**
-   * Read the stored descriptors once
+   * Write the whole state
    */
-  async function ensureLoaded() {
-    if (!state) {
-      const stored = await area.get([SUBSCRIPTIONS_KEY]);
-      state = normalize(stored?.[SUBSCRIPTIONS_KEY]);
-    }
+  async function save() {
+    await area.set({ [SUBSCRIPTIONS_KEY]: state });
   }
 
   /**
-   * Write the cached descriptors
+   * Read the stored state once, then apply the changes made before it could be read
+   * @returns {Promise<boolean>} True if the state is loaded
    */
-  async function save() {
-    try {
-      await area.set({ [SUBSCRIPTIONS_KEY]: state });
-    } catch (error) {
-      // The cached state holds a change that was not written: read storage again next time
-      state = null;
-      throw error;
+  async function ensureLoaded() {
+    if (loaded) {
+      return true;
     }
+    let stored;
+    try {
+      stored = await area.get([SUBSCRIPTIONS_KEY]);
+    } catch (error) {
+      log.error('Could not read the stored subscriptions:', error);
+      return false;
+    }
+    state = normalize(stored?.[SUBSCRIPTIONS_KEY]);
+    loaded = true;
+    if (pending.length > 0) {
+      pending.forEach((change) => change(state));
+      pending = [];
+      try {
+        await save();
+      } catch (error) {
+        // Memory holds the merged state; the next write writes it again
+        log.error('Could not write the merged subscriptions:', error);
+      }
+    }
+    return true;
   }
 
   /**
@@ -92,7 +100,10 @@ export function createSubscriptionStore(area, log) {
    */
   function update(change) {
     return enqueue(async () => {
-      await ensureLoaded();
+      if (!(await ensureLoaded())) {
+        pending.push(change);
+        return;
+      }
       change(state);
       await save();
     });
@@ -100,35 +111,19 @@ export function createSubscriptionStore(area, log) {
 
   return {
     /**
-     * Read every stored descriptor
+     * Read every stored descriptor (once; a later call after a failed read tries again)
      * @returns {Promise<{ notes: Object[], comments: Object[] }|null>} Descriptors, each with its
-     *   subKey, or null if storage could not be read
+     *   subKey and including the changes made while storage could not be read, or null if storage
+     *   still cannot be read
      */
-    load() {
+    hydrate() {
       return enqueue(async () => {
-        await ensureLoaded();
-        const withKey = (descriptors) => Object.entries(descriptors).map(([subKey, descriptor]) => ({ subKey, ...descriptor }));
+        if (!(await ensureLoaded())) {
+          return null;
+        }
+        const withKey = (descriptors) => Object.entries(descriptors)
+          .map(([subKey, descriptor]) => ({ subKey, ...descriptor }));
         return { notes: withKey(state.notes), comments: withKey(state.comments) };
-      }, null);
-    },
-
-    /**
-     * Read every stored descriptor, let the caller claim them, and record the keys it skipped as the
-     * failed list, all in one queue step. Operations queued before this one are in the snapshot, and
-     * operations queued after it (a content script that subscribes or unsubscribes meanwhile) run
-     * after the failed list was written, so none of them can be undone by it.
-     * @param {Function} claim - Called with the snapshot ({ notes, comments }, descriptors with their
-     *   subKey); returns an object with skippedKeys (`note:${subKey}` and `comment:${subKey}`)
-     * @returns {Promise<Object|null>} What claim returned, or null if storage could not be read or written
-     */
-    loadAndClaim(claim) {
-      return enqueue(async () => {
-        await ensureLoaded();
-        const withKey = (descriptors) => Object.entries(descriptors).map(([subKey, descriptor]) => ({ subKey, ...descriptor }));
-        const claimed = claim({ notes: withKey(state.notes), comments: withKey(state.comments) });
-        state.failed = [...claimed.skippedKeys];
-        await save();
-        return claimed;
       }, null);
     },
 
@@ -138,25 +133,14 @@ export function createSubscriptionStore(area, log) {
      * @param {{ tabId: number, frameId: number, url: string }} descriptor - What restore needs
      */
     saveNote(subKey, descriptor) {
-      return update((current) => {
-        current.notes[subKey] = descriptor;
-        current.failed = current.failed.filter((key) => key !== `note:${subKey}`);
-      });
+      return update((current) => { current.notes[subKey] = descriptor; });
     },
 
     /**
      * @param {string} subKey - `${tabId}-${frameId}`
-     * @param {Object} [expected] - If given, remove only when the stored descriptor still equals it,
-     *   so a newer descriptor saved under the same key in the meantime is kept
      */
-    removeNote(subKey, expected) {
-      return update((current) => {
-        if (expected && !isSameDescriptor(current.notes[subKey], expected)) {
-          return;
-        }
-        delete current.notes[subKey];
-        current.failed = current.failed.filter((key) => key !== `note:${subKey}`);
-      });
+    removeNote(subKey) {
+      return update((current) => { delete current.notes[subKey]; });
     },
 
     /**
@@ -165,24 +149,14 @@ export function createSubscriptionStore(area, log) {
      * @param {{ tabId: number, noteId: string, tabUrl?: string }} descriptor - What restore needs
      */
     saveComment(subKey, descriptor) {
-      return update((current) => {
-        current.comments[subKey] = descriptor;
-        current.failed = current.failed.filter((key) => key !== `comment:${subKey}`);
-      });
+      return update((current) => { current.comments[subKey] = descriptor; });
     },
 
     /**
      * @param {string} subKey - `${tabId}-${noteId}`
-     * @param {Object} [expected] - If given, remove only when the stored descriptor still equals it
      */
-    removeComment(subKey, expected) {
-      return update((current) => {
-        if (expected && !isSameDescriptor(current.comments[subKey], expected)) {
-          return;
-        }
-        delete current.comments[subKey];
-        current.failed = current.failed.filter((key) => key !== `comment:${subKey}`);
-      });
+    removeComment(subKey) {
+      return update((current) => { delete current.comments[subKey]; });
     },
 
     /**
@@ -197,7 +171,6 @@ export function createSubscriptionStore(area, log) {
       return update((current) => {
         current.notes = without(current.notes);
         current.comments = without(current.comments);
-        current.failed = current.failed.filter((key) => !key.slice(key.indexOf(':') + 1).startsWith(prefix));
       });
     },
 
@@ -208,45 +181,7 @@ export function createSubscriptionStore(area, log) {
       return update((current) => {
         current.notes = {};
         current.comments = {};
-        current.failed = [];
       });
-    },
-
-    /**
-     * Record the subscriptions the last restore could not restore. The list shrinks by itself when
-     * a content script (or a later restore) subscribes or unsubscribes for one of those keys.
-     * @param {string[]} keys - `note:${subKey}` and `comment:${subKey}` of the failed subscriptions
-     */
-    setFailed(keys) {
-      return update((current) => { current.failed = [...keys]; });
-    },
-
-    /**
-     * Add keys to the failed list (see setFailed). Unlike setFailed this keeps what is there, and it
-     * only adds keys whose descriptor is still stored: a key that was unsubscribed or whose tab was
-     * closed in the meantime (which removed its descriptor) is not brought back by a caller that
-     * learns of it late.
-     * @param {string[]} keys - `note:${subKey}` and `comment:${subKey}` of the failed subscriptions
-     */
-    addFailed(keys) {
-      return update((current) => {
-        const stored = (key) => {
-          const subKey = key.slice(key.indexOf(':') + 1);
-          return key.startsWith('note:') ? subKey in current.notes : subKey in current.comments;
-        };
-        current.failed = [...new Set([...current.failed, ...keys.filter(stored)])];
-      });
-    },
-
-    /**
-     * @returns {Promise<boolean>} True while some subscription the last restore could not restore
-     *   is still unrestored
-     */
-    isDegraded() {
-      return enqueue(async () => {
-        await ensureLoaded();
-        return state.failed.length > 0;
-      }, false);
     }
   };
 }
