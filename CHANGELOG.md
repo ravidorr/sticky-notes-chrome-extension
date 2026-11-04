@@ -23,6 +23,7 @@ bump is listed under the next version bump after it.
   `VITE_FIREBASE_*` repository variables to the build, and a release build (`REQUIRE_FIREBASE_CONFIG=true`) fails
   when one is missing or still a placeholder, so a build without the config can no longer ship. The affected
   versions are the ones published by the workflow since it was added (#14).
+- `SECURITY.md` lists 1.20.33 as the supported version.
 
 ## [1.20.32] - 2026-11-02
 
