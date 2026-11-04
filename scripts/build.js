@@ -10,13 +10,14 @@
  *   npm run build:analyze   - Build with bundle analysis
  */
 
-import { build } from 'vite';
+import { build, loadEnv } from 'vite';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { copyFileSync, mkdirSync, existsSync, rmSync, readdirSync, createWriteStream, readFileSync, writeFileSync } from 'fs';
 import archiver from 'archiver';
 import { createChromeManifestVersion } from './manifest-version.mjs';
 import { OAUTH_CLIENTS, buildManifest } from './manifest-build.mjs';
+import { missingFirebaseEnv } from './firebase-env.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -42,6 +43,18 @@ const targetBrowser = browserArg ? browserArg.split('=')[1] : 'chrome';
 if (!SUPPORTED_BROWSERS.includes(targetBrowser)) {
   console.error(`Unsupported browser: ${targetBrowser}. Supported: ${SUPPORTED_BROWSERS.join(', ')}`);
   process.exit(1);
+}
+
+// A release build (the publish workflows set REQUIRE_FIREBASE_CONFIG=true) must not ship without the
+// Firebase config: the extension would sign in as a local mock user. .env is not in the repository,
+// so CI has to pass the values in. loadEnv reads .env and the VITE_ variables of the environment.
+if (process.env.REQUIRE_FIREBASE_CONFIG === 'true') {
+  const missing = missingFirebaseEnv(loadEnv('production', rootDir, 'VITE_'));
+  if (missing.length > 0) {
+    console.error(`Firebase config is missing or still a placeholder: ${missing.join(', ')}`);
+    console.error('Set them as repository variables (see docs/CHROME_WEB_STORE_PUBLISHING.md).');
+    process.exit(1);
+  }
 }
 
 // Get manifest filename for target browser

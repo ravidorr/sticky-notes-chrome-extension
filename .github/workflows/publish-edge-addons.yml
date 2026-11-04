@@ -56,6 +56,14 @@ jobs:
         run: npm ci
       - name: Build and package Edge extension
         if: steps.gate.outputs.submit == 'true'
+        env:
+          REQUIRE_FIREBASE_CONFIG: 'true'
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
         run: npm run build:edge
       - name: Upload to Edge Add-ons and publish
         if: steps.gate.outputs.submit == 'true'
