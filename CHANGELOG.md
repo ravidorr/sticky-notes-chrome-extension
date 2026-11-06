@@ -13,6 +13,18 @@ bump is listed under the next version bump after it.
 
 ## [Unreleased]
 
+## [1.20.33] - 2026-11-04
+
+### Fixed
+
+- The Chrome Web Store build could not sign in: it showed "Local User" (`local@example.com`) instead of opening the
+  Google prompt. The release workflows build in CI, where `.env` does not exist, so the build had no Firebase config
+  and `signInWithGoogle` fell back to the local mock user. The Chrome and Edge release workflows now pass the six
+  `VITE_FIREBASE_*` repository variables to the build, and a release build (`REQUIRE_FIREBASE_CONFIG=true`) fails
+  when one is missing or still a placeholder, so a build without the config can no longer ship. The affected
+  versions are the ones published by the workflow since it was added (#14).
+- `SECURITY.md` lists 1.20.33 as the supported version.
+
 ## [1.20.32] - 2026-11-02
 
 ### Changed

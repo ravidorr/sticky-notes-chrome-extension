@@ -104,6 +104,7 @@ Set these under Settings, Secrets and variables, Actions, Variables:
 | `GCP_SERVICE_ACCOUNT` | Service account email, `<name>@<project>.iam.gserviceaccount.com` |
 | `CWS_EXTENSION_ID` | The extension ID from the Chrome Web Store developer dashboard |
 | `CWS_PUBLISHER_ID` | The publisher ID, the first ID in the developer dashboard URL |
+| `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID` | The Firebase web config, the same values as in your local `.env`. They are public identifiers, not secrets. The release builds (Chrome and Edge) read them from these variables, because `.env` is not in the repository. Without them the extension would sign in as a local mock user, so the build fails when one is missing (`REQUIRE_FIREBASE_CONFIG`, checked in `scripts/build.js`). |
 
 ## Google Cloud setup
 
